@@ -1,0 +1,16 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\.github",
+    "\\.github\\workflows",
+    "\\Application",
+    "\\Application\\aspnet-core-dotnet-core",
+    "\\Application\\aspnet-core-dotnet-core.FunctionalTests",
+    "\\Application\\aspnet-core-dotnet-core.UnitTests",
+    "\\Application\\aspnet-core-dotnet-core\\Pages",
+    "\\Application\\aspnet-core-dotnet-core\\Pages\\Shared",
+    "\\ArmTemplates"
+  ],
+  "SelectedNode": "\\Application\\aspnet-core-dotnet-core\\Program.cs",
+  "PreviewInSolutionExplorer": false
+}
