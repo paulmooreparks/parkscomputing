@@ -13,6 +13,7 @@ namespace aspnet_core_dotnet_core {
     public class Program {
         public static void Main(string[] args) {
             CreateWebHostBuilder(args).Build().Run();
+            // var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(args);
         }
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>

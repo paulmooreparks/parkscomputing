@@ -27,7 +27,6 @@ namespace aspnet_core_dotnet_core {
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-
             services.AddRazorPages();
         }
 
@@ -40,6 +39,8 @@ namespace aspnet_core_dotnet_core {
                 app.UseExceptionHandler("/Error");
             }
 
+            ConfigureRedirects(app, env);
+
             app.UseStaticFiles();
             app.UseCookiePolicy();
             app.UseRouting();
@@ -47,7 +48,18 @@ namespace aspnet_core_dotnet_core {
 
             app.UseEndpoints(endpoints => {
                 endpoints.MapRazorPages();
+                // endpoints.MapGet(@"/{year:range(1900:2100)}/{month:range(1-12)}/{name:regex([\w\-]+$)}", WordPressHandler);
+                endpoints.MapGet(@"/{year:int}/{month:int}/{slug:regex(^[a-z0-9_-]+$)}", WordPressHandler);
+
+                // /2021/08/set-associative-cache-in-c-part-2-interface-design/
             });
+        }
+
+        public void ConfigureRedirects(IApplicationBuilder app, IWebHostEnvironment env) {
+        }
+
+        private string WordPressHandler(int year, int month, string slug) {
+            return $"Retrieve content for URL /{year:0000}/{month:00}/{slug}";
         }
     }
 }
