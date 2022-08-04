@@ -7,11 +7,14 @@ namespace aspnet_core_dotnet_core.Pages {
         public string WpContent { get; set; }
 
         public void OnGet() {
-            var query = this.HttpContext.Request.Query;
+            object slugObject = HttpContext.Request.RouteValues["slug"];
 
-            if (query.ContainsKey("slug")) {
-                string slug = query["slug"];
+            if (slugObject is not null) {
+                WpContent = slugObject.ToString();
+                return;
             }
+
+            WpContent = "List of posts here";
         }
     }
 }
