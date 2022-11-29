@@ -49,7 +49,8 @@ namespace aspnet_core_dotnet_core {
             app.UseEndpoints(endpoints => {
                 endpoints.MapRazorPages();
                 // endpoints.MapGet(@"/{year:range(1900:2100)}/{month:range(1-12)}/{name:regex([\w\-]+$)}", WordPressHandler);
-                endpoints.MapGet(@"/{year:int}/{month:int}/{slug:regex(^[a-z0-9_-]+$)}", WordPressHandler);
+                // endpoints.MapGet(@"/{year:int}/{month:int}/{slug:regex(^[a-z0-9_-]+$)}", WordPressHandler);
+                endpoints.MapGet(@"/{year:int}/{month:int}/{**slug}", WordPressHandler);
 
                 // /2021/08/set-associative-cache-in-c-part-2-interface-design/
             });
