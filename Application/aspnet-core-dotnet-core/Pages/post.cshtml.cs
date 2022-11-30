@@ -43,7 +43,7 @@ namespace aspnet_core_dotnet_core.Pages {
                         }
                     }
                 }
-                catch (Exception ex) {
+                catch (Exception) {
 
                     throw;
                 }

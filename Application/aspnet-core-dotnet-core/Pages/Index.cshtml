@@ -1,9 +1,22 @@
-﻿@page
+﻿@page "/{year:int?}/{month:int?}/{**slug}"
 @model IndexModel
 @{
     ViewData["Title"] = "Parks Computing - Home";
 }
-
+@if (HttpContext.Request.RouteValues["slug"] is not null) {
+ViewData["Title"] = Model.WpTitle;
+<!-- <div class="entry-meta pen_separator_1">
+   <span class="byline pen_content_author">by <span class="author vcard"><a class="url fn n" href="https://www.parkscomputing.com/author/paulmooreparks/">paulmooreparks</a></span></span><span class="cat-links pen_content_categories">
+   <span class="pen_element_hidden">Categories:</span><a href="https://www.parkscomputing.com/labels/net/" rel="category tag">.NET</a>, <a href="https://www.parkscomputing.com/labels/c/" rel="category tag">C#</a>, <a href="https://www.parkscomputing.com/labels/writing/" rel="category tag">writing</a></span>
+</div> -->
+      <h1>@Html.Raw(Model.WpTitle)</h1>
+      <div class="posted-on pen_content_date pen_content_date_published">Posted on <a href="@Model.WpLink" rel="bookmark"><time datetime="@Model.WpCreatedGmt">@Model.WpCreated</time></a></div>
+      <div class="pen_content_date pen_content_date_updated">Updated on <a href="@Model.WpLink" rel="bookmark"><time datetime="@Model.WpModifiedGmt">@Model.WpModified</time></a></div>
+      <br/>
+      @Html.Raw(Model.WpContent)
+}
+else {
+ViewData["Title"] = "Parks Computing - Home";
 <div class="main-container">
     <div class="cloud-image">
         <img src="~/images/successCloudNew.svg" />
@@ -40,3 +53,4 @@
         <p><a class="btn btn-default" href="https://go.microsoft.com/fwlink/?linkid=862126">Learn more &raquo;</a></p>
     </div>
 </div>
+}
