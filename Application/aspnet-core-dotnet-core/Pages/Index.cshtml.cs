@@ -53,19 +53,19 @@ namespace aspnet_core_dotnet_core.Pages {
                             WpTitle = array[0].GetProperty("title").GetProperty("rendered").GetString();
                             WpContent = array[0].GetProperty("content").GetProperty("rendered").GetString();
                         }
-
                         else {
                             //API Call Failed, Check Error Details
                         }
                     }
                 }
                 catch (Exception) {
-
                     throw;
                 }
             }
+            else {
+                // WpContent = $"<p>List of posts here</p>";
+            }
 
-            // WpContent = $"<p>List of posts here</p>";
             return Page();
         }
         public string DoTest() {

@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
 
-    <link rel="stylesheet" href="~/css/site.min.css" />
     <environment include="Development">
         <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.css" />
     </environment>
@@ -16,19 +15,19 @@
               crossorigin="anonymous"
               integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" />
     </environment>
+    <link rel="stylesheet" href="~/css/site.min.css" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
    <link rel="stylesheet" href="/highlightjs/styles/default.min.css">
    <script src="/highlightjs/highlight.min.js"></script>
-   <script>hljs.highlightAll();</script>
     <link rel="manifest" href="/site.webmanifest">
 </head>
 <body>
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark bg-dark">
             <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">ASP.NET Core</a>
+                <a class="navbar-brand" href="/">Parks Computing</a>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -36,7 +35,7 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex flex-sm-row-reverse">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-light" asp-area="" asp-page="/index">Home</a>
+                            <a class="nav-link text-light" href="/">Home</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-light" asp-area="" asp-page="/about">About</a>
@@ -50,15 +49,12 @@
         </nav>
     </header>
     <div class="container">
-        <partial name="_CookieConsentPartial" />
-        <main role="main" class="pb-3">
             @RenderBody()
-        </main>
     </div>
 
-    <footer class="border-top footer text-muted">
+    <footer class="border-top footer bg-dark text-light">
         <div class="container">
-            &copy; ASP.NET Core
+            &copy; 2022 Paul M. Parks
         </div>
     </footer>
 
@@ -81,6 +77,6 @@
         </script>
     </environment>
     <script src="~/js/site.min.js" asp-append-version="true"></script>
-    @RenderSection("Scripts", required: false)
+   <script>hljs.highlightAll();</script>
 </body>
 </html>
