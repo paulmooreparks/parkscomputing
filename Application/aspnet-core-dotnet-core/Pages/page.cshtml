@@ -1,5 +1,5 @@
-﻿@page "{**slug}"
-@model aspnet_core_dotnet_core.Pages.PostLoaderModel
+﻿@page "{section?}/{**slug}"
+@model aspnet_core_dotnet_core.Pages.PageLoaderModel
 @{
     Layout = "_Layout";
     ViewData["Title"] = Html.Raw(Model.WpTitle);

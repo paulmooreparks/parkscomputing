@@ -1,19 +1,14 @@
-using System;
+using System.Globalization;
 using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+using System;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Threading.Tasks;
-using System.Reflection;
-
 namespace aspnet_core_dotnet_core.Pages {
-    public class PostLoaderModel : PageModel {
-
+    public class PostImportModel : PageModel {
         public string WpTitle { get; set; }
         public string WpContent { get; set; }
         public string WpCreatedGmt { get; set; }

@@ -1,19 +1,14 @@
-using System;
+using System.Globalization;
 using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+using System;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Threading.Tasks;
-using System.Reflection;
-
 namespace aspnet_core_dotnet_core.Pages {
-    public class PostLoaderModel : PageModel {
-
+    public class PageImportModel : PageModel {
         public string WpTitle { get; set; }
         public string WpContent { get; set; }
         public string WpCreatedGmt { get; set; }
@@ -25,8 +20,15 @@ namespace aspnet_core_dotnet_core.Pages {
         public string WpJson { get; set; }
 
         public async Task<IActionResult> OnGetAsync() {
+            object sectionObject = HttpContext.Request.RouteValues["section"];
             object slugObject = HttpContext.Request.RouteValues["slug"];
-            string Baseurl = $"https://www.parkscomputing.com/wp-json/wp/v2/posts?slug={slugObject.ToString()}";
+            string slug = sectionObject.ToString();
+
+            if (slugObject is not null) {
+                slug = slugObject.ToString();
+            }
+
+            string Baseurl = $"https://www.parkscomputing.com/wp-json/wp/v2/pages?slug={slug}";
 
             try {
                 using (var client = new HttpClient()) {
