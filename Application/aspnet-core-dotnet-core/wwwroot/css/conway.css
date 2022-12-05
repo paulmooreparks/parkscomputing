@@ -1,0 +1,65 @@
+body {
+    font-family: 'Lucida Grande', sans-serif;
+    color: darkslategray;
+}
+
+#links {
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+#buttons {
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+#stats {
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+#settings {
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+#boardSize {
+    width: 5em;
+}
+
+#cellSize {
+    width: 5em;
+}
+
+#ticks {
+    width: 5em;
+}
+
+#grid {
+    border: 1px solid black;
+    padding: 0;
+    margin: 0;
+    cursor: crosshair;
+}
+
+#start {
+    font-size: x-large;
+}
+
+#stop {
+    font-size: x-large;
+}
+
+#step {
+    font-size: x-large;
+}
+
+h1 {
+    padding: 0;
+    margin: 0;
+}
+
+h2 {
+    padding: 0;
+    margin-bottom: 10px;
+}

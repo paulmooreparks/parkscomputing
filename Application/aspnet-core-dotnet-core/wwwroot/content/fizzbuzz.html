@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FizzBuzz</title>
+    <meta http-equiv="date" content="2022-12-01T03:57:03" />
+    <meta http-equiv="last-modified" content="2022-12-01T07:05:54" />
+    <meta name="description" content="My implementation of FizzBuzz in C++." />
+    <meta name="keyword" content="FizzBuzz,C++,coding,programming" />
+    <link rel="stylesheet" href="/highlightjs/styles/default.min.css">
+    <script src="/highlightjs/highlight.min.js"></script>
+</head>
+<body>
+    <h1>FizzBuzz</h1>
+
+    <p>This is just one of those things you have to write, apparently. Here is mine, in C++.</p>
+
+<pre><code class="language-cpp">#include &lt;iostream>
+
+int main() {
+    int _3 {0};
+    int _5 {0};
+
+    for (int i = 1; i &lt;= 100; ++i) {
+        ++_3;
+        ++_5;
+
+        if (_3 == 3) {
+            _3 = 0;
+            std::cout &lt;&lt; "Fizz";
+        }
+
+        if (_5 == 5) {
+            _5 = 0;
+            std::cout &lt;&lt; "Buzz";
+        }
+
+        if (_3 > 0 &amp;&amp; _5 > 0) {
+            std::cout &lt;&lt; i;
+        }
+
+        std::cout &lt;&lt; " ";
+    }
+}</code></pre>
+
+    <p>Drink up, and let the debate begin.</p>
+
+    <figure class=""><a href="/images/fizzbuzz.png"><img decoding="async" loading="lazy" src="/images/fizzbuzz.png" alt="" width="512" height="512" /></a></figure>
+
+    <script>hljs.highlightAll();</script>
+</body>
+</html>

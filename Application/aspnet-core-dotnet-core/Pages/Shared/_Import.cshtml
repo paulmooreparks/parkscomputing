@@ -2,6 +2,10 @@
 <html>
 <head>
     <title>@ViewBag.Title</title>
+    <meta http-equiv="date" content="@Model.WpCreatedGmt" />
+@if (Model.WpCreatedGmt != Model.WpModifiedGmt) {
+    <meta http-equiv="last-modified" content="@Model.WpModifiedGmt" />
+}
 </head>
 <body>
     @RenderBody()

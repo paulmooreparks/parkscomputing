@@ -15,7 +15,7 @@ namespace aspnet_core_dotnet_core.Pages {
         public string WpContent { get; set; }
 
         public IActionResult OnGet() {
-            // WpContent = $"<p>List of posts here</p>";
+            // PageContent = $"<p>List of posts here</p>";
             return Page();
         }
 

@@ -2,13 +2,30 @@
 @model aspnet_core_dotnet_core.Pages.PageLoaderModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = Html.Raw(Model.WpTitle);
+    ViewData["Title"] = Html.Raw(Model.Title);
 }
-<h1>@Html.Raw(Model.WpTitle)</h1>
-<div class="posted-on">Posted on <time datetime="@Model.WpCreatedGmt">@Model.WpCreated</time></div>
 
-@if (Model.WpCreatedGmt != Model.WpModifiedGmt) {
-    <div class="updated-on">Updated on <time datetime="@Model.WpModifiedGmt">@Model.WpModified</time></div>
+@section Meta {
+@foreach (var element in @Model.MetaElements) {
+    <meta @foreach (var item in element.Attributes) { <text>@item.Name="@item.Value" </text>}/>
+}
+}
+
+@section Links {
+@foreach (var element in @Model.LinkElements) {
+    <link @foreach (var item in element.Attributes) { <text>@item.Name="@item.Value" </text>}/>
+}
+}
+
+@section HeadScripts {
+@foreach (var element in @Model.HeadScriptElements) {
+    <script @foreach (var item in element.Attributes) { <text>@item.Name="@item.Value" </text>}>@element.InnerHtml</script>
+}
+}
+
+@if (Model.CreatedGmt != Model.ModifiedGmt) {
+    <div class="updated-on">Updated on <time datetime="@Model.ModifiedGmt">@Model.Modified</time></div>
 }
 <br />
-@Html.Raw(Model.WpContent)
+@Html.Raw(Model.PageContent)
+

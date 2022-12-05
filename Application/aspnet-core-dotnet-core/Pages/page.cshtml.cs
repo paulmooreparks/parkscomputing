@@ -3,23 +3,35 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System;
+using System.Xml;
+using HtmlAgilityPack;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Hosting;
 
 namespace aspnet_core_dotnet_core.Pages {
     public class PageLoaderModel : Microsoft.AspNetCore.Mvc.RazorPages.PageModel {
-        public string WpTitle { get; set; }
-        public string WpContent { get; set; }
-        public string WpCreatedGmt { get; set; }
-        public string WpModifiedGmt { get; set; }
-        public string WpCreated { get; set; }
-        public string WpModified { get; set; }
-        public string WpLink { get; set; }
-        public string WpSlug { get; set; }
-        public string WpJson { get; set; }
+        public string Title { get; set; }
+        public string PageContent { get; set; }
+        public string CreatedGmt { get; set; }
+        public string ModifiedGmt { get; set; }
+        public string Created { get; set; }
+        public string Modified { get; set; }
+        public string Link { get; set; }
+        public string Slug { get; set; }
+        public string Json { get; set; }
+        public HtmlNodeCollection MetaElements { get; set; }
+        public HtmlNodeCollection LinkElements { get; set; }
+        public HtmlNodeCollection HeadScriptElements { get; set; }
+        public HtmlNodeCollection BodyScriptElements { get; set; }
 
-        public async Task<IActionResult> OnGetAsync() {
+        private IHostEnvironment Environment { get; set; }
+        public PageLoaderModel(IHostEnvironment environment) {
+            Environment = environment;
+        }
+
+        public IActionResult OnGet() {
             object sectionObject = HttpContext.Request.RouteValues["section"];
             object slugObject = HttpContext.Request.RouteValues["slug"];
             string slug = sectionObject.ToString();
@@ -28,43 +40,51 @@ namespace aspnet_core_dotnet_core.Pages {
                 slug = slugObject.ToString();
             }
 
-            string Baseurl = $"https://www.parkscomputing.com/wp-json/wp/v2/pages?slug={slug}";
-
             try {
-                using (var client = new HttpClient()) {
-                    HttpRequestMessage request = new HttpRequestMessage();
-                    request.RequestUri = new Uri(Baseurl);
-                    request.Method = HttpMethod.Get;
-                    // request.Headers.Add("SecureApiKey", "12345");
-                    HttpResponseMessage response = await client.SendAsync(request);
-                    var responseString = response.Content.ReadAsStringAsync();
-                    var statusCode = response.StatusCode;
+                var path = $"{Environment.ContentRootPath}/wwwroot/content/{slug}.html";
+                var doc = new HtmlDocument();
+                doc.Load(path);
+                var node = doc.DocumentNode.SelectSingleNode("//body");
 
-                    if (response.IsSuccessStatusCode) {
-                        string json = await response.Content.ReadAsStringAsync();
-                        var cvt = JsonSerializer.Deserialize<object>(json);
-                        JsonElement array = (JsonElement)cvt;
-                        WpCreatedGmt = array[0].GetProperty("date_gmt").GetString();
-                        WpModifiedGmt = array[0].GetProperty("modified_gmt").GetString();
-
-                        var createDate = DateTime.ParseExact(WpCreatedGmt, "s", DateTimeFormatInfo.InvariantInfo);
-                        var modDate = DateTime.ParseExact(WpModifiedGmt, "s", DateTimeFormatInfo.InvariantInfo);
-                        WpCreated = createDate.ToLongDateString();
-                        WpModified = modDate.ToLongDateString();
-
-                        var link = array[0].GetProperty("link").GetString();
-                        var linkUri = new Uri(link);
-                        WpLink = linkUri.PathAndQuery;
-
-                        WpTitle = array[0].GetProperty("title").GetProperty("rendered").GetString();
-                        WpContent = array[0].GetProperty("content").GetProperty("rendered").GetString();
-
-                        // Url
-                    }
-                    else {
-                        //API Call Failed, Check Error Details
-                    }
+                if (node is not null) {
+                    PageContent = node.InnerHtml;
                 }
+                else {
+                    //API Call Failed, Check Error Details
+                }
+
+                var titleElement = doc.DocumentNode.SelectSingleNode("//title");
+
+                if (titleElement is not null) {
+                    Title = titleElement.InnerText;
+                }
+
+                MetaElements = doc.DocumentNode.SelectNodes("//head/meta");
+                LinkElements = doc.DocumentNode.SelectNodes("//head/link");
+                HeadScriptElements = doc.DocumentNode.SelectNodes("//head/script");
+                BodyScriptElements = doc.DocumentNode.SelectNodes("//body/script");
+
+                var createMeta = doc.DocumentNode.SelectSingleNode("//meta[@http-equiv='date']/@content");
+
+                if (createMeta is not null) {
+                    CreatedGmt = createMeta.Attributes["content"].Value;
+                    var createDate = DateTime.ParseExact(CreatedGmt, "s", DateTimeFormatInfo.InvariantInfo);
+                    Created = createDate.ToLongDateString();
+                }
+
+                var modMeta = doc.DocumentNode.SelectSingleNode("//meta[@http-equiv='last-modified']/@content");
+
+                if (modMeta is not null) {
+                    ModifiedGmt = createMeta.Attributes["content"].Value;
+                    var modDate = DateTime.ParseExact(CreatedGmt, "s", DateTimeFormatInfo.InvariantInfo);
+                    Modified = modDate.ToLongDateString();
+                }
+
+#if false
+                    var link = array[0].GetProperty("link").GetString();
+                    var linkUri = new Uri(link);
+                    Link = linkUri.PathAndQuery;
+#endif
             }
             catch (Exception) {
                 throw;
