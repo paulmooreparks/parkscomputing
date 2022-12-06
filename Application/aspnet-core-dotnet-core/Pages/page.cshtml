@@ -5,22 +5,22 @@
     ViewData["Title"] = Html.Raw(Model.Title);
 }
 
-@section Meta {
-@foreach (var element in @Model.MetaElements) {
+@section Meta { @if (Model.MetaElements is not null) { 
+@foreach (var element in @Model.MetaElements) { 
     <meta @foreach (var item in element.Attributes) { <text>@item.Name="@item.Value" </text>}/>
-}
+}}
 }
 
-@section Links {
-@foreach (var element in @Model.LinkElements) {
+@section Links { @if (Model.LinkElements is not null) { 
+@foreach (var element in @Model.LinkElements) { 
     <link @foreach (var item in element.Attributes) { <text>@item.Name="@item.Value" </text>}/>
-}
+}}
 }
 
-@section HeadScripts {
-@foreach (var element in @Model.HeadScriptElements) {
+@section HeadScripts { @if (Model.HeadScriptElements is not null) { 
+@foreach (var element in @Model.HeadScriptElements) { 
     <script @foreach (var item in element.Attributes) { <text>@item.Name="@item.Value" </text>}>@element.InnerHtml</script>
-}
+}}
 }
 
 @if (Model.CreatedGmt != Model.ModifiedGmt) {

@@ -48,6 +48,10 @@ body {
     margin-bottom: 60px;
 }
 
+.content-body {
+    padding-bottom: 15px;
+}
+
 .footer {
     position: absolute;
     bottom: 0;
@@ -67,7 +71,6 @@ body {
     overflow-y: hidden;
     overflow-x: hidden;
     padding: 80px;
-    margin-bottom: 30px;
 }
 
 .cloud-image {
