@@ -4,705 +4,609 @@
     <title>Set-Associative Cache in C#, Part 1: Analysis &#038; Initial Design</title>
     <meta http-equiv="date" content="2021-08-01T09:16:05" />
     <meta http-equiv="last-modified" content="2022-12-02T01:25:40" />
+    <meta name="description" content="My implementation of FizzBuzz in C++." />
+    <meta name="keyword" content="FizzBuzz,C++,coding,programming" />
+    <link rel="stylesheet" href="/highlightjs/styles/default.min.css">
+    <script src="/highlightjs/highlight.min.js"></script>
 </head>
 <body>
     <h1>Set-Associative Cache in C#, Part 1: Analysis &#038; Initial Design</h1>
 
-<p>A couple of weeks ago, I had never heard of a set-associative cache. Then, I was assigned an interview exercise on <a href="https://www.hackerrank.com/">HackerRank</a> entitled &#8220;Set-Associative Cache Optimization&#8221;. (I won&#8217;t give away the company or any details about the exercise, since that wouldn&#8217;t be fair.) Since I hadn&#8217;t heard of such a cache, I decided to learn about it and implement one in C# before I started the assignment, just for practice.</p>
-
-
-
-<p>The first thing I learned is that a set-associative cache is more of a hardware concept than a software one, but that they do exist in software. The second thing I learned is that they&#8217;re a topic of a fair amount of academic study — I slogged through one paper and queued up a few more in some browser tabs before, ultimately, I decided to implement something fairly straightforward and make it extensible. I find that I learn better by doing than by reading.</p>
-
-
-
-<p>Once the project was on <a rel="noreferrer noopener" href="https://github.com/paulmooreparks/SetAssociativeCache/" target="_blank">my GitHub repository</a>, I decided to write this series of articles, where I walk through the code, describe how the cache works, explain why I made the design decisions I made, and generally show the process of writing a professional-grade data structure for .NET in C#.</p>
-
-
-
-<p>In part 1, we&#8217;ll try to understand how set-associative caches work and come up with a basic design. In <a href="/page/set-associative-cache-in-c-part-2-interface-design/" target="_blank" rel="noreferrer noopener">part 2</a>, we&#8217;ll expand on the design a bit more and define a code interface for the cache. In part 3, we&#8217;ll turn the design into working code.</p>
-
-
-
-<h2>A Few Words About the Design Process</h2>
-
-
-
-<p>While these articles will appear to present a somewhat linear process of design and implementation, the actual process was a more iterative and exploratory. I followed the basic steps in this series of articles, but I didn&#8217;t do so rigidly. My general approach to designing and developing a new bit of software is the following:</p>
-
-
-
-<ul>
-<li>Analysis: Understand the problem
-<ul>
-<li>Sketch it out on the whiteboard</li>
-
-
-
-<li>Define the data involved in the problem</li>
-
-
-
-<li>Discover the algorithms and step through them manually</li>
-
-
-
-<li>Consider how the software will be used in production</li>
-</ul>
-</li>
-
-
-
-<li>Design: Propose a solution
-<ul>
-<li>More of the steps above, but at a lower level this time</li>
-
-
-
-<li>Consider platforms, languages, libraries</li>
-
-
-
-<li>Examine and compare alternative designs</li>
-
-
-
-<li>Consider usability, performance, testability, and all such requirements</li>
-
-
-
-<li>Look for existing designs and implementations so that I don&#8217;t re-invent the wheel</li>
-
-
-
-<li>Talk about and write about the problem and the proposed solution</li>
-</ul>
-</li>
-
-
-
-<li>Implementation: Bring the design into reality to solve the problem
-<ul>
-<li>If I get stuck, reconsider the design or the analysis and see if I missed something</li>
-</ul>
-</li>
-</ul>
-
-
-
-<p>&#8220;OMG! That&#8217;s&#8230; that&#8217;s&#8230; <a href="http://www-scf.usc.edu/~csci201/lectures/Lecture11/royce1970.pdf" target="_blank" rel="noreferrer noopener">WATERFALL</a>!&#8221; No, no, it&#8217;s careful consideration of the problem before committing to an implementation. These aren&#8217;t rigid phases of any development process handed down from on high. It&#8217;s just a reasonable way to approach software development. I may even write exploratory, proof-of-concept code during analysis, and some of that code (maybe all, if I&#8217;m lucky) may find its way into the final implementation. I may get all the way into implementation and discover that I need to redo the design. In my experience, the more carefully I understand the problem, and the more diligently I design the solution, the smoother the implementation will be.</p>
-
-
-
-<p>Even while writing these articles, I would update the implementation as better ideas occurred to me, and I fixed a few design and implementation bugs along the way as well. If you&#8217;re new to software development, don&#8217;t worry if you find yourself in a similar kind of loop. A little patience up front, and a willingness to admit later that you didn&#8217;t understand something as well as you thought you did, will pay dividends over the course of your career.</p>
-
-
-
-<h2>How Does a Set-Associative Cache Work?</h2>
-
-
-
-<p>I&#8217;m not going to dive too deeply into <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_(computing)" target="_blank">caching theory</a> here. As I said earlier, it&#8217;s a <a rel="noreferrer noopener" href="https://dspace.mit.edu/bitstream/handle/1721.1/87159/45168931-MIT.pdf" target="_blank">topic of study for computer scientists</a>. I&#8217;ll just present an overview of set-associative caches, and I&#8217;ll give you a few links along the way where you can dig deeper.</p>
-
-
-
-<p>A <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_placement_policies#Set-associative_cache" target="_blank">set-associative cache</a> is a cache that is split into sets of cache entries, or cache lines. This is a compromise between two other extremes: a <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_placement_policies#Direct-mapped_cache" target="_blank">direct-mapped cache</a> and a <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_placement_policies#Fully_associative_cache" target="_blank">fully associative cache</a>. Each set may have one or more &#8220;ways&#8221;, where each &#8220;way&#8221; is single cache entry. </p>
-
-
-
-<p>In order to make it easier to visualize how such a cache works, I&#8217;m going to use tables that represent a cache with 3 sets and 3 ways per set. Such a cache would be laid out as follows:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><thead><tr><th colspan="3">Set 0</th><th colspan="3">Set 1</th><th colspan="3">Set 2</th></tr>
-<tr><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th></tr></thead><tbody><tr>
-    <td>Data</td>
-    <td>Data</td>
-    <td>Data</td>
-    <td>Data</td>
-    <td>Data</td>
-    <td>Data</td>
-    <td>Data</td>
-    <td>Data</td>
-    <td>Data</td>
-</tr></tbody></table></figure>
-
-
-
-<p>When a new cache item is added to the cache, it is assigned to a set, either via an intrinsic tag (like an address range) or some other algorithm, such as a hash function. I won&#8217;t get into all the ways that this can happen; instead, I&#8217;ll focus on this C# implementation, which uses a hash function on the key in order to choose which set the key/value pair is stored in.</p>
-
-
-
-<p>Let&#8217;s say, for example, that we want to cache pairs of celebrity couples. Why you would want to do this in real life, I have no idea, but they&#8217;re a much more compact form of data to draw on whiteboards or type into WordPress than HTTP responses or database results. When we add an item to the cache with the key &#8220;Brad&#8221; and the value &#8220;Angelina&#8221;, the key is hashed using a <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function" target="_blank">Fowler-Noll-Vo 1a hash function</a> (FNV-1a). This returns the 64-bit value 7469233897810807560. This huge number isn&#8217;t terribly helpful on its own, so we take the number modulo the number of sets (in this example, 3) to determine which set, from 0 to 2, that the item should be placed into. This gives us the number 0, so this key/value pair will go into set 0. There are three ways in each set, but all are empty at the start, so Brad and Angelina will go into the first way (way 0) in the first set (set 0).</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><thead><tr><th colspan="3">Set 0</th><th colspan="3">Set 1</th><th colspan="3">Set 2</th></tr>
-<tr><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th></tr></thead><tbody><tr>
-    <td>Brad, Angelina</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-</tr></tbody></table></figure>
-
-
-
-<p>Let&#8217;s add another pair: &#8220;Kanye&#8221; and &#8220;Kim&#8221;. &#8220;Kanye&#8221; hashes to 12815697388183119611 which, modulo 3, yields 2, so Kanye and Kim go into the first empty way in set 2:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><thead><tr><th colspan="3">Set 0</th><th colspan="3">Set 1</th><th colspan="3">Set 2</th></tr>
-<tr><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th></tr></thead><tbody><tr>
-    <td>Brad, Angelina</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td>Kanye, Kim</td>
-    <td></td>
-    <td></td>
-</tr></tbody></table></figure>
-
-
-
-<p>We can keep adding couples until, eventually, we encounter a situation where all three ways in a set are full. If we have added Brad &amp; Angelina, Kanye &amp; Kim, Ben &amp; Jennifer, and Burt &amp; Loni, the cache will look like the following:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><thead><tr><th colspan="3">Set 0</th><th colspan="3">Set 1</th><th colspan="3">Set 2</th></tr>
-<tr><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th></tr></thead><tbody><tr>
-    <td>Brad, Angelina</td>
-    <td>Ben, Jennifer</td>
-    <td>Burt, Loni</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td>Kanye, Kim</td>
-    <td></td>
-    <td></td>
-</tr></tbody></table></figure>
-
-
-
-<p>What happens if we try to add Kurt &amp; Goldie? Since the hash for &#8220;Kurt&#8221; modulo 3 is 0, that couple should go into set 0, but that set is already full. What do we do?</p>
-
-
-
-<p>This is where the <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_replacement_policies" target="_blank">cache replacement policy</a> comes into effect. The cache needs a policy for how to remove existing cache items to make room for new ones. There are several policies to choose from, such as <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_replacement_policies#Least_recently_used_(LRU)" target="_blank">least-recently used (LRU)</a>, <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_replacement_policies#Least-frequently_used_(LFU)" target="_blank">least-frequently used (LFU)</a>, <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_replacement_policies#Most_recently_used_(MRU)" target="_blank">most-recently used (MRU)</a>, and <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_replacement_policies" target="_blank">many others</a>. If we use a least-recently used, or LRU, policy, then we should remove the item that hasn&#8217;t been stored or accessed as recently as any other item in the set. In our example, that will be Brad &amp; Angelina, so they are evicted to make way for Kurt &amp; Goldie:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><thead><tr><th colspan="3">Set 0</th><th colspan="3">Set 1</th><th colspan="3">Set 2</th></tr>
-<tr><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th></tr></thead><tbody><tr>
-    <td>Kurt, Goldie</td>
-    <td>Ben, Jennifer</td>
-    <td>Burt, Loni</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td>Kanye, Kim</td>
-    <td></td>
-    <td></td>
-</tr></tbody></table></figure>
-
-
-
-<p>We can carry on adding couples to the cache and evicting other couples as necessary until the cache is finally full.
-</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><thead><tr><th colspan="3">Set 0</th><th colspan="3">Set 1</th><th colspan="3">Set 2</th></tr>
-<tr><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th></tr></thead><tbody><tr>
-    <td>Kurt, Goldie</td>
-    <td>Ben, Jennifer</td>
-    <td>Burt, Loni</td>
-    <td>Desi, Lucy</td>
-    <td>John, Yoko</td>
-    <td>Tom, Rita</td>
-    <td>Kanye, Kim</td>
-    <td>Sonny, Cher</td>
-    <td>Johnny, June</td>
-</tr></tbody></table></figure>
-
-
-
-<p>If we add a new couple now, then no matter what set the couple ends up in, they will evict the least-recently used couple in that set.</p>
-
-
-
-<h2>Design</h2>
-
-
-
-<p>If you&#8217;re familiar with the design and implementation of hash tables, you may see some resemblance between the description above and the way that hash tables work. (If you&#8217;d like a good introduction to hash table implementation, read <a rel="noreferrer noopener" href="https://benhoyt.com/writings/hash-table-in-c/" target="_blank">Ben Hoyt&#8217;s excellent article on implementing a hash table in C</a>.) The key difference here is that in a hash table, the table expands to accommodate new key/value pairs, whereas in a cache there is a fixed capacity for elements and a policy for removing elements when the cache is full.</p>
-
-
-
-<p>From the user&#8217;s point of view, I decided to make using the cache feel like using hash table (or, more generally, a dictionary). Inserting an element into the cache might be done using the same kind of indexing syntax used in a .NET dictionary, and retrieval of an element might be done with a <em>TryGetValue</em> method.</p>
-
-
+    <p>A couple of weeks ago, I had never heard of a set-associative cache. Then, I was assigned an interview exercise on <a href="https://www.hackerrank.com/">HackerRank</a> entitled &#8220;Set-Associative Cache Optimization&#8221;. (I won&#8217;t give away the company or any details about the exercise, since that wouldn&#8217;t be fair.) Since I hadn&#8217;t heard of such a cache, I decided to learn about it and implement one in C# before I started the assignment, just for practice.</p>
+
+    <p>The first thing I learned is that a set-associative cache is more of a hardware concept than a software one, but that they do exist in software. The second thing I learned is that they&#8217;re a topic of a fair amount of academic study — I slogged through one paper and queued up a few more in some browser tabs before, ultimately, I decided to implement something fairly straightforward and make it extensible. I find that I learn better by doing than by reading.</p>
+
+    <p>Once the project was on <a rel="noreferrer noopener" href="https://github.com/paulmooreparks/SetAssociativeCache/" target="_blank">my GitHub repository</a>, I decided to write this series of articles, where I walk through the code, describe how the cache works, explain why I made the design decisions I made, and generally show the process of writing a professional-grade data structure for .NET in C#.</p>
+
+    <p>In part 1, we&#8217;ll try to understand how set-associative caches work and come up with a basic design. In <a href="/page/set-associative-cache-in-c-part-2-interface-design/" target="_blank" rel="noreferrer noopener">part 2</a>, we&#8217;ll expand on the design a bit more and define a code interface for the cache. In part 3, we&#8217;ll turn the design into working code.</p>
+
+    <h2>A Few Words About the Design Process</h2>
+
+    <p>While these articles will appear to present a somewhat linear process of design and implementation, the actual process was a more iterative and exploratory. I followed the basic steps in this series of articles, but I didn&#8217;t do so rigidly. My general approach to designing and developing a new bit of software is the following:</p>
+
+    <ul>
+        <li>
+            Analysis: Understand the problem
+            <ul>
+                <li>Sketch it out on the whiteboard</li>
+                <li>Define the data involved in the problem</li>
+                <li>Discover the algorithms and step through them manually</li>
+                <li>Consider how the software will be used in production</li>
+            </ul>
+        </li>
+        <li>
+            Design: Propose a solution
+            <ul>
+                <li>More of the steps above, but at a lower level this time</li>
+                <li>Consider platforms, languages, libraries</li>
+                <li>Examine and compare alternative designs</li>
+                <li>Consider usability, performance, testability, and all such requirements</li>
+                <li>Look for existing designs and implementations so that I don&#8217;t re-invent the wheel</li>
+                <li>Talk about and write about the problem and the proposed solution</li>
+            </ul>
+        </li>
+        <li>
+            Implementation: Bring the design into reality to solve the problem
+            <ul>
+                <li>If I get stuck, reconsider the design or the analysis and see if I missed something</li>
+            </ul>
+        </li>
+    </ul>
+
+    <p>&#8220;OMG! That&#8217;s&#8230; that&#8217;s&#8230; <a href="http://www-scf.usc.edu/~csci201/lectures/Lecture11/royce1970.pdf" target="_blank" rel="noreferrer noopener">WATERFALL</a>!&#8221; No, no, it&#8217;s careful consideration of the problem before committing to an implementation. These aren&#8217;t rigid phases of any development process handed down from on high. It&#8217;s just a reasonable way to approach software development. I may even write exploratory, proof-of-concept code during analysis, and some of that code (maybe all, if I&#8217;m lucky) may find its way into the final implementation. I may get all the way into implementation and discover that I need to redo the design. In my experience, the more carefully I understand the problem, and the more diligently I design the solution, the smoother the implementation will be.</p>
+
+    <p>Even while writing these articles, I would update the implementation as better ideas occurred to me, and I fixed a few design and implementation bugs along the way as well. If you&#8217;re new to software development, don&#8217;t worry if you find yourself in a similar kind of loop. A little patience up front, and a willingness to admit later that you didn&#8217;t understand something as well as you thought you did, will pay dividends over the course of your career.</p>
+
+    <h2>How Does a Set-Associative Cache Work?</h2>
+
+    <p>I&#8217;m not going to dive too deeply into <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_(computing)" target="_blank">caching theory</a> here. As I said earlier, it&#8217;s a <a rel="noreferrer noopener" href="https://dspace.mit.edu/bitstream/handle/1721.1/87159/45168931-MIT.pdf" target="_blank">topic of study for computer scientists</a>. I&#8217;ll just present an overview of set-associative caches, and I&#8217;ll give you a few links along the way where you can dig deeper.</p>
+
+    <p>A <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_placement_policies#Set-associative_cache" target="_blank">set-associative cache</a> is a cache that is split into sets of cache entries, or cache lines. This is a compromise between two other extremes: a <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_placement_policies#Direct-mapped_cache" target="_blank">direct-mapped cache</a> and a <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_placement_policies#Fully_associative_cache" target="_blank">fully associative cache</a>. Each set may have one or more &#8220;ways&#8221;, where each &#8220;way&#8221; is single cache entry. </p>
+
+    <p>In order to make it easier to visualize how such a cache works, I&#8217;m going to use tables that represent a cache with 3 sets and 3 ways per set. Such a cache would be laid out as follows:</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <thead>
+                <tr><th colspan="3">Set 0</th><th colspan="3">Set 1</th><th colspan="3">Set 2</th></tr>
+                <tr><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Data</td>
+                    <td>Data</td>
+                    <td>Data</td>
+                    <td>Data</td>
+                    <td>Data</td>
+                    <td>Data</td>
+                    <td>Data</td>
+                    <td>Data</td>
+                    <td>Data</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>When a new cache item is added to the cache, it is assigned to a set, either via an intrinsic tag (like an address range) or some other algorithm, such as a hash function. I won&#8217;t get into all the ways that this can happen; instead, I&#8217;ll focus on this C# implementation, which uses a hash function on the key in order to choose which set the key/value pair is stored in.</p>
+
+    <p>Let&#8217;s say, for example, that we want to cache pairs of celebrity couples. Why you would want to do this in real life, I have no idea, but they&#8217;re a much more compact form of data to draw on whiteboards or type into WordPress than HTTP responses or database results. When we add an item to the cache with the key &#8220;Brad&#8221; and the value &#8220;Angelina&#8221;, the key is hashed using a <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function" target="_blank">Fowler-Noll-Vo 1a hash function</a> (FNV-1a). This returns the 64-bit value 7469233897810807560. This huge number isn&#8217;t terribly helpful on its own, so we take the number modulo the number of sets (in this example, 3) to determine which set, from 0 to 2, that the item should be placed into. This gives us the number 0, so this key/value pair will go into set 0. There are three ways in each set, but all are empty at the start, so Brad and Angelina will go into the first way (way 0) in the first set (set 0).</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <thead>
+                <tr><th colspan="3">Set 0</th><th colspan="3">Set 1</th><th colspan="3">Set 2</th></tr>
+                <tr><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Brad, Angelina</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>Let&#8217;s add another pair: &#8220;Kanye&#8221; and &#8220;Kim&#8221;. &#8220;Kanye&#8221; hashes to 12815697388183119611 which, modulo 3, yields 2, so Kanye and Kim go into the first empty way in set 2:</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <thead>
+                <tr><th colspan="3">Set 0</th><th colspan="3">Set 1</th><th colspan="3">Set 2</th></tr>
+                <tr><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Brad, Angelina</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>Kanye, Kim</td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>We can keep adding couples until, eventually, we encounter a situation where all three ways in a set are full. If we have added Brad &amp; Angelina, Kanye &amp; Kim, Ben &amp; Jennifer, and Burt &amp; Loni, the cache will look like the following:</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <thead>
+                <tr><th colspan="3">Set 0</th><th colspan="3">Set 1</th><th colspan="3">Set 2</th></tr>
+                <tr><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Brad, Angelina</td>
+                    <td>Ben, Jennifer</td>
+                    <td>Burt, Loni</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>Kanye, Kim</td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>What happens if we try to add Kurt &amp; Goldie? Since the hash for &#8220;Kurt&#8221; modulo 3 is 0, that couple should go into set 0, but that set is already full. What do we do?</p>
+
+    <p>This is where the <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_replacement_policies" target="_blank">cache replacement policy</a> comes into effect. The cache needs a policy for how to remove existing cache items to make room for new ones. There are several policies to choose from, such as <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_replacement_policies#Least_recently_used_(LRU)" target="_blank">least-recently used (LRU)</a>, <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_replacement_policies#Least-frequently_used_(LFU)" target="_blank">least-frequently used (LFU)</a>, <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_replacement_policies#Most_recently_used_(MRU)" target="_blank">most-recently used (MRU)</a>, and <a rel="noreferrer noopener" href="https://en.wikipedia.org/wiki/Cache_replacement_policies" target="_blank">many others</a>. If we use a least-recently used, or LRU, policy, then we should remove the item that hasn&#8217;t been stored or accessed as recently as any other item in the set. In our example, that will be Brad &amp; Angelina, so they are evicted to make way for Kurt &amp; Goldie:</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <thead>
+                <tr><th colspan="3">Set 0</th><th colspan="3">Set 1</th><th colspan="3">Set 2</th></tr>
+                <tr><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Kurt, Goldie</td>
+                    <td>Ben, Jennifer</td>
+                    <td>Burt, Loni</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>Kanye, Kim</td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>We can carry on adding couples to the cache and evicting other couples as necessary until the cache is finally full.</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <thead>
+                <tr><th colspan="3">Set 0</th><th colspan="3">Set 1</th><th colspan="3">Set 2</th></tr>
+                <tr><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 0</th><th>Way 1</th><th>Way 2</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Kurt, Goldie</td>
+                    <td>Ben, Jennifer</td>
+                    <td>Burt, Loni</td>
+                    <td>Desi, Lucy</td>
+                    <td>John, Yoko</td>
+                    <td>Tom, Rita</td>
+                    <td>Kanye, Kim</td>
+                    <td>Sonny, Cher</td>
+                    <td>Johnny, June</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>If we add a new couple now, then no matter what set the couple ends up in, they will evict the least-recently used couple in that set.</p>
+
+    <h2>Design</h2>
+
+    <p>If you&#8217;re familiar with the design and implementation of hash tables, you may see some resemblance between the description above and the way that hash tables work. (If you&#8217;d like a good introduction to hash table implementation, read <a rel="noreferrer noopener" href="https://benhoyt.com/writings/hash-table-in-c/" target="_blank">Ben Hoyt&#8217;s excellent article on implementing a hash table in C</a>.) The key difference here is that in a hash table, the table expands to accommodate new key/value pairs, whereas in a cache there is a fixed capacity for elements and a policy for removing elements when the cache is full.</p>
+
+    <p>From the user&#8217;s point of view, I decided to make using the cache feel like using hash table (or, more generally, a dictionary). Inserting an element into the cache might be done using the same kind of indexing syntax used in a .NET dictionary, and retrieval of an element might be done with a <em>TryGetValue</em> method.</p>
 
 <pre class="wp-block-preformatted"><code class="language-csharp">coupleCache["Brad"] = "Angelina";
 string value;
 bool hasBrad = coupleCache.TryGetValue("Brad", out value);</code></pre>
 
+    <p>These are probably the two most common operations on a cache, and they need to be <em>really, really</em> fast. Let&#8217;s look at what&#8217;s involved in making these operations work.</p>
 
+    <p>First of all, consider testing for the presence of a key in the cache. We need to be able to quickly hash the key, find the set the key is in, then search the set for the key. This needs to be done when adding an item to the cache,     and it also needs to be done when retrieving a value from the cache. Did I mention that this needs to be <em>really, really</em> fast? If it isn&#8217;t significantly faster to find and retrieve an item from the cache than from the     original data source, then the cache is pointless.</p>
 
-<p>These are probably the two most common operations on a cache, and they need to be <em>really, really</em> fast. Let&#8217;s look at what&#8217;s involved in making these operations work.</p>
+    <p>Let&#8217;s consider some possible <a rel="noopener" href="https://www.tutorialspoint.com/data_structures_algorithms/index.htm" target="_blank">data structures and algorithms</a>. A naïve implementation might use a linked list of key/value pairs to represent a single set, where the capacity of the linked list would be the number of ways in the set. Here are some pros:</p>
 
+    <ul>
+        <li>We can use the existing&nbsp;<em>LinkedList&lt;T&gt;</em> class to store our key/value pairs (using the <em>KeyValuePair&lt;TKey, TValue&gt;</em> class).</li>
+        <li>Adding, removing, and inserting items is fairly simple.</li>
+        <li>We can easily reorder the linked list if we need to (for example, to maintain removal policy).</li>
+    </ul>
 
+    <p>There are cons, however:</p>
 
-<p>First of all, consider testing for the presence of a key in the cache. We need to be able to quickly hash the key, find the set the key is in, then search the set for the key. This needs to be done when adding an item to the cache,     and it also needs to be done when retrieving a value from the cache. Did I mention that this needs to be <em>really, really</em> fast? If it isn&#8217;t significantly faster to find and retrieve an item from the cache than from the     original data source, then the cache is pointless.</p>
+    <ul>
+        <li>We would be using a general purpose class, <em>LinkedList</em>, for a very special purpose.</li>
+        <li>Adding, removing, and inserting items is simple, and it&#8217;s generally faster in the worst case, but in the normal case it might not be as fast as we need it to be.</li>
+        <li>Cache data would be co-located with housekeeping data, which might limit our implementation and performance options.</li>
+        <li>Speaking of caches, linked lists are not very friendly to CPU caches.</li>
+    </ul>
 
+    <p>Let&#8217;s look again at the constraints of the cache specification.</p>
 
+    <ul>
+        <li>We need to create caches with a fixed numbers of sets, where each set has a fixed number of ways.</li>
+        <li>We need to allow clients to tune the numbers of sets and ways to obtain the best performance for their specific scenarios.</li>
+        <li>We need to store any type of key and any type of value.</li>
+        <li>We need to be <strong>FAST</strong>!</li>
+    </ul>
 
-<p>Let&#8217;s consider some possible <a rel="noopener" href="https://www.tutorialspoint.com/data_structures_algorithms/index.htm" target="_blank">data structures and algorithms</a>. A naïve implementation might use a linked list of key/value pairs to represent a single set, where the capacity of the linked list would be the number of ways in the set. Here are some pros:</p>
-
-
-
-<ul>
-<li>We can use the existing&nbsp;<em>LinkedList&lt;T&gt;</em> class to store our key/value pairs (using the <em>KeyValuePair&lt;TKey, TValue&gt;</em> class).</li>
-
-
-
-<li>Adding, removing, and inserting items is fairly simple.</li>
-
-
-
-<li>We can easily reorder the linked list if we need to (for example, to maintain removal policy).</li>
-</ul>
-
-
-
-<p>There are cons, however:</p>
-
-
-
-<ul>
-<li>We would be using a general purpose class, <em>LinkedList</em>, for a very special purpose.</li>
-
-
-
-<li>Adding, removing, and inserting items is simple, and it&#8217;s generally faster in the worst case, but in the normal case it might not be as fast as we need it to be.</li>
-
-
-
-<li>Cache data would be co-located with housekeeping data, which might limit our implementation and performance options.</li>
-
-
-
-<li>Speaking of caches, linked lists are not very friendly to CPU caches.</li>
-</ul>
-
-
-
-<p>Let&#8217;s look again at the constraints of the cache specification.</p>
-
-
-
-<ul>
-<li>We need to create caches with a fixed numbers of sets, where each set has a fixed number of ways.</li>
-
-
-
-<li>We need to allow clients to tune the numbers of sets and ways to obtain the best performance for their specific scenarios.</li>
-
-
-
-<li>We need to store any type of key and any type of value.</li>
-
-
-
-<li>We need to be <strong>FAST</strong>!</li>
-</ul>
-
-
-
-<p>Let&#8217;s consider how users might want to create a cache in the first place. Much like the generic <a rel="noreferrer noopener" href="https://docs.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2?view=net-5.0" target="_blank">Dictionary</a> type, users may want to provide the specific key and value types, so we&#8217;ll design for a generic interface. For our earlier example, which is a cache with string keys, string values, 3 sets of 3 items per set, and a least-recently used replacement policy, the code defining the cache instance might look like the following:</p>
-
-
+    <p>Let&#8217;s consider how users might want to create a cache in the first place. Much like the generic <a rel="noreferrer noopener" href="https://docs.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2?view=net-5.0" target="_blank">Dictionary</a> type, users may want to provide the specific key and value types, so we&#8217;ll design for a generic interface. For our earlier example, which is a cache with string keys, string values, 3 sets of 3 items per set, and a least-recently used replacement policy, the code defining the cache instance might look like the following:</p>
 
 <pre class="wp-block-preformatted"><code class="language-csharp">LruCache&lt;string, string&gt; coupleCache = new (sets: 3, ways: 3);</code></pre>
 
+    <p>If we presume this usage pattern, then we can see that, at compile time, we know the both the total capacity of the cache and the replacement policy for evicting cache items. A fixed capacity is a hint than instead of linked lists, maybe we should consider arrays.</p>
 
+    <p>Many of you may already be saying, &#8220;NO! Inserting and rearranging items in arrays is SLOW!&#8221; Some of you, however, may be nodding and saying, &#8220;<a href="https://knowyourmeme.com/memes/money-printer-go-brrr" target="_blank" rel="noreferrer noopener">Haha array go brrrrr</a>.&#8221;</p>
 
-<p>If we presume this usage pattern, then we can see that, at compile time, we know the both the total capacity of the cache and the replacement policy for evicting cache items. A fixed capacity is a hint than instead of linked lists, maybe we should consider arrays.</p>
+    <div class="wp-block-image">
+        <figure class="aligncenter size-full is-resized"><a href="/images/array-go-brrrrr.png"><img decoding="async" loading="lazy" src="/images/array-go-brrrrr.png" alt="" class="wp-image-1682" width="601" height="338" srcset="/images/array-go-brrrrr.png 800w, /images/array-go-brrrrr-300x169.png 300w, /images/array-go-brrrrr-768x432.png 768w" sizes="(max-width: 601px) 100vw, 601px" /></a></figure>
+    </div>
 
+    <p>Consider what we need to store, and what state we need to maintain, in order to make the cache work:</p>
 
+    <ul>
+        <li>Store the key/value pairs for the cache items.</li>
+        <li>Track what items are in what sets.</li>
+        <li>Track metadata in each set for maintaining the cache eviction policy.</li>
+        <li>Track whether a given set is full.</li>
+    </ul>
 
-<p>Many of you may already be saying, &#8220;NO! Inserting and rearranging items in arrays is SLOW!&#8221; Some of you, however, may be nodding and saying, &#8220;<a href="https://knowyourmeme.com/memes/money-printer-go-brrr" target="_blank" rel="noreferrer noopener">Haha array go brrrrr</a>.&#8221;</p>
+    <p>We know that finding and retrieving a key/value pair has to be as fast as possible. Let&#8217;s step through the process again:</p>
 
+    <ol>
+        <li>Hash the key</li>
+        <li>Find the set that stores the key</li>
+        <li>Find which way in the set contains the key</li>
+        <li>Use the key to get the value</li>
+    </ol>
 
-<div class="wp-block-image">
-<figure class="aligncenter size-full is-resized"><a href="/images/array-go-brrrrr.png"><img decoding="async" loading="lazy" src="/images/array-go-brrrrr.png" alt="" class="wp-image-1682" width="601" height="338" srcset="/images/array-go-brrrrr.png 800w, /images/array-go-brrrrr-300x169.png 300w, /images/array-go-brrrrr-768x432.png 768w" sizes="(max-width: 601px) 100vw, 601px" /></a></figure></div>
+    <p>We&#8217;ll consider step 1 to be a fixed cost, although it&#8217;s something we can possibly optimize later. Step two is just a modulo operation. Step three implies that we have to search the set for the key, and this is where the proverbial rubber meets the road. One of the advantages of using a set-associative cache is that it can minimize the impact of this step. Rather than searching every element in the cache, we only have to search the number of ways in a set, and we don&#8217;t want too many ways in a set anyway.</p>
 
-
-<p>Consider what we need to store, and what state we need to maintain, in order to make the cache work:</p>
-
-
-
-<ul>
-<li>Store the key/value pairs for the cache items.</li>
-
-
-
-<li>Track what items are in what sets.</li>
-
-
-
-<li>Track metadata in each set for maintaining the cache eviction policy.</li>
-
-
-
-<li>Track whether a given set is full.</li>
-</ul>
-
-
-
-<p>We know that finding and retrieving a key/value pair has to be as fast as possible. Let&#8217;s step through the process again:</p>
-
-
-
-<ol>
-<li>Hash the key</li>
-
-
-
-<li>Find the set that stores the key</li>
-
-
-
-<li>Find which way in the set contains the key</li>
-
-
-
-<li>Use the key to get the value</li>
-</ol>
-
-
-
-<p>We&#8217;ll consider step 1 to be a fixed cost, although it&#8217;s something we can possibly optimize later. Step two is just a modulo operation. Step three implies that we have to search the set for the key, and this is where the proverbial rubber meets the road. One of the advantages of using a set-associative cache is that it can minimize the impact of this step. Rather than searching every element in the cache, we only have to search the number of ways in a set, and we don&#8217;t want too many ways in a set anyway.</p>
-
-
-
-<p>Let&#8217;s consider two arrays. The first array stores the actual data:</p>
-
-
+    <p>Let&#8217;s consider two arrays. The first array stores the actual data:</p>
 
 <pre class="wp-block-preformatted"><code class="language-csharp">KeyValuePair&lt;TKey, TValue&gt;[] valueArray;</code></pre>
 
-
-
-<p>In our example of celebrity couples, we used a 3-set, 3-way cache. That would mean our value array would have nine elements (3 times 3) when the cache is instantiated, and it would stay that size. When a key/value pair is placed into a location in the array, we want it to stay there until it needs to be removed to make room for another item. We definitely&nbsp;<strong>don&#8217;t </strong>want to do any sorting or insertion on this array, since there is a potential for storing arbitrarily large value types in the array. That means we need to manage the bookkeeping in a separate data structure. Since we already have the keys in this array, we only need to keep track of the indices into this array so that we can quickly find them when needed. Let&#8217;s make another array of integers.</p>
-
-
+    <p>In our example of celebrity couples, we used a 3-set, 3-way cache. That would mean our value array would have nine elements (3 times 3) when the cache is instantiated, and it would stay that size. When a key/value pair is placed into a location in the array, we want it to stay there until it needs to be removed to make room for another item. We definitely&nbsp;<strong>don&#8217;t </strong>want to do any sorting or insertion on this array, since there is a potential for storing arbitrarily large value types in the array. That means we need to manage the bookkeeping in a separate data structure. Since we already have the keys in this array, we only need to keep track of the indices into this array so that we can quickly find them when needed. Let&#8217;s make another array of integers.</p>
 
 <pre class="wp-block-preformatted"><code class="language-csharp">int[] keyArray;</code></pre>
 
+    <p>This array stores the indices to items in <em>valueArray</em>. It is partitioned by set. It doesn&#8217;t matter where the actual key/value pairs are stored in the value array, as long as we track them here. (To be completely honest, we&#8217;re going to change this slightly in the implementation, but for simplicity we&#8217;ll stick with this definition for now.)</p>
 
+    <p>Let&#8217;s walk through our earlier examples above using this design.</p>
 
-<p>This array stores the indices to items in <em>valueArray</em>. It is partitioned by set. It doesn&#8217;t matter where the actual key/value pairs are stored in the value array, as long as we track them here. (To be completely honest, we&#8217;re going to change this slightly in the implementation, but for simplicity we&#8217;ll stick with this definition for now.)</p>
+    <p>When we create the key array and size it as sets times ways, we get this by default:</p>
 
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>0</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
 
+    <p>That isn&#8217;t very helpful, since all of the elements point at the first index in the value array. We need a sentinel value to tell us when a location in the key array is available. We&#8217;ll fill the empty array with <em>int.MaxValue</em> when the cache is created or cleared, so that the fresh key array looks like the following in memory:</p>
 
-<p>Let&#8217;s walk through our earlier examples above using this design.</p>
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
 
+    <p>That&#8217;s a little bit better. This array will easily fit into the CPU cache, which means we can operate on it very quickly. </p>
 
+    <p>Now, when we add Brad and Angelina, we can quickly see that the first element in set 0, which also happens to be key-array index 0, is empty. Next, we just need to find an empty spot in the value array where we can place the key/value pair. Uh-oh&#8230; how do we do that? Remember, <em>KeyValuePair&lt;TKey,TValue&gt;</em> is a value type, so a fresh array of <em>KeyValuePair&lt;string,string&gt;</em> would look like the following:</p>
 
-<p>When we create the key array and size it as sets times ways, we get this by default:</p>
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>[null,null]</td>
+                    <td>[null,null]</td>
+                    <td>[null,null]</td>
+                    <td>[null,null]</td>
+                    <td>[null,null]</td>
+                    <td>[null,null]</td>
+                    <td>[null,null]</td>
+                    <td>[null,null]</td>
+                    <td>[null,null]</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
 
+    <p>That might work if you assume that a null key, or maybe a null value, indicates an empty slot, but what if your key and value types are integers?</p>
 
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>[0,0]</td>
+                    <td>[0,0]</td>
+                    <td>[0,0]</td>
+                    <td>[0,0]</td>
+                    <td>[0,0]</td>
+                    <td>[0,0]</td>
+                    <td>[0,0]</td>
+                    <td>[0,0]</td>
+                    <td>[0,0]</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
 
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>0</td>
-    <td>0</td>
-    <td>0</td>
-    <td>0</td>
-    <td>0</td>
-    <td>0</td>
-    <td>0</td>
-    <td>0</td>
-    <td>0</td>
-</tr></tbody></table></figure>
-
-
-
-<p>That isn&#8217;t very helpful, since all of the elements point at the first index in the value array. We need a sentinel value to tell us when a location in the key array is available. We&#8217;ll fill the empty array with <em>int.MaxValue</em> when the cache is created or cleared, so that the fresh key array looks like the following in memory:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-</tr></tbody></table></figure>
-
-
-
-<p>That&#8217;s a little bit better. This array will easily fit into the CPU cache, which means we can operate on it very quickly. </p>
-
-
-
-<p>Now, when we add Brad and Angelina, we can quickly see that the first element in set 0, which also happens to be key-array index 0, is empty. Next, we just need to find an empty spot in the value array where we can place the key/value pair. Uh-oh&#8230; how do we do that? Remember, <em>KeyValuePair&lt;TKey,TValue&gt;</em> is a value type, so a fresh array of <em>KeyValuePair&lt;string,string&gt;</em> would look like the following:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>[null,null]</td>
-    <td>[null,null]</td>
-    <td>[null,null]</td>
-    <td>[null,null]</td>
-    <td>[null,null]</td>
-    <td>[null,null]</td>
-    <td>[null,null]</td>
-    <td>[null,null]</td>
-    <td>[null,null]</td>
-</tr></tbody></table></figure>
-
-
-
-<p>That might work if you assume that a null key, or maybe a null value, indicates an empty slot, but what if your key and value types are integers?</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>[0,0]</td>
-    <td>[0,0]</td>
-    <td>[0,0]</td>
-    <td>[0,0]</td>
-    <td>[0,0]</td>
-    <td>[0,0]</td>
-    <td>[0,0]</td>
-    <td>[0,0]</td>
-    <td>[0,0]</td>
-</tr></tbody></table></figure>
-
-
-
-<p>It&#8217;s entirely possible that zero is a valid key and/or value in such a cache. This definition won&#8217;t work. We need to make the array items <a rel="noopener" href="https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/nullable-value-types" target="_blank">nullable</a> by adding a <em>?</em> after the type and before the array brackets so that we can distinguish an empty cache slot from an occupied one.</p>
-
-
+    <p>It&#8217;s entirely possible that zero is a valid key and/or value in such a cache. This definition won&#8217;t work. We need to make the array items <a rel="noopener" href="https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/nullable-value-types" target="_blank">nullable</a> by adding a <em>?</em> after the type and before the array brackets so that we can distinguish an empty cache slot from an occupied one.</p>
 
 <pre class="wp-block-preformatted"><code class="language-csharp">KeyValuePair&lt;TKey, TValue&gt;?[] valueArray; // The ? makes this nullable</code></pre>
 
-
-
-<p>That way, by default, the value array is initialized thus:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-</tr></tbody></table></figure>
-
-
-
-<p>Following these steps to add Brad &amp; Angelina, we get the following contents for the key array, where element 0 contains the index in the value array where Brad &amp; Angelina are stored (which also happens to be element 0).</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>0</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-</tr></tbody></table></figure>
-
-
-
-<p>Likewise, for the value array:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>[Brad, Angelina]</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-</tr></tbody></table></figure>
-
-
-
-<p>After we add Kanye &amp; Kim, we get the following contents for the key array, where now element 6 contains the index for the location of Kanye &amp; Kim in the value array (which, again, also happens to be element 6):</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>0</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>6</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-</tr></tbody></table></figure>
-
-
-
-<p>Likewise, for the value array:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>[Brad, Angelina]</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>[Kanye, Kim]</td>
-    <td>null</td>
-    <td>null</td>
-</tr></tbody></table></figure>
-
-
-
-<p>So far it just looks like we have an unnecessary level of indirection to the value array, since the key array elements contain the corresponding indices into the value array, but let&#8217;s look at the case where we add another item to a set. Suppose that we want to add Ben &amp; Jennifer. They will end up in set zero next to Brad &amp; Angelina. However, we will need to do some bookkeeping now. If we&#8217;re using a least-recently used cache eviction policy, then we need to re-arrange the elements in the key array that correspond to the set so that, if we need to evict a cache item, we can easily find the least-recently used key. Let&#8217;s presume that we&#8217;ll always put the&nbsp;<em>most</em>-recently used key at the lowest index in the set, and we&#8217;ll move the other items to higher indices in the set up to make room for it.&nbsp;That will push the <em>least</em>-recently used key to the highest index in the set.</p>
-
-
-
-<p>When we place Ben &amp; Jennifer into set 0 (elements 0, 1 and 2), then in the key array we shift the contents of element 1 into element 2 and element 0 into element 1, and we put the new value index into element 0. That makes Ben &amp; Jennifer the least-recently used cache item in the set. However, when we search for the next available value index in the value array, we find that Ben &amp; Jennifer will be stored at element 1. That means our key array will look like the following:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>1</td>
-    <td>0</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>6</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-</tr></tbody></table></figure>
-
-
-
-<p>The value array, however, will look like the following:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>[Brad, Angelina]</td>
-    <td>[Ben, Jennifer]</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>[Kayne, Kim]</td>
-    <td>null</td>
-    <td>null</td>
-</tr></tbody></table></figure>
-
-
-
-<p>When we add Burt &amp; Loni into set 0, we do another shift in the key array so that the value index for Brad &amp; Angelina is stored in the key array&#8217;s highest index for set zero, meaning they&#8217;ll be up for eviction when another item is added to set zero, unless their key is accessed before then. The key array would look like the following:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>2</td>
-    <td>1</td>
-    <td>0</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>6</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-</tr></tbody></table></figure>
-
-
-
-<p>The value array would look like the following:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>[Brad, Angelina]</td>
-    <td>[Ben, Jennifer]</td>
-    <td>[Burt, Loni]</td>
-    <td>null</td>
-    <td>null</td>
-    <td>null</td>
-    <td>[Kayne, Kim]</td>
-    <td>null</td>
-    <td>null</td>
-</tr></tbody></table></figure>
-
-
-
-<p>We also need to adjust the indices when cache items are retrieved. With the LRU policy, every time a cache item is accessed, its key should be moved into the lowest index, pushing the rest of the items higher. Consider what would happen if the client code retrieved the item with the key &#8220;Brad.&#8221; That item&#8217;s index (index 0) would be moved into the spot for the most-recently used item:</p>
-
-
-
-<figure class="wp-block-table"><table class="has-fixed-layout"><tbody><tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr>
-    <td>0</td>
-    <td>2</td>
-    <td>1</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-    <td>6</td>
-    <td>0x7FFFFFFF</td>
-    <td>0x7FFFFFFF</td>
-</tr></tbody></table></figure>
-
-
-
-<p>The actual cache data in the value array would not change, however.</p>
-
-
-
-<p>You can now see that the indices in the key array float around independently of the actual values in the value array. Because the key array just contains integers and is quite compact, it&#8217;s <strong>blazing</strong> fast to reorder elements in the array, much faster than with a linked list. I know, I&#8217;ve tried it.</p>
-
-
-
-<p>Let me add a disclaimer for the Yeahbutters and the Whataboutists. I&#8217;m not saying that linked lists are never a good idea, or that they never out-perform arrays. I&#8217;m saying that in this particular usage scenario, where arrays can make better use of CPU cache and optimizations and intrinsics, arrays generally perform better. One should, however, always benchmark one&#8217;s code and test one&#8217;s assumptions with real-world data under real-world conditions.</p>
-
-
-
-<p>Now that we have the overall design, in <a href="/2021/08/set-associative-cache-in-c-part-2-interface-design/" target="_blank" rel="noreferrer noopener">the next article</a> we&#8217;ll dig a little deeper into the design and look at how to handle alternative cache-eviction policies. Then, we&#8217;ll consider what code interface to provide for users of the cache.</p>
-
-
-
-<!-- Visual Studio Browser Link -->
-<script type="text/javascript" src="/_vs/browserLink" async="async" id="__browserLink_initializationData" data-requestId="eca8cf09998f4f1baf01ecaf5bc13164" data-requestMappingFromServer="false" data-connectUrl="http://localhost:56888/ca7f794bf3fc488fa37bdaf6d4e7176c/browserLink"></script>
-<!-- End Browser Link -->
-
-<script src="/_framework/aspnetcore-browser-refresh.js"></script></body>
+    <p>That way, by default, the value array is initialized thus:</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>Following these steps to add Brad &amp; Angelina, we get the following contents for the key array, where element 0 contains the index in the value array where Brad &amp; Angelina are stored (which also happens to be element 0).</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>0</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>Likewise, for the value array:</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>[Brad, Angelina]</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>After we add Kanye &amp; Kim, we get the following contents for the key array, where now element 6 contains the index for the location of Kanye &amp; Kim in the value array (which, again, also happens to be element 6):</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>0</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>6</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>Likewise, for the value array:</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>[Brad, Angelina]</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>[Kanye, Kim]</td>
+                    <td>null</td>
+                    <td>null</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>So far it just looks like we have an unnecessary level of indirection to the value array, since the key array elements contain the corresponding indices into the value array, but let&#8217;s look at the case where we add another item to a set. Suppose that we want to add Ben &amp; Jennifer. They will end up in set zero next to Brad &amp; Angelina. However, we will need to do some bookkeeping now. If we&#8217;re using a least-recently used cache eviction policy, then we need to re-arrange the elements in the key array that correspond to the set so that, if we need to evict a cache item, we can easily find the least-recently used key. Let&#8217;s presume that we&#8217;ll always put the&nbsp;<em>most</em>-recently used key at the lowest index in the set, and we&#8217;ll move the other items to higher indices in the set up to make room for it.&nbsp;That will push the <em>least</em>-recently used key to the highest index in the set.</p>
+
+    <p>When we place Ben &amp; Jennifer into set 0 (elements 0, 1 and 2), then in the key array we shift the contents of element 1 into element 2 and element 0 into element 1, and we put the new value index into element 0. That makes Ben &amp; Jennifer the least-recently used cache item in the set. However, when we search for the next available value index in the value array, we find that Ben &amp; Jennifer will be stored at element 1. That means our key array will look like the following:</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>1</td>
+                    <td>0</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>6</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>The value array, however, will look like the following:</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>[Brad, Angelina]</td>
+                    <td>[Ben, Jennifer]</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>[Kayne, Kim]</td>
+                    <td>null</td>
+                    <td>null</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>When we add Burt &amp; Loni into set 0, we do another shift in the key array so that the value index for Brad &amp; Angelina is stored in the key array&#8217;s highest index for set zero, meaning they&#8217;ll be up for eviction when another item is added to set zero, unless their key is accessed before then. The key array would look like the following:</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>2</td>
+                    <td>1</td>
+                    <td>0</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>6</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>The value array would look like the following:</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>[Brad, Angelina]</td>
+                    <td>[Ben, Jennifer]</td>
+                    <td>[Burt, Loni]</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>null</td>
+                    <td>[Kayne, Kim]</td>
+                    <td>null</td>
+                    <td>null</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>We also need to adjust the indices when cache items are retrieved. With the LRU policy, every time a cache item is accessed, its key should be moved into the lowest index, pushing the rest of the items higher. Consider what would happen if the client code retrieved the item with the key &#8220;Brad.&#8221; That item&#8217;s index (index 0) would be moved into the spot for the most-recently used item:</p>
+
+    <figure class="wp-block-table">
+        <table class="has-fixed-layout">
+            <tbody>
+                <tr><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+                <tr>
+                    <td>0</td>
+                    <td>2</td>
+                    <td>1</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>6</td>
+                    <td>0x7FFFFFFF</td>
+                    <td>0x7FFFFFFF</td>
+                </tr>
+            </tbody>
+        </table>
+    </figure>
+
+    <p>The actual cache data in the value array would not change, however.</p>
+
+    <p>You can now see that the indices in the key array float around independently of the actual values in the value array. Because the key array just contains integers and is quite compact, it&#8217;s <strong>blazing</strong> fast to reorder elements in the array, much faster than with a linked list. I know, I&#8217;ve tried it.</p>
+
+    <p>Let me add a disclaimer for the Yeahbutters and the Whataboutists. I&#8217;m not saying that linked lists are never a good idea, or that they never out-perform arrays. I&#8217;m saying that in this particular usage scenario, where arrays can make better use of CPU cache and optimizations and intrinsics, arrays generally perform better. One should, however, always benchmark one&#8217;s code and test one&#8217;s assumptions with real-world data under real-world conditions.</p>
+
+    <p>Now that we have the overall design, in <a href="/page/set-associative-cache-in-c-part-2-interface-design/" target="_blank" rel="noreferrer noopener">the next article</a> we&#8217;ll dig a little deeper into the design and look at how to handle alternative cache-eviction policies. Then, we&#8217;ll consider what code interface to provide for users of the cache.</p>
+
+    <script>hljs.highlightAll();</script>
+</body>
 </html>
