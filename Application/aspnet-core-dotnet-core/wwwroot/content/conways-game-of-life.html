@@ -3,7 +3,7 @@
 <head>
     <title>Conway&#8217;s Game of Life</title>
     <meta http-equiv="date" content="2015-11-20T15:05:09" />
-    <meta http-equiv="last-modified" content="2021-07-13T09:32:02" />
+    <meta http-equiv="last-modified" content="2022-12-11T06:18:02" />
     <link rel='stylesheet' id='conway-css' href='/css/conway.css' type='text/css; charset=UTF-8' media='all' />
     <script type="text/javascript" src="/js/conway.js"></script>
     <link rel="stylesheet" href="/highlightjs/styles/default.min.css">
@@ -14,26 +14,21 @@
 
     <p>I realized one day that I had never implemented <a href="https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life">Conway&#8217;s Game of Life</a>, which is something of a rite of passage for young computer-science students. As I opted for a more non-traditional path to the software profession, I somehow missed that fun, even though I&#8217;ve made a point of implementing other computer-sciency things like it.</p>
 
+    <p>While the game itself is actually quite simple (look at the <em>generation</em> method in the source code to see 
+    just how simple), the notion of implementing it on a self-contained web page and making it as fast as possible 
+    seemed intriguing, so I dived in. About six hours later I had it pretty much finished. Optimizing it took 
+    <del datetime="2015-12-01T15:23:22+00:00">one more day</del> several more days as new optimizations occurred to me.</p>
 
-
-    <p>While the game itself is actually quite simple (look at the <em>generation</em> method in the source code to see just how simple), the notion of implementing it on a self-contained web page and making it as fast as possible seemed intriguing, so I dived in. About six hours later I had it pretty much finished. Optimizing it took <del datetime="2015-12-01T15:23:22+00:00">one more day</del> several more days as new optimizations occurred to me.</p>
-
-
-
-    <p>The &#8220;Step&#8221; button will let you move forward one generation at a time to watch how the cells interact with each other. The link labeled &#8220;Link to current board state&#8221; will let you save a link to the cellular configuration that you see at any given time.</p>
-
-
+    <p>The &#8220;Step&#8221; button will let you move forward one generation at a time to watch how the cells interact 
+    with each other. The link labeled &#8220;Link to current board state&#8221; will let you save a link to the cellular 
+    configuration that you see at any given time.</p>
 
     <div id="links">
         <div><a id="currentState" href="#">Link to current board state</a></div>
         <div><a id="initialState" href="#">Reset the board</a></div>
     </div>
 
-
-
     <div id="buttons"><button id="start"> Start </button> <button id="stop"> Stop </button> <button id="step"> Step </button></div>
-
-
 
     <div id="stats">
         <div>Generation: <span id="generationStat"></span></div>
@@ -41,15 +36,9 @@
         <div>Generation time (ms): <span id="generationRate"></span></div>
     </div>
 
-
-
     <canvas id="grid" width="321" height="321"></canvas>
 
-
-
     <h2>Settings (Click &#8220;Stop&#8221; to Edit, &#8220;Start&#8221; to Activate)</h2>
-
-
 
     <div id="settings">
         <div><label for="ticks"><input id="ticks" type="text" /> milliseconds delay between generations.</label></div>
@@ -59,51 +48,30 @@
         <div><label for="saveHistory"><input id="saveHistory" type="checkbox" /> Save history (turn off to improve performance; best with single-stepping). </label></div>
     </div>
 
-
-
     <h2>More Patterns</h2>
-
-
 
     <p>Here are a few links to some interesting boards:</p>
 
-
-
     <p><a href="?boardSize=200&amp;cellSize=5&amp;wrap=false&amp;init=1,5;2,5;2,6;1,6;11,5;11,6;11,7;12,8;13,9;14,9;12,4;13,3;14,3;16,4;17,5;17,6;17,7;16,8;15,6;18,6;21,5;22,5;22,4;21,4;21,3;22,3;23,2;23,6;25,2;25,1;25,6;25,7;35,3;35,4;36,4;36,3">A Gosper glider gun</a></p>
-
-
 
     <p><a href="?boardSize=50&amp;cellSize=5&amp;speed=0&amp;wrap=false&amp;init=1,5;2,5;2,6;1,6;11,5;11,6;11,7;12,8;13,9;14,9;12,4;13,3;14,3;16,4;17,5;17,6;17,7;16,8;15,6;18,6;21,5;22,5;22,4;21,4;21,3;22,3;23,2;23,6;25,2;25,1;25,6;25,7;35,3;35,4;36,4;36,3;">A Gosper glider gun running at top speed, probably faster than your screen&#8217;s refresh rate.</a></p>
 
-
-
     <p><a href="?boardSize=10&amp;init=4,1;4,2;4,3;7,3;7,4;7,5;4,7;4,6;4,5">A set of cells that devolves into a single spinner.</a></p>
-
-
 
     <p><a href="?boardSize=10&amp;cellSize=20&amp;speed=16.666666666666668&amp;init=3,1;1,2;3,2;2,3;3,3;8,6;6,7;8,7;7,8;8,8;">A pair of gliders which follow each other endlessly.</a></p>
 
-
-
     <p><a href="?boardSize=176&amp;cellSize=5&amp;init=45,51;47,51;47,50;49,49;49,48;49,47;51,48;51,47;51,46;52,47;">A large board with a long-running pattern</a></p>
-
-
 
     <h2>Stand-alone Page</h2>
 
-
-
-    <p>If you&#8217;d like to play with the game without all the WordPress clutter, you can take a look at the <a href="/conway/" data-type="URL" data-id="/conway/">stand-alone page</a>.</p>
-
-
+    <p>If you&#8217;d like to play with the game without all the WordPress clutter, you can take a look at the 
+    <a href="/conway/" data-type="URL" data-id="/conway/">stand-alone page</a>.</p>
 
     <h2>The JavaScript Code</h2>
 
-
-
-    <p>I&#8217;m working on another article that goes through the code and explains how it works, but for now, here is the JavaScript code listing. You may download the <a href="/conway.css">CSS</a> and <a href="/conway.js">JavaScript</a> as well.</p>
-
-
+    <p>I&#8217;m working on another article that goes through the code and explains how it works, but for now, here is 
+    the JavaScript code listing. You may download the <a href="/conway.css">CSS</a> and 
+    <a href="/conway.js">JavaScript</a> as well.</p>
 
 <pre><code class="language-js">/* Execute when the page loads in order to set up the board. */
 window.addEventListener('load', function () {
@@ -704,20 +672,6 @@ window.addEventListener('load', function () {
   }
 }, false);
 </code></pre>
-
-
-
-    <p></p>
-
-
-
-    <p></p>
-
-
-
-    <!-- Visual Studio Browser Link -->
-    <script type="text/javascript" src="/_vs/browserLink" async="async" id="__browserLink_initializationData" data-requestId="ead161744c244d97b32c245c518d4b99" data-requestMappingFromServer="false" data-connectUrl="http://localhost:58991/b0bec6ed6d694a1c8e904d087f734b3c/browserLink"></script>
-    <!-- End Browser Link -->
 
     <script>hljs.highlightAll();</script>
 </body>
