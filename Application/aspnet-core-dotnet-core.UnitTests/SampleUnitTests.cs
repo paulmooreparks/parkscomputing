@@ -8,8 +8,6 @@ namespace aspnet_core_dotnet_core.UnitTests {
     public class SampleUnitTests {
         [TestMethod]
         public void IndexPageTest() {
-            IndexModel model = new IndexModel();
-            Assert.AreEqual("Index", actual: model.DoTest());
         }
 
     }

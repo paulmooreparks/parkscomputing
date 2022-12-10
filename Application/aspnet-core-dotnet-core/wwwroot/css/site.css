@@ -1,4 +1,4 @@
-﻿/* Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification
+/* Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification
 for details on configuring this project to bundle and minify static web assets. */
 
 a.navbar-brand {
@@ -66,11 +66,10 @@ body {
     width: 100%;
     background-color: #1d539d;
     color: white;
-    padding-top: 30px;
     box-sizing: border-box;
     overflow-y: hidden;
     overflow-x: hidden;
-    padding: 80px;
+    margin-bottom: 25px;
 }
 
 .cloud-image {
@@ -80,10 +79,10 @@ body {
     margin: auto;
 }
 
-    .cloud-image img {
-        width: 100%;
-        height: 100%;
-    }
+.cloud-image img {
+    width: 100%;
+    height: 100%;
+}
 
 .success-text {
     padding-bottom: 20px;
@@ -123,6 +122,7 @@ body {
 
 .content-body {
     min-width: 400px;
+    padding: 20px;
 }
 
 .col-md-4 {

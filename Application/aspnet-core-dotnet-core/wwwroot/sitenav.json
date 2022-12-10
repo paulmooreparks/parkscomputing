@@ -1,0 +1,112 @@
+{
+    "nav": {
+        "key": "root",
+        "title": "Parks Computing",
+        "link": "https://www.parkscomputing.com/",
+        "links": [
+            {
+                "key": "home",
+                "title": "Home",
+                "excerpt": "Home",
+                "link": "/",
+                "links": [
+                    {
+                        "key": "applications",
+                        "title": "Applications",
+                        "excerpt": "Applications",
+                        "link": "/nav/applications",
+                        "links": [
+                            {
+                                "key": "dragsens",
+                                "title": "Dragsens",
+                                "excerpt": "",
+                                "link": "/page/dragsens",
+                                "links": []
+                            },
+                            {
+                                "key": "windragsens",
+                                "title": "WinDragsens",
+                                "excerpt": "",
+                                "link": "/page/windragsens",
+                                "links": []
+                            },
+                            {
+                                "key": "pbrain",
+                                "title": "Pbrain",
+                                "excerpt": "",
+                                "link": "/page/pbrain",
+                                "links": []
+                            }
+                        ]
+                    },
+                    {
+                        "key": "webapps",
+                        "title": "Web Apps",
+                        "excerpt": "",
+                        "link": "/nav/webapps",
+                        "links": [
+                            {
+                                "key": "conways-game-of-life",
+                                "title": "Conway's Game of Life'",
+                                "excerpt": "",
+                                "link": "/page/conways-game-of-life",
+                                "links": []
+                            },
+                            {
+                                "key": "barcode-generator",
+                                "title": "Barcode Generator",
+                                "excerpt": "",
+                                "link": "/page/barcode-generator",
+                                "links": []
+                            },
+                            {
+                                "key": "lisp-in-javascript",
+                                "title": "Lisp Interpreter in JavaScript",
+                                "excerpt": "",
+                                "link": "/page/lisp-in-javascript",
+                                "links": []
+                            }
+                        ]
+                    },
+                    {
+                        "key": "resume",
+                        "title": "Résumé",
+                        "excerpt": "",
+                        "link": "/page/resume-of-paul-m-parks",
+                        "links": []
+                    },
+                    {
+                        "key": "about",
+                        "title": "About",
+                        "excerpt": "",
+                        "link": "/about",
+                        "links": []
+                    }
+                ]
+            }
+        ]
+    },
+    "posts": [
+        {
+            "key": "fizzbuzz",
+            "title": "FizzBuzz",
+            "excerpt": "This is just one of those things you have to write, apparently. Here is mine, in C++.",
+            "link": "/page/fizzbuzz",
+            "date": ""
+        },
+        {
+            "key": "set-associative-cache-in-c-part-2-interface-design",
+            "title": "Set-Associative Cache in C#, Part 2: Interface Design",
+            "excerpt": "This is part 2 of a multi-part series on implementing a set-associative cache in C#.",
+            "link": "/page/set-associative-cache-in-c-part-2-interface-design",
+            "date": ""
+        },
+        {
+            "key": "set-associative-cache-in-c-part-1-analysis-initial-design",
+            "title": "Set-Associative Cache in C#, Part 1: Analysis & Initial Design",
+            "excerpt": "This is part 1 of a multi-part series in which I turn a coding test from an interview into a more appropriate treatment for the true complexity of the exercise.",
+            "link": "/page/set-associative-cache-in-c-part-1-analysis-initial-design",
+            "date": ""
+        }
+    ]
+}
