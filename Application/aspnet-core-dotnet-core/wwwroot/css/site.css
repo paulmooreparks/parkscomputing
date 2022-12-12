@@ -146,3 +146,7 @@ table.has-fixed-layout {
     border: 2px solid #111;
     text-align: left;
 }
+
+.nav-link {
+    text-decoration: none;
+}
