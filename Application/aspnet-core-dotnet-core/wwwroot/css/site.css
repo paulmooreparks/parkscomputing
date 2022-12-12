@@ -64,12 +64,10 @@ body {
 
 .main-container {
     width: 100%;
-    background-color: #1d539d;
-    color: white;
     box-sizing: border-box;
     overflow-y: hidden;
     overflow-x: hidden;
-    margin-bottom: 25px;
+    margin-bottom: 10px;
 }
 
 .cloud-image {
@@ -121,8 +119,8 @@ body {
 }
 
 .content-body {
-    min-width: 400px;
-    padding: 20px;
+    min-width: 300px;
+    padding-top: 10px;
 }
 
 .col-md-4 {

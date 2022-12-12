@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
+using aspnet_core_dotnet_core.Pages.Services;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -28,6 +30,7 @@ namespace aspnet_core_dotnet_core {
             });
 
             services.AddRazorPages();
+            services.AddTransient<INavService, NavService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

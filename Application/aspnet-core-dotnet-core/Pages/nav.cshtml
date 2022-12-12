@@ -1,0 +1,18 @@
+﻿@page "{**section}"
+
+@model aspnet_core_dotnet_core.Pages.NavModel
+@{
+}
+
+<div class="main-container">
+    <div class="content-body">
+    <h1>@Model.NavNode.title</h1>
+        <p>@Model.NavNode.excerpt</p>
+    </div>
+</div>
+
+<div class="row">
+    @foreach (var post in @Model.NavNode.links) {
+        <div class="col-md-4"><h2><a href="@post.link">@post.title</a></h2><p>@post.excerpt</p><p><a class="btn btn-default" href="@post.link">More &raquo;</a></p></div>
+    }
+</div>

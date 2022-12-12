@@ -15,45 +15,28 @@ using System.Collections;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using aspnet_core_dotnet_core.Pages.Services;
+using aspnet_core_dotnet_core.Pages.Shared;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace aspnet_core_dotnet_core.Pages {
     public class IndexModel : PageModel {
-        public string NavContent { get; set; }
+        public INavService NavService { get; set; }
+        public NavRoot NavRoot { get; set; }
         public List<string> NavNodes { get; set; } = new();
         private IHostEnvironment Environment { get; set; }
-        public IndexModel(IHostEnvironment environment) {
-            Environment = environment;
+        public IndexModel(INavService navService) {
+            NavService = navService;
         }
 
 
         public IActionResult OnGet() {
-            var path = $"{Environment.ContentRootPath}/wwwroot/sitenav.json";
-            var json = System.IO.File.ReadAllText(path);
-            var navRoot = JsonConvert.DeserializeObject<NavRoot>(json);
-
-            foreach (var post in navRoot.posts) {
-                string node = $"<div class='col-md-4'><h2><a href='{post.link}'>{post.title}</a></h2><p>{post.excerpt}</p><p><a class=\"btn btn-default\" href=\"{post.link}\">More &raquo;</a></p></div>";
-                NavNodes.Add(node);
-            }
-
+            NavRoot = NavService.GetNavRoot();
             return Page();
         }
 
         public string DoTest() {
             return "Index";
         }
-    }
-
-    struct NavRoot { 
-        public NavNode nav { get; set; }
-        public NavNode[] posts { get; set; }
-    }
-
-    struct NavNode { 
-        public string key { get; set; }
-        public string title { get; set; }
-        public string excerpt { get; set; }
-        public string link { get; set; }
-        public NavNode[] links { get; set; }
     }
 }
