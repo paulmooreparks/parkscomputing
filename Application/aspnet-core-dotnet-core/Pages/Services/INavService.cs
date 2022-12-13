@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace aspnet_core_dotnet_core.Pages.Services {
     public interface INavService {
@@ -16,6 +17,7 @@ namespace aspnet_core_dotnet_core.Pages.Services {
         public string title { get; set; }
         public string excerpt { get; set; }
         public string link { get; set; }
+        public DateTime date { get; set; }
         public NavNode[] links { get; set; } 
 
         public NavNode() {

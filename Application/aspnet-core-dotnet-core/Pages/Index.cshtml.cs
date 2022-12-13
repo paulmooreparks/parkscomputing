@@ -29,7 +29,6 @@ namespace aspnet_core_dotnet_core.Pages {
             NavService = navService;
         }
 
-
         public IActionResult OnGet() {
             NavRoot = NavService.GetNavRoot();
             return Page();

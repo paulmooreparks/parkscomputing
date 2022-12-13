@@ -23,6 +23,8 @@
 }}
 }
 
+<div class="posted-on"><time datetime="@Model.CreatedGmt">@Model.Created</time></div>
+
 @if (Model.CreatedGmt != Model.ModifiedGmt) {
     <div class="updated-on">Updated on <time datetime="@Model.ModifiedGmt">@Model.Modified</time></div>
 }

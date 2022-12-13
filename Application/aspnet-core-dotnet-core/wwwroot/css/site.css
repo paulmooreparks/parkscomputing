@@ -125,6 +125,9 @@ body {
 
 .col-md-4 {
     color: black;
+    border-style: solid;
+    border: 1px;
+    border-color: darkgray;
 }
 
 table.has-fixed-layout {
@@ -149,4 +152,9 @@ table.has-fixed-layout {
 
 .nav-link {
     text-decoration: none;
+}
+
+.posted-on {
+    font-style: italic;
+    font-size: smaller;
 }
