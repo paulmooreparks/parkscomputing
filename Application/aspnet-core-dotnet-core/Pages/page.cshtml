@@ -26,6 +26,6 @@
 @if (Model.CreatedGmt != Model.ModifiedGmt) {
     <div class="updated-on">Updated on <time datetime="@Model.ModifiedGmt">@Model.Modified</time></div>
 }
-<br />
+
 @Html.Raw(Model.PageContent)
 

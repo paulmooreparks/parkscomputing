@@ -15,7 +15,7 @@
             {
                 "key": "applications",
                 "title": "Applications",
-                "excerpt": "Here are some client-based applications I’ve written.",
+                "excerpt": "Here are some client-based applications I’ve written. Note that not all of these links work yet; I'm still porting the content to the new site.",
                 "link": "/nav/applications",
                 "links": [
                     {
@@ -59,13 +59,6 @@
                         "title": "Barcode Generator",
                         "excerpt": "A simple barcode generator which is badly in need of an update.",
                         "link": "/content/ean13.html?code=0724171484086&desc=Jammie%20Dodgers",
-                        "links": []
-                    },
-                    {
-                        "key": "lisp-in-javascript",
-                        "title": "Lisp Interpreter in JavaScript",
-                        "excerpt": "This page has suffered from neglect and DOM drift, unfortunately. It used to work quite well in older versions of IE, Firefox, and even Chrome, but lately it’s feeling rather poorly. I’ll be updating the interpreter soon, perhaps even rewriting it, so that it runs like new again and has a little bit better shelf life.",
-                        "link": "/page/lisp-in-javascript",
                         "links": []
                     }
                 ]

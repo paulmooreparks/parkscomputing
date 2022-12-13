@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lisp Interpreter in JavaScript</title>
+    <meta http-equiv="date" content="2011-02-19T20:14:21" />
+    <meta http-equiv="last-modified" content="2013-12-23T18:08:41" />
+</head>
+<body>
+    <h1>Lisp Interpreter in JavaScript</h1>
+<p><i><strong>NOTE:</strong> This page has suffered from neglect and DOM drift, unfortunately. It used to work quite well in older versions of IE, Firefox, and even Chrome, but lately it&#8217;s feeling rather poorly. I&#8217;ll be updating the interpreter soon, perhaps even rewriting it, so that it runs like new again and has a little bit better shelf life. &#8211; PMP</i></p>
+<p>This is a test page for my implementation of Lisp in JavaScript. It&#8217;s still a work in progress, but most primitives are in place. See the bottom of the page for options.</p>
+<p>I&#8217;ve gone ahead and made the interpreter case-sensitive. I know this is sacrilege and will make me unpopular, but such is the business of design trade-offs. On the upside, I now have <code>dotimes</code> and <code>dolist</code> working.</p>
+<p>Before I add too many more features (like, &amp;key, &amp;optional, and &amp;rest for functions) I&#8217;m going to do some refactoring. Portions of the code have really gotten out of hand.</p>
+<p><span id="balanceCheck"> <span>Parentheses are </span> <span id="balanced" style="color: Green; display: inline;">Balanced</span> <span id="unbalanced" style="display: none; color: Red; font-weight: bold;">UNBALANCED</span> </span></p>
+<p><textarea style="width: 99%;" rows="10" cols="80" id="input" name="input" onkeydown="onEditorKeyDown(event);" onkeyup="onEditorKeyUp(event);">(setq a &#8220;Hello, World!&#8221;)(print a)</textarea><br />
+<button id="evaluate" onclick="onEvaluate(this)">Evaluate</button> <button id="getPrevious" onclick="getPrevious()">Up in History</button> <button disabled="disabled" id="getNext" onclick="getNext()">Down in History</button></p>
+<p><span>Evaluation results:</span></p>
+<div id="output" style="border: 1px solid black; overflow: auto; height: 125px;"><span>Welcome to Lisp!</span><br /><span>Type some Lisp code in the window and click &#8216;Evaluate&#8217; to watch it run</span><br /><span>Hello, World!</span><br /><span>bar</span></div>
+<h2>About This Page</h2>
+<p>Type your code in the edit window above, and click the <strong>Evaluate</strong> button to evaluate it. Click <strong>Up in History</strong> or <strong>Down in History</strong> to move forward or backward through the editor history. Various options controlling the editor&#8217;s behavior are available below.</p>
+<p>Need a quick refresher course in Lisp? Try <a href="http://www.psg.com/%7Edlamkins/sl/chapter03.html"><i>Successful Lisp</i></a>. Questions? <a href="mailto:paul@parkscomputing.com?subject=Lisp">Send me e-mail</a>.</p>
+<h2>Options</h2>
+<p><input name="checkBalance" id="checkBalance" checked="checked" onclick="onCheckBalanceClick();" accesskey="B" type="checkbox"/> <label for="checkBalance">Check for balanced parentheses</label></p>
+<p><span>Print evaluation results: </span><br /> <br />
+<input name="showEval" id="showEvalPrint" value="showEvalPrint" checked="checked" onclick="genericOnClick();" type="radio"/> <label for="showEvalPrint">PRINT form only</label><br />
+<input name="showEval" id="showEvalFinal" value="showEvalFinal" onclick="genericOnClick();" type="radio"/> <label for="showEvalFinal">PRINT form and final result</label><br />
+<input name="showEval" id="showEvalAll" value="showEvalAll" onclick="genericOnClick();" type="radio"/> <label for="showEvalAll">All form evaluations</label></p>
+</body>
+</html>
