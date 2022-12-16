@@ -158,3 +158,8 @@ table.has-fixed-layout {
     font-style: italic;
     font-size: smaller;
 }
+
+figcaption {
+    font-size: smaller;
+    font-style: italic;
+}
