@@ -3,6 +3,14 @@
     "compute.appService1": {
       "group": "connections",
       "type": "compute.appService"
+    },
+    "secrets1": {
+      "type": "secrets",
+      "connectionId": "VaultUri"
+    },
+    "storage1": {
+      "type": "storage",
+      "connectionId": "parkscomputing_storage"
     }
   }
 }

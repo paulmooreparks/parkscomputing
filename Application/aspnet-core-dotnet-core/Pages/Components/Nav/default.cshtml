@@ -1,5 +1,16 @@
 ﻿@model aspnet_core_dotnet_core.Pages.Services.NavRoot
     <li class='nav-item'><a class='nav-link text-light' href='@Model.nav.link'>@Model.nav.title</a></li>
     @foreach (var link in @Model.nav.links) {
-        <li class='nav-item'><a class='nav-link text-light' href='@link.link'>@link.title</a></li>
+        @if (link.links.Count() > 0) {
+            <li class='nav-item dropdown'><a class='nav-link dropdown-toggle text-light' href='@link.link' role="button" data-bs-toggle="dropdown">@link.title</a>
+            <ul class="dropdown-menu">
+                @foreach (var sublink in link.links) {
+                    <li class='dropdown-item'><a href='@sublink.link'>@sublink.title</a></li>
+                }
+            </ul>
+            </li>
+        }
+        else {
+            <li class='nav-item'><a class='nav-link text-light' href='@link.link'>@link.title</a></li>
+        }
     }

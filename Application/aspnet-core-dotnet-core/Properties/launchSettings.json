@@ -1,11 +1,13 @@
 {
   "profiles": {
     "aspnet-core-dotnet-core": {
-        "commandName": "Project",
-        "launchBrowser": true,
-        "environmentVariables": {
-            "ASPNETCORE_ENVIRONMENT": "Development"
-        }
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "VaultUri": "https://parkscomputingvault.vault.azure.net/",
+        "AZURE_USERNAME": "paul@smartsam.com"
+      }
     }
   }
 }

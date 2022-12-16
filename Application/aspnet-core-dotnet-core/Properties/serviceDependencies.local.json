@@ -4,6 +4,18 @@
       "group": "connections",
       "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.Web/sites/parkscomputing",
       "type": "compute.appService.container"
+    },
+    "secrets1": {
+      "secretStore": null,
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.KeyVault/vaults/parkscomputingvault",
+      "type": "secrets.keyVault",
+      "connectionId": "VaultUri"
+    },
+    "storage1": {
+      "secretStore": "AzureKeyVault",
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.Storage/storageAccounts/cs1100300008f7a0186",
+      "type": "storage.azure",
+      "connectionId": "parkscomputing_storage"
     }
   }
 }
