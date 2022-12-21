@@ -30,6 +30,7 @@ namespace aspnet_core_dotnet_core {
             });
 
             services.AddRazorPages();
+            services.AddHttpClient();
             services.AddTransient<INavService, NavService>();
         }
 

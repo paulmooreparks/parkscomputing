@@ -130,6 +130,8 @@ body {
     border-color: darkgray;
 }
 
+.col-md-4 {}
+
 table.has-fixed-layout {
     border: 2px solid #111;
     border-collapse: collapse;

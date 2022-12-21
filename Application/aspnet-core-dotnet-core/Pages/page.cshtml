@@ -7,19 +7,19 @@
 
 @section Meta { @if (Model.MetaElements is not null) { 
 @foreach (var element in @Model.MetaElements) { 
-    <meta @foreach (var item in element.Attributes) { <text>@item.Name="@item.Value" </text>}/>
+    @Html.Raw(element.OuterHtml)
 }}
 }
 
 @section Links { @if (Model.LinkElements is not null) { 
 @foreach (var element in @Model.LinkElements) { 
-    <link @foreach (var item in element.Attributes) { <text>@item.Name="@item.Value" </text>}/>
+    @Html.Raw(element.OuterHtml)
 }}
 }
 
 @section HeadScripts { @if (Model.HeadScriptElements is not null) { 
 @foreach (var element in @Model.HeadScriptElements) { 
-    <script @foreach (var item in element.Attributes) { <text>@item.Name="@item.Value" </text>}>@element.InnerHtml</script>
+    @Html.Raw(element.OuterHtml)
 }}
 }
 
