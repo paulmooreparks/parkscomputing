@@ -18,9 +18,6 @@ namespace aspnet_core_dotnet_core.Pages {
         public string ModifiedGmt { get; set; }
         public string Created { get; set; }
         public string Modified { get; set; }
-        public string Link { get; set; }
-        public string Slug { get; set; }
-        public string Json { get; set; }
         public HtmlNodeCollection MetaElements { get; set; }
         public HtmlNodeCollection LinkElements { get; set; }
         public HtmlNodeCollection HeadScriptElements { get; set; }
@@ -37,7 +34,7 @@ namespace aspnet_core_dotnet_core.Pages {
             string slug = sectionObject.ToString();
 
             if (slugObject is not null) {
-                slug = slugObject.ToString();
+                slug = slugObject.ToString().Trim('/');
             }
 
             try {
