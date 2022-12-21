@@ -23,10 +23,10 @@
 }}
 }
 
-<div class="posted-on"><time datetime="@Model.CreatedGmt">@Model.Created</time></div>
-
+<div class="posted-on"><time datetime="@Model.CreatedGmt">@Model.Created</time>
 @if (Model.CreatedGmt != Model.ModifiedGmt) {
-    <div class="updated-on">Updated on <time datetime="@Model.ModifiedGmt">@Model.Modified</time></div>
+    <span class="updated-on"> (updated <time datetime="@Model.ModifiedGmt">@Model.Modified</time>)</span>
 }
+</div>
 
 @Html.Raw(Model.PageContent)

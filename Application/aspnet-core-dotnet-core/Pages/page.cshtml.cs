@@ -79,12 +79,6 @@ namespace aspnet_core_dotnet_core.Pages {
                     var modDate = DateTime.ParseExact(CreatedGmt, "s", DateTimeFormatInfo.InvariantInfo);
                     Modified = modDate.ToLongDateString();
                 }
-
-#if false
-                    var link = array[0].GetProperty("link").GetString();
-                    var linkUri = new Uri(link);
-                    Link = linkUri.PathAndQuery;
-#endif
             }
             catch (Exception) {
                 throw;
