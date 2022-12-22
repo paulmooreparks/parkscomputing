@@ -65,7 +65,7 @@
                         "key": "barcode-generator",
                         "title": "Barcode Generator",
                         "excerpt": "A simple barcode generator which is badly in need of an update.",
-                        "link": "/content/ean13.html?code=0724171484086&desc=Jammie%20Dodgers",
+                        "link": "/page/barcode-generator?code=0724171484086&desc=Jammie%20Dodgers",
                         "date": "2010-05-06T03:25:00",
                         "links": []
                     }
@@ -131,13 +131,6 @@
             "excerpt": "Late last year, I published an article entitled \"How I Plan Every Minute of My Day to Stay Productive,\" where I described my personal daily workflow of planning the tasks that I need to accomplish and then adjusting that plan as necessary throughout the day. I have a new job now, so I want to post an update on how well the approach is working in a new environment with new responsibilities, and how I've made a few tweaks to the process.",
             "link": "/page/scheduling-every-minute-revisited",
             "date": "2016-02-08T16:08:20"
-        },
-        {
-            "key": "on-recruiting",
-            "title": "On Recruiting",
-            "excerpt": "I’ll have more to say about this later, but I want to get this quote out there now so that technical leads, engineering managers, engineering directors, and vice-presidents of software engineering can have it embroidered on a pillow, printed on a t-shirt, and taped to their bathroom mirror.",
-            "link": "/page/on-recruiting",
-            "date": "2016-02-05T01:38:38"
         },
         {
             "key": "how-i-plan-my-day",

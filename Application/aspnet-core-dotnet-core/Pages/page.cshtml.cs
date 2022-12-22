@@ -20,6 +20,7 @@ namespace aspnet_core_dotnet_core.Pages {
         public string Modified { get; set; }
         public HtmlNodeCollection MetaElements { get; set; }
         public HtmlNodeCollection LinkElements { get; set; }
+        public HtmlNodeCollection StyleElements { get; set; }
         public HtmlNodeCollection HeadScriptElements { get; set; }
         public HtmlNodeCollection BodyScriptElements { get; set; }
 
@@ -58,6 +59,7 @@ namespace aspnet_core_dotnet_core.Pages {
 
                 MetaElements = doc.DocumentNode.SelectNodes("//head/meta");
                 LinkElements = doc.DocumentNode.SelectNodes("//head/link");
+                StyleElements = doc.DocumentNode.SelectNodes("//head/style");
                 HeadScriptElements = doc.DocumentNode.SelectNodes("//head/script");
                 BodyScriptElements = doc.DocumentNode.SelectNodes("//body/script");
 

@@ -17,6 +17,12 @@
 }}
 }
 
+@section Style { @if (Model.StyleElements is not null) { 
+@foreach (var element in @Model.StyleElements) { 
+    @Html.Raw(element.OuterHtml)
+}}
+}
+
 @section HeadScripts { @if (Model.HeadScriptElements is not null) { 
 @foreach (var element in @Model.HeadScriptElements) { 
     @Html.Raw(element.OuterHtml)
