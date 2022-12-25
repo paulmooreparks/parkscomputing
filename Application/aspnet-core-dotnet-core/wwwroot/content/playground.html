@@ -1,0 +1,45 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Hover Test</title>
+    <style type="text/css">
+        .tooltip-wrap {
+            position: relative;
+        }
+
+            .tooltip-wrap .tooltip-content {
+                display: none;
+                position: relative;
+                bottom: 5%;
+                left: 5%;
+                right: 5%;
+                padding: .5em;
+                min-width: 10rem;
+                width: min-content;
+            }
+
+            .tooltip-wrap:hover .tooltip-content {
+                display: block;
+            }
+    </style>
+    <script src="/js/htmx.min.js"></script>
+    <link rel="stylesheet" href="/highlightjs/styles/default.min.css" />
+    <script src="/highlightjs/highlight.min.js"></script>
+</head>
+<body>
+    <h1>Auto-load of JavaScript</h1>
+
+    <pre><code class="language-javascript" hx-get="/js/barcode.js" hx-trigger="load" ></code></pre>
+
+    <div class="tooltip-wrap">
+        <img src="/images/array-go-brrrrr-300x169.png" alt="Some Image" />
+        <div class="tooltip-content">Here is some content for the tooltip</div>
+    </div>
+    <script>
+        document.body.addEventListener('htmx:afterSwap', function (evt) {
+            hljs.highlightAll();
+        });
+    </script>
+</body>
+</html>

@@ -28,7 +28,7 @@ namespace aspnet_core_dotnet_core.Pages {
                 slug = slugObject.ToString();
             }
 
-            string Baseurl = $"https://www.parkscomputing.com/wp-json/wp/v2/pages?slug={slug}";
+            string Baseurl = $"https://www.old.parkscomputing.com/wp-json/wp/v2/pages?slug={slug}";
 
             try {
                 using (var client = new HttpClient()) {

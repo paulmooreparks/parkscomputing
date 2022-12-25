@@ -1,0 +1,94 @@
+﻿textarea {
+    font-size: small;
+    font-family: "Lucida Console", Courier, monospace;
+}
+
+kbd {
+    font-family: "Courier New", monospace;
+    font-weight: bold;
+}
+
+.barcode {
+    color: black;
+    background-color: white;
+    position: relative;
+    float: left;
+    clear: left;
+    font-size: 13px;
+    padding: 15px;
+}
+
+.quietZone {
+    float: left;
+    height: 125px;
+}
+
+.leader {
+    float: left;
+    height: 125px;
+}
+
+.separator {
+    float: left;
+    height: 125px;
+}
+
+.trailer {
+    float: left;
+    height: 125px;
+}
+
+.digit {
+    float: left;
+    height: 80%;
+}
+
+.bitOn {
+    float: left;
+    height: 125px;
+    width: 0;
+    border-left: 2px solid black;
+    background-color: #000000;
+}
+
+.bitOff {
+    float: left;
+    height: 125px;
+    width: 2px;
+    background-color: #FFFFFF;
+}
+
+#labels {
+    font-family: "Courier New", monospace;
+    font-size: 16px;
+    color: black;
+    background-color: white;
+    width: 100%;
+}
+
+#codeDisplay {
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+
+#descDisplay {
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+
+#credit {
+    margin: 0;
+    padding: 0;
+    text-align: center;
+    margin-top: 5px;
+    font-size: 12px;
+}
+
+.barcodeContainer {
+    background-color: white;
+}
+
+.upcDesc {
+}
