@@ -21,7 +21,7 @@ namespace aspnet_core_dotnet_core.Pages {
 
         public async Task<IActionResult> OnGetAsync() {
             object slugObject = HttpContext.Request.RouteValues["slug"];
-            string Baseurl = $"https://www.parkscomputing.com/wp-json/wp/v2/posts?slug={slugObject.ToString()}";
+            string Baseurl = $"https://old.parkscomputing.com/wp-json/wp/v2/posts?slug={slugObject.ToString()}";
 
             try {
                 using (var client = new HttpClient()) {
