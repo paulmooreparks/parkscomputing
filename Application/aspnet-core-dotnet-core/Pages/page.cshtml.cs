@@ -74,8 +74,8 @@ namespace aspnet_core_dotnet_core.Pages {
                 var modMeta = doc.DocumentNode.SelectSingleNode("//meta[@http-equiv='last-modified']/@content");
 
                 if (modMeta is not null) {
-                    ModifiedGmt = createMeta.Attributes["content"].Value;
-                    var modDate = DateTime.ParseExact(CreatedGmt, "s", DateTimeFormatInfo.InvariantInfo);
+                    ModifiedGmt = modMeta.Attributes["content"].Value;
+                    var modDate = DateTime.ParseExact(ModifiedGmt, "s", DateTimeFormatInfo.InvariantInfo);
                     Modified = modDate.ToLongDateString();
                 }
             }
