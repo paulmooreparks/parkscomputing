@@ -9,6 +9,7 @@
    <ItemGroup>
       <PackageReference Include="BuildBundlerMinifier" Version="3.2.449" />
       <PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
+      <PackageReference Include="LibSassBuilder" Version="3.0.0" />
       <PackageReference Include="Microsoft.AspNetCore" Version="2.2.0" />
       <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor" Version="2.2.0" />
       <PackageReference Include="Microsoft.AspNetCore.Mvc.RazorPages" Version="2.2.5" />

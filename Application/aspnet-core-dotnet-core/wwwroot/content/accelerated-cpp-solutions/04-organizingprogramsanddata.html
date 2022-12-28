@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chapter 4 &#8211; Organizing Programs and Data</title>
+    <meta http-equiv="date" content="2011-02-23T23:37:09" />
+    <meta http-equiv="last-modified" content="2016-02-17T12:19:06" />
+</head>
+<body>
+    <h1>Chapter 4 &#8211; Organizing Programs and Data</h1>
+<p>Solutions to exercises in Chapter 4 of <a href="http://www.acceleratedcpp.com/" target="_blank">Accelerated C++</a>, &#8220;Organizing programs and data.&#8221;</p>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 class="exerciseTitle" id="ex1">Exercise 4-1</h2>
+<p>We noted in &sect;4.2.3/65 that it is essential that the argument types in a call to <code>max</code> match exactly. Will the following code work? If there is a problem, how would you fix it?</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+int maxlen;
+Student_info s;
+max(s.name.size(), maxlen);
+</pre>
+</div>
+<h3><a id="ex1_hint_icon_link" class="hintIconLink" onclick="return ToggleBlock('ex1_hint');" href="?showHint=ex1#ex1"><img decoding="async" id="ex1_hint_icon" class="hintIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex1_hint_text_link" class="hintTextLink" onclick="return ToggleBlock('ex1_hint');" href="?showHint=ex1#ex1">Hint</a></h3>
+<div id="ex1_hint" class="hintText">
+<p>Consider the return type of <code>s.name.size()</code>.</p>
+</div>
+<h3><a class="solutionIconLink" id="ex1_solution_icon_link" href="?showSolution=ex1#ex1" onclick="return ToggleBlock('ex1_solution');"><img decoding="async" class="solutionIcon" id="ex1_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex1_solution_text_link" href="?showSolution=ex1#ex1" onclick="return ToggleBlock('ex1_solution');">Solution</a></h3>
+<div class="solutionText" id="ex1_solution">
+<p>There is a problem with the code. The type returned from <code>s.name.size()</code> is <code>string::size_type</code>, which does not match the type of <code>maxlen</code>. To solve the problem, change <code>maxlen</code>&#8216;s declaration to <code>string::size_type</code>.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;algorithm>
+#include &lt;string>
+#include &lt;vector>
+
+#ifdef _MSC_VER
+#undef max
+#endif
+
+using std::max;
+using std::string;
+using std::vector;
+
+struct Student_info {
+	string name;
+	double midterm, final;
+	vector&lt;double> homework;
+};
+
+int main()
+{
+   string::size_type maxlen;
+   Student_info s;
+   max(s.name.size(), maxlen);
+}
+</pre>
+</div>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 class="exerciseTitle" id="ex2">Exercise 4-2</h2>
+<p>Write a program to calculate the squares of <code>int</code> values up to 100. The program should write two columns: The first lists the value; the second contains the square of that value. Use <code>setw</code> to manage the output so that the values line up in columns.</p>
+<h3><a id="ex2_hint_icon_link" class="hintIconLink" onclick="return ToggleBlock('ex2_hint');" href="?showHint=ex2#ex2"><img decoding="async" id="ex2_hint_icon" class="hintIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex2_hint_text_link" class="hintTextLink" onclick="return ToggleBlock('ex2_hint');" href="?showHint=ex2#ex2">Hint</a></h3>
+<div id="ex2_hint" class="hintText">
+<p>Determine the widest outputs for both columns.</p>
+</div>
+<h3><a class="solutionIconLink" id="ex2_solution_icon_link" href="?showSolution=ex2#ex2" onclick="return ToggleBlock('ex2_solution');"><img decoding="async" class="solutionIcon" id="ex2_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex2_solution_text_link" href="?showSolution=ex2#ex2" onclick="return ToggleBlock('ex2_solution');">Solution</a></h3>
+<div class="solutionText" id="ex2_solution">
+<p>The widest number that is being squared is 100, which is three digits. 100 squared is 10000, which is 5 digits, so the solution belows sets a width of 4 prior to sending the base to output and set a width of 6 prior to sending the result to output. Setting the widths one larger than the values contained will preserve at least one space to the left of each value.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iomanip>
+#include &lt;iostream>
+
+using std::cout;
+using std::endl;
+using std::setw;
+
+int main()
+{
+   for (int i = 1; i &lt; 101; ++i)
+   {
+      cout &lt;&lt; setw(4) &lt;&lt; i &lt;&lt; setw(6) &lt;&lt; (i * i) &lt;&lt; endl;
+   }
+}
+</pre>
+</div>
+<p>When executed the output will look like the following (shortened for space):</p>
+<div class="example">
+<pre>
+   1     1
+   2     4
+   3     9
+   4    16
+   5    25
+   6    36
+   7    49
+   8    64
+   9    81
+  10   100
+...
+  95  9025
+  96  9216
+  97  9409
+  98  9604
+  99  9801
+ 100 10000
+</pre>
+</div>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 class="exerciseTitle" id="ex3">Exercise 4-3</h2>
+<p>What happens if we rewrite the previous program to allow values up to but not including 1000 but neglect to change the arguments to <code>setw</code>? Rewrite the program to be more robust in the face of changes that allow <code>i</code> to grow without adjusting the <code>setw</code> arguments.</p>
+<h3><a id="ex3_hint_icon_link" class="hintIconLink" onclick="return ToggleBlock('ex3_hint');" href="?showHint=ex3#ex3"><img decoding="async" id="ex3_hint_icon" class="hintIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex3_hint_text_link" class="hintTextLink" onclick="return ToggleBlock('ex3_hint');" href="?showHint=ex3#ex3">Hint</a></h3>
+<div id="ex3_hint" class="hintText">
+<p>Determine the length of the longest base and longest result and store those maximum lengths before starting to send the results to output.</p>
+</div>
+<h3><a class="solutionIconLink" id="ex3a_solution_icon_link" href="?showSolution=ex3a#ex3a" onclick="return ToggleBlock('ex3a_solution');"><img decoding="async" class="solutionIcon" id="ex3a_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex3a_solution_text_link" href="?showSolution=ex3a#ex3a" onclick="return ToggleBlock('ex3a_solution');">Solution</a></h3>
+<div class="solutionText" id="ex3a_solution">
+<p>If we change the program to output squares of bases up to 999 but don&#8217;t change the values provided to setw, the columns will begin to run together when the number of digits in the squares begins to equal 6.</p>
+<div class="example">
+<pre>
+   1     1
+   2     4
+   3     9
+   4    16
+   5    25
+   6    36
+   7    49
+   8    64
+   9    81
+  10   100
+...
+ 995990025
+ 996992016
+ 997994009
+ 998996004
+ 999998001
+</pre>
+</div>
+<p>There are several ways to solve this problem, and in later chapters you will learn about some facilities in the standard library that would help you discover the maximum lengths that you need to find. This solution implements a function, <code>digits</code>, that will return the number of digits in an integer. The program uses this function to find the length of the maximum base and the length of the square of the maximum base. It saves these lengths and uses them as parameters to <code>setw</code>.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iomanip>
+#include &lt;iostream>
+
+using std::cout;
+using std::endl;
+using std::setw;
+
+/* Return the number of digits in n */
+int digits(int n)
+{
+   int result = 0;
+
+   while (n)
+   {
+      /* Add 1 to the result... */
+      ++result;
+
+      /* ...and remove a digit before the next pass. */
+      n /= 10;
+   }
+
+   return result;
+}
+
+int main()
+{
+   const int max_base = 999;
+
+   /* Find the number of digits in the highest base. */
+   int max_base_width = digits(max_base);
+
+   /* Find the number of digits in the highest square. */
+   int max_result_width = digits(max_base * max_base);
+   
+   for (int i = 1; i &lt;= max_base; ++i)
+   {
+      /* Add 1 to the maximum widths to allow for one 
+      space for padding. */
+      cout &lt;&lt; setw(max_base_width + 1) &lt;&lt; i 
+         &lt;&lt; setw(max_result_width + 1) &lt;&lt; (i * i) &lt;&lt; endl;
+   }
+}
+</pre>
+</div>
+<p>When executed the output will look like the following (shortened for space):</p>
+<div class="example">
+<pre>
+   1      1
+   2      4
+   3      9
+   4     16
+   5     25
+   6     36
+   7     49
+   8     64
+   9     81
+  10    100
+...
+ 995 990025
+ 996 992016
+ 997 994009
+ 998 996004
+ 999 998001
+</pre>
+</div>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 class="exerciseTitle" id="ex4">Exercise 4-4</h2>
+<p>Now change your squares program to use <code>double</code> values instead of <code>int</code>s. Use manipulators to manage the output so that the values line up in columns.</p>
+<h3><a id="ex4_hint_icon_link" class="hintIconLink" onclick="return ToggleBlock('ex4_hint');" href="?showHint=ex4#ex4"><img decoding="async" id="ex4_hint_icon" class="hintIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex4_hint_text_link" class="hintTextLink" onclick="return ToggleBlock('ex4_hint');" href="?showHint=ex4#ex4">Hint</a></h3>
+<div id="ex4_hint" class="hintText">
+<p>Allow for fractional values, and change how you determine the number of digits in the highest base and square.</p>
+</div>
+<h3><a class="solutionIconLink" id="ex4_solution_icon_link" href="?showSolution=ex4#ex4" onclick="return ToggleBlock('ex4_solution');"><img decoding="async" class="solutionIcon" id="ex4_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex4_solution_text_link" href="?showSolution=ex4#ex4" onclick="return ToggleBlock('ex4_solution');">Solution</a></h3>
+<div class="solutionText" id="ex4_solution">
+<p>First, we&#8217;ll make a change to the <code>digits</code> function to allow for the number of decimal places we want to see on the final outputs. Next, we&#8217;ll use the <code>setprecision</code> manipulator to control the number of significant digits in the output.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iomanip>
+#include &lt;iostream>
+
+using std::cout;
+using std::endl;
+using std::setw;
+using std::setprecision;
+
+/* Return the number of digits in n */
+int digits(double n, int places)
+{
+   /* Initialize result to the number of desired decimal 
+   places. */
+   int result = places;
+
+   while (n >= 1)
+   {
+      /* Add 1 to the result... */
+      ++result;
+
+      /* ...and remove a digit before the next pass. */
+      n /= 10;
+   }
+
+   return result;
+}
+
+int main()
+{
+   const double max_base = 99.9;
+
+   /* Find the number of digits in the highest base. */
+   int max_base_width = digits(max_base, 2);
+
+   /* Find the size of the highest square, allowing for 
+   2 decimal places in the result. */
+   int max_result_width = digits(max_base * max_base, 2);
+   
+   for (double i = 1; i &lt;= max_base; i += .1)
+   {
+      /* Add 2 to the maximum widths to allow for the decimal point and 
+      one space for padding. */
+      cout &lt;&lt; setw(max_base_width + 2) &lt;&lt; 
+         setprecision(max_base_width) &lt;&lt; i 
+         &lt;&lt; setw(max_result_width + 2) 
+         &lt;&lt; setprecision(max_result_width) &lt;&lt; (i * i) &lt;&lt; endl;
+   }
+}
+</pre>
+</div>
+<p>When executed the output will look like the following (shortened for space):</p>
+<div class="example">
+<pre>
+     1       1
+   1.1    1.21
+   1.2    1.44
+   1.3    1.69
+   1.4    1.96
+   1.5    2.25
+   1.6    2.56
+   1.7    2.89
+   1.8    3.24
+   1.9    3.61
+     2       4
+   2.1    4.41
+   2.2    4.84
+   2.3    5.29
+   2.4    5.76
+   2.5    6.25
+...
+  98.5 9702.25
+  98.6 9721.96
+  98.7 9741.69
+  98.8 9761.44
+  98.9 9781.21
+    99    9801
+  99.1 9820.81
+  99.2 9840.64
+  99.3 9860.49
+  99.4 9880.36
+  99.5 9900.25
+  99.6 9920.16
+  99.7 9940.09
+  99.8 9960.04
+  99.9 9980.01
+</pre>
+</div>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 class="exerciseTitle" id="ex5">Exercise 4-5</h2>
+<p>Write a function that reads words from an input stream and stores them in a <code>vector</code>. Use that function both to write programs that count the number of words in the input, and to count how many times each word occurred.</p>
+<h3><a id="ex5_hint_icon_link" class="hintIconLink" onclick="return ToggleBlock('ex5_hint');" href="?showHint=ex5#ex5"><img decoding="async" id="ex5_hint_icon" class="hintIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex5_hint_text_link" class="hintTextLink" onclick="return ToggleBlock('ex5_hint');" href="?showHint=ex5#ex5">Hint</a></h3>
+<div id="ex5_hint" class="hintText">
+<p>Review the implementation of <code>read_hw</code> in &sect;4.1.3. Then, learn how to use separate compilation with your particular compiler.</p>
+</div>
+<h3><a class="solutionIconLink" id="ex5_solution_icon_link" href="?showSolution=ex5#ex5" onclick="return ToggleBlock('ex5_solution');"><img decoding="async" class="solutionIcon" id="ex5_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex5_solution_text_link" href="?showSolution=ex5#ex5" onclick="return ToggleBlock('ex5_solution');">Solution</a></h3>
+<div class="solutionText" id="ex5_solution">
+<p>This exercise asks for two programs that perform two different tasks sharing a single function. That suggest that we should partition the programs as described in &sect;4.4.</p>
+<p>First, create a header that declares the shared function&#8217;s signature.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#ifndef GUARD_read_words_h
+#define GUARD_read_words_h
+
+#include &lt;vector>
+#include &lt;istream>
+#include &lt;string>
+
+std::istream& read_words(std::istream& is, std::vector&lt;std::string>& words);
+
+#endif GUARD_read_words_h
+</pre>
+</div>
+<p>Next, implement the <code>read_words</code> function in a source file.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include "read_words.h"
+
+using std::istream;
+using std::string;
+using std::vector;
+
+istream& read_words(istream& in, vector&lt;string>& words)
+{
+   if (in)
+   {
+      words.clear();
+      string word;
+
+      while (in >> word)
+      {
+         words.push_back(word);
+      }
+
+      in.clear();
+   }
+   return in;
+}
+</pre>
+</div>
+<p>Now the programs can use this implementation. The first program will create a <code>vector</code> of strings and call <code>read_words</code>, passing <code>cin</code> and the <code>vector</code> as parameters. The populated <code>vector</code> will return the number of words it contains from its <code>size()</code> function.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include "read_words.h"
+#include &lt;vector>
+#include &lt;iostream>
+#include &lt;string>
+
+using std::cin;
+using std::cout;
+using std::endl;
+using std::string;
+using std::vector;
+
+int main()
+{
+   vector&lt;string> words;
+ 
+   cout &lt;&lt; "Enter a few words, followed by end-of-file: " &lt;&lt; endl;;
+
+   if (read_words(cin, words))
+   {
+      cout &lt;&lt; "You entered " &lt;&lt; words.size() &lt;&lt; " words." &lt;&lt; endl;
+   }
+}
+</pre>
+</div>
+<p>The second program borrows from the solution to <a href="/accelerated-cpp-solutions/03-workingwithbatchesofdata/#ex3">exercise 3-3</a>.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include "read_words.h"
+#include &lt;algorithm>
+#include &lt;iostream>
+#include &lt;string>
+#include &lt;vector>
+
+using std::cin;
+using std::cout;
+using std::endl;
+using std::sort;
+using std::string;
+using std::vector;
+
+int main()
+{
+   vector&lt;string> words;
+ 
+   cout &lt;&lt; "Enter a few words, followed by end-of-file: " &lt;&lt; endl;;
+
+   if (read_words(cin, words))
+   {
+      typedef vector&lt;string>::size_type vec_sz;
+      vec_sz size = words.size();
+
+      // Check that the user entered some words
+      if (size == 0)
+      {
+         cout &lt;&lt; endl &lt;&lt; "You didn't enter any words. "
+            "Please try again." &lt;&lt; endl;
+         return 1;
+      }
+
+      // sort the words
+      sort(words.begin(), words.end());
+
+      string current_word;
+      int count;
+
+      // Set the initial word to the first word in the vector
+      current_word = words[0];
+
+      // Set the initial count for the first word
+      count = 1;
+
+      // Invariant: we have counted current_index of the total words
+      // in the vector
+      for (vec_sz current_index = 1; current_index &lt; size; ++current_index)
+      {
+         // Report the count for the current word if it does not match
+         // the word at the current index in the vector, and reset the
+         // count to zero so that it will one when the variable is
+         // incremented outside the if statement.
+         if (current_word != words[current_index])
+         {
+            cout &lt;&lt; "The word \"" &lt;&lt; current_word &lt;&lt; "\" appears "
+               &lt;&lt; count &lt;&lt; " times." &lt;&lt; endl;
+
+            current_word = words[current_index];
+            count = 0;
+         }
+
+         ++count;
+      }
+
+      // Report the count for the final word
+      cout &lt;&lt; "The word \"" &lt;&lt; current_word &lt;&lt; "\" appears "
+         &lt;&lt; count &lt;&lt; " times." &lt;&lt; endl;
+
+   }
+   else
+   {
+      cout &lt;&lt; "An error occurred during input." &lt;&lt; endl;
+      return 2;
+   }
+
+   // We have reported the count of all the words in the vector, so exit.
+   return 0;
+}
+</pre>
+</div>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 class="exerciseTitle" id="ex6">Exercise 4-6</h2>
+<p>Rewrite the <code>Student_info</code> structure, and the <code>read</code> and <code>grade</code> functions, so that they calculate each student&#8217;s grades as part of reading the input, and store only the final grade.</p>
+<h3><a class="solutionIconLink" id="ex6_solution_icon_link" href="?showSolution=ex6#ex6" onclick="return ToggleBlock('ex6_solution');"><img decoding="async" class="solutionIcon" id="ex6_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex6_solution_text_link" href="?showSolution=ex6#ex6" onclick="return ToggleBlock('ex6_solution');">No Solution Yet&#8230;</a></h3>
+<div class="solutionText" id="ex6_solution">
+<p>Check back for the solution later.</p>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 class="exerciseTitle" id="ex7">Exercise 4-7</h2>
+<p>Write a program to calculate the average of the numbers stored in a <code>vector&lt;double></code>.</p>
+<h3><a class="solutionIconLink" id="ex7_solution_icon_link" href="?showSolution=ex7#ex7" onclick="return ToggleBlock('ex7_solution');"><img decoding="async" class="solutionIcon" id="ex7_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex7_solution_text_link" href="?showSolution=ex7#ex7" onclick="return ToggleBlock('ex7_solution');">No Solution Yet&#8230;</a></h3>
+<div class="solutionText" id="ex7_solution">
+<p>Check back for the solution later.</p>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 class="exerciseTitle" id="ex8">Exercise 4-8</h2>
+<p>If the following code is legal, what can we infer about the return type of <code>f</code>?</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+double d = f()[n];
+</pre>
+</div>
+<h3><a class="solutionIconLink" id="ex8_solution_icon_link" href="?showSolution=ex8#ex8" onclick="return ToggleBlock('ex8_solution');"><img decoding="async" class="solutionIcon" id="ex8_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex8_solution_text_link" href="?showSolution=ex8#ex8" onclick="return ToggleBlock('ex8_solution');">No Solution Yet&#8230;</a></h3>
+<div class="solutionText" id="ex8_solution">
+<p>Check back for the solution later.</p>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+
+
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Chapter 0 &#8211; Getting Started</title>
+    <meta http-equiv="date" content="2011-02-19T16:34:55" />
+    <meta http-equiv="last-modified" content="2022-12-27T08:52:38" />
+    <link rel="stylesheet" href="/css/acpp.css" />
+    <link rel="stylesheet" href="/highlightjs/styles/default.min.css" />
+    <script src="/highlightjs/highlight.min.js"></script>
+    <script src="/js/htmx.min.js"></script>
+</head>
+
+<body>
+    <h1>Chapter 0 &#8211; Getting Started</h1>
+    <p>
+        Solutions to exercises in Chapter 0 of <a href="http://www.acceleratedcpp.com/" target="_blank">Accelerated C++</a>,
+        "Getting started.""
+    </p>
+
+    <div id="ex0" class="exercise">
+        <h2>Exercise 0-0</h2>
+        <p>Compile and run the <code>Hello, world!</code> program.</p>
+
+        <div>
+            <input id="ex0_hint" type="checkbox" class="hide-input" />
+            <label for="ex0_hint" class="toggle">Show hint</label>
+            <div class="toggle-el">
+                <div>
+                    <p>Make sure that you locate the documentation and help files for your compiler and editing environment.</p>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <input id="ex0_solution" type="checkbox" class="hide-input" />
+            <label for="ex0_solution" class="toggle">Show solution</label>
+            <div class="toggle-el">
+                <p>
+                    Consult the documentation for your particular compiler. Each will have its own set of directives. For the GNU
+                    C++ compiler, assuming the code is in a file named <code>hello.cpp</code>, the following may be entered at the
+                    command line:
+                </p>
+                <pre><code class="language-sh">g++ hello.cpp</code></pre>
+                <p>
+                    This will produce a file named <code>a.out</code>, or on Windows systems <code>a.exe</code>, that can then be
+                    executed like any other program.
+                </p>
+                <p>Here is the source for the <code>Hello, world!</code> program.</p>
+                <div hx-get="/src/content/accelerated-cpp-solutions/src/exercise-0-0.cpp?language=cpp" hx-trigger="load"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="ex1" class="exercise">
+        <h2>Exercise 0-1</h2>
+        <p>What does the following statement do?</p>
+        <pre><code class="language-cpp">3 + 4;</code></pre>
+
+        <div>
+            <input id="ex1_hint" type="checkbox" class="hide-input" />
+            <label for="ex1_hint" class="toggle">Show hint</label>
+            <div class="toggle-el">
+                <p>
+                    This statement is an expression. Consider what may happen when an expression is evaluated, and what the result
+                    of the expression might me.
+                </p>
+            </div>
+        </div>
+
+        <div>
+            <input id="ex1_solution" type="checkbox" class="hide-input" />
+            <label for="ex1_solution" class="toggle">Show solution</label>
+            <div class="toggle-el">
+                <p>This statement is an expression that yields the result <code>7</code> and has no side effects.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="ex2" class="exercise">
+        <h2>Exercise 0-2</h2>
+        <p>Write a program that, when run, writes</p>
+        <pre><code class="language-txt">This (") is a quote, and this (\) is a backslash.</code></pre>
+
+        <div>
+            <input id="ex2_hint" type="checkbox" class="hide-input" />
+            <label for="ex2_hint" class="toggle">Show hint</label>
+            <div class="toggle-el">
+                <p>The backslash character has a special meaning in a string literal.</p>
+            </div>
+        </div>
+
+        <div>
+            <input id="ex2_solution" type="checkbox" class="hide-input" />
+            <label for="ex2_solution" class="toggle">Show solution</label>
+            <div class="toggle-el">
+                <p>The quote and backslash characters must be preceded by a backslash, which is the escape character.</p>
+                <div hx-get="/src/content/accelerated-cpp-solutions/src/exercise-0-2.cpp?language=cpp" hx-trigger="load"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="ex3" class="exercise">
+        <h2>Exercise 0-3</h2>
+        <p>
+            The string literal <code>"\t"</code> represents a tab character; different C++ implementations display tabs in
+            different ways. Experiment with your implementation to learn how it treats tabs.
+        </p>
+
+        <div id="ex3_solution">
+            <p>For now, self-directed study. More information coming.</p>
+        </div>
+    </div>
+
+    <div id="ex4" class="exercise">
+        <h2>Exercise 0-4</h2>
+        <p>Write a program that, when run, writes the <code>Hello, world!</code> program as its output.</p>
+
+        <div>
+            <input id="ex4_hint" type="checkbox" class="hide-input" />
+            <label for="ex4_hint" class="toggle">Show hint</label>
+            <div class="toggle-el">
+                <p>
+                    The main issue here is properly escaping special characters, such as quotes, and adding newline
+                    (<code>\n</code>)<br />
+                    characters where appropriate.
+                </p>
+            </div>
+        </div>
+
+        <div>
+            <input id="ex4_solution" type="checkbox" class="hide-input" />
+            <label for="ex4_solution" class="toggle">Show solution</label>
+            <div class="toggle-el">
+                <div hx-get="/src/content/accelerated-cpp-solutions/src/exercise-0-4.cpp?language=cpp" hx-trigger="load"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.body.addEventListener('htmx:afterSwap', function (evt) {
+            hljs.highlightAll();
+        });
+    </script>
+</body>
+
+</html>

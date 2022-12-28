@@ -81,6 +81,25 @@
                 ]
             },
             {
+                "key": "accelerated-cpp",
+                "title": "Accelerated C++ Solutions",
+                "description": "",
+                "excerpt": "Here are some web-based applications I've written.",
+                "link": "/nav/accelerated-cpp",
+                "date": "2022-12-27T10:42:00",
+                "links": [
+                    {
+                        "key": "00-gettingstarted",
+                        "title": "Chapter 0: Getting Started",
+                        "description": "Chapter 0: Getting Started",
+                        "excerpt": "Chapter 0 exercises and solutions.",
+                        "link": "/page/accelerated-cpp-solutions/00-gettingstarted",
+                        "date": "2022-12-27T10:42:00",
+                        "links": []
+                    }
+                ]
+            },
+            {
                 "key": "about",
                 "title": "About",
                 "description": "",

@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chapter 2 &#8211; Looping and Counting</title>
+    <meta http-equiv="date" content="2011-02-19T17:45:08" />
+    <meta http-equiv="last-modified" content="2016-02-17T12:13:23" />
+</head>
+<body>
+    <h1>Chapter 2 &#8211; Looping and Counting</h1>
+<p>Solutions to exercises in Chapter 2 of <a href="http://www.acceleratedcpp.com/" target="_blank">Accelerated C++</a>, &#8220;Looping and counting.&#8221;</p>
+<h2 class="exerciseTitle" id="ex1">Exercise 2-1</h2>
+<p>Change the framing program so that it writes its greeting with no separation from the frame.</p>
+<h3><a class="solutionIconLink" id="ex1_solution_icon_link" href="?showSolution=ex1#ex1" onclick="return ToggleBlock('ex1_solution');"><img decoding="async" class="solutionIcon" id="ex1_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex1_solution_text_link" href="?showSolution=ex1#ex1" onclick="return ToggleBlock('ex1_solution');">Solution</a></h3>
+<div class="solutionText" id="ex1_solution">
+<p>The simplest way to accomplish this is to change the value of the constant <code>pad</code> to <code>0</code>.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iostream>
+#include &lt;string>
+
+// say what standard-library names we use
+using std::cin;
+using std::cout;
+using std::endl;
+using std::string;
+
+int main()
+{
+   // ask for the person's name
+   cout &lt;&lt; "Please enter your first name: ";
+
+   // read the name
+   string name;
+   cin >> name;
+
+   // build the message that we intend to write
+   const string greeting = "Hello, " + name + "!";
+
+   // the number of blanks surrounding the greeting
+   const int pad = 0;
+
+   // the number of rows and columns to write
+   const int rows = pad * 2 + 3;
+   const string::size_type cols = greeting.size() + pad * 2 + 2;
+
+   // write a blank line to separate the output from the input
+   cout &lt;&lt; endl;
+
+   // write rows rows of output
+   // invariant: we have written r rows so far
+   for (int r = 0; r != rows; ++r) {
+
+      string::size_type c = 0;
+
+      // invariant: we have written c characters so far in the current row
+      while (c != cols) {
+
+         // is it time to write the greeting?
+         if (r == pad + 1 &amp;&amp; c == pad + 1) {
+            cout &lt;&lt; greeting;
+            c += greeting.size();
+         } else {
+
+            // are we on the border?
+            if (r == 0 || r == rows - 1 ||
+                c == 0 || c == cols - 1)
+               cout &lt;&lt; "*";
+            else
+               cout &lt;&lt; " ";
+            ++c;
+         }
+      }
+
+      cout &lt;&lt; endl;
+   }
+
+   return 0;
+}
+</pre>
+</div>
+<p>An alternative is to remove the <code>pad</code> constant from the program.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iostream>
+#include &lt;string>
+
+// say what standard-library names we use
+using std::cin;
+using std::cout;
+using std::endl;
+using std::string;
+
+int main()
+{
+   // ask for the person's name
+   cout &lt;&lt; "Please enter your first name: ";
+
+   // read the name
+   string name;
+   cin >> name;
+
+   // build the message that we intend to write
+   const string greeting = "Hello, " + name + "!";
+
+   // the number of rows and columns to write
+   const int rows = 3;
+   const string::size_type cols = greeting.size() + 2;
+
+   // write a blank line to separate the output from the input
+   cout &lt;&lt; endl;
+
+   // write rows rows of output
+   // invariant: we have written r rows so far
+   for (int r = 0; r != rows; ++r) {
+
+      string::size_type c = 0;
+
+      // invariant: we have written c characters so far in the current row
+      while (c != cols) {
+
+         // is it time to write the greeting?
+         if (r == 1 &amp;&amp; c == 1) {
+            cout &lt;&lt; greeting;
+            c += greeting.size();
+         } else {
+
+            // are we on the border?
+            if (r == 0 || r == rows - 1 ||
+                c == 0 || c == cols - 1)
+               cout &lt;&lt; "*";
+            else
+               cout &lt;&lt; " ";
+            ++c;
+         }
+      }
+
+      cout &lt;&lt; endl;
+   }
+
+   return 0;
+}
+</pre>
+</div>
+<p>The output of each program is as follows:</p>
+<div class="example">
+<pre>
+Please enter your first name: <b>Paul</b>
+
+**************
+*Hello, Paul!*
+**************</pre>
+</div>
+</div>
+<h2 class="exerciseTitle" id="ex2">Exercise 2-2</h2>
+<p>Change the framing program so that it uses a different amount of space to separate the sides from the greeting than it uses to separate the top and bottom borders from the greeting.</p>
+<h3><a class="solutionIconLink" id="ex2_solution_icon_link" href="?showSolution=ex2#ex2" onclick="return ToggleBlock('ex2_solution');"><img decoding="async" class="solutionIcon" id="ex2_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex2_solution_text_link" href="?showSolution=ex2#ex2" onclick="return ToggleBlock('ex2_solution');">Solution</a></h3>
+<div class="solutionText" id="ex2_solution">
+<p>In the program below the <code>pad</code> constant has been removed, and in its place are now two constants, <code>vertical_pad</code> and <code>horizontal_pad</code>. The <code>vertical_pad</code> constant is used to calculate the number of rows to write, and the <code>horizontal_pad</code> constant is used to calculate the width of each line written.
+</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iostream>
+#include &lt;string>
+
+// say what standard-library names we use
+using std::cin;
+using std::cout;
+using std::endl;
+using std::string;
+
+int main()
+{
+   // ask for the person's name
+   cout &lt;&lt; "Please enter your first name: ";
+
+   // read the name
+   string name;
+   cin >> name;
+
+   // build the message that we intend to write
+   const string greeting = "Hello, " + name + "!";
+
+   // the number of blanks above and below the greeting
+   const int vertical_pad = 4;
+
+   // the number of blanks to the left and right of the greeting
+   const int horizontal_pad = 2;
+
+   // the number of rows and columns to write
+   const int rows = vertical_pad * 2 + 3;
+   const string::size_type cols = greeting.size() + horizontal_pad * 2 + 2;
+
+   // write a blank line to separate the output from the input
+   cout &lt;&lt; endl;
+
+   // write rows rows of output
+   // invariant: we have written r rows so far
+   for (int r = 0; r != rows; ++r) {
+
+      string::size_type c = 0;
+
+      // invariant: we have written c characters so far in the current row
+      while (c != cols) {
+
+         // is it time to write the greeting?
+         if (r == vertical_pad + 1 &amp;&amp; c == horizontal_pad + 1) {
+            cout &lt;&lt; greeting;
+            c += greeting.size();
+         } else {
+
+            // are we on the border?
+            if (r == 0 || r == rows - 1 ||
+                c == 0 || c == cols - 1)
+               cout &lt;&lt; "*";
+            else
+               cout &lt;&lt; " ";
+            ++c;
+         }
+      }
+
+      cout &lt;&lt; endl;
+   }
+
+   return 0;
+}
+</pre>
+</div>
+<p>
+The output of the program is as follows:
+</p>
+<div class="example">
+<pre>
+Please enter your first name: <b>Paul</b>
+
+******************
+*                *
+*                *
+*                *
+*                *
+*  Hello, Paul!  *
+*                *
+*                *
+*                *
+*                *
+******************</pre>
+</div>
+</div>
+<h2 class="exerciseTitle" id="ex3">Exercise 2-3</h2>
+<p>Rewrite the framing program to ask the user to supply the amount of spacing to leave between the frame and the greeting.</p>
+<h3><a class="solutionIconLink" id="ex3_solution_icon_link" href="?showSolution=ex3#ex3" onclick="return ToggleBlock('ex3_solution');"><img decoding="async" class="solutionIcon" id="ex3_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex3_solution_text_link" href="?showSolution=ex3#ex3" onclick="return ToggleBlock('ex3_solution');">Solution</a></h3>
+<div class="solutionText" id="ex3_solution">
+<p>This solution is similar to the first solution provided for <a href="#ex1">exercise 2-1</a>, except that it<br />
+asks the user to input the amount of padding to display inside the frame. Note that the <code>pad</code> variable is no<br />
+longer constant since it must be determined when the program runs.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iostream>
+#include &lt;string>
+
+// say what standard-library names we use
+using std::cin;
+using std::cout;
+using std::endl;
+using std::string;
+
+int main()
+{
+   // ask for the number of blanks to surround person's name.
+   cout &lt;&lt; "Please enter number of blanks for frame padding: ";
+
+   // read the number of blanks to surround the greeting
+   int pad;
+   cin >> pad;
+
+   // ask for the person's name
+   cout &lt;&lt; "Please enter your first name: ";
+
+   // read the name
+   string name;
+   cin >> name;
+
+   // build the message that we intend to write
+   const string greeting = "Hello, " + name + "!";
+
+   // the number of rows and columns to write
+   const int rows = pad * 2 + 3;
+   const string::size_type cols = greeting.size() + pad * 2 + 2;
+
+   // write a blank line to separate the output from the input
+   cout &lt;&lt; endl;
+
+   // write rows rows of output
+   // invariant: we have written r rows so far
+   for (int r = 0; r != rows; ++r) {
+
+      string::size_type c = 0;
+
+      // invariant: we have written c characters so far in the current row
+      while (c != cols) {
+
+         // is it time to write the greeting?
+         if (r == pad + 1 &amp;&amp; c == pad + 1) {
+            cout &lt;&lt; greeting;
+            c += greeting.size();
+         } else {
+
+            // are we on the border?
+            if (r == 0 || r == rows - 1 ||
+                c == 0 || c == cols - 1)
+               cout &lt;&lt; "*";
+            else
+               cout &lt;&lt; " ";
+            ++c;
+         }
+      }
+
+      cout &lt;&lt; endl;
+   }
+
+   return 0;
+}
+</pre>
+</div>
+<p>The output of the program is as follows:</p>
+<div class="example">
+<pre>
+Please enter number of blanks for frame padding: <b>3</b>
+Please enter your first name: <b>Paul</b>
+
+********************
+*                  *
+*                  *
+*                  *
+*   Hello, Paul!   *
+*                  *
+*                  *
+*                  *
+********************</pre>
+</div>
+</div>
+<h2 class="exerciseTitle" id="ex4">Exercise 2-4</h2>
+<p>The framing program writes the mostly blank lines that separate the borders from the greeting one character at a time. Change the program so that it writes all the spaces needed in a single output expression.</p>
+<h3><a class="solutionIconLink" id="ex4_solution_icon_link" href="?showSolution=ex4#ex4" onclick="return ToggleBlock('ex4_solution');"><img decoding="async" class="solutionIcon" id="ex4_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex4_solution_text_link" href="?showSolution=ex4#ex4" onclick="return ToggleBlock('ex4_solution');">Solution</a></h3>
+<div class="solutionText" id="ex4_solution">
+<p>This solution creates a <code>string</code> constant named <code>padding</code> that consists of the appropriate number of spaces to output between the border character and the greeting. It also adds a <code>filler</code> constant that consists of the number of spaces between the borders on lines above and below the greeting.</p>
+<p>In the output loop, after determining that spaces should be output, the program tests to determine if the current row is a padding row or the greeting row, and outputs the appropriate <code>string</code> constant.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iostream>
+#include &lt;string>
+
+// say what standard-library names we use
+using std::cin;
+using std::cout;
+using std::endl;
+using std::string;
+
+int main()
+{
+   // ask for the person's name
+   cout &lt;&lt; "Please enter your first name: ";
+
+   // read the name
+   string name;
+   cin >> name;
+
+   // build the message that we intend to write
+   const string greeting = "Hello, " + name + "!";
+
+   // the number of blanks surrounding the greeting
+   const int pad = 5;
+
+   // the number of rows and columns to write
+   const int rows = pad * 2 + 3;
+   const string::size_type cols = greeting.size() + pad * 2 + 2;
+
+   // string of spaces equal in size to the padding between
+   // the border and the greeting
+   const string padding(pad, ' ');
+
+   // string of spaces to fill the empty area between borders
+   // above and below the greeting
+   const string filler(greeting.size() + pad * 2, ' ');
+
+   // write a blank line to separate the output from the input
+   cout &lt;&lt; endl;
+
+   // write rows rows of output
+   // invariant: we have written r rows so far
+   for (int r = 0; r != rows; ++r) {
+
+      string::size_type c = 0;
+
+      // invariant: we have written c characters so far in the
+      // current row
+      while (c != cols) {
+
+         // is it time to write the greeting?
+         if (r == pad + 1 &amp;&amp; c == pad + 1) {
+            cout &lt;&lt; greeting;
+            c += greeting.size();
+         } else {
+
+            // are we on the border?
+            if (r == 0 || r == rows - 1 ||
+                c == 0 || c == cols - 1) {
+               cout &lt;&lt; "*";
+               ++c;
+            } else {
+
+               // are we on the greeting line?
+               if (r == pad + 1) {
+
+                  // output the padding
+                  cout &lt;&lt; padding;
+                  c += padding.size();
+               } else {
+                  
+                  // output empty space between borders
+                  cout &lt;&lt; filler;
+                  c += filler.size();
+               }
+            }
+         }
+      }
+
+      cout &lt;&lt; endl;
+   }
+
+   return 0;
+}
+</pre>
+</div>
+<p>The output of the program is as follows:</p>
+<div class="example">
+<pre>
+Please enter your first name: <b>Paul</b>
+
+************************
+*                      *
+*                      *
+*                      *
+*                      *
+*                      *
+*     Hello, Paul!     *
+*                      *
+*                      *
+*                      *
+*                      *
+*                      *
+************************</pre>
+</div>
+</div>
+<h2 class="exerciseTitle" id="ex5">Exercise 2-5</h2>
+<p>Write a set of &#8220;*&#8221; characters so that they form a square, a rectangle, and a triangle.</p>
+<h3><a class="solutionIconLink" id="ex5_solution_icon_link" href="?showSolution=ex5#ex5" onclick="return ToggleBlock('ex5_solution');"><img decoding="async" class="solutionIcon" id="ex5_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex5_solution_text_link" href="?showSolution=ex5#ex5" onclick="return ToggleBlock('ex5_solution');">Solution</a></h3>
+<div class="solutionText" id="ex5_solution">
+<p>This solution outputs each of the three figures to be <code>height</code> rows. Changing this constant will change the size of each shape. Each shape is built until <code>height</code> rows have been printed.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iostream>
+#include &lt;string>
+
+// say what standard-library names we use
+using std::cin;
+using std::cout;
+using std::endl;
+using std::string;
+
+int main()
+{
+   // this constant is the height of each figure
+   const int height = 5;
+
+   // these variables are used to track the row and
+   // column count while drawing each figure
+   int row;
+   int col;
+
+   
+   // draw square
+   row = 0;
+   col = 0;
+
+   // draw top line
+   while (col &lt; height) {
+      cout &lt;&lt; '*';
+      ++col;
+   }
+
+   cout &lt;&lt; endl;
+   ++row;
+
+   // draw middle lines
+   while (row &lt; height - 1) {
+
+      col = 0;
+
+      while (col &lt; height) {
+
+         ++col;
+         
+         if (col == 1)
+            cout &lt;&lt; '*';
+         else {
+            if (col == height)
+               cout &lt;&lt; '*';
+            else
+               cout &lt;&lt; ' ';
+         }
+
+      }
+
+      cout &lt;&lt; endl;
+      ++row;
+   }
+
+   // draw bottom line
+   col = 0;
+
+   while (col &lt; height) {
+      cout &lt;&lt; '*';
+      ++col;
+   }
+
+   // new line after figure
+   cout &lt;&lt; endl;
+
+   // blank line between figures
+   cout &lt;&lt; endl;
+
+   // draw rectangle
+   row = 0;
+   col = 0;
+
+   // draw top line
+   while (col &lt; height * 2) {
+      cout &lt;&lt; '*';
+      ++col;
+   }
+
+   cout &lt;&lt; endl;
+   ++row;
+
+   // draw middle lines
+   while (row &lt; height - 1) {
+
+      col = 0;
+
+      while (col &lt;= height * 2) {
+
+         ++col;
+
+         if (col == 1)
+            cout &lt;&lt; '*';
+         else {
+            if (col == height * 2)
+               cout &lt;&lt; '*';
+            else
+               cout &lt;&lt; ' ';
+         }
+      }
+
+      cout &lt;&lt; endl;
+      ++row;
+   }
+
+   // draw bottom line
+   col = 0;
+
+   while (col &lt; height * 2) {
+      cout &lt;&lt; '*';
+      ++col;
+   }
+
+   // new line after figure
+   cout &lt;&lt; endl;
+
+   // blank line between figures
+   cout &lt;&lt; endl;
+
+   // draw triangle
+   row = 0;
+
+   // draw rows above base
+   while (row &lt; height - 1)
+   {
+      col = 0;
+
+      while (col &lt; height + row) {
+
+         ++col;
+
+         if (col == height - row)
+            cout &lt;&lt; '*';
+         else {
+
+            if (col == height + row)
+               cout &lt;&lt; '*';
+            else
+               cout &lt;&lt; ' ';
+         }
+      }
+
+      cout &lt;&lt; endl;
+      ++row;
+   }
+
+   // draw the base
+   col = 0;
+
+   while (col &lt; height * 2 - 1) {
+      cout &lt;&lt; '*';
+      ++col;
+   }
+
+   // new line after figure
+   cout &lt;&lt; endl;
+
+   return 0;
+}
+</pre>
+</div>
+<p>The output of the program is as follows:</p>
+<div class="example">
+<pre>
+*****
+*   *
+*   *
+*   *
+*****
+
+**********
+*        *
+*        *
+*        *
+**********
+
+    *
+   * *
+  *   *
+ *     *
+*********</pre>
+</div>
+</div>
+<h2 class="exerciseTitle" id="ex6">Exercise 2-6</h2>
+<p>What does the following code do?</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+int i = 0;
+while (i < 10) {
+    i += 1;
+    std::cout << i << std::endl;
+}</pre>
+</div>
+<h3><a class="solutionIconLink" id="ex6_solution_icon_link" href="?showSolution=ex6#ex6" onclick="return ToggleBlock('ex6_solution');"><img decoding="async" class="solutionIcon" id="ex6_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex6_solution_text_link" href="?showSolution=ex6#ex6" onclick="return ToggleBlock('ex6_solution');">Solution</a></h3>
+<div class="solutionText" id="ex6_solution">
+<p>This code counts from 1 to 10, displaying each number on a new line as it counts.</p>
+<div class="example">
+<pre>
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre>
+</div>
+</div>
+<h2 class="exerciseTitle" id="ex7">Exercise 2-7</h2>
+<p>Write a program to count down from <code>10</code> to <code>-5</code>.</p>
+<h3><a class="solutionIconLink" id="ex7_solution_icon_link" href="?showSolution=ex7#ex7" onclick="return ToggleBlock('ex7_solution');"><img decoding="async" class="solutionIcon" id="ex7_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex7_solution_text_link" href="?showSolution=ex7#ex7" onclick="return ToggleBlock('ex7_solution');">Solution</a></h3>
+<div class="solutionText" id="ex7_solution">
+<p>The loop variable starts at 11, which is outside the beginning of the range. The program decrements the loop variable until it is equal to the end of the range.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iostream>
+using std::cout;
+using std::endl;
+
+int main()
+{
+   int i = 11;
+   while (i > -5) {
+      --i;
+      cout &lt;&lt; i &lt;&lt; endl;
+   }
+}
+</pre>
+</div>
+<p>The output of the program is as follows:</p>
+<div class="example">
+<pre>
+10
+9
+8
+7
+6
+5
+4
+3
+2
+1
+0
+-1
+-2
+-3
+-4
+-5
+</pre>
+</div>
+</div>
+<h2 class="exerciseTitle" id="ex8">Exercise 2-8</h2>
+<p>Write a program to generate the product of the numbers in the range <code>[1,10)</code>.</p>
+<h3><a class="solutionIconLink" id="ex8_solution_icon_link" href="?showSolution=ex8#ex8" onclick="return ToggleBlock('ex8_solution');"><img decoding="async" class="solutionIcon" id="ex8_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex8_solution_text_link" href="?showSolution=ex8#ex8" onclick="return ToggleBlock('ex8_solution');">Solution</a></h3>
+<div class="solutionText" id="ex8_solution">
+<p>The half-open range <code>[1,10)</code> includes the numbers 1 through 9. The program loops until all the numbers in the range have been multiplied. The variable <code>product</code> contains the product of the range when the loop exits.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iostream>
+using std::cout;
+using std::endl;
+
+int main()
+{
+   int product = 1;
+   int i = 0;
+   
+   while (i &lt; 9) {
+      ++i;
+      product *= i;
+   }
+   cout &lt;&lt; product &lt;&lt; endl;
+}
+</pre>
+</div>
+<p>The output of the program is as follows:</p>
+<div class="example">
+<pre>
+362880
+</pre>
+</div>
+</div>
+<h2 class="exerciseTitle" id="ex9">Exercise 2-9</h2>
+<p>Write a program that asks the user to enter two numbers and tells the user which number is larger than the other.</p>
+<h3><a class="solutionIconLink" id="ex9_solution_icon_link" href="?showSolution=ex9#ex9" onclick="return ToggleBlock('ex9_solution');"><img decoding="async" class="solutionIcon" id="ex9_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex9_solution_text_link" href="?showSolution=ex9#ex9" onclick="return ToggleBlock('ex9_solution');">Solution</a></h3>
+<div class="solutionText" id="ex9_solution">
+<p>The program asks the user for two numbers, then tests if the first number is less than the second number. If the first number is the larger number, the program reports that fact; otherwise, it reports that the second number is the larger number.</p>
+<p>This program does not handle the situation where the two numbers are equal.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iostream>
+using std::cin;
+using std::cout;
+using std::endl;
+
+int main()
+{
+   int first;
+   cout &lt;&lt; "Enter the first number: ";
+   cin >> first;
+   cout &lt;&lt; endl;
+   
+   int second;
+   cout &lt;&lt; "Enter the second number: ";
+   cin >> second;
+   cout &lt;&lt; endl;
+
+   if (first > second)
+   {
+      cout &lt;&lt; "The number " &lt;&lt; first &lt;&lt; " is the larger number." &lt;&lt; endl;
+   }
+   else if (second > first)
+   {
+      cout &lt;&lt; "The number " &lt;&lt; second &lt;&lt; " is the larger number." &lt;&lt; endl;
+   }
+   else
+   {
+      cout &lt;&lt; "The numbers are equal." &lt;&lt; endl;
+   }
+}
+</pre>
+</div>
+<p>The output of the program is as follows:</p>
+<div class="example">
+<pre>
+Enter the first number: <b>3</b>
+
+Enter the second number: <b>5</b>
+
+The number 5 is the larger number.
+</pre>
+</div>
+</div>
+<h2 class="exerciseTitle" id="ex10">Exercise 2-10</h2>
+<p>Explain each of the uses of <code>std::</code> in the following program:</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+int main()
+{
+   int k = 0;
+   while (k != n) {          // invariant: we have written k asterisks so far
+      using std::cout;
+      cout &lt;&lt; "*";
+      ++k;
+   }
+   std::cout &lt;&lt; std::endl;   // std:: is required here
+   return 0;
+}
+</pre>
+</div>
+<h3><a class="solutionIconLink" id="ex10_solution_icon_link" href="?showSolution=ex10#ex10" onclick="return ToggleBlock('ex10_solution');"><img decoding="async" class="solutionIcon" id="ex10_solution_icon" src="/images/plus.gif" alt="expand/collapse icon" border="0" /></a> <a class="solutionTextLink" id="ex10_solution_text_link" href="?showSolution=ex10#ex10" onclick="return ToggleBlock('ex10_solution');">Solution</a></h3>
+<div class="solutionText" id="ex10_solution">
+<p>The first use of <code>std::</code> is in the <code>using</code>-declaration. The name <code>cout</code> is declared to mean <code>std::cout</code>. The second time <code>std::</code> appears is to make use of the <code>std::cout</code> stream to output a blank line. Because the <code>using</code>-declaration does not apply at this line, the <code>std::</code> namespace must be used explicitly. The last use of <code>std::</code> is to output a new line with the <code>std::endl</code> manipulator.</p>
+</div>
+<p><!-- the end --></p>
+
+
+</body>
+</html>

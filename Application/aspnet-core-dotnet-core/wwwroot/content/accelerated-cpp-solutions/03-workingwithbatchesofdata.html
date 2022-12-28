@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chapter 3 &#8211; Working with Batches of Data</title>
+    <meta http-equiv="date" content="2011-02-22T00:13:20" />
+    <meta http-equiv="last-modified" content="2016-02-17T12:16:27" />
+</head>
+<body>
+    <h1>Chapter 3 &#8211; Working with Batches of Data</h1>
+<p>Solutions to exercises in Chapter 3 of <a href="http://www.acceleratedcpp.com/" target="_blank">Accelerated C++</a>, &#8220;Working with batches of data.&#8221;</p>
+<h2 id="ex1" class="exerciseTitle">Exercise 3-1</h2>
+<p>Suppose we wish to find the median of a collection of values. Assume that we have read some of the values so far, and that we have no idea how many values remain to be read. Prove that we cannot afford to discard any of the values that we have read. <em>Hint:</em> One proof strategy is to assume that we can discard a value, and then find values for the unread &#8211; and therefore unknown &#8211; part of our collection that would cause the median to be the value that we discarded.</p>
+<h3><a id="ex1_hint_icon_link" class="hintIconLink" onclick="return ToggleBlock('ex1_hint');" href="?showHint=ex1#ex1"><img decoding="async" id="ex1_hint_icon" class="hintIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex1_hint_text_link" class="hintTextLink" onclick="return ToggleBlock('ex1_hint');" href="?showHint=ex1#ex1">Hint</a></h3>
+<div id="ex1_hint" class="hintText">
+<p>There is more than one way to prove this. Consider the definition of <em>median</em> and the steps described in the chapter to calculate it.</p>
+</div>
+<h3><a id="ex1_solution_icon_link" class="solutionIconLink" onclick="return ToggleBlock('ex1_solution');" href="?showSolution=ex1#ex1"><img decoding="async" id="ex1_solution_icon" class="solutionIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex1_solution_text_link" class="solutionTextLink" onclick="return ToggleBlock('ex1_solution');" href="?showSolution=ex1#ex1">Solution</a></h3>
+<div id="ex1_solution" class="solutionText">
+<p>Given the following:</p>
+<ul>
+<li>The median is the numeric value separating the higher half of a set of values from the lower half.</li>
+<li>The set of values must be sorted (e.g., arranged from lowest value to highest value) in order to determine the median.</li>
+<li>The midpoint is determined by examining the complete set of sorted values.</li>
+</ul>
+<p>It follows that if any previously read items in the set are discarded, and a value is read that changes the midpoint of the set to a number that was previously discarded, the midpoint cannot be accurately calculated.</p>
+<p>For example, we will assume a strategy of retaining the middle three numbers of an odd number of inputs and the middle two numbers of an even number of inputs. New inputs will be sorted into the retained set.</p>
+<p>The numbers 1, 3, and 5 are read, and the midpoint of this set is determined to be 3. The next number read is 15, so the median may be calculated as the average of 3 and 5 (4). The values 3 and 5 are retained, and the first and last values (1 and 15) are discarded. The next number read is 1, so the new midpoint is assumed to be 3. The numbers 1, 3, and 5 are retained. If the final numbers read are 29, 40, and 33, then the median of the complete set should be 15. This number, however, has been discarded, and cannot be calculated from the numbers that have been retained.</p>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 id="ex2" class="exerciseTitle">Exercise 3-2</h2>
+<p>Write a program to compute and print the quartiles (that is, the quarter of the numbers with the largest values, the next highest quarter, and so on) of a set of integers.</p>
+<h3><a id="ex2_hint_icon_link" class="hintIconLink" onclick="return ToggleBlock('ex2_hint');" href="?showHint=ex2#ex2"><img decoding="async" id="ex2_hint_icon" class="hintIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex2_hint_text_link" class="hintTextLink" onclick="return ToggleBlock('ex2_hint');" href="?showHint=ex2#ex2">Hint</a></h3>
+<div id="ex2_hint" class="hintText">
+<p>Calculate the median on the entire set of integers, then calculate the median of the lower half and the median of the upper half to obtain the quartiles. Also, consider that even though the input values are integers, the median calculations may contain fractional values.</p>
+</div>
+<h3><a id="ex2_solution_icon_link" class="solutionIconLink" onclick="return ToggleBlock('ex2_solution');" href="?showSolution=ex2#ex2"><img decoding="async" id="ex2_solution_icon" class="solutionIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex2_solution_text_link" class="solutionTextLink" onclick="return ToggleBlock('ex2_solution');" href="?showSolution=ex2#ex2">Solution</a></h3>
+<div id="ex2_solution" class="solutionText">
+<p>This solution reads integers from the user, but the integers are placed into a <code>vector</code> of <code>double</code> values. The quartile calculations are <code>doubles</code> as well, since a quartile may be the average of two integers such as 2 and 3, yielding a floating-point result of 2.5.</p>
+<p>The calculation of the lower and upper quartiles is a little more tricky than the calculation of the median because there are four situations that need to be handled:</p>
+<ul>
+<li>An odd number of total values with an odd number of values above and below the midpoint.</li>
+<li>An odd number of total values with an even number of values above and below the midpoint.</li>
+<li>An even number of total values with an odd number of values above and below the midpoint.</li>
+<li>An even number of total values with an even number of values above and below the midpoint.</li>
+</ul>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;algorithm>
+#include &lt;iostream>
+#include &lt;vector>
+
+using std::cin;
+using std::cout;
+using std::endl;
+using std::sort;
+using std::vector;
+
+int main()
+{
+   // ask for and read the integers
+   cout &lt;&lt; "Please enter the integers that are to be "
+      "arranged into quartiles, followed by end-of-file: ";
+
+   vector&lt;double> values;
+   int x;
+
+   // invariant: values contains all of the integers read so far
+   while (cin >> x)
+      values.push_back(x);
+
+   typedef vector&lt;double>::size_type vec_sz;
+   vec_sz size = values.size();
+
+   // check that the user entered more than one value, since a 
+   // single value would cause an error
+   if (size &lt; 2)
+   {
+      cout &lt;&lt; endl &lt;&lt; "You must enter at least two values. " 
+         "Please try again." &lt;&lt; endl;
+      return 1;
+   }
+
+   // sort the values
+   sort(values.begin(), values.end());
+
+   // find the median of the entire set of values
+   vec_sz mid = size/2;
+   double median;
+   median = size % 2 == 0 ? (values[mid] + values[mid-1]) / 2
+      : values[mid];
+
+   // find the size of the lower and upper sets
+   vec_sz half_size = size % 2 == 0 ? mid : (mid % 2 == 0 ? mid - 1 : mid);
+
+   // find the midpoint of the lower and upper sets
+   vec_sz half_mid = half_size / 2;
+
+   // find the median of the lower set, which is the lower quartile
+   double lower_quartile;
+   lower_quartile = half_size % 2 == 0 ? (values[half_mid] + values[half_mid-1]) / 2
+      : values[half_mid];
+
+   // find the median of the upper set, which is the upper quartile
+   vec_sz upper_mid = size % 2 == 0 ? half_size + half_mid : half_size + half_mid + 1;
+   double upper_quartile;
+   upper_quartile = half_size % 2 == 0 ? (values[upper_mid] + values[upper_mid-1]) / 2
+      : values[upper_mid];
+
+   cout &lt;&lt; "The quartiles are " &lt;&lt; lower_quartile &lt;&lt; ", " 
+      &lt;&lt; median &lt;&lt; ", and " &lt;&lt; upper_quartile &lt;&lt; endl;
+
+   return 0;
+}
+</pre>
+</div>
+<p>When executed, the program gives the following output:</p>
+<div class="example">
+<pre>
+Please enter the integers that are to be arranged into quartiles, followed by end-of-file: 11
+43
+7
+24
+89
+10
+^Z
+The quartiles are 10, 17.5, and 43
+</pre>
+</div>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 id="ex3" class="exerciseTitle">Exercise 3-3</h2>
+<p>Write a program to count how many times each distinct word appears in its input.</p>
+<h3><a id="ex3_hint_icon_link" class="hintIconLink" onclick="return ToggleBlock('ex3_hint');" href="?showHint=ex3#ex3"><img decoding="async" id="ex3_hint_icon" class="hintIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex3_hint_text_link" class="hintTextLink" onclick="return ToggleBlock('ex3_hint');" href="?showHint=ex3#ex3">Hint</a></h3>
+<div id="ex3_hint" class="hintText">
+<p>Use a <code>vector</code> to store the words, then sort the <code>vector</code>. That way you can count the words, in order, as you iterate over the <code>vector</code>.</p>
+</div>
+<h3><a id="ex3_solution_icon_link" class="solutionIconLink" onclick="return ToggleBlock('ex3_solution');" href="?showSolution=ex3#ex3"><img decoding="async" id="ex3_solution_icon" class="solutionIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex3_solution_text_link" class="solutionTextLink" onclick="return ToggleBlock('ex3_solution');" href="?showSolution=ex3#ex3">Solution</a></h3>
+<div id="ex3_solution" class="solutionText">
+<p>This solution stores the words in a <code>vector</code>, sorts the <code>vector</code>, then retrieves each word from the <code>vector</code> and increments a count each time the same word is retrieved from the <code>vector</code>. When a word is retrieved from the <code>vector</code> that does not match the previous word, the count is reported for the last word, then reset for the new word.</p>
+<p>Note that this program does not account for differences in case.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;algorithm>
+#include &lt;iostream>
+#include &lt;string>
+#include &lt;vector>
+
+using std::cin;
+using std::cout;
+using std::endl;
+using std::sort;
+using std::string;
+using std::vector;
+
+int main()
+{
+   // Ask for and read the words
+   cout &lt;&lt; "Please enter a few words, followed by end-of-file: ";
+
+   vector&lt;string> words;
+   string word;
+
+   // Invariant: words contains all of the words read so far
+   while (cin >> word)
+      words.push_back(word);
+
+   typedef vector&lt;string>::size_type vec_sz;
+   vec_sz size = words.size();
+
+   // Check that the user entered some words
+   if (size == 0)
+   {
+      cout &lt;&lt; endl &lt;&lt; "You didn't enter any words. " 
+         "Please try again." &lt;&lt; endl;
+      return 1;
+   }
+
+   // sort the words
+   sort(words.begin(), words.end());
+
+   string current_word;
+   int count;
+
+   // Set the initial word to the first word in the vector
+   current_word = words[0];
+
+   // Set the initial count for the first word
+   count = 1;
+
+   // Invariant: we have counted current_index of the total words 
+   // in the vector
+   for (vec_sz current_index = 1; current_index &lt; size; ++current_index)
+   {
+      // Report the count for the current word if it does not match 
+      // the word at the current index in the vector, and reset the 
+      // count to zero so that it will one when the variable is 
+      // incremented outside the if statement.
+      if (current_word != words[current_index])
+      {
+         cout &lt;&lt; "The word \"" &lt;&lt; current_word &lt;&lt; "\" appears " 
+            &lt;&lt; count &lt;&lt; " times." &lt;&lt; endl;
+
+         current_word = words[current_index];
+         count = 0;
+      }
+
+      ++count;
+   }
+
+   // Report the count for the final word
+   cout &lt;&lt; "The word \"" &lt;&lt; current_word &lt;&lt; "\" appears " 
+      &lt;&lt; count &lt;&lt; " times." &lt;&lt; endl;
+
+   // We have reported the count of all the words in the vector, so exit.
+   return 0;
+}
+</pre>
+</div>
+<p>When executed, the program gives the following output:</p>
+<div class="example">
+<pre>
+Please enter a few words, followed by end-of-file: Na
+na
+na
+na
+hey
+hey
+goodbye
+^Z
+The word "Na" appears 1 times.
+The word "goodbye" appears 1 times.
+The word "hey" appears 2 times.
+The word "na" appears 3 times.
+</pre>
+</div>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 id="ex4" class="exerciseTitle">Exercise 3-4</h2>
+<p>Write a program to report the length of the longest and shortest <code>string</code> in its input.</p>
+<h3><a id="ex4_hint_icon_link" class="hintIconLink" onclick="return ToggleBlock('ex4_hint');" href="?showHint=ex4#ex4"><img decoding="async" id="ex4_hint_icon" class="hintIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex4_hint_text_link" class="hintTextLink" onclick="return ToggleBlock('ex4_hint');" href="?showHint=ex4#ex4">Hint</a></h3>
+<div id="ex4_hint" class="hintText">
+<p>For each word that is input, keep track of the shortest and longest words you&#8217;ve encountered.</p>
+</div>
+<h3><a id="ex4_solution_icon_link" class="solutionIconLink" onclick="return ToggleBlock('ex4_solution');" href="?showSolution=ex4#ex4"><img decoding="async" id="ex4_solution_icon" class="solutionIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex4_solution_text_link" class="solutionTextLink" onclick="return ToggleBlock('ex4_solution');" href="?showSolution=ex4#ex4">Solution</a></h3>
+<div id="ex4_solution" class="solutionText">
+<p>Create two variables of type <code>string::size_type</code>: one to hold the shortest size, and one to hold the longest size. As the program proceeds through the input loop it first checks to see if <code>shortest_size</code> has been assigned a value other than zero. If not, it assigns it the first string&#8217;s size; otherwise it checks to see if the current string is shortest than <code>shortest_size</code>. It then checks to see if the current string is longer than <code>longest_size</code>.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iostream>
+#include &lt;string>
+
+using std::cin;
+using std::cout;
+using std::endl;
+using std::string;
+
+int main()
+{
+   // Ask for and read the words
+   cout &lt;&lt; "Please enter a few words, followed by end-of-file: ";
+
+   string::size_type shortest_size = 0;
+   string::size_type longest_size = 0;
+
+   string word;
+
+   while (cin >> word)
+   {
+      // If shortest_size is zero, it hasn't been assigned yet. 
+      // Otherwise, see if the current word is shorter. If so, assign 
+      // the current word's size to shortest_size.
+      if (shortest_size == 0 
+          || word.size() &lt; shortest_size)
+         shortest_size = word.size();
+
+      // See if the current word is longer than longest_size. If so, 
+      // assign the current word's size to longest_size.
+      if (word.size() > longest_size)
+         longest_size = word.size();
+   }
+
+   // Report the lengths of the shortest and longest words
+   cout &lt;&lt; "The length of the shortest word is " &lt;&lt; shortest_size 
+      &lt;&lt; " and the length of the longest word is " &lt;&lt; longest_size
+      &lt;&lt; endl;
+
+   return 0;
+}
+</pre>
+</div>
+<p>When executed the output looks like the following:</p>
+<div class="example">
+<pre>
+Please enter a few words, followed by end-of-file: this
+was
+their
+finest
+hour
+^Z
+The length of the shortest word is 3 and the length of the longest word is 6
+</pre>
+</div>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 id="ex5" class="exerciseTitle">Exercise 3-5</h2>
+<p>Write a program that will keep track of grades for several students at once. The program could keep two <code>vector</code>s in sync. The first should hold the student&#8217;s names, and the second the final grades that can be computed as input is read. For now, you should assume a fixed number of homework grades. We&#8217;ll see in §4.1.3/56 how to handle a variable number of grades intermixed with student names.</p>
+<h3><a id="ex5_hint_icon_link" class="hintIconLink" onclick="return ToggleBlock('ex5_hint');" href="?showHint=ex5#ex5"><img decoding="async" id="ex5_hint_icon" class="hintIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex5_hint_text_link" class="hintTextLink" onclick="return ToggleBlock('ex5_hint');" href="?showHint=ex5#ex5">Hint</a></h3>
+<div id="ex5_hint" class="hintText">
+<p>As suggested, use two vectors. Define a maximum number of grades to request for each student. The grades vector will contain that number of grades multiplied by the number of students entered.</p>
+</div>
+<h3><a id="ex5_solution_icon_link" class="solutionIconLink" onclick="return ToggleBlock('ex5_solution');" href="?showSolution=ex5#ex5"><img decoding="async" id="ex5_solution_icon" class="solutionIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex5_solution_text_link" class="solutionTextLink" onclick="return ToggleBlock('ex5_solution');" href="?showSolution=ex5#ex5">Solution</a></h3>
+<div id="ex5_solution" class="solutionText">
+<p>This solution uses two vectors as suggested in the exercise description. The first vector contains the names of each student, and the second vector contains five grades per student. The total number of grades requested for each student is controlled by a constant, <code>max_grades</code>.</p>
+<p>This program expects the user to press the enter key after each grade to prevent the program from gathering too many grades. If the user enters more than <code>max_grades</code> numbers on one line, the program will function incorrectly. We will see in later chapters how to avoid this problem.</p>
+<p>After the user presses the end-of-file key at the prompt for the next student name, the program will loop through the <code>student_names</code> and <code>student_grades</code> vectors to output each student&#8217;s grades and the average of those grades.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iostream>
+#include &lt;string>
+#include &lt;vector>
+
+using std::cin;
+using std::cout;
+using std::endl;
+using std::string;
+using std::vector;
+
+int main()
+{
+   /* The number of grades accepted may be modified by changing this constant. */
+   const int max_grades = 5;
+
+   vector&lt;string> student_names;
+   vector&lt;double> student_grades;
+
+   cout &lt;&lt; "Please enter the first student's name: ";
+   string name;
+
+   int grade;
+   int grade_count;
+
+   while (cin >> name)
+   {
+      cout &lt;&lt; "Enter " &lt;&lt; max_grades &lt;&lt; " grades for " &lt;&lt; name &lt;&lt; ": ";
+
+      student_names.push_back(name);
+      grade_count = 0;
+
+      while (grade_count &lt; max_grades && cin >> grade)
+      {
+         student_grades.push_back(grade);
+         ++grade_count;
+      }
+
+      cout &lt;&lt; "Please enter the next student's name "
+         "or end-of-file to exit: ";
+   }
+
+   cout &lt;&lt; endl;
+   cout &lt;&lt; "** Grades and averages for each student **" &lt;&lt; endl;
+
+   typedef vector&lt;string>::size_type name_vec_sz;
+   name_vec_sz student_count = student_names.size();
+
+   typedef vector&lt;double>::size_type grade_vec_sz;
+   grade_vec_sz grade_index = 0;
+
+   double grade_total;
+
+   /* For each student in student_names, retrieve max_grades values from 
+   student_grades, output each grade, then calculate and output average. */
+   for (name_vec_sz student_name_index = 0; 
+        student_name_index &lt; student_count; 
+        ++student_name_index)
+   {
+      /* Reset the accumulator for each student */
+      grade_total = 0;
+
+      cout &lt;&lt; "Student: " &lt;&lt; student_names[student_name_index] &lt;&lt; endl;
+      cout &lt;&lt; "Grades: ";
+
+      /* Retrieve only max_grades grades from student_grades vector */
+      for (grade_count = 0; grade_count &lt; max_grades; ++grade_count)
+      {
+         cout &lt;&lt; student_grades[grade_index] &lt;&lt; " ";
+         grade_total += student_grades[grade_index];
+         ++grade_index;
+      }
+
+      cout &lt;&lt; endl;
+      cout &lt;&lt; "Average: " &lt;&lt; grade_total / max_grades &lt;&lt; endl;
+      cout &lt;&lt; endl;
+   }
+
+   return 0;
+}
+</pre>
+</div>
+<p>When executed the output is as follows:</p>
+<div class="example">
+<pre>
+Please enter the first student's name: Larry
+Enter 5 grades for Larry: 89
+88
+78
+98
+85
+Please enter the next student's name or end-of-file to exit: Moe
+Enter 5 grades for Moe: 99
+88
+79
+78
+96
+Please enter the next student's name or end-of-file to exit: Curly
+Enter 5 grades for Curly: 99
+98
+99
+97
+100
+Please enter the next student's name or end-of-file to exit: ^Z
+
+** Grades and averages for each student **
+Student: Larry
+Grades: 89 88 78 98 85
+Average: 87.6
+
+Student: Moe
+Grades: 99 88 79 78 96
+Average: 88
+
+Student: Curly
+Grades: 99 98 99 97 100
+Average: 98.6
+</pre>
+</div>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+<h2 id="ex6" class="exerciseTitle">Exercise 3-6</h2>
+<p>The average-grade computation in §3.1/36 might divide by zero if the student didn&#8217;t enter any grades. Division by zero is undefined in C++, which means that the implementation is permitted to do anything it likes. What does your C++ implementation do in this case? Rewrite the program so that its behavior does not depend on how the implementation treats division by zero.</p>
+<h3><a id="ex6_hint_icon_link" class="hintIconLink" onclick="return ToggleBlock('ex6_hint');" href="?showHint=ex6#ex6"><img decoding="async" id="ex6_hint_icon" class="hintIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex6_hint_text_link" class="hintTextLink" onclick="return ToggleBlock('ex6_hint');" href="?showHint=ex6#ex6">Hint</a></h3>
+<div id="ex6_hint" class="hintText">
+<p>Look in the code and see which variable could be used as the denominator in division. Test that value against zero prior to the calculation and take appropriate action.</p>
+</div>
+<h3><a id="ex6_solution_icon_link" class="solutionIconLink" onclick="return ToggleBlock('ex6_solution');" href="?showSolution=ex6#ex6"><img decoding="async" id="ex6_solution_icon" class="solutionIcon" src="/images/plus.gif" border="0" alt="expand/collapse icon" /></a> <a id="ex6_solution_text_link" class="solutionTextLink" onclick="return ToggleBlock('ex6_solution');" href="?showSolution=ex6#ex6">Solution</a></h3>
+<div id="ex6_solution" class="solutionText">
+<p>On my Windows 7 64-bit system, running the exercise as compiled by Visual Studio 2010 Professional, pressing end-of-file when the first grades are requested generates the following output:</p>
+<div class="example">
+<pre>
+Please enter your first name: Paul
+Hello, Paul!
+Please enter your midterm and final exam grades: ^Z
+Enter all your homework grades, followed by end-of-file: Your final grade is -1.#J
+</pre>
+</div>
+<p>The odd-looking output &#8220;-1.#J&#8221; is the result of the division of <code>sum</code> by zero. Internally, this number is &#8220;-1.#IND&#8221; which means &#8220;indeterminate.&#8221; Other systems might output &#8220;nan&#8221; or &#8220;NaN,&#8221; meaning &#8220;not a number.&#8221;</p>
+<p>To prevent division by zero, test the <code>count</code> variable before using it as the denominator in the division calculation and report the error to the user.</p>
+<div class="example">
+<pre class="lang:cpp decode:true">
+#include &lt;iomanip>
+#include &lt;ios>
+#include &lt;iostream>
+#include &lt;string>
+
+using std::cin;
+using std::cout;
+using std::endl;
+using std::setprecision;
+using std::string;
+using std::streamsize;
+
+int main()
+{
+   // ask for and read the student's name
+   cout &lt;&lt; "Please enter your first name: ";
+   string name;
+   cin >> name;
+   cout &lt;&lt; "Hello, " &lt;&lt; name &lt;&lt; "!" &lt;&lt; endl;
+
+   // ask for and read the midterm and final grades
+   cout &lt;&lt; "Please enter your midterm and final exam grades: ";
+   double midterm, final;
+   cin >> midterm >> final;
+
+   // ask for the homework grades
+   cout &lt;&lt; "Enter all your homework grades, "
+      "followed by end-of-file: ";
+
+   // the number and sum of grades read so far
+   int count = 0;
+   double sum = 0;
+
+   // a variable into which to read
+   double x;
+
+   // invariant:
+   //   we have read count grades so far, and
+   //   sum is the sum of the first count grades
+   while (cin >> x) {
+      ++count;
+      sum += x;
+   }
+
+   if (count == 0)
+   {
+      cout &lt;&lt; endl &lt;&lt; "No grades were entered. Your final grade cannot be calculated." &lt;&lt; endl;
+      return 1;
+   }
+
+   // write the result
+   streamsize prec = cout.precision();
+   cout &lt;&lt; "Your final grade is " &lt;&lt; setprecision(3) 
+        &lt;&lt; 0.2 * midterm + 0.4 * final + 0.4 * sum / count 
+        &lt;&lt; setprecision(prec) &lt;&lt; endl;
+
+   return 0;
+}
+</pre>
+</div>
+<p>When executed and no grades are entered the output is as follows:</p>
+<div class="example">
+<pre>
+Please enter your first name: Paul
+Hello, Paul!
+Please enter your midterm and final exam grades: ^Z
+Enter all your homework grades, followed by end-of-file:
+No grades were entered. Your final grade cannot be calculated.
+</pre>
+</div>
+</div>
+<p><!-- ************************************************************************************************************* --></p>
+
+
+</body>
+</html>
