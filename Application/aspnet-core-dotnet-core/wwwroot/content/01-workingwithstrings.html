@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Accelerated C++ Chapter 1 &#8211; Working With Strings</title>
+    <meta http-equiv="date" content="2011-02-19T17:27:47" />
+    <meta http-equiv="last-modified" content="2016-02-17T12:10:47" />
+    <link rel="stylesheet" href="/css/acpp.css" />
+    <link rel="stylesheet" href="/highlightjs/styles/default.min.css" />
+    <script src="/highlightjs/highlight.min.js"></script>
+    <script src="/js/htmx.min.js"></script>
+</head>
+
+<body>
+    <h1>Accelerated C++ Chapter 1 &#8211; Working With Strings</h1>
+    <p>
+        Solutions to exercises in Chapter 1 of <a href="http://www.acceleratedcpp.com/" target="_blank">Accelerated C++</a>,
+        &#8220;Working with strings.&#8221;
+    </p>
+
+    <div id="ex1" class="exercise">
+        <h2>Exercise 1-1</h2>
+        <p>Are the following definitions valid? Why or why not?</p>
+
+<pre><code class="language-cpp">const std::string hello = "Hello";
+const std::string message = hello + ", world" + "!";</code></pre>
+
+        <div>
+            <input id="ex1_solution" type="checkbox" class="hide-input" />
+            <label for="ex1_solution" class="toggle">Show solution</label>
+            <div class="toggle-el">
+                <p>
+                    Yes, these declarations are valid. The first line initializes the variable <code>hello</code> to the string
+                    <code>"Hello"</code>. The second line initializes the variable <code>message</code> with a concatenation of
+                    <code>hello</code>, the string <code>", world"</code>, and the string <code>"!"</code>.
+                </p>
+                <p>
+                    The second line works because the <code>+</code> operator is left-associative. First it concatenates
+                    <code>hello</code> and <code>", world"</code>, which yields a <code>std::string</code> value. This value is then
+                    concatenated with <code>"!"</code> to yield the value with which <code>message</code> is initialized.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="ex2" class="exercise">
+        <h2>Exercise 1-2</h2>
+        <p>Are the following definitions valid? Why or why not?</p>
+
+<pre class="lang:cpp decode:true"><code class="language-cpp">const std::string exclam = "!";
+const std::string message = "Hello" + ", world" + exclam;
+</code></pre>
+
+        <div>
+            <input id="ex2_solution" type="checkbox" class="hide-input" />
+            <label for="ex2_solution" class="toggle">Show solution</label>
+            <div class="toggle-el">
+                <p>
+                    The first line is valid because it initializes the variable <code>exclam</code> with the value <code>"!"</code>.
+                    The second line is not valid, however. The reason is that the <code>+</code> operator is left-associative. This
+                    means that it is being used to concatenate <code>"Hello"</code> and <code>", world"</code>, which is not legal
+                    because one of the operands must be a <code>std::string</code> object. In the exercise, <code>"Hello"</code> and
+                    <code>", world"</code> are both string literals.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="ex3" class="exercise">
+        <h2>Exercise 1-3</h2>
+        <p>Is the following program valid? Is so, what does it do? If not, why not?</p>
+
+        <div hx-get="/src/content/accelerated-cpp-solutions/src/exercise-1-3.cpp?language=cpp" hx-trigger="load"></div>
+
+        <div>
+            <input id="ex3_solution" type="checkbox" class="hide-input" />
+            <label for="ex3_solution" class="toggle">Show solution</label>
+            <div class="toggle-el">
+                <p>
+                    Yes, this is a valid program. It contains two scopes, and in each scope there is a variable of type
+                    <code>std::string</code> named <code>s</code>. The variable ceases to exist at the end of each scope. The output
+                    of the program is as follows:
+                </p>
+<pre><code class="language-plaintext">a string
+another string</code></pre>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="ex4" class="exercise">
+        <h2>Exercise 1-4</h2>
+        <p>What about this one? What if we change }} to };} in the third line from the end?</p>
+
+        <div hx-get="/src/content/accelerated-cpp-solutions/src/exercise-1-4-question.cpp?language=cpp" hx-trigger="load"></div>
+
+        <div>
+            <input id="ex4_solution" type="checkbox" class="hide-input" />
+            <label for="ex4_solution" class="toggle">Show solution</label>
+            <div class="toggle-el">
+                <p>
+                    Yes, this is a valid program. There is a scope nested inside of an outer scope. Because the inner scope defines a
+                    variable named <code>s</code>, it hides the variable of the same name that is defined in the outer scope.
+                </p>
+                <p>
+                    Changing the }} to };} in the third line from the end will have no effect on the meaning of the program. The
+                    semicolon denotes an empty statement in this situation.
+                </p>
+
+                <div hx-get="/src/content/accelerated-cpp-solutions/src/exercise-1-4-solution.cpp?language=cpp" hx-trigger="load"></div>
+
+                <p>The output of the program is as follows:</p>
+
+<pre><code class="language-plaintext">a string
+another string</code></pre>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="exercise">
+        <h2 class="exerciseTitle" id="ex5">Exercise 1-5</h2>
+        <p>Is this a valid program? If so, what does it do? If not, say why not, and rewrite it to be valid.</p>
+
+        <div hx-get="/src/content/accelerated-cpp-solutions/src/exercise-1-5-question.cpp?language=cpp" hx-trigger="load"></div>
+
+        <input id="ex5_solution" type="checkbox" class="hide-input" />
+        <label for="ex5_solution" class="toggle">Show solution</label>
+        <div class="toggle-el">
+            <p>
+                This is not a valid program because the variable <code>x</code> is declared inside a scope, and it is unavailable
+                when the scope ends. Because of this, the line which attempts to output <code>x</code> will not compile.
+            </p>
+            <p>
+                To make this program succeed, the simplest fix is to keep the code in one scope by removing the innermost braces,
+                as follows:
+            </p>
+
+            <div hx-get="/src/content/accelerated-cpp-solutions/src/exercise-1-5-solution.cpp?language=cpp" hx-trigger="load"></div>
+
+            <p>The output of the program is as follows:</p>
+
+<pre><code class="language-plaintext">
+a string
+a string, really</code></pre>
+
+        </div>
+    </div>
+
+    <div class="exercise">
+        <h2 class="exerciseTitle" id="ex6">Exercise 1-6</h2>
+        <p>
+            What does the following program do if, when it asks you for input, you type two names (for example,
+            <code>Samuel Beckett</code>)? Predict the behavior before running the program, then try it.
+        </p>
+
+        <div hx-get="/src/content/accelerated-cpp-solutions/src/exercise-1-6.cpp?language=cpp" hx-trigger="load"></div>
+
+        <input id="ex6_solution" type="checkbox" class="hide-input" />
+        <label for="ex6_solution" class="toggle">Show solution</label>
+        <div class="toggle-el">
+            <p>
+                The first <code>std::cin</code> line will read input until it encounters a space, and store the result in the
+                variable <code>name</code>. The rest of the input remains buffered. The second <code>std::cin</code> line will
+                read the remaining name after the space without pausing to ask for more input. The output of the program is as
+                follows:
+            </p>
+
+<pre><code class="language-plaintext">What is your name? <b>Samuel Beckett</b>
+Hello, Samuel
+And what is yours? Hello, Beckett; nice to meet you, too!</code></pre>
+
+        </div>
+    </div>
+
+    <script>
+        hljs.highlightAll();
+        document.body.addEventListener('htmx:afterSwap', function (evt) {
+            hljs.highlightAll();
+        });
+    </script>
+</body>
+
+</html>
