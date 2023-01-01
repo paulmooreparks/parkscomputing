@@ -48,7 +48,7 @@ namespace aspnet_core_dotnet_core.Pages {
                     PageContent = node.InnerHtml;
                 }
                 else {
-                    //API Call Failed, Check Error Details
+                    return NotFound();
                 }
 
                 var titleElement = doc.DocumentNode.SelectSingleNode("//title");
@@ -80,7 +80,7 @@ namespace aspnet_core_dotnet_core.Pages {
                 }
             }
             catch (Exception) {
-                throw;
+                return NotFound();
             }
 
             return Page();
