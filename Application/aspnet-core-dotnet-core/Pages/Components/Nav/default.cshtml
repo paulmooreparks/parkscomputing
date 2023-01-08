@@ -5,7 +5,7 @@
             <li class='nav-item dropdown'><a class='nav-link dropdown-toggle text-light' href='@link.link' role="button" data-bs-toggle="dropdown">@link.title</a>
             <ul class="dropdown-menu">
                 @foreach (var sublink in link.links) {
-                    <li class='dropdown-item'><a href='@sublink.link'>@sublink.title</a></li>
+                    <li class='dropdown-item'><a href='@sublink.link' @if (!string.IsNullOrEmpty(sublink.target)) {<text>target='@sublink.target'</text>}>@sublink.title</a></li>
                 }
             </ul>
             </li>

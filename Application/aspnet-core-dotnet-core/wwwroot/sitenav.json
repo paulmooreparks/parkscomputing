@@ -8,19 +8,10 @@
         "date": "2022-12-16T00:00:00",
         "links": [
             {
-                "key": "resume",
-                "title": "Résumé",
-                "description": "",
-                "excerpt": "",
-                "link": "/page/resume-of-paul-m-parks",
-                "date": "2022-12-06T13:58:00",
-                "links": []
-            },
-            {
                 "key": "applications",
                 "title": "Applications",
                 "description": "",
-                "excerpt": "Here are some client-based applications I’ve written. Note that not all of these links work yet; I'm still porting the content to the new site.",
+                "excerpt": "Here are some client-based applications I’ve written.",
                 "link": "/nav/applications",
                 "links": [
                     {
@@ -118,26 +109,64 @@
                 ]
             },
             {
+                "key": "links",
+                "title": "Links",
+                "description": "Links to my other sites",
+                "excerpt": "Links to my other sites",
+                "link": "/nav/links",
+                "date": "2023-01-07T17:23:00",
+                "links": [
+                    {
+                        "key": "github",
+                        "title": "GitHub",
+                        "description": "GitHub",
+                        "excerpt": "My GitHub repositories",
+                        "link": "https://github.com/paulmooreparks/",
+                        "target": "_blank",
+                        "date": "2023-01-07T17:23:00",
+                        "links": []
+                    },
+                    {
+                        "key": "linkedin",
+                        "title": "LinkedIn",
+                        "description": "LinkedIn",
+                        "excerpt": "My LinkedIn profile",
+                        "link": "https://www.linkedin.com/in/paulmooreparks/",
+                        "target": "_blank",
+                        "date": "2023-01-07T17:23:00",
+                        "links": []
+                    }
+                ]
+            },
+            {
+                "key": "resume",
+                "title": "Résumé",
+                "description": "",
+                "excerpt": "",
+                "link": "/page/resume-of-paul-m-parks",
+                "date": "2022-12-06T13:58:00",
+                "links": []
+            },
+            {
                 "key": "about",
                 "title": "About",
                 "description": "",
                 "excerpt": "About this site and its author.",
-                "link": "/about",
-                "date": "2022-12-13T15:00:00",
-                "links": []
-            },
-            {
-                "key": "contact",
-                "title": "Contact",
-                "description": "",
-                "excerpt": "How to contact me.",
-                "link": "/contact",
-                "date": "2022-12-13T15:00:00",
+                "link": "/page/about",
+                "date": "2023-01-07T17:14:00",
                 "links": []
             }
         ]
     },
     "posts": [
+        {
+            "key": "accelerated-cpp-solutions-update",
+            "title": "Accelerated C++ Solutions Update",
+            "description": "",
+            "excerpt": "The exercise solutions I started working on years ago are finally back.",
+            "link": "/page/accelerated-cpp-solutions-update",
+            "date": "2023-01-08T19:05:00"
+        },
         {
             "key": "new-website-design",
             "title": "New Website Design",
