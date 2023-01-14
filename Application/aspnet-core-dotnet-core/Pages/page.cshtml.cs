@@ -9,6 +9,7 @@ using HtmlAgilityPack;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Hosting;
+using System.IO;
 
 namespace aspnet_core_dotnet_core.Pages {
     public class PageLoaderModel : Microsoft.AspNetCore.Mvc.RazorPages.PageModel {
@@ -24,12 +25,13 @@ namespace aspnet_core_dotnet_core.Pages {
         public HtmlNodeCollection HeadScriptElements { get; set; }
         public HtmlNodeCollection BodyScriptElements { get; set; }
 
-        private IHostEnvironment Environment { get; set; }
+        protected IHostEnvironment Environment { get; set; }
+
         public PageLoaderModel(IHostEnvironment environment) {
             Environment = environment;
         }
 
-        public IActionResult OnGet() {
+        virtual public IActionResult OnGet() {
             object sectionObject = HttpContext.Request.RouteValues["section"];
             object slugObject = HttpContext.Request.RouteValues["slug"];
             string slug = sectionObject.ToString();
@@ -38,6 +40,10 @@ namespace aspnet_core_dotnet_core.Pages {
                 slug = slugObject.ToString().Trim('/');
             }
 
+            return RetrievePage(slug);
+        }
+
+        protected IActionResult RetrievePage(string slug) {
             try {
                 var path = $"{Environment.ContentRootPath}/wwwroot/content/{slug}.html";
                 var doc = new HtmlDocument();
@@ -78,12 +84,18 @@ namespace aspnet_core_dotnet_core.Pages {
                     var modDate = DateTime.ParseExact(ModifiedGmt, "s", DateTimeFormatInfo.InvariantInfo);
                     Modified = modDate.ToLongDateString();
                 }
+
+                return Page();
             }
-            catch (Exception) {
+            catch (FileNotFoundException) {
                 return NotFound();
             }
-
-            return Page();
+            catch (DirectoryNotFoundException) {
+                return NotFound();
+            }
+            catch (Exception) {
+                return StatusCode(500);
+            }
         }
     }
 }

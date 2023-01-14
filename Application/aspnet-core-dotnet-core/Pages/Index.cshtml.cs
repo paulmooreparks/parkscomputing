@@ -18,20 +18,23 @@ using Newtonsoft.Json;
 using aspnet_core_dotnet_core.Pages.Services;
 using aspnet_core_dotnet_core.Pages.Shared;
 using Microsoft.Extensions.DependencyInjection;
+using HtmlAgilityPack;
+using Microsoft.AspNetCore.Http.HttpResults;
+using System.IO;
 
 namespace aspnet_core_dotnet_core.Pages {
-    public class IndexModel : PageModel {
+    public class IndexModel : PageLoaderModel {
         public INavService NavService { get; set; }
         public NavRoot NavRoot { get; set; }
         public List<string> NavNodes { get; set; } = new();
-        private IHostEnvironment Environment { get; set; }
-        public IndexModel(INavService navService) {
+
+        public IndexModel(INavService navService, IHostEnvironment environment) : base(environment) {
             NavService = navService;
         }
 
-        public IActionResult OnGet() {
+        override public IActionResult OnGet() {
             NavRoot = NavService.GetNavRoot();
-            return Page();
+            return RetrievePage("index");
         }
 
         public string DoTest() {

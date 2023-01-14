@@ -2,12 +2,36 @@
 @using System.Globalization;
 @model IndexModel
 @{
-    ViewData["Title"] = "Home";
+    Layout = "_Layout";
+    ViewData["Title"] = Html.Raw(Model.Title);
 }
+
+@section Meta { @if (Model.MetaElements is not null) { 
+@foreach (var element in @Model.MetaElements) { 
+    @Html.Raw(element.OuterHtml)
+}}
+}
+
+@section Links { @if (Model.LinkElements is not null) { 
+@foreach (var element in @Model.LinkElements) { 
+    @Html.Raw(element.OuterHtml)
+}}
+}
+
+@section Style { @if (Model.StyleElements is not null) { 
+@foreach (var element in @Model.StyleElements) { 
+    @Html.Raw(element.OuterHtml)
+}}
+}
+
+@section HeadScripts { @if (Model.HeadScriptElements is not null) { 
+@foreach (var element in @Model.HeadScriptElements) { 
+    @Html.Raw(element.OuterHtml)
+}}
+}
+
 <div class="main-container">
-    <h1>Parks Computing</h1>
-    <p>This is the personal web site of Paul Parks. Please pardon the dust, but I'm in the process of porting this site from WordPress to 
-    ASP.NET Razor Pages hosted on Azure.</p>
+    @Html.Raw(Model.PageContent)
 </div>
 
 <div class="row">

@@ -16,7 +16,7 @@
     <p>I realized one day that I had never implemented <a href="https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life">Conway&#8217;s Game of Life</a>, which is something of a rite of passage for young computer-science students. As I opted for a more non-traditional path to the software profession, I somehow missed that fun, even though I&#8217;ve made a point of implementing other computer-sciency things like it.</p>
 
     <p>
-        While the game itself is actually quite simple (look at the <em>generation</em> method in the source code to see
+        While the game itself is actually quite simple (look at the <code>generation</code> method in <a href="#source">the source code</a> to see
         just how simple), the notion of implementing it on a self-contained web page and making it as fast as possible
         seemed intriguing, so I dived in. About six hours later I had it pretty much finished. Optimizing it took
         <del datetime="2015-12-01T15:23:22+00:00">one more day</del> several more days as new optimizations occurred to me.
@@ -67,19 +67,12 @@
 
     <p><a href="?boardSize=176&amp;cellSize=4&amp;init=45,51;47,51;47,50;49,49;49,48;49,47;51,48;51,47;51,46;52,47;">A large board with a long-running pattern</a></p>
 
-    <h2>Stand-alone Page</h2>
-
-    <p>
-        If you&#8217;d like to play with the game without all the WordPress clutter, you can take a look at the
-        <a href="/conway/" data-type="URL" data-id="/conway/">stand-alone page</a>.
-    </p>
-
-    <h2>The JavaScript Code</h2>
+    <h2 id="source">The JavaScript Code</h2>
 
     <p>
         I&#8217;m working on another article that goes through the code and explains how it works, but for now, here is
-        the JavaScript code listing. You may download the <a href="/conway.css">CSS</a> and
-        <a href="/conway.js">JavaScript</a> as well.
+        the JavaScript code listing. You may download the <a href="/css/conway.css">CSS</a> and
+        <a href="/js/conway.js">JavaScript</a> as well.
     </p>
 
 <pre><code class="language-js" hx-get="/js/conway.js" hx-trigger="load"></code></pre>
