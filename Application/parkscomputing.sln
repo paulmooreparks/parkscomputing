@@ -13,6 +13,23 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "aspnet-core-dotnet-core.Fun
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "aspnet-core-dotnet-core", "aspnet-core-dotnet-core\aspnet-core-dotnet-core.csproj", "{5F53DF70-63C2-4ADE-80A4-1F942681DEC9}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "webcontent.dev", "webcontent.dev", "{DA96FC57-BFCF-47AB-91AF-29A1C97AB9E4}"
+	ProjectSection(SolutionItems) = preProject
+		\\wsl.localhost\Ubuntu-22.04\home\paul\webcontent.dev\rss.xml = \\wsl.localhost\Ubuntu-22.04\home\paul\webcontent.dev\rss.xml
+		\\wsl.localhost\Ubuntu-22.04\home\paul\webcontent.dev\sitemap.xml = \\wsl.localhost\Ubuntu-22.04\home\paul\webcontent.dev\sitemap.xml
+		\\wsl.localhost\Ubuntu-22.04\home\paul\webcontent.dev\sitenav.json = \\wsl.localhost\Ubuntu-22.04\home\paul\webcontent.dev\sitenav.json
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "content", "content", "{4844EB20-25F5-404B-8184-689CC3730CDF}"
+	ProjectSection(SolutionItems) = preProject
+		\\wsl.localhost\Ubuntu-22.04\home\paul\webcontent.dev\content\index.html = \\wsl.localhost\Ubuntu-22.04\home\paul\webcontent.dev\content\index.html
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{ACAAF6A1-EF62-4BC8-8BBA-4EFB404219D6}"
+	ProjectSection(SolutionItems) = preProject
+		Readme.md = Readme.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,6 +51,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{4844EB20-25F5-404B-8184-689CC3730CDF} = {DA96FC57-BFCF-47AB-91AF-29A1C97AB9E4}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {11A23A0A-206A-4827-BBE8-CE44979FDDCE}

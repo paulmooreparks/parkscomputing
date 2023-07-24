@@ -1,0 +1,23 @@
+﻿@page "/rss"
+@model aspnet_core_dotnet_core.Pages.RssModel
+@{
+    Layout = "_Rss";
+    Response.ContentType = "text/xml";
+    ViewData["Title"] = "Parks Computing";
+    ViewData["Link"] = "https://parkscomputing.com";
+    ViewData["Description"] = Model.Description;
+    ViewData["Language"] = Model.Language;
+    ViewData["PubDate"] = Model.CreateDate.ToString("R");
+    ViewData["LastBuildDate"] = Model.ModifiedDate.ToString("R");
+}
+@foreach (var post in @Model.NavRoot.posts) {
+        @:<item>
+            <title>@post.title</title>
+            @:<link>@post.link</link>
+            <description>@post.excerpt</description>
+            <pubDate>@post.date.ToString("R")</pubDate>
+            <guid>@post.link</guid>
+        @:</item>
+}
+
+

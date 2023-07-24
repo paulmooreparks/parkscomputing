@@ -17,8 +17,12 @@ namespace aspnet_core_dotnet_core.Pages {
         public string PageContent { get; set; }
         public string CreatedGmt { get; set; }
         public string ModifiedGmt { get; set; }
+        public DateTime CreateDate { get; set; } = DateTime.UtcNow;
+        public DateTime ModifiedDate { get; set; } = DateTime.UtcNow;
         public string Created { get; set; }
         public string Modified { get; set; }
+        public string Description { get; set; } = string.Empty;
+        public string Language { get; set; } = "en-us";
         public HtmlNodeCollection MetaElements { get; set; }
         public HtmlNodeCollection LinkElements { get; set; }
         public HtmlNodeCollection StyleElements { get; set; }
@@ -73,16 +77,28 @@ namespace aspnet_core_dotnet_core.Pages {
 
                 if (createMeta is not null) {
                     CreatedGmt = createMeta.Attributes["content"].Value;
-                    var createDate = DateTime.ParseExact(CreatedGmt, "s", DateTimeFormatInfo.InvariantInfo);
-                    Created = createDate.ToLongDateString();
+                    CreateDate = DateTime.ParseExact(CreatedGmt, "s", DateTimeFormatInfo.InvariantInfo);
+                    Created = CreateDate.ToLongDateString();
                 }
 
                 var modMeta = doc.DocumentNode.SelectSingleNode("//meta[@http-equiv='last-modified']/@content");
 
                 if (modMeta is not null) {
                     ModifiedGmt = modMeta.Attributes["content"].Value;
-                    var modDate = DateTime.ParseExact(ModifiedGmt, "s", DateTimeFormatInfo.InvariantInfo);
-                    Modified = modDate.ToLongDateString();
+                    ModifiedDate = DateTime.ParseExact(ModifiedGmt, "s", DateTimeFormatInfo.InvariantInfo);
+                    Modified = ModifiedDate.ToLongDateString();
+                }
+
+                var descriptionNode = doc.DocumentNode.SelectSingleNode("//meta[@name='description']/@content");
+
+                if (descriptionNode is not null) {
+                    Description = descriptionNode.Attributes["content"].Value;
+                }
+
+                var langNode = doc.DocumentNode.SelectSingleNode("/html/@lang");
+
+                if (langNode is not null) {
+                    Language = langNode.Attributes["lang"]?.Value;
                 }
 
                 return Page();

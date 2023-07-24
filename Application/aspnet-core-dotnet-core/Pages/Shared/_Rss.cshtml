@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>@ViewData["Title"]</title>
+        <link>@ViewData["Link"]</link>
+        <description>@ViewData["Description"]</description>
+        <language>@ViewData["Language"]</language>
+        <pubDate>@ViewData["PubDate"]</pubDate>
+        <lastBuildDate>@ViewData["LastBuildDate"]</lastBuildDate>
+        <docs>https://www.rssboard.org/rss-specification</docs>
+        <generator>Weblog Editor 2.0</generator>
+        <managingEditor>paul@parkscomputing.com (Paul Parks)</managingEditor>
+        <webMaster>paul@parkscomputing.com (Paul Parks)</webMaster>
+        <atom:link href="https://www.rssboard.org/files/sample-rss-2.xml" rel="self" type="application/rss+xml"/>
+        @RenderBody()
+    </channel>
+</rss>
