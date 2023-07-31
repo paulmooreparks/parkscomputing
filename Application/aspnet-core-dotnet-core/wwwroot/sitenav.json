@@ -160,14 +160,6 @@
     },
     "posts": [
         {
-            "key": "accelerated-cpp-solutions-update",
-            "title": "Accelerated C++ Solutions Update",
-            "description": "",
-            "excerpt": "The exercise solutions I started working on years ago are finally back.",
-            "link": "/page/accelerated-cpp-solutions-update",
-            "date": "2023-01-08T19:05:00"
-        },
-        {
             "key": "new-website-design",
             "title": "New Website Design",
             "description": "",

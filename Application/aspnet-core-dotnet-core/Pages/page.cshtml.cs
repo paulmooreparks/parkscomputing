@@ -23,6 +23,9 @@ namespace aspnet_core_dotnet_core.Pages {
         public string Modified { get; set; }
         public string Description { get; set; } = string.Empty;
         public string Language { get; set; } = "en-us";
+
+        public bool CommentsAllowed { get; set; } = true;
+        public bool CommentsEnabled { get; set; } = true;
         public HtmlNodeCollection MetaElements { get; set; }
         public HtmlNodeCollection LinkElements { get; set; }
         public HtmlNodeCollection StyleElements { get; set; }
@@ -93,6 +96,18 @@ namespace aspnet_core_dotnet_core.Pages {
 
                 if (descriptionNode is not null) {
                     Description = descriptionNode.Attributes["content"].Value;
+                }
+
+                var commentNode = doc.DocumentNode.SelectSingleNode("//meta[@name='comments-allowed']/@content");
+
+                if (commentNode is not null) {
+                    CommentsAllowed = commentNode.Attributes["content"].Value.Equals("true", StringComparison.InvariantCultureIgnoreCase);
+                }
+
+                commentNode = doc.DocumentNode.SelectSingleNode("//meta[@name='comments-enabled']/@content");
+
+                if (commentNode is not null) {
+                    CommentsEnabled = commentNode.Attributes["content"].Value.Equals("true", StringComparison.InvariantCultureIgnoreCase);
                 }
 
                 var langNode = doc.DocumentNode.SelectSingleNode("/html/@lang");

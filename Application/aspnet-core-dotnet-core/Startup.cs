@@ -29,9 +29,12 @@ namespace aspnet_core_dotnet_core {
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
+
             services.AddRazorPages();
             services.AddHttpClient();
             services.AddTransient<INavService, NavService>();
+            services.AddTransient<ICommentService, CommentService>();
+            // services.AddDbContext<CommentContext>(options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
