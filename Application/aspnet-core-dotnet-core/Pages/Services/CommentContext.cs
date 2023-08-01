@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using SmartSam.Comments.Lib;
+
 namespace aspnet_core_dotnet_core.Pages.Services {
     public class CommentContext : DbContext {
         public CommentContext(DbContextOptions<CommentContext> options) : base(options) {
