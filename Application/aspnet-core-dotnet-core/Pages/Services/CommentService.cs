@@ -17,7 +17,7 @@ namespace aspnet_core_dotnet_core.Pages.Services {
                 commentList = new List<Comment>() {
                     new Comment { 
                         PageId = pageId,
-                        Id = "1",
+                        CommentId = "1",
                         CreateDateTime = DateTime.Parse("15 December 2022 10:54"),
                         Name = "Paul", 
                         Email = "paul@smartsam.com",
@@ -26,7 +26,7 @@ namespace aspnet_core_dotnet_core.Pages.Services {
                     },
                     new Comment {
                         PageId = pageId,
-                        Id = "1",
+                        CommentId = "1",
                         CreateDateTime = DateTime.Parse("15 December 2022 10:54"),
                         Name = "Larry",
                         Email = "paul@smartsam.com",

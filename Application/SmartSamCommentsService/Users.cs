@@ -1,93 +1,97 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Text;
 using System.Text.Json;
-
-using Microsoft.Azure.Functions.Worker;
+using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Azure.Functions.Worker;
+
 using Microsoft.Extensions.Logging;
 
 using SmartSam.Comments.Lib;
 
 namespace SmartSam.Comments.Service {
-    public class Comments {
+    public class Users {
         private readonly ILogger _logger;
 
-        public Comments(ILoggerFactory loggerFactory) {
-            _logger = loggerFactory.CreateLogger<Comments>();
+        public Users(ILoggerFactory loggerFactory) {
+            _logger = loggerFactory.CreateLogger<Users>();
         }
 
-        // private static Dictionary<string, List<Comment>> PageComments { get; set; } = new Dictionary<string, List<Comment>>();
-        private static Dictionary<string, Dictionary<string, Comment>> PageComments = new Dictionary<string, Dictionary<string, Comment>>();
+        private static Dictionary<string, Dictionary<string, User>> DomainUsers { get; set; } = new Dictionary<string, Dictionary<string, User>>();
+        // private static Dictionary<string, Dictionary<string, Comment>> PageComments = new Dictionary<string, Dictionary<string, Comment>>();
 
-        [Function("Comments")]
+        [Function("Users")]
         public HttpResponseData Run([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req) {
             _logger.LogInformation("C# HTTP trigger function processed a request for a list of comments.");
             string? domain = req.Query["domain"];
-            string? pageId = req.Query["pageId"];
+            string? userId = req.Query["userId"];
 
-            if (string.IsNullOrEmpty(domain) || string.IsNullOrEmpty(pageId)) {
+            if (string.IsNullOrEmpty(domain) || string.IsNullOrEmpty(userId)) {
                 var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 errorResponse.WriteString("Invalid input: Domain and PageId are required");
                 return errorResponse;
             }
 
-            string key = $"{domain}_{pageId}";
-            List<Comment> commentList;
+            string key = $"{domain}_{userId}";
+            List<User> userList;
 
-            lock (PageComments) {
-                if (PageComments.ContainsKey(key)) {
-                    commentList = PageComments[key].Values.ToList<Comment>();
+            lock (DomainUsers) {
+                if (DomainUsers.ContainsKey(key)) {
+                    userList = DomainUsers[key].Values.ToList<User>();
                 }
                 else {
-                    commentList = new List<Comment>(); // Return an empty list if no comments are found
+                    userList = new List<User>(); // Return an empty list if no comments are found
                 }
             }
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-            response.WriteString(JsonSerializer.Serialize(commentList));
+            response.WriteString(JsonSerializer.Serialize(userList));
 
             return response;
         }
 
-        [Function("Comment")]
-        public HttpResponseData Comment([HttpTrigger(AuthorizationLevel.Function, "get", "put", "post", "delete")] HttpRequestData req, FunctionContext executionContext) {
-            _logger.LogInformation("Comment");
+        [Function("User")]
+        public HttpResponseData User([HttpTrigger(AuthorizationLevel.Function, "get", "put", "post", "delete")] HttpRequestData req, FunctionContext executionContext) {
+            _logger.LogInformation("User");
 
             switch (req.Method.ToUpper()) {
                 case "GET":
-                    return GetComment(req);
+                    return GetUser(req);
 
                 case "POST":
-                    return PostComment(req);
+                    return PostUser(req);
 
                 case "PUT":
-                    return PutComment(req);
+                    return PutUser(req);
 
                 case "DELETE":
-                    return DeleteComment(req);
+                    return DeleteUser(req);
             }
 
             return req.CreateResponse(HttpStatusCode.NotImplemented);
         }
 
 
-        private HttpResponseData GetComment(HttpRequestData req) {
-            _logger.LogInformation("Get a comment");
+        private HttpResponseData GetUser(HttpRequestData req) {
+            _logger.LogInformation("Get a user");
             string? domain = req.Query["domain"];
-            string? pageId = req.Query["pageId"];
-            string? commentId = req.Query["commentId"];
+            string? userId = req.Query["userId"];
 
-            if (string.IsNullOrEmpty(domain) || string.IsNullOrEmpty(pageId) || string.IsNullOrEmpty(commentId)) {
+            if (string.IsNullOrEmpty(domain) || string.IsNullOrEmpty(userId)) {
                 var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                errorResponse.WriteString("Invalid input: Either a commentId or a domain and a pageId are required");
+                errorResponse.WriteString("Invalid input: Domain and PageId are required");
                 return errorResponse;
             }
 
-            string key = $"{domain}_{pageId}";
+            string key = $"{domain}_{userId}";
 
-            lock (PageComments) {
-                if (PageComments.ContainsKey(key) && PageComments[key].ContainsKey(commentId)) {
-                    Comment comment = PageComments[key][commentId];
+            lock (DomainUsers) {
+                if (DomainUsers.ContainsKey(key) && DomainUsers[key].ContainsKey(userId)) {
+                    User comment = DomainUsers[key][userId];
                     var response = req.CreateResponse(HttpStatusCode.OK);
                     response.Headers.Add("Content-Type", "application/json; charset=utf-8");
                     response.WriteString(JsonSerializer.Serialize(comment));
@@ -99,7 +103,7 @@ namespace SmartSam.Comments.Service {
             }
         }
 
-        private HttpResponseData PostComment(HttpRequestData req) {
+        private HttpResponseData PostUser(HttpRequestData req) {
             _logger.LogInformation("Post a comment");
             string? requestBody = req.ReadAsStringAsync().Result;
 
@@ -109,40 +113,40 @@ namespace SmartSam.Comments.Service {
                 return errorResponse;
             }
 
-            Comment? newComment = JsonSerializer.Deserialize<Comment>(requestBody);
+            User? newUser = JsonSerializer.Deserialize<User>(requestBody);
 
-            if (newComment is null) {
+            if (newUser is null) {
                 var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 errorResponse.WriteString("Invalid comment data");
                 return errorResponse;
             }
 
-            var domain = newComment.Domain;
-            var pageId = newComment.PageId;
-            string key = $"{domain}_{pageId}";
+            var domain = newUser.Domain;
+            var userId = newUser.UserId;
+            string key = $"{domain}_{userId}";
 
             // Generate a unique ID for the comment
-            newComment.CommentId = Guid.NewGuid().ToString();
+            newUser.UserId = Guid.NewGuid().ToString();
 
             // Lock the dictionaries while updating to ensure thread-safety
-            lock (PageComments) {
-                if (!PageComments.ContainsKey(key)) {
-                    PageComments[key] = new Dictionary<string, Comment>();
+            lock (DomainUsers) {
+                if (!DomainUsers.ContainsKey(key)) {
+                    DomainUsers[key] = new Dictionary<string, User>();
                 }
 
-                PageComments[key][newComment.CommentId] = newComment;
+                DomainUsers[key][newUser.UserId] = newUser;
             }
 
             // Create a response
             var response = req.CreateResponse(HttpStatusCode.Created);
             response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-            response.WriteString(JsonSerializer.Serialize(newComment));
+            response.WriteString(JsonSerializer.Serialize(newUser));
 
             return response;
         }
 
-        public HttpResponseData PutComment(HttpRequestData req) {
-            _logger.LogInformation("Put a comment");
+        public HttpResponseData PutUser(HttpRequestData req) {
+            _logger.LogInformation("Put a user");
             string? requestBody = req.ReadAsStringAsync().Result;
 
             if (requestBody is null) {
@@ -151,29 +155,29 @@ namespace SmartSam.Comments.Service {
                 return errorResponse;
             }
 
-            Comment? updatedComment = JsonSerializer.Deserialize<Comment>(requestBody);
+            User? updatedUser = JsonSerializer.Deserialize<User>(requestBody);
 
-            if (updatedComment is null) {
+            if (updatedUser is null) {
                 var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                errorResponse.WriteString("Invalid comment data");
+                errorResponse.WriteString("Invalid user data");
                 return errorResponse;
             }
 
-            if (string.IsNullOrEmpty(updatedComment.CommentId)) {
+            if (string.IsNullOrEmpty(updatedUser.UserId)) {
                 var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                errorResponse.WriteString("Invalid comment data");
+                errorResponse.WriteString("Invalid user data");
                 return errorResponse;
             }
 
-            string key = $"{updatedComment.Domain}_{updatedComment.PageId}";
-            string commentId = updatedComment.CommentId;
+            string key = $"{updatedUser.Domain}_{updatedUser.UserId}";
+            string userId = updatedUser.UserId; 
 
-            lock (PageComments) {
-                if (PageComments.ContainsKey(key) && PageComments[key].ContainsKey(commentId)) {
-                    PageComments[key][commentId] = updatedComment;
+            lock (DomainUsers) {
+                if (DomainUsers.ContainsKey(key) && DomainUsers[key].ContainsKey(userId)) {
+                    DomainUsers[key][userId] = updatedUser; 
                     var response = req.CreateResponse(HttpStatusCode.OK);
                     response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-                    response.WriteString(JsonSerializer.Serialize(updatedComment));
+                    response.WriteString(JsonSerializer.Serialize(updatedUser));
                     return response;
                 }
                 else {
@@ -182,27 +186,26 @@ namespace SmartSam.Comments.Service {
             }
         }
 
-        private HttpResponseData DeleteComment(HttpRequestData req) {
-            _logger.LogInformation("Delete a comment");
+        private HttpResponseData DeleteUser(HttpRequestData req) {
+            _logger.LogInformation("Delete a user");
             string? domain = req.Query["domain"];
-            string? pageId = req.Query["pageId"];
-            string? commentId = req.Query["commentId"];
+            string? userId = req.Query["userId"];
 
-            if (string.IsNullOrEmpty(domain) || string.IsNullOrEmpty(pageId) || string.IsNullOrEmpty(commentId)) {
+            if (string.IsNullOrEmpty(domain) || string.IsNullOrEmpty(userId)) {
                 var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 errorResponse.WriteString("Invalid input: Domain, PageId, and CommentId are required");
                 return errorResponse;
             }
 
-            string key = $"{domain}_{pageId}";
+            string key = $"{domain}_{userId}";
 
-            lock (PageComments) {
-                if (PageComments.ContainsKey(key) && PageComments[key].ContainsKey(commentId)) {
-                    PageComments[key].Remove(commentId);
+            lock (DomainUsers) {
+                if (DomainUsers.ContainsKey(key) && DomainUsers[key].ContainsKey(userId)) {
+                    DomainUsers[key].Remove(userId);
 
                     // Optionally, you can remove the key if there are no more comments
-                    if (PageComments[key].Count == 0) {
-                        PageComments.Remove(key);
+                    if (DomainUsers[key].Count == 0) {
+                        DomainUsers.Remove(key);
                     }
                 }
                 else {
