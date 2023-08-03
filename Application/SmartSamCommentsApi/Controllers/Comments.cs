@@ -1,5 +1,7 @@
-﻿using System.Linq;
+﻿using System.ComponentModel;
+using System.Linq;
 using System.Net;
+using System.Reflection;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -117,7 +119,11 @@ namespace SmartSam.Comments.Api.Controllers {
         public IActionResult GetCommentStatuses() {
             var statuses = Enum.GetValues(typeof(CommentStatus))
                 .Cast<CommentStatus>()
-                .Select(s => new { name = s.ToString() })
+                .Select(s => new {
+                    name = s.ToString(),
+                    integer_value = (int)s,
+                    description = s.GetType().GetMember(s.ToString()).First().GetCustomAttribute<DescriptionAttribute>()?.Description
+                })
                 .ToList();
 
             return Ok(statuses);
