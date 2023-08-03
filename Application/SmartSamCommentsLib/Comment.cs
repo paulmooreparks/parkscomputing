@@ -16,15 +16,15 @@
     }
 
     public enum CommentStatus {
-        Draft,
-        AwaitingModeration,
-        AwaitingEdit,
-        Approved,
-        UnderReview,
-        Rejected,
-        Archived,
-        Removed,
-        Spam,
-        Deleted
+        Draft = 0,
+        AwaitingModeration = 1,
+        AwaitingEdit = 2,
+        Approved = 3,
+        UnderReview = 4,
+        Rejected = 5,
+        Archived = 6,
+        Removed = 7,
+        Spam = 8,
+        Deleted = 9,
     }
 }

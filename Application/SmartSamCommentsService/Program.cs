@@ -7,8 +7,9 @@ using SmartSam.Comments.Data;
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
     .ConfigureServices(services => {
-        services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("InMemoryDb"));
-    })
-    .Build();
+        DbContextConfiguration.Configure(services); // For InMemory Database
+        // OR
+        // DbContextConfiguration.Configure(services, "YourConnectionString"); // For SQL Server
+    }).Build();
 
 host.Run();
