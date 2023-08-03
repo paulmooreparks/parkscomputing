@@ -3,50 +3,20 @@ using System.Text.Json;
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using SmartSam.Comments.Data;
 using SmartSam.Comments.Lib;
 
 namespace SmartSam.Comments.Service {
     public class Comments {
         private readonly ILogger _logger;
+        private readonly AppDbContext _context;
 
-        public Comments(ILoggerFactory loggerFactory) {
+        public Comments(ILoggerFactory loggerFactory, AppDbContext context) {
             _logger = loggerFactory.CreateLogger<Comments>();
-        }
-
-        // private static Dictionary<string, List<Comment>> PageComments { get; set; } = new Dictionary<string, List<Comment>>();
-        private static Dictionary<string, Dictionary<string, Comment>> PageComments = new Dictionary<string, Dictionary<string, Comment>>();
-
-        [Function("Comments")]
-        public HttpResponseData Run([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req) {
-            _logger.LogInformation("C# HTTP trigger function processed a request for a list of comments.");
-            string? domain = req.Query["domain"];
-            string? pageId = req.Query["pageId"];
-
-            if (string.IsNullOrEmpty(domain) || string.IsNullOrEmpty(pageId)) {
-                var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                errorResponse.WriteString("Invalid input: Domain and PageId are required");
-                return errorResponse;
-            }
-
-            string key = $"{domain}_{pageId}";
-            List<Comment> commentList;
-
-            lock (PageComments) {
-                if (PageComments.ContainsKey(key)) {
-                    commentList = PageComments[key].Values.ToList<Comment>();
-                }
-                else {
-                    commentList = new List<Comment>(); // Return an empty list if no comments are found
-                }
-            }
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-            response.WriteString(JsonSerializer.Serialize(commentList));
-
-            return response;
+            _context = context;
         }
 
         [Function("Comment")]
@@ -83,19 +53,19 @@ namespace SmartSam.Comments.Service {
                 return errorResponse;
             }
 
-            string key = $"{domain}_{pageId}";
+            // Query the comment based on the provided parameters
+            var comment = _context.Comments
+                .Include(c => c.User) // Assuming a navigation property to the user
+                .FirstOrDefault(c => c.Domain == domain && c.PageId == pageId && c.CommentId == commentId);
 
-            lock (PageComments) {
-                if (PageComments.ContainsKey(key) && PageComments[key].ContainsKey(commentId)) {
-                    Comment comment = PageComments[key][commentId];
-                    var response = req.CreateResponse(HttpStatusCode.OK);
-                    response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-                    response.WriteString(JsonSerializer.Serialize(comment));
-                    return response;
-                }
-                else {
-                    return req.CreateResponse(HttpStatusCode.NotFound); // Return 404 if no comment is found
-                }
+            if (comment != null) {
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+                response.WriteString(JsonSerializer.Serialize(comment));
+                return response;
+            }
+            else {
+                return req.CreateResponse(HttpStatusCode.NotFound); // Return 404 if no comment is found
             }
         }
 
@@ -117,21 +87,13 @@ namespace SmartSam.Comments.Service {
                 return errorResponse;
             }
 
-            var domain = newComment.Domain;
-            var pageId = newComment.PageId;
-            string key = $"{domain}_{pageId}";
-
             // Generate a unique ID for the comment
             newComment.CommentId = Guid.NewGuid().ToString();
+            newComment.CreateDateTime = DateTime.Now;
+            newComment.Status = CommentStatus.AwaitingModeration;
 
-            // Lock the dictionaries while updating to ensure thread-safety
-            lock (PageComments) {
-                if (!PageComments.ContainsKey(key)) {
-                    PageComments[key] = new Dictionary<string, Comment>();
-                }
-
-                PageComments[key][newComment.CommentId] = newComment;
-            }
+            _context.Comments.Add(newComment);
+            _context.SaveChanges();
 
             // Create a response
             var response = req.CreateResponse(HttpStatusCode.Created);
@@ -165,20 +127,20 @@ namespace SmartSam.Comments.Service {
                 return errorResponse;
             }
 
-            string key = $"{updatedComment.Domain}_{updatedComment.PageId}";
-            string commentId = updatedComment.CommentId;
+            var existingComment = _context.Comments.Find(updatedComment.CommentId);
 
-            lock (PageComments) {
-                if (PageComments.ContainsKey(key) && PageComments[key].ContainsKey(commentId)) {
-                    PageComments[key][commentId] = updatedComment;
-                    var response = req.CreateResponse(HttpStatusCode.OK);
-                    response.Headers.Add("Content-Type", "application/json; charset=utf-8");
-                    response.WriteString(JsonSerializer.Serialize(updatedComment));
-                    return response;
-                }
-                else {
-                    return req.CreateResponse(HttpStatusCode.NotFound);
-                }
+            if (existingComment != null) {
+                // Update the existing comment with the new data
+                _context.Entry(existingComment).CurrentValues.SetValues(updatedComment);
+                _context.SaveChanges();
+
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+                response.WriteString(JsonSerializer.Serialize(updatedComment));
+                return response;
+            }
+            else {
+                return req.CreateResponse(HttpStatusCode.NotFound);
             }
         }
 
@@ -194,23 +156,64 @@ namespace SmartSam.Comments.Service {
                 return errorResponse;
             }
 
-            string key = $"{domain}_{pageId}";
+            var commentToDelete = _context.Comments
+                .FirstOrDefault(c => c.Domain == domain && c.PageId == pageId && c.CommentId == commentId);
 
-            lock (PageComments) {
-                if (PageComments.ContainsKey(key) && PageComments[key].ContainsKey(commentId)) {
-                    PageComments[key].Remove(commentId);
-
-                    // Optionally, you can remove the key if there are no more comments
-                    if (PageComments[key].Count == 0) {
-                        PageComments.Remove(key);
-                    }
-                }
-                else {
-                    return req.CreateResponse(HttpStatusCode.NotFound);
-                }
+            if (commentToDelete != null) {
+                _context.Comments.Remove(commentToDelete);
+                _context.SaveChanges();
+            }
+            else {
+                return req.CreateResponse(HttpStatusCode.NotFound);
             }
 
             return req.CreateResponse(HttpStatusCode.NoContent); // Return NoContent (204) status to indicate success
         }
+
+        [Function("Comments")]
+        public HttpResponseData Run([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req) {
+            _logger.LogInformation("C# HTTP trigger function processed a request for a list of comments.");
+            string? domain = req.Query["domain"];
+            string? pageId = req.Query["pageId"];
+
+            if (string.IsNullOrEmpty(domain) || string.IsNullOrEmpty(pageId)) {
+                var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                errorResponse.WriteString("Invalid input: Domain and PageId are required");
+                return errorResponse;
+            }
+
+            var commentList = _context.Comments.Include(c => c.User).Where(c => c.Domain == domain && c.PageId == pageId).ToList();
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+            response.WriteString(JsonSerializer.Serialize(commentList));
+
+            return response;
+        }
+
+        [Function("CommentsAwaitingModeration")]
+        public HttpResponseData GetCommentsAwaitingModeration([HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req) {
+            _logger.LogInformation("Retrieving comments awaiting moderation.");
+
+            string? domain = req.Query["domain"];
+
+            if (string.IsNullOrEmpty(domain)) {
+                var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                errorResponse.WriteString("Invalid input: Domain is required");
+                return errorResponse;
+            }
+
+            var commentsAwaitingModeration = _context.Comments
+                .Include(c => c.User)
+                .Where(c => c.Domain == domain && c.Status == CommentStatus.AwaitingModeration)
+                .ToList();
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+            response.WriteString(JsonSerializer.Serialize(commentsAwaitingModeration));
+
+            return response;
+        }
+
     }
 }
