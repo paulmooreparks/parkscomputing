@@ -23,7 +23,6 @@ namespace SmartSam.Comments.Api.Controllers {
         }
 
 
-        // GET: api/comments
         [HttpGet("comments")]
         public IActionResult Get() {
             var comments = _context.Comments.Include(c => c.User).ToList();
