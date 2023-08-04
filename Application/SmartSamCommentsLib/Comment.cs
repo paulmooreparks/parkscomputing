@@ -2,6 +2,7 @@
 
 namespace SmartSam.Comments.Lib {
     public class Comment {
+        [Description("Unique ID for each comment")]
         public string? CommentId { get; set; }
         public string? Domain { get; set; }
         public string? PageId { get; set; }

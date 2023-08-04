@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using SmartSam.Comments.Api.Models;
 using SmartSam.Comments.Data;
 using SmartSam.Comments.Lib;
 
@@ -32,13 +33,38 @@ namespace SmartSam.Comments.Api.Controllers {
         // GET: api/comment/5
         [HttpGet("comment/{id}")]
         public IActionResult GetComment(string id) {
-            var comment = _context.Comments.Include(c => c.User).FirstOrDefault(c => c.CommentId == id);
+            var comment = _context.Comments
+                .Include(c => c.User)
+                .FirstOrDefault(c => c.CommentId == id);
 
-            if (comment == null) {
+            if (comment == null || comment.CommentId == null) {
                 return NotFound();
             }
 
-            return Ok(comment);
+            var commentId = comment.CommentId;
+
+            var response = new CommentResponse {
+                Comment = comment,
+                Links = new List<Link> {
+                    new Link {
+                        Rel = "edit",
+                        Method = "PUT",
+                        Href = Url.Action(nameof(PutComment)),
+                    },
+                    new Link {
+                        Rel = "update status",
+                        Method = "PUT",
+                        Href = Url.Action(nameof(UpdateCommentStatus), new { id = comment.CommentId }),
+                    },
+                    new Link {
+                        Rel = "delete",
+                        Method = "DELETE",
+                        Href = Url.Action(nameof(DeleteComment), new { id = comment.CommentId }),
+                    }
+                }
+            };
+
+            return Ok(response);
         }
 
         // GET: api/comments/domain/page
@@ -65,13 +91,28 @@ namespace SmartSam.Comments.Api.Controllers {
                 }
             }
 
-            var commentList = query.ToList();
+            var commentResponses = query.Select(comment => new CommentResponse {
+                Comment = comment,
+                Links = new List<Link> {
+                    new Link {
+                        Rel = "edit",
+                        Method = "PUT",
+                        Href = Url.Action(nameof(PutComment)),
+                    },
+                    new Link {
+                        Rel = "update status",
+                        Method = "PUT",
+                        Href = Url.Action(nameof(UpdateCommentStatus), new { id = comment.CommentId }),
+                    },
+                    new Link {
+                        Rel = "delete",
+                        Method = "DELETE",
+                        Href = Url.Action(nameof(DeleteComment), new { id = comment.CommentId }),
+                    }
+                }
+            }).ToList();
 
-            if (commentList == null) {
-                return NotFound();
-            }
-
-            return Ok(commentList);
+            return Ok(commentResponses);
         }
 
         // POST: api/comment
@@ -100,9 +141,26 @@ namespace SmartSam.Comments.Api.Controllers {
             return NoContent();
         }
 
+        [HttpPut("comment/{id}/status")]
+        public IActionResult UpdateCommentStatus(string id, [FromBody] StatusPayload request) {
+            var comment = _context.Comments.Find(id);
+            if (comment == null) {
+                return NotFound();
+            }
+
+            if (!Enum.TryParse(request.Status, out CommentStatus newStatus)) {
+                return BadRequest("Invalid status");
+            }
+
+            comment.Status = newStatus;
+            _context.SaveChanges();
+
+            return NoContent();
+        }
+
         // DELETE: api/comment/5
         [HttpDelete("comment/{id}")]
-        public IActionResult Delete(string id) {
+        public IActionResult DeleteComment(string id) {
             var comment = _context.Comments.Find(id);
 
             if (comment == null) {
