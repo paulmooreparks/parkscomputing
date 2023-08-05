@@ -24,8 +24,8 @@ namespace aspnet_core_dotnet_core.Pages {
         public string Description { get; set; } = string.Empty;
         public string Language { get; set; } = "en-us";
 
-        public bool CommentsAllowed { get; set; } = true;
-        public bool CommentsEnabled { get; set; } = true;
+        public bool CommentsAllowed { get; set; } = false;
+        public bool CommentsEnabled { get; set; } = false;
         public HtmlNodeCollection MetaElements { get; set; }
         public HtmlNodeCollection LinkElements { get; set; }
         public HtmlNodeCollection StyleElements { get; set; }

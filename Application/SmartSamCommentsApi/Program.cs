@@ -8,8 +8,8 @@ namespace SmartSam.Comments.Api {
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-            DbContextConfiguration.Configure(builder.Services); // For InMemory Database
-            // DbContextConfiguration.Configure(builder.Services, "YourConnectionString"); // For SQL Server
+            // DbContextConfiguration.Configure(builder.Services); // For InMemory Database
+            DbContextConfiguration.Configure(builder.Services, "Server=localhost;Database=SmartSamComments;Trusted_Connection=True;\r\n"); // For SQL Server
 
             builder.Services.AddControllers()
                 .AddJsonOptions(options => {

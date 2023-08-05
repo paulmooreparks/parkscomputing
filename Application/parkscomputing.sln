@@ -36,6 +36,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartSamCommentsData", "Sma
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartSamCommentsApi", "SmartSamCommentsApi\SmartSamCommentsApi.csproj", "{BDE22D0A-317A-42DA-92E5-28E3CF503433}"
 EndProject
+Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "SmartSamCommentsDb", "SmartSamCommentsDb\SmartSamCommentsDb.sqlproj", "{30E4583E-3924-4845-B644-4BEBC70BC1BA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,6 +68,12 @@ Global
 		{BDE22D0A-317A-42DA-92E5-28E3CF503433}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BDE22D0A-317A-42DA-92E5-28E3CF503433}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BDE22D0A-317A-42DA-92E5-28E3CF503433}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30E4583E-3924-4845-B644-4BEBC70BC1BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30E4583E-3924-4845-B644-4BEBC70BC1BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30E4583E-3924-4845-B644-4BEBC70BC1BA}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{30E4583E-3924-4845-B644-4BEBC70BC1BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30E4583E-3924-4845-B644-4BEBC70BC1BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30E4583E-3924-4845-B644-4BEBC70BC1BA}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

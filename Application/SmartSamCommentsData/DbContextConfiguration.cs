@@ -14,9 +14,9 @@ namespace SmartSam.Comments.Data {
             if (string.IsNullOrEmpty(connectionString)) {
                 services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("InMemoryDb"));
             }
-            //else {
-            //    services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
-            //}
+            else {
+                services.AddDbContext<AppDbContext>(options => options.UseSqlServer("Server=localhost;Database=SmartSamComments;Trusted_Connection=True;Encrypt=False;"));
+            }
         }
     }
 }

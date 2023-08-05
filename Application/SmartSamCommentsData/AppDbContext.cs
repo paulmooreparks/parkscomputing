@@ -11,7 +11,9 @@ namespace SmartSam.Comments.Data {
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
-            optionsBuilder.UseInMemoryDatabase("InMemoryDb");
+            // optionsBuilder.UseInMemoryDatabase("InMemoryDb");
+            optionsBuilder.UseSqlServer("Server=localhost;Database=SmartSamComments;Trusted_Connection=True;Encrypt=False;");
+
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
