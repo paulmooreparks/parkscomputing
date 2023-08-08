@@ -10,6 +10,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Hosting;
 using System.IO;
+using aspnet_core_dotnet_core.Pages.Services;
+using Azure;
+using SmartSam.Comments.Lib;
+using System.Collections.Generic;
 
 namespace aspnet_core_dotnet_core.Pages {
     public class PageLoaderModel : Microsoft.AspNetCore.Mvc.RazorPages.PageModel {
@@ -24,6 +28,7 @@ namespace aspnet_core_dotnet_core.Pages {
         public string Description { get; set; } = string.Empty;
         public string Language { get; set; } = "en-us";
 
+        public ICommentService CommentService { get; set; }
         public bool CommentsAllowed { get; set; } = false;
         public bool CommentsEnabled { get; set; } = false;
         public HtmlNodeCollection MetaElements { get; set; }
@@ -33,12 +38,14 @@ namespace aspnet_core_dotnet_core.Pages {
         public HtmlNodeCollection BodyScriptElements { get; set; }
 
         protected IHostEnvironment Environment { get; set; }
+        public List<CommentResponse> CommentResponse { get; set; }
 
-        public PageLoaderModel(IHostEnvironment environment) {
+        public PageLoaderModel(ICommentService commentService, IHostEnvironment environment) {
+            CommentService = commentService;
             Environment = environment;
         }
 
-        virtual public IActionResult OnGet() {
+        virtual public Task<IActionResult> OnGetAsync() {
             object sectionObject = HttpContext.Request.RouteValues["section"];
             object slugObject = HttpContext.Request.RouteValues["slug"];
             string slug = sectionObject.ToString();
@@ -50,7 +57,7 @@ namespace aspnet_core_dotnet_core.Pages {
             return RetrievePage(slug);
         }
 
-        protected IActionResult RetrievePage(string slug) {
+        protected async Task<IActionResult> RetrievePage(string slug) {
             try {
                 var path = $"{Environment.ContentRootPath}/wwwroot/content/{slug}.html";
                 var doc = new HtmlDocument();
@@ -110,11 +117,17 @@ namespace aspnet_core_dotnet_core.Pages {
                     CommentsEnabled = commentNode.Attributes["content"].Value.Equals("true", StringComparison.InvariantCultureIgnoreCase);
                 }
 
+                ViewData["PageId"] = slug;
+                ViewData["CommentsAllowed"] = CommentsAllowed;
+                ViewData["CommentsEnabled"] = CommentsEnabled;
+
                 var langNode = doc.DocumentNode.SelectSingleNode("/html/@lang");
 
                 if (langNode is not null) {
                     Language = langNode.Attributes["lang"]?.Value;
                 }
+
+                // CommentResponse = await CommentService.GetCommentsAsync(slug);
 
                 return Page();
             }

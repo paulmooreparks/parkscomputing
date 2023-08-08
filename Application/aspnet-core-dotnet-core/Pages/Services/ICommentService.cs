@@ -1,5 +1,10 @@
-﻿namespace aspnet_core_dotnet_core.Pages.Services {
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+
+using SmartSam.Comments.Lib;
+
+namespace aspnet_core_dotnet_core.Pages.Services {
     public interface ICommentService {
-        Comments GetComments(string pageId, bool enabled, bool allowed);
+        Task<Comments> GetCommentsAsync(string pageId, bool commentsEnabled, bool commentsAllowed);
     }
 }

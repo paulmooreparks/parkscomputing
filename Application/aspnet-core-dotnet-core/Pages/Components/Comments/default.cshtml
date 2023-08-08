@@ -3,20 +3,23 @@
 @if (Model.Enabled) {
 <div class="page-comments">
     <h2 class="page-comments">Comments</h2>
-
-    @foreach (var element in @Model.CommentList) {
-        <div class="page-comment" id="@element.CommentId">
-            <h3 class="page-comment-title">@Html.Raw(element.Title)</h3>
-            <div class="page-comment-author">
-                <span class="page-comment-name">@Html.Raw(element.Name)</span> on
-                <span class="page-comment-timestamp">@Html.Raw(element.CreateDateTime.ToString("dd MMMM yyyy"))</span> at 
-                <span class="page-comment-timestamp">@Html.Raw(element.CreateDateTime.ToString("hh:mm tt"))</span>
-            </div>
-            <div class="page-comment-text">@Html.Raw(element.CommentText)</div>
+@foreach (var element in @Model.CommentResponseList) {
+    var comment = element.Comment;
+    @if (comment.Status == SmartSam.Comments.Lib.CommentStatus.Approved) {
+    <div class="page-comment" id="@element.Comment.CommentId">
+        <h3 class="page-comment-title">@Html.Raw(element.Comment.Title)</h3>
+        <div class="page-comment-author">
+            <span class="page-comment-name">@Html.Raw(element.Comment.Name)</span> on
+            <span class="page-comment-timestamp">@Html.Raw(element.Comment.CreateDateTime.ToString("dd MMMM yyyy"))</span> at 
+            <span class="page-comment-timestamp">@Html.Raw(element.Comment.CreateDateTime.ToString("hh:mm tt"))</span>
         </div>
+        <div class="page-comment-text">@Html.Raw(element.Comment.CommentText)</div>
+    </div>
     }
+}
 </div>
-} @if (Model.Allowed) {
+}
+@if (Model.Allowed) {
 <div class="page-post-comment">
     <h3>Share Your Thoughts</h3>
     <form accept-charset="UTF-8">

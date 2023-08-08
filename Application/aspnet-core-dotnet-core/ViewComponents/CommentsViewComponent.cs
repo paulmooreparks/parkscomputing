@@ -14,8 +14,9 @@ namespace aspnet_core_dotnet_core.ViewComponents {
             _commentService = commentService;
         }
 
-        public IViewComponentResult Invoke(string pageId, bool enabled, bool allowed) {
-            return View(_commentService.GetComments(pageId, enabled, allowed));
+        async public Task<IViewComponentResult> InvokeAsync(string pageId, bool commentsEnabled, bool commentsAllowed) {
+            var commentResponses = await _commentService.GetCommentsAsync(pageId, commentsEnabled, commentsAllowed);
+            return View(commentResponses);
         }
     }
 }

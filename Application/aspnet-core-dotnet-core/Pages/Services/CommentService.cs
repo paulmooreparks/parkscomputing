@@ -2,47 +2,38 @@
 using System.Collections.Generic;
 using SmartSam.Comments.Lib;
 using Microsoft.Extensions.Hosting;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Text.Json;
+using Newtonsoft.Json;
 
 namespace aspnet_core_dotnet_core.Pages.Services {
     public class CommentService : ICommentService {
-        private IHostEnvironment Environment { get; set; }
-        public CommentService(IHostEnvironment environment) {
-            Environment = environment;
+        private HttpClient HttpClient { get; }
+
+        public CommentService(IHttpClientFactory clientFactory) {
+            HttpClient = clientFactory.CreateClient("commentApi");
         }
 
-        Comments ICommentService.GetComments(string pageId, bool enabled, bool allowed) {
-            List<Comment> commentList = null;
-            
-            if (enabled) {
-                commentList = new List<Comment>() {
-                    new Comment { 
-                        PageId = pageId,
-                        CommentId = "1",
-                        CreateDateTime = DateTime.Parse("15 December 2022 10:54"),
-                        Name = "Paul", 
-                        Email = "paul@smartsam.com",
-                        Title = "Hello, World",
-                        CommentText = "Hi there!"
-                    },
-                    new Comment {
-                        PageId = pageId,
-                        CommentId = "1",
-                        CreateDateTime = DateTime.Parse("15 December 2022 10:54"),
-                        Name = "Larry",
-                        Email = "paul@smartsam.com",
-                        Title = "Whee dog!",
-                        CommentText = "Gitrdone!"
-                    }
+        async Task<Comments> ICommentService.GetCommentsAsync(string pageId, bool commentsEnabled, bool commentsAllowed) {
+            var domain = "barn.parkscomputing.com";
+
+            var response = await HttpClient.GetAsync($"/api/comments/{domain}/{pageId}");
+
+            if (response.IsSuccessStatusCode) {
+                var content = await response.Content.ReadAsStringAsync();
+                // var commentResponses = JsonSerializer.Deserialize<List<CommentResponse>>(content);
+                var commentResponses = JsonConvert.DeserializeObject<List<CommentResponse>>(content);
+
+                return new Comments {
+                    Enabled = commentsEnabled,
+                    Allowed = commentsAllowed,
+                    CommentResponseList = commentResponses
                 };
             }
 
-            var comments = new Comments() {
-                Enabled = enabled,
-                Allowed = allowed,
-                CommentList = commentList
-            };
-
-            return comments;
+            // handle error response or throw an exception based on your requirement
+            return null;
         }
     }
 }

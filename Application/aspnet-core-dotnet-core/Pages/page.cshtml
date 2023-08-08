@@ -41,10 +41,3 @@
 
 @Html.Raw(Model.PageContent)
 
-@section Comments {
-@await Component.InvokeAsync("Comments", new { 
-    pageId = Model.RouteData.Values["slug"], 
-    enabled = Model.CommentsEnabled, 
-    allowed = Model.CommentsAllowed 
-})
-}

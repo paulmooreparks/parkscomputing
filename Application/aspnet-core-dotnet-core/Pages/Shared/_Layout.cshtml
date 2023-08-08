@@ -47,12 +47,17 @@
         <div class="content-body">
         @RenderBody()
         </div>
-        @RenderSection("Comments", required: false)
+        @{
+            string pageId = ViewData["PageId"].ToString();
+            bool commentsEnabled = ViewData["CommentsEnabled"] as bool? ?? false;
+            bool commentsAllowed = ViewData["CommentsAllowed"] as bool? ?? false;
+        }
+        @await Component.InvokeAsync("Comments", new { pageId = pageId, commentsEnabled = commentsEnabled, commentsAllowed = commentsAllowed })
     </div>
 
     <footer class="border-top footer bg-dark text-light">
         <div class="container">
-            &copy; 2022 <a href="mailto:paul@parkscomputing.com">Paul M. Parks</a>
+            &copy; 2023 <a href="mailto:paul@parkscomputing.com">Paul M. Parks</a>
         </div>
     </footer>
 

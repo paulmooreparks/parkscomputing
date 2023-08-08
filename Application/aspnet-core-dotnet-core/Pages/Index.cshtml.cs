@@ -28,11 +28,11 @@ namespace aspnet_core_dotnet_core.Pages {
         public NavRoot NavRoot { get; set; }
         public List<string> NavNodes { get; set; } = new();
 
-        public IndexModel(INavService navService, IHostEnvironment environment) : base(environment) {
+        public IndexModel(INavService navService, ICommentService commentService, IHostEnvironment environment) : base(commentService, environment) {
             NavService = navService;
         }
 
-        override public IActionResult OnGet() {
+        override public Task<IActionResult> OnGetAsync() {
             NavRoot = NavService.GetNavRoot();
             return RetrievePage("index");
         }
