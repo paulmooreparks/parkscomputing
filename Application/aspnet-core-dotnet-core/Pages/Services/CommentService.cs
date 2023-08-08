@@ -17,23 +17,32 @@ namespace aspnet_core_dotnet_core.Pages.Services {
 
         async Task<Comments> ICommentService.GetCommentsAsync(string pageId, bool commentsEnabled, bool commentsAllowed) {
             var domain = "barn.parkscomputing.com";
+            var commentResponses = new List<CommentResponse>();
+            Exception exception = null;
 
-            var response = await HttpClient.GetAsync($"/api/comments/{domain}/{pageId}");
+            if (commentsEnabled) {
+                try {
+                    var response = await HttpClient.GetAsync($"/api/comments/{domain}/{pageId}");
 
-            if (response.IsSuccessStatusCode) {
-                var content = await response.Content.ReadAsStringAsync();
-                // var commentResponses = JsonSerializer.Deserialize<List<CommentResponse>>(content);
-                var commentResponses = JsonConvert.DeserializeObject<List<CommentResponse>>(content);
-
-                return new Comments {
-                    Enabled = commentsEnabled,
-                    Allowed = commentsAllowed,
-                    CommentResponseList = commentResponses
-                };
+                    if (response.IsSuccessStatusCode) {
+                        var content = await response.Content.ReadAsStringAsync();
+                        // var commentResponses = JsonSerializer.Deserialize<List<CommentResponse>>(content);
+                        commentResponses = JsonConvert.DeserializeObject<List<CommentResponse>>(content);
+                    }
+                }
+                catch (Exception ex) {
+                    var foo = ex.Message;
+                    exception = ex;
+                }
             }
 
             // handle error response or throw an exception based on your requirement
-            return null;
+            return new Comments {
+                Enabled = commentsEnabled,
+                Allowed = commentsAllowed,
+                Exception = exception,
+                CommentResponseList = commentResponses
+            };
         }
     }
 }

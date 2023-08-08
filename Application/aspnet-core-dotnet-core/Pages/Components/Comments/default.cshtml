@@ -1,24 +1,30 @@
 ﻿@model aspnet_core_dotnet_core.Pages.Services.Comments
 
 @if (Model.Enabled) {
+    @if (Model.Exception != null) {
+<div class="page-comments">
+    <h2 class="page-comments">Comments</h2>
+    Comments are currently unavailable.
+</div>
+    }
+    else {
 <div class="page-comments">
     <h2 class="page-comments">Comments</h2>
 @foreach (var element in @Model.CommentResponseList) {
     var comment = element.Comment;
     @if (comment.Status == SmartSam.Comments.Lib.CommentStatus.Approved) {
-    <div class="page-comment" id="@element.Comment.CommentId">
-        <h3 class="page-comment-title">@Html.Raw(element.Comment.Title)</h3>
+    <div class="page-comment" id="@comment.CommentId">
+        <h3 class="page-comment-title">@Html.Raw(comment.Title)</h3>
         <div class="page-comment-author">
-            <span class="page-comment-name">@Html.Raw(element.Comment.Name)</span> on
-            <span class="page-comment-timestamp">@Html.Raw(element.Comment.CreateDateTime.ToString("dd MMMM yyyy"))</span> at 
-            <span class="page-comment-timestamp">@Html.Raw(element.Comment.CreateDateTime.ToString("hh:mm tt"))</span>
+            <span class="page-comment-name">@Html.Raw(comment.Name)</span> on
+            <span class="page-comment-timestamp">@Html.Raw(comment.CreateDateTime.ToString("dd MMMM yyyy"))</span> at 
+            <span class="page-comment-timestamp">@Html.Raw(comment.CreateDateTime.ToString("hh:mm tt"))</span>
         </div>
-        <div class="page-comment-text">@Html.Raw(element.Comment.CommentText)</div>
+        <div class="page-comment-text">@Html.Raw(comment.CommentText)</div>
     </div>
     }
 }
 </div>
-}
 @if (Model.Allowed) {
 <div class="page-post-comment">
     <h3>Share Your Thoughts</h3>
@@ -30,4 +36,6 @@
         <label for="comment-text">Comment</label><br /><textarea id="comment-text"></textarea>
     </form>
 </div>
+}
+}
 }
