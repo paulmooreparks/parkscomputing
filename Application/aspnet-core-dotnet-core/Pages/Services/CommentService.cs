@@ -6,17 +6,20 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Text.Json;
 using Newtonsoft.Json;
+using Microsoft.Extensions.Options;
 
 namespace aspnet_core_dotnet_core.Pages.Services {
     public class CommentService : ICommentService {
+        private IOptions<CommentServiceConfig> CommentServiceConfig { get; }
         private HttpClient HttpClient { get; }
 
-        public CommentService(IHttpClientFactory clientFactory) {
+        public CommentService(IHttpClientFactory clientFactory, IOptions<CommentServiceConfig> commentServiceConfig) {
             HttpClient = clientFactory.CreateClient("commentApi");
+            CommentServiceConfig = commentServiceConfig;
         }
 
         async Task<Comments> ICommentService.GetCommentsAsync(string pageId, bool commentsEnabled, bool commentsAllowed, bool commentPosted) {
-            var domain = "barn.parkscomputing.com";
+            var domain = CommentServiceConfig.Value.Domain;
             var commentResponses = new List<CommentResponse>();
             Exception? exception = null;
 
@@ -30,7 +33,7 @@ namespace aspnet_core_dotnet_core.Pages.Services {
                     }
                 }
                 catch (Exception ex) {
-                    exception = ex;
+                    exception = ex; 
                 }
             }
 

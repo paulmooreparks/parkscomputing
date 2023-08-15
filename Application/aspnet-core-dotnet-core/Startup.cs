@@ -10,8 +10,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace aspnet_core_dotnet_core {
     public class Startup {
@@ -28,8 +30,9 @@ namespace aspnet_core_dotnet_core {
                 options.CheckConsentNeeded = context => true;
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
+            services.AddTransient<AppServices>();
 
-
+            services.Configure<CommentServiceConfig>(Configuration.GetSection("CommentService"));
             services.AddRazorPages();
             services.AddHttpClient();
             services.AddDistributedMemoryCache();
@@ -41,8 +44,9 @@ namespace aspnet_core_dotnet_core {
             });
             services.AddTransient<INavService, NavService>();
             services.AddTransient<ICommentService, CommentService>();
-            services.AddHttpClient("commentApi", c => {
-                c.BaseAddress = new Uri("https://localhost:7004/");
+            services.AddHttpClient("commentApi", (serviceProvider, c) => {
+                var config = serviceProvider.GetRequiredService<IOptions<CommentServiceConfig>>().Value;
+                c.BaseAddress = new Uri(config?.ApiUrl ?? throw new InvalidOperationException("ApiUrl is null"));
             });
         }
 

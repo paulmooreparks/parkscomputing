@@ -16,6 +16,7 @@ using SmartSam.Comments.Lib;
 using System.Collections.Generic;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 
 namespace aspnet_core_dotnet_core.Pages {
     public class PageLoaderModel : Microsoft.AspNetCore.Mvc.RazorPages.PageModel {
@@ -39,6 +40,9 @@ namespace aspnet_core_dotnet_core.Pages {
         public HtmlNodeCollection? HeadScriptElements { get; set; }
         public HtmlNodeCollection? BodyScriptElements { get; set; }
 
+        AppServices Services { get; set; }
+
+        public IOptions<CommentServiceConfig> CommentServiceConfig { get; set; }
         public ICommentService CommentService { get; set; }
         protected IHostEnvironment Environment { get; set; }
         protected IHttpClientFactory ClientFactory { get; set; }
@@ -46,10 +50,12 @@ namespace aspnet_core_dotnet_core.Pages {
         public string CommentStatus { get; set; } = string.Empty;
 
 
-        public PageLoaderModel(ICommentService commentService, IHostEnvironment environment, IHttpClientFactory clientFactory) {
-            CommentService = commentService;
-            Environment = environment;
-            ClientFactory = clientFactory;
+        public PageLoaderModel(AppServices services) {
+            Services = services;
+            CommentServiceConfig = services.CommentServiceConfig;
+            Environment = services.Environment;
+            ClientFactory = services.ClientFactory;
+            CommentService = services.CommentService;
         }
 
         virtual public Task<IActionResult> OnGetAsync() {
@@ -76,10 +82,13 @@ namespace aspnet_core_dotnet_core.Pages {
                 return Page();
             }
 
+            var requestUri = $"{CommentServiceConfig.Value.ApiUrl}/api/comment";
+            var domain = CommentServiceConfig.Value.Domain;
+
             var client = ClientFactory.CreateClient();
             var response = await client.PostAsJsonAsync(
-                "https://localhost:7004/api/comment", 
-                NewComment?.ToComment("barn.parkscomputing.com", HttpContext.Request.RouteValues["slug"]?.ToString()!)
+                requestUri, 
+                NewComment?.ToComment(domain!, HttpContext.Request.RouteValues["slug"]?.ToString()!)
                 );
 
             if (response.IsSuccessStatusCode) {
