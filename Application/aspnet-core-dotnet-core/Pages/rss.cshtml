@@ -10,14 +10,15 @@
     ViewData["PubDate"] = Model.CreateDate.ToString("R");
     ViewData["LastBuildDate"] = Model.ModifiedDate.ToString("R");
 }
+@if (Model.NavRoot != null && Model.NavRoot.posts != null) {
 @foreach (var post in @Model.NavRoot.posts) {
-        @:<item>
-            <title>@post.title</title>
-            @:<link>@post.link</link>
-            <description>@post.excerpt</description>
-            <pubDate>@post.date.ToString("R")</pubDate>
-            <guid>@post.link</guid>
-        @:</item>
+    @:<item>
+        <title>@post.title</title>
+        @:<link>@post.link</link>
+        <description>@post.excerpt</description>
+        <pubDate>@post.date.ToString("R")</pubDate>
+        <guid>@post.link</guid>
+    @:</item>
 }
-
+}
 

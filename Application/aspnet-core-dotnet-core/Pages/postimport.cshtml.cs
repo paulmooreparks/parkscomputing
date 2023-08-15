@@ -9,19 +9,19 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace aspnet_core_dotnet_core.Pages {
     public class PostImportModel : PageModel {
-        public string WpTitle { get; set; }
-        public string WpContent { get; set; }
-        public string WpCreatedGmt { get; set; }
-        public string WpModifiedGmt { get; set; }
-        public string WpCreated { get; set; }
-        public string WpModified { get; set; }
-        public string WpLink { get; set; }
-        public string WpSlug { get; set; }
-        public string WpJson { get; set; }
+        public string? WpTitle { get; set; }
+        public string? WpContent { get; set; }
+        public string? WpCreatedGmt { get; set; }
+        public string? WpModifiedGmt { get; set; }
+        public string? WpCreated { get; set; }
+        public string? WpModified { get; set; }
+        public string? WpLink { get; set; }
+        public string? WpSlug { get; set; }
+        public string? WpJson { get; set; }
 
         public async Task<IActionResult> OnGetAsync() {
-            object slugObject = HttpContext.Request.RouteValues["slug"];
-            string Baseurl = $"https://old.parkscomputing.com/wp-json/wp/v2/posts?slug={slugObject.ToString()}";
+            object? slugObject = HttpContext.Request.RouteValues["slug"];
+            string Baseurl = $"https://old.parkscomputing.com/wp-json/wp/v2/posts?slug={slugObject?.ToString()}";
 
             try {
                 using (var client = new HttpClient()) {
@@ -36,9 +36,9 @@ namespace aspnet_core_dotnet_core.Pages {
                     if (response.IsSuccessStatusCode) {
                         string json = await response.Content.ReadAsStringAsync();
                         var cvt = JsonSerializer.Deserialize<object>(json);
-                        JsonElement array = (JsonElement)cvt;
-                        WpCreatedGmt = array[0].GetProperty("date_gmt").GetString();
-                        WpModifiedGmt = array[0].GetProperty("modified_gmt").GetString();
+                        JsonElement array = (JsonElement)cvt!;
+                        WpCreatedGmt = array[0].GetProperty("date_gmt").GetString()!;
+                        WpModifiedGmt = array[0].GetProperty("modified_gmt").GetString()!;
 
                         var createDate = DateTime.ParseExact(WpCreatedGmt, "s", DateTimeFormatInfo.InvariantInfo);
                         var modDate = DateTime.ParseExact(WpModifiedGmt, "s", DateTimeFormatInfo.InvariantInfo);
@@ -46,11 +46,11 @@ namespace aspnet_core_dotnet_core.Pages {
                         WpModified = modDate.ToLongDateString();
 
                         var link = array[0].GetProperty("link").GetString();
-                        var linkUri = new Uri(link);
+                        var linkUri = new Uri(link!);
                         WpLink = linkUri.PathAndQuery;
 
-                        WpTitle = array[0].GetProperty("title").GetProperty("rendered").GetString();
-                        WpContent = array[0].GetProperty("content").GetProperty("rendered").GetString();
+                        WpTitle = array[0].GetProperty("title").GetProperty("rendered").GetString()!;
+                        WpContent = array[0].GetProperty("content").GetProperty("rendered").GetString()!;
 
                         // Url
                     }

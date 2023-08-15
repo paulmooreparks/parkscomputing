@@ -12,6 +12,7 @@
       <TargetFramework>net7.0</TargetFramework>
       <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
       <RootNamespace>aspnet_core_dotnet_core</RootNamespace>
+      <Nullable>enable</Nullable>
    </PropertyGroup>
 
    <ItemGroup>

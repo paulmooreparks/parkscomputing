@@ -14,50 +14,85 @@ using aspnet_core_dotnet_core.Pages.Services;
 using Azure;
 using SmartSam.Comments.Lib;
 using System.Collections.Generic;
+using System.Net.Http.Json;
+using Microsoft.AspNetCore.Http;
 
 namespace aspnet_core_dotnet_core.Pages {
     public class PageLoaderModel : Microsoft.AspNetCore.Mvc.RazorPages.PageModel {
-        public string Title { get; set; }
-        public string PageContent { get; set; }
-        public string CreatedGmt { get; set; }
-        public string ModifiedGmt { get; set; }
+        public string? Title { get; set; }
+        public string? PageContent { get; set; }
+        public string? CreatedGmt { get; set; }
+        public string? ModifiedGmt { get; set; }
         public DateTime CreateDate { get; set; } = DateTime.UtcNow;
         public DateTime ModifiedDate { get; set; } = DateTime.UtcNow;
-        public string Created { get; set; }
-        public string Modified { get; set; }
+        public string? Created { get; set; }
+        public string? Modified { get; set; }
         public string Description { get; set; } = string.Empty;
-        public string Language { get; set; } = "en-us";
+        public string? Language { get; set; } = "en-us";
 
-        public ICommentService CommentService { get; set; }
         public bool CommentsAllowed { get; set; } = false;
         public bool CommentsEnabled { get; set; } = false;
-        public HtmlNodeCollection MetaElements { get; set; }
-        public HtmlNodeCollection LinkElements { get; set; }
-        public HtmlNodeCollection StyleElements { get; set; }
-        public HtmlNodeCollection HeadScriptElements { get; set; }
-        public HtmlNodeCollection BodyScriptElements { get; set; }
+        public bool CommentPosted { get; set; } = false;
+        public HtmlNodeCollection? MetaElements { get; set; }
+        public HtmlNodeCollection? LinkElements { get; set; }
+        public HtmlNodeCollection? StyleElements { get; set; }
+        public HtmlNodeCollection? HeadScriptElements { get; set; }
+        public HtmlNodeCollection? BodyScriptElements { get; set; }
 
+        public ICommentService CommentService { get; set; }
         protected IHostEnvironment Environment { get; set; }
-        public List<CommentResponse> CommentResponse { get; set; }
+        protected IHttpClientFactory ClientFactory { get; set; }
+        public List<CommentResponse>? CommentResponse { get; set; }
+        public string CommentStatus { get; set; } = string.Empty;
 
-        public PageLoaderModel(ICommentService commentService, IHostEnvironment environment) {
+
+        public PageLoaderModel(ICommentService commentService, IHostEnvironment environment, IHttpClientFactory clientFactory) {
             CommentService = commentService;
             Environment = environment;
+            ClientFactory = clientFactory;
         }
 
         virtual public Task<IActionResult> OnGetAsync() {
-            object sectionObject = HttpContext.Request.RouteValues["section"];
-            object slugObject = HttpContext.Request.RouteValues["slug"];
-            string slug = sectionObject.ToString();
+            object? sectionObject = HttpContext.Request.RouteValues["section"]!;
+            object? slugObject = HttpContext.Request.RouteValues["slug"];
+            string slug = sectionObject?.ToString()!;
 
             if (slugObject is not null) {
-                slug = slugObject.ToString().Trim('/');
+                slug = slugObject.ToString()!.Trim('/');
             }
+
+            var commentPosted = HttpContext.Session.GetString("CommentPosted") ?? "False";
+            CommentPosted = bool.Parse(commentPosted);
+            HttpContext.Session.SetString("CommentPosted", "False");
 
             return RetrievePage(slug);
         }
 
-        protected async Task<IActionResult> RetrievePage(string slug) {
+        [BindProperty]
+        public CommentForm? NewComment { get; set; }
+
+        public async Task<IActionResult> OnPostAsync() {
+            if (!ModelState.IsValid) {
+                return Page();
+            }
+
+            var client = ClientFactory.CreateClient();
+            var response = await client.PostAsJsonAsync(
+                "https://localhost:7004/api/comment", 
+                NewComment?.ToComment("barn.parkscomputing.com", HttpContext.Request.RouteValues["slug"]?.ToString()!)
+                );
+
+            if (response.IsSuccessStatusCode) {
+                HttpContext.Session.SetString("CommentPosted", "True");
+                await HttpContext.Session.CommitAsync(); // Force the session to save
+                return RedirectToPage();
+            }
+
+            // Handle errors, maybe set an error message to display to the user
+            return Page();
+        }
+
+        protected Task<IActionResult> RetrievePage(string slug) {
             try {
                 var path = $"{Environment.ContentRootPath}/wwwroot/content/{slug}.html";
                 var doc = new HtmlDocument();
@@ -68,7 +103,7 @@ namespace aspnet_core_dotnet_core.Pages {
                     PageContent = node.InnerHtml;
                 }
                 else {
-                    return NotFound();
+                    return Task.FromResult<IActionResult>(NotFound());
                 }
 
                 var titleElement = doc.DocumentNode.SelectSingleNode("//title");
@@ -127,18 +162,16 @@ namespace aspnet_core_dotnet_core.Pages {
                     Language = langNode.Attributes["lang"]?.Value;
                 }
 
-                // CommentResponse = await CommentService.GetCommentsAsync(slug);
-
-                return Page();
+                return Task.FromResult<IActionResult>(Page());
             }
             catch (FileNotFoundException) {
-                return NotFound();
+                return Task.FromResult<IActionResult>(NotFound());
             }
             catch (DirectoryNotFoundException) {
-                return NotFound();
+                return Task.FromResult<IActionResult>(NotFound());
             }
             catch (Exception) {
-                return StatusCode(500);
+                return Task.FromResult<IActionResult>(StatusCode(500));
             }
         }
     }

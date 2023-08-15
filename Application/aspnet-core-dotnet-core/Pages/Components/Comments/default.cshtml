@@ -14,28 +14,22 @@
     var comment = element.Comment;
     @if (comment.Status == SmartSam.Comments.Lib.CommentStatus.Approved) {
     <div class="page-comment" id="@comment.CommentId">
-        <h3 class="page-comment-title">@Html.Raw(comment.Title)</h3>
-        <div class="page-comment-author">
-            <span class="page-comment-name">@Html.Raw(comment.Name)</span> on
-            <span class="page-comment-timestamp">@Html.Raw(comment.CreateDateTime.ToString("dd MMMM yyyy"))</span> at 
-            <span class="page-comment-timestamp">@Html.Raw(comment.CreateDateTime.ToString("hh:mm tt"))</span>
+            <h3 class="page-comment-title">@if (string.IsNullOrEmpty(comment.Title)) { @($"Comment from {comment.Name}") } else {@(comment.Title)}</h3>
+            <div class="page-comment-author">
+            <span class="page-comment-name">@(comment.Name)</span> on
+            <span class="page-comment-timestamp">@(comment.CreateDateTime.ToString("dd MMMM yyyy"))</span> at 
+            <span class="page-comment-timestamp">@(comment.CreateDateTime.ToString("hh:mm tt"))</span>
         </div>
-        <div class="page-comment-text">@Html.Raw(comment.CommentText)</div>
+        <div class="page-comment-text">@(comment.CommentText)</div>
     </div>
     }
 }
 </div>
 @if (Model.Allowed) {
-<div class="page-post-comment">
-    <h3>Share Your Thoughts</h3>
-    <form accept-charset="UTF-8">
-        <label for="name">Name</label><br /><input id="name">
-        <br />
-        <label for="email">Email</label><br /><input id="email">
-        <br />
-        <label for="comment-text">Comment</label><br /><textarea id="comment-text"></textarea>
-    </form>
-</div>
+<partial name="_CommentFormPartial" model="Model.CommentForm" />
 }
 }
+    @if (Model.Posted) {
+        <div class="page-comment-posted">Your comment has been posted and is awaiting approval.</div>
+    }
 }

@@ -25,7 +25,7 @@ namespace SmartSam.Comments.Api.Controllers {
 
         [HttpGet("comments")]
         public IActionResult Get() {
-            var comments = _context.Comments.Include(c => c.User).ToList();
+            var comments = _context.Comments.Include(c => c.User).OrderBy(c => c.CreateDateTime).ToList();
             return Ok(comments);
         }
 
@@ -72,7 +72,8 @@ namespace SmartSam.Comments.Api.Controllers {
 
             IQueryable<Comment> query = _context.Comments
                 .Include(c => c.User)
-                .Where(c => c.Domain == domain);
+                .Where(c => c.Domain == domain)
+                .OrderBy(c => c.CreateDateTime);
 
             if (!string.IsNullOrEmpty(pageId)) {
                 query = query.Where(c => c.PageId == pageId);
@@ -83,7 +84,7 @@ namespace SmartSam.Comments.Api.Controllers {
                     query = query.Where(c => c.Status == statusEnum);
                 }
                 else if (int.TryParse(status, out int statusValue) && Enum.IsDefined(typeof(CommentStatus), statusValue)) {
-                    query = query.Where(c => c.Status != null && (int)c.Status == statusValue);
+                    query = query.Where(c => (int)c.Status == statusValue);
                 }
                 else {
                     return Problem("status is not valid");
@@ -128,7 +129,7 @@ namespace SmartSam.Comments.Api.Controllers {
             _context.Comments.Add(comment);
             _context.SaveChanges();
             
-            return CreatedAtAction(nameof(Get), new { id = comment.CommentId }, comment);
+            return CreatedAtAction(nameof(GetComment), new { id = comment.CommentId }, comment);
         }
 
         // PUT: api/comment

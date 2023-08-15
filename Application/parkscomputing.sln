@@ -33,11 +33,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Readme.md = Readme.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartSamCommentsLib", "SmartSamCommentsLib\SmartSamCommentsLib.csproj", "{57C21DD0-02E2-4649-89D7-5FB08318017F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SmartSamCommentsLib", "SmartSamCommentsLib\SmartSamCommentsLib.csproj", "{57C21DD0-02E2-4649-89D7-5FB08318017F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartSamCommentsData", "SmartSamCommentsData\SmartSamCommentsData.csproj", "{492C8140-D262-4E4B-9693-2BBE26DDD915}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SmartSamCommentsData", "SmartSamCommentsData\SmartSamCommentsData.csproj", "{492C8140-D262-4E4B-9693-2BBE26DDD915}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartSamCommentsApi", "SmartSamCommentsApi\SmartSamCommentsApi.csproj", "{BDE22D0A-317A-42DA-92E5-28E3CF503433}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SmartSamCommentsApi", "SmartSamCommentsApi\SmartSamCommentsApi.csproj", "{BDE22D0A-317A-42DA-92E5-28E3CF503433}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

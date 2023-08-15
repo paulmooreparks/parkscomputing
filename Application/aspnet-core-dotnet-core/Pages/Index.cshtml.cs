@@ -25,10 +25,10 @@ using System.IO;
 namespace aspnet_core_dotnet_core.Pages {
     public class IndexModel : PageLoaderModel {
         public INavService NavService { get; set; }
-        public NavRoot NavRoot { get; set; }
-        public List<string> NavNodes { get; set; } = new();
+        public NavRoot? NavRoot { get; set; }
+        public List<string>? NavNodes { get; set; } = new();
 
-        public IndexModel(INavService navService, ICommentService commentService, IHostEnvironment environment) : base(commentService, environment) {
+        public IndexModel(INavService navService, ICommentService commentService, IHostEnvironment environment, IHttpClientFactory clientFactory) : base(commentService, environment, clientFactory) {
             NavService = navService;
         }
 

@@ -20,7 +20,7 @@ namespace aspnet_core_dotnet_core.Pages.Services {
             var path = $"{Environment.ContentRootPath}/wwwroot/sitenav.json";
             var json = System.IO.File.ReadAllText(path);
             var navRoot = JsonConvert.DeserializeObject<NavRoot>(json);
-            return navRoot;
+            return navRoot!;
         }
     }
 }

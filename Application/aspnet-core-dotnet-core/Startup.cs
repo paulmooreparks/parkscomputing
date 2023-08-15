@@ -32,6 +32,13 @@ namespace aspnet_core_dotnet_core {
 
             services.AddRazorPages();
             services.AddHttpClient();
+            services.AddDistributedMemoryCache();
+            services.AddSession(options =>
+            {
+                options.IdleTimeout = TimeSpan.FromMinutes(30);
+                options.Cookie.HttpOnly = true;
+                options.Cookie.IsEssential = true; // Make sure the cookie is marked as essential
+            });
             services.AddTransient<INavService, NavService>();
             services.AddTransient<ICommentService, CommentService>();
             services.AddHttpClient("commentApi", c => {
@@ -52,6 +59,7 @@ namespace aspnet_core_dotnet_core {
 
             app.UseStaticFiles();
             app.UseCookiePolicy();
+            app.UseSession();
             app.UseRouting();
             app.UseAuthorization();
 

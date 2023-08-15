@@ -15,10 +15,10 @@ namespace aspnet_core_dotnet_core.Pages.Services {
             HttpClient = clientFactory.CreateClient("commentApi");
         }
 
-        async Task<Comments> ICommentService.GetCommentsAsync(string pageId, bool commentsEnabled, bool commentsAllowed) {
+        async Task<Comments> ICommentService.GetCommentsAsync(string pageId, bool commentsEnabled, bool commentsAllowed, bool commentPosted) {
             var domain = "barn.parkscomputing.com";
             var commentResponses = new List<CommentResponse>();
-            Exception exception = null;
+            Exception? exception = null;
 
             if (commentsEnabled) {
                 try {
@@ -26,12 +26,10 @@ namespace aspnet_core_dotnet_core.Pages.Services {
 
                     if (response.IsSuccessStatusCode) {
                         var content = await response.Content.ReadAsStringAsync();
-                        // var commentResponses = JsonSerializer.Deserialize<List<CommentResponse>>(content);
                         commentResponses = JsonConvert.DeserializeObject<List<CommentResponse>>(content);
                     }
                 }
                 catch (Exception ex) {
-                    var foo = ex.Message;
                     exception = ex;
                 }
             }
@@ -40,8 +38,9 @@ namespace aspnet_core_dotnet_core.Pages.Services {
             return new Comments {
                 Enabled = commentsEnabled,
                 Allowed = commentsAllowed,
+                Posted = commentPosted,
                 Exception = exception,
-                CommentResponseList = commentResponses
+                CommentResponseList = commentResponses!
             };
         }
     }

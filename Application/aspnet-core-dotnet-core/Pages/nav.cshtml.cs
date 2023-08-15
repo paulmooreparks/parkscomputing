@@ -11,17 +11,17 @@ namespace aspnet_core_dotnet_core.Pages {
         public NavRoot NavRoot { get; set; }
         public NavNode NavNode { get; set; }
         public List<string> NavNodes { get; set; } = new();
-        public string Section { get; set; }
+        public string? Section { get; set; }
 
         public NavModel(INavService navService) {
             NavService = navService;
+            NavRoot = NavService.GetNavRoot();
+            NavNode = GetSection(NavRoot.nav!, Section!);
         }
 
         public void OnGet() {
-            object sectionObject = HttpContext.Request.RouteValues["section"];
-            Section = sectionObject.ToString();
-            NavRoot = NavService.GetNavRoot();
-            NavNode = GetSection(NavRoot.nav, Section);
+            object? sectionObject = HttpContext.Request.RouteValues["section"];
+            Section = sectionObject?.ToString();
         }
 
         private NavNode GetSection(NavNode parent, string section) {
@@ -34,11 +34,13 @@ namespace aspnet_core_dotnet_core.Pages {
                 return node;
             }
 
-            foreach (var child in node.links) {
-                NavNode retVal = FindSection(child, section);
+            if (node is not null && node.links is not null) {
+                foreach (var child in node.links) {
+                    NavNode retVal = FindSection(child, section);
 
-                if (retVal.key == section) {
-                    return retVal;
+                    if (retVal.key == section) {
+                        return retVal;
+                    }
                 }
             }
 

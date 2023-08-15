@@ -5,16 +5,17 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Hosting;
 using System.Threading.Tasks;
+using System.Net.Http;
 
 namespace aspnet_core_dotnet_core.Pages
 {
     public class RssModel : PageLoaderModel
     {
         public INavService NavService { get; set; }
-        public NavRoot NavRoot { get; set; }
-        public List<string> NavNodes { get; set; } = new();
+        public NavRoot? NavRoot { get; set; }
+        public List<string>? NavNodes { get; set; } = new();
 
-        public RssModel(INavService navService, ICommentService commentService, IHostEnvironment environment) : base(commentService, environment) {
+        public RssModel(INavService navService, ICommentService commentService, IHostEnvironment environment, IHttpClientFactory clientFactory) : base(commentService, environment, clientFactory) {
             NavService = navService;
         }
 

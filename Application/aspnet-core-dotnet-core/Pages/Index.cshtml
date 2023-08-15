@@ -35,7 +35,7 @@
 </div>
 
 <div class="row">
-    @foreach (var post in @Model.NavRoot.posts) {
+    @foreach (var post in @Model.NavRoot?.posts!) {
         <div class="col-md-4"><h2><a href="@post.link">@post.title</a></h2><p class="posted-on">@post.date.ToLongDateString()</p><p>@post.excerpt <i><a href="@post.link">More &raquo;</a></i></p></div>
     }
 </div>

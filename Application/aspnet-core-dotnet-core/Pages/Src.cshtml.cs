@@ -12,7 +12,7 @@ using System.Text.Encodings.Web;
 
 namespace aspnet_core_dotnet_core.Pages {
     public class SrcModel : PageModel {
-        public string PageContent { get; set; }
+        public string? PageContent { get; set; }
 
         private IHostEnvironment Environment { get; set; }
 
@@ -22,11 +22,11 @@ namespace aspnet_core_dotnet_core.Pages {
 
         public async Task<IActionResult> OnGetAsync() {
             ViewData.Add("language", "plaintext");
-            object slugObject = HttpContext.Request.RouteValues["slug"];
+            object? slugObject = HttpContext.Request.RouteValues["slug"];
             string slug = string.Empty;
 
             if (slugObject is not null) {
-                slug = slugObject.ToString().Trim('/');
+                slug = slugObject?.ToString()!.Trim('/')!;
             }
 
             try {
