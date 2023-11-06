@@ -165,3 +165,7 @@ figcaption {
     font-size: smaller;
     font-style: italic;
 }
+
+h3 {
+    font-size: 1.5rem;
+}

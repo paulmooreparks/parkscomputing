@@ -24,12 +24,17 @@
     </div>
     }
 }
+@if (Model.Posted) {
+    <div class="page-comment-posted" id="page-comment-new-comment">
+        <h3 class="page-comments" id="page-comment-new-comment-header">New Comment</h3>
+        <div class="page-comment" id="page-comment-new-comment-text">
+            Your comment has been posted and is awaiting approval.
+        </div>
+    </div>
+}
 </div>
 @if (Model.Allowed) {
 <partial name="_CommentFormPartial" model="Model.CommentForm" />
 }
 }
-    @if (Model.Posted) {
-        <div class="page-comment-posted">Your comment has been posted and is awaiting approval.</div>
-    }
 }

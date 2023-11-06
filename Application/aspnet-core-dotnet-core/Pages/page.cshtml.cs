@@ -82,14 +82,7 @@ namespace aspnet_core_dotnet_core.Pages {
                 return Page();
             }
 
-            var requestUri = $"{CommentServiceConfig.Value.ApiUrl}/api/comment";
-            var domain = CommentServiceConfig.Value.Domain;
-
-            var client = ClientFactory.CreateClient();
-            var response = await client.PostAsJsonAsync(
-                requestUri, 
-                NewComment?.ToComment(domain!, HttpContext.Request.RouteValues["slug"]?.ToString()!)
-                );
+            HttpResponseMessage response = await PostComment();
 
             if (response.IsSuccessStatusCode) {
                 HttpContext.Session.SetString("CommentPosted", "True");
@@ -99,6 +92,18 @@ namespace aspnet_core_dotnet_core.Pages {
 
             // Handle errors, maybe set an error message to display to the user
             return Page();
+        }
+
+        private async Task<HttpResponseMessage> PostComment() {
+            var requestUri = $"{CommentServiceConfig.Value.ApiUrl}/api/comment";
+            var domain = CommentServiceConfig.Value.Domain;
+
+            var client = ClientFactory.CreateClient();
+            var response = await client.PostAsJsonAsync(
+                requestUri,
+                NewComment?.ToComment(domain!, HttpContext.Request.RouteValues["slug"]?.ToString()!)
+                );
+            return response;
         }
 
         protected Task<IActionResult> RetrievePage(string slug) {
