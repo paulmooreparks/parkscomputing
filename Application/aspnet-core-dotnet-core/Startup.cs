@@ -48,6 +48,7 @@ namespace aspnet_core_dotnet_core {
                 var config = serviceProvider.GetRequiredService<IOptions<CommentServiceConfig>>().Value;
                 c.BaseAddress = new Uri(config?.ApiUrl ?? throw new InvalidOperationException("ApiUrl is null"));
             });
+            services.AddSingleton<StaticFileReaderService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

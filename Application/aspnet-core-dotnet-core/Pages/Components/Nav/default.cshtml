@@ -1,4 +1,4 @@
-﻿@model aspnet_core_dotnet_core.Pages.Services.NavRoot
+﻿ @model aspnet_core_dotnet_core.Pages.Services.NavRoot
     <li class='nav-item'><a class='nav-link text-light' href='@Model.nav?.link'>@Model.nav?.title</a></li>
     @foreach (var link in @Model?.nav?.links!) {
         @if (link?.links?.Count() > 0) {

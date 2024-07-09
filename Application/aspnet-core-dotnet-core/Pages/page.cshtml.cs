@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Hosting;
 using System.IO;
 using aspnet_core_dotnet_core.Pages.Services;
-using Azure;
 using SmartSam.Comments.Lib;
 using System.Collections.Generic;
 using System.Net.Http.Json;
