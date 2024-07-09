@@ -8,7 +8,7 @@ env:
   APPNAME: parkscomputing
   APPLICATIONPATH: Application
   HOSTINGPLAN: parkscomputing
-  DOCKERFILEPATH: "Application/aspnet-core-dotnet-core"
+  DOCKERFILEPATH: "./aspnet-core-dotnet-core"
   REGISTRYSKU: "Standard"
   REGISTRYNAME: "parkscomputingacr"
   REGISTRYLOCATION: "South Central US"
@@ -65,8 +65,10 @@ jobs:
 
     - name: Docker Build & Push to ACR
       run: |
+        echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+        cd "$GITHUB_WORKSPACE/${{env.APPLICATIONPATH}}"
         docker login ${{ env.REGISTRYNAME }}.azurecr.io --username ${{ steps.acrCredentials.outputs.acr_username }} --password ${{ steps.acrCredentials.outputs.acr_password }}
-        docker build "$GITHUB_WORKSPACE/${{env.DOCKERFILEPATH}}" -f  "${{env.DOCKERFILEPATH}}/Dockerfile" -t ${{ env.REGISTRYNAME }}.azurecr.io/${{ env.IMAGENAME }}:${{ github.sha }}
+        docker build . -f  "${{env.DOCKERFILEPATH}}/Dockerfile" -t ${{ env.REGISTRYNAME }}.azurecr.io/${{ env.IMAGENAME }}:${{ github.sha }}
         docker push ${{ env.REGISTRYNAME }}.azurecr.io/${{ env.IMAGENAME }}:${{ github.sha }}
 
   deploy:

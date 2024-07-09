@@ -14,12 +14,16 @@ COPY aspnet-core-dotnet-core/*.csproj ./aspnet-core-dotnet-core/
 COPY aspnet-core-dotnet-core.FunctionalTests/*.csproj ./aspnet-core-dotnet-core.FunctionalTests/
 COPY aspnet-core-dotnet-core.UnitTests/*.csproj ./aspnet-core-dotnet-core.UnitTests/
 COPY SmartSamCommentsLib/*.csproj ./SmartSamCommentsLib/
+COPY SmartSamCommentsApi/*.csproj ./SmartSamCommentsApi/
+COPY SmartSamCommentsData/*.csproj ./SmartSamCommentsData/
 
 # Copy everything else and build
 COPY aspnet-core-dotnet-core ./aspnet-core-dotnet-core/
 COPY aspnet-core-dotnet-core.FunctionalTests ./aspnet-core-dotnet-core.FunctionalTests/
 COPY aspnet-core-dotnet-core.UnitTests ./aspnet-core-dotnet-core.UnitTests/
+COPY SmartSamCommentsApi/ ./SmartSamCommentsApi/
 COPY SmartSamCommentsLib/ ./SmartSamCommentsLib/
+COPY SmartSamCommentsData/ ./SmartSamCommentsData/
 
 WORKDIR /app/aspnet-core-dotnet-core
 RUN dotnet restore
