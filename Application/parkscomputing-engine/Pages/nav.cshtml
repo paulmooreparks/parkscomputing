@@ -1,0 +1,19 @@
+﻿@page "{**section}"
+
+@model ParksComputing.Engine.Pages.NavModel
+@{
+    ViewData["Title"] = Model.NavNode.title;
+}
+
+<div class="main-container">
+    <h1>@Model.NavNode.title</h1>
+    <p>@Model.NavNode.excerpt</p>
+</div>
+
+<div class="row">
+@if (Model.NavNode != null && Model.NavNode.links != null) {
+    @foreach (var post in @Model.NavNode.links) {
+        <div class="col-md-4"><h2><a href="@post.link">@post.title</a></h2><p class="posted-on">@post.date.ToLongDateString()</p><p>@post.excerpt <i><a href="@post.link">More &raquo;</a></i></p></div>
+    }
+}
+</div>

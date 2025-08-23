@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Using AI</title>
+    <meta http-equiv="date" content="2023-08-23T14:24:00" />
+    <meta http-equiv="last-modified" content="2023-08-23T14:24:00" />
+    <meta name="comments-enabled" content="true" />
+    <meta name="comments-allowed" content="true" />
+    <script src="https://www.youtube.com/iframe_api"></script>
+</head>
+
+<body>
+    <h1>Using AI</h1>
+
+    <h2>Introduction</h2>
+    <h3>Describe the computer in Star Trek: The Next Generation</h3>
+
+    <h3>Introduce Clip</h3>
+
+    <p>You may watch the <a href="https://www.youtube.com/watch?v=6CDhEwhOm44" target="_blank">entire video on YouTube</a>.</p>
+
+    <!-- 11:21 to 14:09 -->
+    <div data-video="6CDhEwhOm44"
+         data-startseconds="681"
+         data-endseconds="849"
+         data-height="480"
+         data-width="640"
+         id="youtube-player"></div>
+
+    <script type="text/javascript">
+        function onYouTubeIframeAPIReady() {
+            var ctrlq = document.getElementById('youtube-player');
+            var player = new YT.Player('youtube-player', {
+                height: ctrlq.dataset.height,
+                width: ctrlq.dataset.width,
+                events: {
+                    onReady: function (e) {
+                        e.target.cueVideoById({
+                            videoId: ctrlq.dataset.video,
+                            startSeconds: ctrlq.dataset.startseconds,
+                            endSeconds: ctrlq.dataset.endseconds,
+                        });
+                    },
+                },
+            });
+        }
+    </script>
+
+    <h2>What is LLM?</h2>
+
+    <h3>Using LLMs Like the Star Trek Computer</h3>
+
+    <h3>Geordi is the expert</h3>
+
+    <h2>How I Use LLMs to Develop Software</h2>
+
+
+</body>
+
+</html>

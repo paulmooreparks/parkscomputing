@@ -1,0 +1,327 @@
+/* Sidebar Styles */
+.sidebar {
+    width: 260px;
+    background-color: #343a40;
+    color: #fff;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    padding-top: 20px;
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Accordion Styles for Sidebar */
+    .accordion {
+        background-color: #495057;
+        color: #fff;
+        cursor: pointer;
+        padding: 10px 20px;
+        width: 100%;
+        border: none;
+        text-align: left;
+        outline: none;
+        font-size: 1em;
+        transition: background-color 0.2s;
+    }
+    .active, .accordion:hover {
+        background-color: #212529;
+    }
+    .panel {
+        padding-left: 10px;
+        display: none;
+        background-color: #343a40;
+    }
+}
+
+.sidebar-header {
+    padding: 0 20px 20px 20px;
+    text-align: center;
+    border-bottom: 1px solid #495057;
+}
+
+.sidebar-header h2 {
+    margin: 0;
+    font-size: 1.5em;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar ul li a {
+    display: block;
+    padding: 12px 20px;
+    color: #adb5bd;
+    text-decoration: none;
+    transition: background-color 0.2s, color 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.sidebar ul li a:hover {
+    background-color: #495057;
+    color: #fff;
+}
+
+.sidebar ul li a.active {
+    background-color: #0d6efd;
+    color: #fff;
+    border-left: 3px solid #80bfff;
+}
+
+.sidebar ul ul {
+  padding-left: 20px; /* Indents nested <ul> elements */
+}
+
+.sidebar ul ul li,
+.sidebar ul ul .sidebar-accordion {
+  padding-left: 1em; /* Optional: adds extra depth inside nested items */
+}
+
+.sidebar summary {
+    padding: 12px 20px;
+    overflow-x:auto;
+}
+
+.sidebar ul {
+  list-style: none;
+}
+
+.sidebar li a {
+  display: block;
+  padding-left: 1.5em;
+  text-decoration: none;
+  transition: background-color 0.2s, color 0.2s;
+  border-left: 3px solid transparent;
+}
+
+.sidebar li a:hover {
+  background-color: #495057;
+  color: #fff;
+}
+
+.sidebar li a.active {
+  background-color: #0d6efd;
+  color: #fff;
+  border-left: 3px solid #80bfff;
+}
+
+.sidebar-accordion {
+  display: list-item; /* Important: keeps the native arrow */
+  cursor: pointer;
+}
+
+details details > summary.sidebar-accordion {
+  padding-left: 2.5em; /* or more, depending on your desired depth */
+}
+
+/* Highlighted link style: looks like normal text, box on hover, home icon */
+.home-link {
+    color: inherit;
+    text-decoration: none;
+    font-weight: normal;
+    background: none;
+    border: none;
+    padding: 0 4px 0 0;
+    display: inline-flex;
+    align-items: center;
+    transition: box-shadow 0.2s, background 0.2s;
+}
+.home-link::before {
+    content: '';
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    margin-right: 6px;
+    background: url('XferLang-sm.png') no-repeat center center;
+    background-size: contain;
+    vertical-align: middle;
+}
+.home-link:hover {
+    box-shadow: 0 0 0 2px #0d6efd33;
+    background: #f0f4ff;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #222 !important; /* Ensure text is visible on hover */
+}
+
+/* Main logo in content */
+.main-logo {
+    display: block;
+    margin: 0 auto 20px auto;
+    max-width: 180px;
+    height: auto;
+}
+
+/* Comparison table styles */
+.comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+.comparison-table th,
+.comparison-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+.comparison-header {
+    background: #f5f5f5;
+}/* Project badges container */
+.project-badges {
+    margin: 20px 0;
+    text-align: center;
+}
+
+/* Project links container */
+.project-links {
+    text-align: center;
+    margin: 15px 0;
+}
+
+/* Button styles for GitHub, NuGet, Releases */
+.project-links a {
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+    margin: 0 10px;
+    color: white;
+    display: inline-block;
+}
+.github-btn {
+    background: #333;
+}
+.nuget-btn {
+    background: #004880;
+}
+.releases-btn {
+    background: #28a745;
+}/* General Body Styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    background-color: #f8f9fa;
+    color: #343a40;
+    display: flex;
+}
+
+/* Main Content Styles */
+.content {
+    margin-left: 260px;
+    padding: 40px 60px;
+    width: calc(100% - 260px);
+    box-sizing: border-box; /* Ensures padding is included in width calculation */
+}
+
+header {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 20px;
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+header h1 {
+    font-size: 2.5em;
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+.subtitle {
+    display: block;
+    font-size: 1.25em;
+    color: #555;
+    margin-top: auto;
+    padding-bottom: 10px;
+    text-align: center;
+}
+
+section {
+    margin-bottom: 40px;
+}
+
+h2 {
+    font-size: 2em;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 10px;
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+/* Code Block Styles */
+pre, .wp-block-preformatted {
+    background-color: #f8f9fa;
+    color: #333;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 10px 0;
+    font-family: "Fira Code", "Courier New", monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+code.csharp, code.bash {
+    font-family: "Fira Code", "Courier New", monospace;
+    font-size: 0.95em;
+}
+
+/* Footer Styles */
+footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: 40px;
+    border-top: 1px solid #dee2e6;
+    color: #6c757d;
+}
+
+/* Mobile Navigation */
+.mobile-nav-toggle {
+    display: none;
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1000;
+    cursor: pointer;
+}
+
+.mobile-nav-toggle span {
+    display: block;
+    width: 25px;
+    height: 3px;
+    background-color: #343a40;
+    margin: 5px 0;
+    transition: transform 0.3s, opacity 0.3s;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    .content {
+        margin-left: 0;
+        width: 100%;
+        padding: 20px;
+    }
+
+    .mobile-nav-toggle {
+        display: block;
+    }
+
+    .mobile-nav-toggle.active span:nth-child(1) {
+        transform: rotate(45deg) translate(5px, 5px);
+    }
+    .mobile-nav-toggle.active span:nth-child(2) {
+        opacity: 0;
+    }
+    .mobile-nav-toggle.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(7px, -6px);
+    }
+}

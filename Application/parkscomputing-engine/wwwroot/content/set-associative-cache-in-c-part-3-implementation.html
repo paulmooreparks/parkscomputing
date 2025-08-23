@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+
+<head lang=en>
+<title>Set-Associative Cache in C#, Part 3: Implementation</title>
+<meta charset="utf-8">
+<meta http-equiv="date" content="2024-08-30T21:19:00">
+<meta http-equiv="last-modified" content="2024-08-30T21:19:00">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Set-Associative Cache in C#">
+<meta name="keyword" content="set associative cache,C#,.NET,data structures,coding,programming">
+<link rel="stylesheet" href="/highlightjs/styles/default.min.css">
+<script src="/highlightjs/highlight.min.js"></script>
+</head>
+
+<body>
+<h1>Set-Associative Cache in C#, Part 3: Implementation</h1>
+
+<p>For my implementation, I chose to create a generic collection type very similar to the <a rel="noopener" href="https://docs.microsoft.com/en-us/dotnet/api/system.collections.generic.idictionary-2?view=net-5.0" target="_blank">System.Collections.Generic.IDictionary&lt;TKey, TValue&gt;</a> interface. It seemed the most intuitive interface to start with, since the implementation of the cache is somewhat similar to that of a dictionary.</p>
+
+<p></p>
+
+<pre class="wp-block-preformatted"><code class="language-csharp">using System.Collections.Generic;
+
+namespace ParksComputing.SetAssociativeCache {
+
+    // Represents a generic set-associative cache of key/value pairs.
+    public interface ISetAssociativeCache&lt;TKey, TValue&gt; : IDictionary&lt;TKey, TValue&gt; {
+        // Gets the capacity of the cache.
+        int Capacity { get; }
+
+        // Gets the number of sets in the cache.
+        int Sets { get; }
+
+        // Gets the capacity in each set.
+        int Ways { get; }
+
+        // If the given key would cause an existing cache item to be evicted, returns true and sets 
+        // evictKey to the key of the cache item that would be evicted if the new key were added.
+        bool TryGetEvictKey(TKey key, out TKey evictKey);
+    }
+}</code></pre>
+
+<p></p>
+
+<p>This interface will be implemented by concrete classes which provides the behavior of the set-associative cache. Since there are multiple policies to choose from for cache eviction, and the implementation of those policies </p>
+
+<h2>Implementation</h2>
+
+<p>Now that we have settled on the basic design of the set-associative cache, and we&#8217;ve defined the interface, it&#8217;s time to work on the implementation.</p>
+
+<pre class="wp-block-preformatted"><code class="language-csharp">const ulong offsetBasis = 14695981039346656037;
+const ulong prime = 1099511628211;
+
+public static ulong GetHashValue&lt;T&gt;(this T key) {
+    if (key == null) {
+        throw new ArgumentNullException(nameof(key));
+    }
+
+    ulong hash = offsetBasis;
+    char[] chars = key.ToString().ToCharArray();
+
+    foreach (char c in chars) {
+        hash ^= c;
+        hash *= prime;
+    }
+
+    return hash;
+}</code></pre>
+
+<pre class="wp-block-preformatted"><code class="language-csharp">protected int FindSet(TKey key) {
+    if (key == null) {
+        throw new ArgumentNullException(nameof(key));
+    }
+
+    ulong keyHash = key.GetHashValue();
+    return (int)(keyHash % (ulong)sets_);
+}</code></pre>
+
+<h2>Using the Cache</h2>
+
+<p>Can I type some stuff here?</p>
+
+<h2>Caching Policies</h2>
+
+<h2>Base Class</h2>
+
+<h2>LRU Policy</h2>
+
+<h2>MRU Policy</h2>
+
+<h2>LFU Policy</h2>
+<script>hljs.highlightAll();</script>
+</body>
+</html>

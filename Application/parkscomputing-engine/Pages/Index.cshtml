@@ -1,0 +1,41 @@
+﻿@page "/"
+@using System.Globalization;
+@model ParksComputing.Engine.Pages.IndexModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = Html.Raw(Model.Title);
+}
+
+@section Meta { @if (Model.MetaElements is not null) {
+@foreach (var element in @Model.MetaElements) {
+    @Html.Raw(element.OuterHtml)
+}}
+}
+
+@section Links { @if (Model.LinkElements is not null) {
+@foreach (var element in @Model.LinkElements) {
+    @Html.Raw(element.OuterHtml)
+}}
+}
+
+@section Style { @if (Model.StyleElements is not null) {
+@foreach (var element in @Model.StyleElements) {
+    @Html.Raw(element.OuterHtml)
+}}
+}
+
+@section HeadScripts { @if (Model.HeadScriptElements is not null) {
+@foreach (var element in @Model.HeadScriptElements) {
+    @Html.Raw(element.OuterHtml)
+}}
+}
+
+<div class="main-container">
+    @Html.Raw(Model.PageContent)
+</div>
+
+<div class="row">
+    @foreach (var post in @Model.NavRoot?.posts!) {
+        <div class="col-md-4"><h2><a href="@post.link">@post.title</a></h2><p class="posted-on">@post.date.ToLongDateString()</p><p>@post.excerpt <i><a href="@post.link">More &raquo;</a></i></p></div>
+    }
+</div>

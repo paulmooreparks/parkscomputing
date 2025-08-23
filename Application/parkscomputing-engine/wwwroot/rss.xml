@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>Parks Computing Services</title>
+        <link>https://parkscomputing.com/</link>
+        <description>Parks Computing Services web site</description>
+        <language>en-sg</language>
+        <pubDate>14 Jan 2023 04:00:00 GMT</pubDate>
+        <lastBuildDate>20 Jul 2023 04:00:00 GMT</lastBuildDate>
+        <docs>https://www.rssboard.org/rss-specification</docs>
+        <generator>Weblog Editor 2.0</generator>
+        <managingEditor>paul@parkscomputing.com (Paul Parks)</managingEditor>
+        <webMaster>paul@parkscomputing.com (Paul Parks)</webMaster>
+        <atom:link href="https://www.rssboard.org/files/sample-rss-2.xml" rel="self" type="application/rss+xml"/>
+        <item>
+            <title>Personas In the Wild</title>
+            <link>https://parkscomputing.com/page/personas-in-the-wild</link>
+            <description>
+                If you've been around software product management long enough, you've encountered the concept of personas. Here's a story about seeing one in the wild.
+            </description>
+            <pubDate>2023-06-23T02:51:00</pubDate>
+            <guid>https://parkscomputing.com/page/personas-in-the-wild</guid>
+        </item>
+    </channel>
+</rss>

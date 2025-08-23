@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Excel Budgeting Spreadsheet</title>
+    <meta http-equiv="date" content="2023-01-09T21:55:00" />
+    <meta http-equiv="last-modified" content="2023-01-09T21:55:00" />
+    <meta name="description" content="A budgeting spreadsheet in Excel." />
+    <meta name="keyword" content="Excel,spreadsheet,budgeting,coding,programming" />
+    <link rel="stylesheet" href="/highlightjs/styles/default.min.css">
+    <script src="/highlightjs/highlight.min.js"></script>
+</head>
+
+<body>
+    <h1>Excel Budgeting Spreadsheet</h1>
+
+    <p>
+        My wife and I have been planning a move into a house on the western side of Singapore from our old condo in the
+        east. Since it's a much bigger place, there is a lot of stuff to buy and various services to pay for in
+        preparation for the move. To keep track of the expenses, I put together a budgeting spreadsheet that sort of
+        took on a life of its own, and now I do all my bank account tracking and budgeting with it. Since it uses a couple of rather
+        interesting formulas and techniques, I thought I'd post it here along with an explanation of how it works, in case it might be useful
+        to someone else.
+    </p>
+
+    <h2>Account Register</h2>
+
+    <p>
+        The spreadsheet starts with a simple account register. Since this is an <a href="https://www.accountingtools.com/articles/debits-and-credits" target="_blank">equity account</a>, 
+        money going out of the account is tracked as a <a href="https://www.accountingtools.com/articles/debit" target="_blank">debit</a>, and money coming into the account is tracked as a 
+        <a href="https://www.accountingtools.com/articles/credit" target="_blank">credit</a>. The "Net" column records a negative or positive amount, as required, and this value is summed 
+        into the running balance.
+    </p>
+
+    <p>
+        <a href="/images/excel-budgeting-register-lg.png" target="_blank" rel="noopener"><img decoding="async"
+            loading="lazy" class="aligncenter" src="/images/excel-budgeting-register-lg.png" alt=""
+            srcset="/images/excel-budgeting-register-lg.png 1655w, /images/excel-budgeting-register-md.png 828w, /images/excel-budgeting-register-sm.png 546w"
+            sizes="(max-width: 1655px) 100vw, 828px, 546px" /></a>
+    </p>
+
+    <p>
+        There is one feature of this that I still find a bit hokey, but I haven't come up with a simpler solution yet. The opening balance is placed in the 
+        column header field for the "Balance" column. 
+    </p>
+
+    <p>
+        <a href="/images/excel-budgeting-balance-lg.png" target="_blank" rel="noopener"><img decoding="async"
+            loading="lazy" class="aligncenter" src="/images/excel-budgeting-balance-lg.png" alt=""
+            srcset="/images/excel-budgeting-balance-lg.png 334w, /images/excel-budgeting-balance-md.png 167w"
+            sizes="(max-width: 334px) 100vw, 167px" /></a>
+    </p>
+
+    <p>
+        <pre><code class="language-excel">=OFFSET([@[$10,000.00]],-1,)+[@Net]</code></pre>
+    </p>
+
+    <h2>Categorization</h2>
+
+    <h2></h2>
+
+    <h2>Tracking Monthly Spending</h2>
+
+    <h2>Budgeting</h2>
+
+    <script>hljs.highlightAll();</script>
+</body>
+
+</html>

@@ -1,0 +1,8 @@
+﻿@page "{section?}/{**slug}"
+@model ParksComputing.Engine.Pages.PageImportModel
+@{
+    Layout = "_Import";
+    ViewData["Title"] = Html.Raw(Model.WpTitle);
+}
+<h1>@Html.Raw(Model.WpTitle)</h1>
+@Html.Raw(Model.WpContent)

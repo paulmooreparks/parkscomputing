@@ -8,7 +8,8 @@ env:
   APPNAME: parkscomputing
   APPLICATIONPATH: Application
   HOSTINGPLAN: parkscomputing
-  DOCKERFILEPATH: "./aspnet-core-dotnet-core"
+  DOCKERFILEPATH: "./parkscomputing-engine"
+  DOTNET_VERSION: 8.0.x
   REGISTRYSKU: "Standard"
   REGISTRYNAME: "parkscomputingacr"
   REGISTRYLOCATION: "South Central US"
@@ -26,17 +27,32 @@ jobs:
     steps:
     - uses: actions/checkout@master
 
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj','global.json') }}
+        restore-keys: |
+          nuget-${{ runner.os }}-
+
     - name: Azure authentication
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Build and Run unit tests 
-      run: | 
+    - name: Build and Run unit tests
+      run: |
             pushd ${{ env.APPLICATIONPATH }}
+            if [ -d "aspnet-core-dotnet-core.UnitTests" ]; then rm -rf aspnet-core-dotnet-core.UnitTests; fi
+            if [ -d "aspnet-core-dotnet-core.FunctionalTests" ]; then rm -rf aspnet-core-dotnet-core.FunctionalTests; fi
             dotnet restore
             dotnet build --configuration Release
-            dotnet test aspnet-core-dotnet-core.UnitTests/aspnet-core-dotnet-core.UnitTests.csproj  --verbosity normal
+            dotnet test parkscomputing-engine.UnitTests/parkscomputing-engine.UnitTests.csproj  --verbosity normal
             popd
 
     # Create Azure container registry
@@ -52,9 +68,11 @@ jobs:
       id: acrCredentials
       continue-on-error: false
       run: |
-          echo "::set-output name=acr_username::`az acr credential show -n ${{ env.REGISTRYNAME }} --query username`"
-          echo "::set-output name=acr_password::`az acr credential show -n ${{ env.REGISTRYNAME }} --query passwords[0].value`"
-          echo "::add-mask::`az acr credential show -n ${{ env.REGISTRYNAME }} --query passwords[0].value`"
+          acr_username=$(az acr credential show -n ${{ env.REGISTRYNAME }} --query username -o tsv)
+          acr_password=$(az acr credential show -n ${{ env.REGISTRYNAME }} --query passwords[0].value -o tsv)
+          echo "acr_username=$acr_username" >> $GITHUB_OUTPUT
+          echo "acr_password=$acr_password" >> $GITHUB_OUTPUT
+          echo "::add-mask::$acr_password"
 
     - name: ACR authentication
       uses: azure/docker-login@v1
@@ -67,9 +85,15 @@ jobs:
       run: |
         echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
         cd "$GITHUB_WORKSPACE/${{env.APPLICATIONPATH}}"
-        docker login ${{ env.REGISTRYNAME }}.azurecr.io --username ${{ steps.acrCredentials.outputs.acr_username }} --password ${{ steps.acrCredentials.outputs.acr_password }}
-        docker build . -f  "${{env.DOCKERFILEPATH}}/Dockerfile" -t ${{ env.REGISTRYNAME }}.azurecr.io/${{ env.IMAGENAME }}:${{ github.sha }}
-        docker push ${{ env.REGISTRYNAME }}.azurecr.io/${{ env.IMAGENAME }}:${{ github.sha }}
+        IMAGE=${{ env.REGISTRYNAME }}.azurecr.io/${{ env.IMAGENAME }}
+        docker build . -f  "${{env.DOCKERFILEPATH}}/Dockerfile" \
+          -t $IMAGE:${{ github.sha }} \
+          -t $IMAGE:latest \
+          --label org.opencontainers.image.revision=${{ github.sha }} \
+          --label org.opencontainers.image.source=${{ github.repository }} \
+          --label org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        docker push $IMAGE:${{ github.sha }}
+        docker push $IMAGE:latest
 
   deploy:
     name: Deploy application to AKS
@@ -90,19 +114,21 @@ jobs:
         resourceGroupName: ${{ env.RESOURCEGROUPNAME }}
         template: ./ArmTemplates/container-webapp-template.json
         parameters: webAppName="${{ env.APPNAME }}" hostingPlanName="${{ env.HOSTINGPLAN }}" sku="${{ env.SKU }}" appInsightsLocation="${{ env.APPINSIGHTSLOCATION }}" registryName="${{ env.REGISTRYNAME }}" imageName="${{ env.IMAGENAME }}" registryLocation="${{ env.REGISTRYLOCATION }}" registrySku="${{ env.REGISTRYSKU }}"
- 
+
     - name: Get ACR credentials
       id: getACRCred
       run: |
-           echo "::set-output name=acr_username::`az acr credential show -n ${{ env.REGISTRYNAME }} --query username | xargs`"
-           echo "::set-output name=acr_password::`az acr credential show -n ${{ env.REGISTRYNAME }} --query passwords[0].value | xargs`"
-           echo "::add-mask::`az acr credential show -n ${{ env.REGISTRYNAME }} --query passwords[0].value | xargs`" 
+           acr_username=$(az acr credential show -n ${{ env.REGISTRYNAME }} --query username -o tsv | xargs)
+           acr_password=$(az acr credential show -n ${{ env.REGISTRYNAME }} --query passwords[0].value -o tsv | xargs)
+           echo "acr_username=$acr_username" >> $GITHUB_OUTPUT
+           echo "acr_password=$acr_password" >> $GITHUB_OUTPUT
+           echo "::add-mask::$acr_password"
 
     - name: 'Deploy to Azure Web App for Container'
       uses: azure/webapps-deploy@v2
-      with: 
-        app-name: ${{ env.APPNAME }} 
-        images: ${{ env.REGISTRYNAME }}.azurecr.io/${{ env.IMAGENAME }}:${{ github.sha }}
+      with:
+        app-name: ${{ env.APPNAME }}
+  images: ${{ env.REGISTRYNAME }}.azurecr.io/${{ env.IMAGENAME }}:${{ github.sha }}
 
   FunctionalTests:
     name: Functional tests
@@ -111,15 +137,15 @@ jobs:
     steps:
     - uses: actions/checkout@master
 
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v1
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: Update web app url in Run Settings
       shell: powershell
       run: |
-          cd Application\aspnet-core-dotnet-core.FunctionalTests
+          cd Application\parkscomputing-engine.FunctionalTests
           [xml]$runSetting = Get-Content functionalTests.runsettings
           $runSetting.RunSettings.TestRunParameters.ChildNodes.Item(0).value = 'https://${{ env.APPNAME }}.azurewebsites.net/'
           $runSetting.Save("$(pwd)/functionalTests.runsettings")
@@ -127,5 +153,5 @@ jobs:
     - name: Run tests
       continue-on-error: false
       run: |
-          cd Application\aspnet-core-dotnet-core.FunctionalTests
-          dotnet test aspnet-core-dotnet-core.FunctionalTests.csproj -s functionalTests.runsettings
+          cd Application\parkscomputing-engine.FunctionalTests
+          dotnet test parkscomputing-engine.FunctionalTests.csproj -s functionalTests.runsettings

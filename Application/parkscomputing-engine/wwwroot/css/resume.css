@@ -1,0 +1,41 @@
+﻿.subhead {
+    border-bottom: none;
+    text-transform: none;
+    margin-bottom: 1rem;
+}
+
+h2 {
+    border-bottom: solid black;
+    text-transform: uppercase;
+}
+
+address {
+    display: inline;
+    font-weight: normal;
+    font-style: normal;
+    box-sizing: content-box;
+}
+
+.email {
+    font-weight: normal;
+}
+
+.telephone {
+    font-weight: normal;
+}
+
+.duties {
+    padding-top: 10px;
+}
+
+.employer {
+}
+
+.location {
+}
+
+.timespan {
+}
+
+.skills {
+}

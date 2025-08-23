@@ -3,15 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.2.32630.192
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "aspnet-core-dotnet-core.UnitTests", "aspnet-core-dotnet-core.UnitTests\aspnet-core-dotnet-core.UnitTests.csproj", "{DA840935-6753-4A08-9045-A82BDF6FAA95}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "parkscomputing-engine.UnitTests", "parkscomputing-engine.UnitTests\parkscomputing-engine.UnitTests.csproj", "{DA840935-6753-4A08-9045-A82BDF6FAA95}"
 	ProjectSection(ProjectDependencies) = postProject
 		{5F53DF70-63C2-4ADE-80A4-1F942681DEC9} = {5F53DF70-63C2-4ADE-80A4-1F942681DEC9}
 		{D6902CA6-4C33-4EB0-95BB-F49E513B66A8} = {D6902CA6-4C33-4EB0-95BB-F49E513B66A8}
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "aspnet-core-dotnet-core.FunctionalTests", "aspnet-core-dotnet-core.FunctionalTests\aspnet-core-dotnet-core.FunctionalTests.csproj", "{D6902CA6-4C33-4EB0-95BB-F49E513B66A8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "parkscomputing-engine.FunctionalTests", "parkscomputing-engine.FunctionalTests\parkscomputing-engine.FunctionalTests.csproj", "{D6902CA6-4C33-4EB0-95BB-F49E513B66A8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "aspnet-core-dotnet-core", "aspnet-core-dotnet-core\aspnet-core-dotnet-core.csproj", "{5F53DF70-63C2-4ADE-80A4-1F942681DEC9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "parkscomputing-engine", "parkscomputing-engine\parkscomputing-engine.csproj", "{5F53DF70-63C2-4ADE-80A4-1F942681DEC9}"
 	ProjectSection(ProjectDependencies) = postProject
 		{BDE22D0A-317A-42DA-92E5-28E3CF503433} = {BDE22D0A-317A-42DA-92E5-28E3CF503433}
 	EndProjectSection
