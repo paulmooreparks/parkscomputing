@@ -59,6 +59,7 @@ jobs:
     - uses: azure/arm-deploy@v1
       id: createAcr
       with:
+        scope: resourceGroup
         subscriptionId: ${{ env.SUBSCRIPTIONID }}
         resourceGroupName: ${{ env.RESOURCEGROUPNAME }}
         template: ./ArmTemplates/containerRegistry-template.json
@@ -96,7 +97,7 @@ jobs:
         docker push $IMAGE:latest
 
   deploy:
-    name: Deploy application to AKS
+    name: Deploy application to Azure Web App
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -110,6 +111,7 @@ jobs:
     - uses: azure/arm-deploy@v1
       id: deploy
       with:
+        scope: resourceGroup
         subscriptionId: ${{ env.SUBSCRIPTIONID }}
         resourceGroupName: ${{ env.RESOURCEGROUPNAME }}
         template: ./ArmTemplates/container-webapp-template.json
@@ -128,9 +130,9 @@ jobs:
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.APPNAME }}
-  images: ${{ env.REGISTRYNAME }}.azurecr.io/${{ env.IMAGENAME }}:${{ github.sha }}
+        images: ${{ env.REGISTRYNAME }}.azurecr.io/${{ env.IMAGENAME }}:${{ github.sha }}
 
-  FunctionalTests:
+  functional-tests:
     name: Functional tests
     runs-on: windows-latest
     needs: deploy
