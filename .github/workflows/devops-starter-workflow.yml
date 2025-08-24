@@ -67,7 +67,7 @@ jobs:
     - uses: azure/arm-deploy@v1
       id: createAcr
       with:
-        scope: resourceGroup
+        scope: resourcegroup
         subscriptionId: ${{ env.SUBSCRIPTIONID }}
         resourceGroupName: ${{ env.RESOURCEGROUPNAME }}
         template: ./ArmTemplates/containerRegistry-template.json
@@ -121,7 +121,7 @@ jobs:
     - uses: azure/arm-deploy@v1
       id: deploy
       with:
-        scope: resourceGroup
+        scope: resourcegroup
         subscriptionId: ${{ env.SUBSCRIPTIONID }}
         resourceGroupName: ${{ env.RESOURCEGROUPNAME }}
         template: ./ArmTemplates/container-webapp-template.json
