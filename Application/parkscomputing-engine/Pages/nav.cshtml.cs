@@ -8,15 +8,15 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace ParksComputing.Engine.Pages {
     public class NavModel : PageModel {
         public INavService NavService { get; set; }
-        public NavRoot NavRoot { get; set; }
-        public NavNode NavNode { get; set; }
+    public NavNode Root { get; set; }
+    public NavNode NavNode { get; set; }
         public List<string> NavNodes { get; set; } = new();
         public string? Section { get; set; }
 
         public NavModel(INavService navService) {
             NavService = navService;
-            NavRoot = NavService.GetNavRoot();
-            NavNode = GetSection(NavRoot.nav!, Section!);
+            Root = NavService.GetRoot();
+            NavNode = GetSection(Root, Section!);
         }
 
         public void OnGet() {
@@ -30,15 +30,13 @@ namespace ParksComputing.Engine.Pages {
         }
 
         private NavNode FindSection(NavNode node, string section) {
-            if (node.key == section) {
+            if (node.Slug == section) {
                 return node;
             }
-
-            if (node is not null && node.links is not null) {
-                foreach (var child in node.links) {
+            if (node is not null && node.Nav is not null) {
+                foreach (var child in node.Nav) {
                     NavNode retVal = FindSection(child, section);
-
-                    if (retVal.key == section) {
+                    if (retVal.Slug == section) {
                         return retVal;
                     }
                 }

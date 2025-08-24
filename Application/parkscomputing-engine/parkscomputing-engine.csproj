@@ -14,8 +14,9 @@
 			<AssemblyName>ParksComputing.Engine</AssemblyName>
 			<RootNamespace>ParksComputing.Engine</RootNamespace>
 			<Nullable>enable</Nullable>
-			<!-- Disable default static web assets precompression discovery to work around duplicate asset key issue (android-chrome-192x192.png). -->
+			<!-- Re-disabled due to duplicate static web asset key build failure (android-chrome-192x192.png). -->
 			<EnableDefaultStaticWebAssetsCompression>false</EnableDefaultStaticWebAssetsCompression>
+			<StaticWebAssetEnableCompression>false</StaticWebAssetEnableCompression>
 	 </PropertyGroup>
 
 	 <ItemGroup>
@@ -23,9 +24,13 @@
 			<PackageReference Include="HtmlAgilityPack" Version="1.11.60" />
 			<PackageReference Include="LibSassBuilder" Version="3.0.0" />
 			<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
+			<PackageReference Include="ParksComputing.Xfer.Lang" Version="0.15.25-prerelease" />
 			<PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
 			<PackageReference Include="Markdig" Version="0.37.0" />
+			<!-- TODO: Add real version once package is published -->
+			<!-- <PackageReference Include="ParksComputing.Xfer.Lang" Version="0.1.0-preview" /> -->
 	 </ItemGroup>
+
 
 	 <ItemGroup>
 		 <Folder Include="wwwroot\src\" />
@@ -34,5 +39,8 @@
 	 <ItemGroup>
 		 <ProjectReference Include="..\SmartSamCommentsLib\SmartSamCommentsLib.csproj" />
 	 </ItemGroup>
+
+	<!-- Bypass duplicate static asset key failure by overriding the DiscoverPrecompressedAssets target (no-op). -->
+	<Target Name="DiscoverPrecompressedAssets" />
 
 </Project>

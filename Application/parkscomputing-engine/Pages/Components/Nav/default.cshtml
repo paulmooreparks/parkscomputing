@@ -1,16 +1,39 @@
-﻿ @model ParksComputing.Engine.Pages.Services.NavRoot
-    <li class='nav-item'><a class='nav-link text-light' href='@Model.nav?.link'>@Model.nav?.title</a></li>
-    @foreach (var link in @Model?.nav?.links!) {
-        @if (link?.links?.Count() > 0) {
-            <li class='nav-item dropdown'><a class='nav-link dropdown-toggle text-light' href='@link.link' role="button" data-bs-toggle="dropdown">@link.title</a>
-            <ul class="dropdown-menu">
-                @foreach (var sublink in link.links) {
-                    <li class='dropdown-item'><a href='@sublink.link' @if (!string.IsNullOrEmpty(sublink.target)) {<text>target='@sublink.target'</text>}>@sublink.title</a></li>
-                }
-            </ul>
-            </li>
-        }
-        else {
-            <li class='nav-item'><a class='nav-link text-light' href='@link?.link'>@link?.title</a></li>
+﻿@model ParksComputing.Engine.Pages.Services.NavNode
+@if (Model != null)
+{
+    var rootTip = Model.Description ?? Model.Excerpt ?? Model.Title ?? string.Empty;
+    <li class='nav-item'>
+        <a class='nav-link text-light' href='@Model.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@rootTip'>@Model.Title</a>
+    </li>
+    @if (Model.Nav != null)
+    {
+        @foreach (var link in Model.Nav)
+        {
+            var linkTip = link?.Description ?? link?.Excerpt ?? link?.Title ?? string.Empty;
+            if (link?.Nav != null && link.Nav.Length > 0)
+            {
+                <li class='nav-item dropdown'>
+                    <a class='nav-link dropdown-toggle text-light' href='@link.Url' role="button" data-bs-toggle="dropdown" data-bs-delay='{"show":150,"hide":50}' title='@linkTip'>@link.Title</a>
+                    <ul class="dropdown-menu">
+                        @foreach (var sublink in link.Nav)
+                        {
+                            var subTip = sublink?.Description ?? sublink?.Excerpt ?? sublink?.Title ?? string.Empty;
+                            if (sublink != null)
+                            {
+                                <li class='dropdown-item'>
+                                    <a href='@sublink.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@subTip' @if (!string.IsNullOrEmpty(sublink.Target)) {<text>target='@sublink.Target'</text>}>@sublink.Title</a>
+                                </li>
+                            }
+                        }
+                    </ul>
+                </li>
+            }
+            else
+            {
+                <li class='nav-item'>
+                    <a class='nav-link text-light' href='@link?.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@linkTip'>@link?.Title</a>
+                </li>
+            }
         }
     }
+}

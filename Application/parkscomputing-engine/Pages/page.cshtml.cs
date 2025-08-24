@@ -273,6 +273,31 @@ namespace ParksComputing.Engine.Pages {
             var descriptionNode = doc.DocumentNode.SelectSingleNode("//meta[@name='description']/@content");
             if (descriptionNode is not null) { Description = descriptionNode.Attributes["content"].Value; }
 
+            // Fallback: if no description meta supplied, derive from first paragraph and inject meta tag
+            if (string.IsNullOrWhiteSpace(Description)) {
+                try {
+                    var firstPara = doc.DocumentNode.SelectSingleNode("//body//p");
+                    if (firstPara is not null) {
+                        var text = HtmlEntity.DeEntitize(firstPara.InnerText).Trim();
+                        if (!string.IsNullOrEmpty(text)) {
+                            // Trim to a reasonable meta description length (200 chars cap)
+                            if (text.Length > 200) { text = text.Substring(0, 200).TrimEnd(); }
+                            Description = text;
+                            // Inject a meta description so downstream consumers (feeds, SEO) see it
+                            var head = doc.DocumentNode.SelectSingleNode("//head");
+                            if (head is not null) {
+                                var meta = doc.CreateElement("meta");
+                                meta.SetAttributeValue("name", "description");
+                                meta.SetAttributeValue("content", Description);
+                                head.AppendChild(meta);
+                                // Refresh MetaElements collection so layout sections include injected node
+                                MetaElements = doc.DocumentNode.SelectNodes("//head/meta");
+                            }
+                        }
+                    }
+                } catch { /* swallow fallback errors */ }
+            }
+
             var commentNode = doc.DocumentNode.SelectSingleNode("//meta[@name='comments-allowed']/@content");
             if (commentNode is not null) { CommentsAllowed = commentNode.Attributes["content"].Value.Equals("true", StringComparison.InvariantCultureIgnoreCase); }
 

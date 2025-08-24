@@ -1,6 +1,1 @@
-﻿namespace ParksComputing.Engine.Pages.Services {
-    public class NavRoot {
-        public NavNode? nav { get; set; }
-        public NavNode[]? posts { get; set; }
-    }
-}
+﻿// (Intentionally left empty) NavRoot removed; file retained temporarily to avoid compile include issues. Safe to delete.

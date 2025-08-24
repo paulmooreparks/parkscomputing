@@ -15,7 +15,8 @@ namespace ParksComputing.Engine.ViewComponents {
         }
 
         public IViewComponentResult Invoke() {
-            return View(_navService.GetNavRoot());
+            var root = _navService.GetRoot();
+            return View(root);
         }
     }
 }

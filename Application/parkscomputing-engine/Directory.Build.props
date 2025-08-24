@@ -1,0 +1,11 @@
+<Project>
+  <!-- Exclude duplicate icon assets in nested xferlang subfolder to avoid duplicate static web asset keys -->
+  <ItemGroup>
+    <Content Remove="wwwroot\xferlang\android-chrome-192x192.png" />
+    <Content Remove="wwwroot\xferlang\android-chrome-512x512.png" />
+    <Content Remove="wwwroot\xferlang\apple-touch-icon.png" />
+    <Content Remove="wwwroot\xferlang\favicon-16x16.png" />
+    <Content Remove="wwwroot\xferlang\favicon-32x32.png" />
+    <Content Remove="wwwroot\xferlang\favicon.ico" />
+  </ItemGroup>
+</Project>
