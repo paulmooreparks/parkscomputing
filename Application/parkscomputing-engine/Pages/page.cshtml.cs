@@ -109,17 +109,18 @@ namespace ParksComputing.Engine.Pages {
         protected Task<IActionResult> RetrievePage(string slug) {
             try {
                 var baseDir = $"{Environment.ContentRootPath}/wwwroot/content";
+                // Prefer markdown first
+                var mdPath = Path.Combine(baseDir, slug + ".md");
+                if (System.IO.File.Exists(mdPath)) {
+                    return LoadMarkdownAndRender(mdPath, slug);
+                }
+
+                // Fallback to raw HTML
                 var htmlPath = Path.Combine(baseDir, slug + ".html");
                 if (System.IO.File.Exists(htmlPath)) {
                     var doc = new HtmlDocument();
                     doc.Load(htmlPath);
                     return ExtractAndRender(doc, slug);
-                }
-
-                // Try markdown variant
-                var mdPath = Path.Combine(baseDir, slug + ".md");
-                if (System.IO.File.Exists(mdPath)) {
-                    return LoadMarkdownAndRender(mdPath, slug);
                 }
 
                 return Task.FromResult<IActionResult>(NotFound());

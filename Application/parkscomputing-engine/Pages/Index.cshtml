@@ -34,10 +34,19 @@
     @Html.Raw(Model.PageContent)
 </div>
 
-<div class="row">
-@if (Model.Root?.Posts != null) {
-    foreach (var post in Model.Root.Posts) {
-        <div class="col-md-4"><h2><a href="@post.Url">@post.Title</a></h2><p class="posted-on">@(post.Date?.ToLongDateString() ?? "")</p><p>@post.Excerpt <i><a href="@post.Url">More &raquo;</a></i></p></div>
+@if (Model.Root?.Posts != null)
+{
+    <ul class="post-grid list-unstyled">
+    @foreach (var post in Model.Root.Posts)
+    {
+        <li class="post-card">
+            <div class="post-card-meta">@(post.Date?.ToLongDateString() ?? "")</div>
+            <a class="post-card-title" href="@post.Url">@post.Title</a>
+            <p class="post-card-excerpt">@post.Excerpt</p>
+            <div class="mt-auto">
+                <a class="post-card-more" href="@post.Url">Read more &raquo;</a>
+            </div>
+        </li>
     }
+    </ul>
 }
-</div>

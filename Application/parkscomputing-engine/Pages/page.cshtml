@@ -33,12 +33,26 @@
 }}
 }
 
-<div class="posted-on"><time datetime="@Model.CreatedGmt">@Model.Created</time>
-@if (Model.CreatedGmt != Model.ModifiedGmt) {
-    <span class="updated-on"> (updated <time datetime="@Model.ModifiedGmt">@Model.Modified</time>)</span>
+@{
+    bool hasInnerH1 = Model.PageContent?.IndexOf("<h1", System.StringComparison.OrdinalIgnoreCase) >= 0;
 }
-</div>
-
-@Html.Raw(Model.PageContent)
+<article class="post-content">
+    <header class="post-header">
+        @if (!hasInnerH1)
+        {
+            <h1 class="post-title">@Html.Raw(Model.Title)</h1>
+        }
+        <div class="post-meta">
+            <time datetime="@Model.CreatedGmt">@Model.Created</time>
+            @if (Model.CreatedGmt != Model.ModifiedGmt)
+            {
+                <span class="updated-on">&nbsp;· Updated <time datetime="@Model.ModifiedGmt">@Model.Modified</time></span>
+            }
+        </div>
+    </header>
+    <div class="post-body">
+        @Html.Raw(Model.PageContent)
+    </div>
+</article>
 
 

@@ -62,31 +62,17 @@
             description "Updated Résumé"
             excerpt <"Fitting almost 35 years of professional experience into a four-page Microsoft Word document is a daunting task!">
         }
-        {
-            slug "excel-employee-capacity-spreadsheet"
-        }
-        {
-            slug "personas-in-the-wild"
-        }
+        { slug "excel-employee-capacity-spreadsheet" }
+        { slug "personas-in-the-wild" }
         {
             slug "becoming-a-developer-overnight-in-only-five-years"
             excerpt <"This post was inspired by an article on Cal Newport's site that caused me to reflect on my path to my current career.">
         }
-        {
-            slug "new-website-design"
-        }
-        {
-            slug "fizzbuzz"
-        }
-        {
-            slug "set-associative-cache-in-c-part-2-interface-design"
-        }
-        {
-            slug "set-associative-cache-in-c-part-1-analysis-initial-design"
-        }
-        {
-            slug "barbecue-and-project-management"
-        }
+        { slug "new-website-design" }
+        { slug "fizzbuzz" }
+        { slug "set-associative-cache-in-c-part-2-interface-design" }
+        { slug "set-associative-cache-in-c-part-1-analysis-initial-design" }
+        { slug "barbecue-and-project-management" }
         {
             slug "scheduling-every-minute-revisited"
             excerpt <"In this article, I revisit my approach to scheduling every minute of my day and share some updates based on my experiences.">
@@ -99,26 +85,12 @@
             slug "how-i-plan-my-day"
             excerpt <"Over the years, I have progressed from being a software developer who focuses on code all day, to a designer who designs and codes, to a technical lead who communicates a design and technical strategy to a team of developers, to a technical and project lead who leads developers in the implementation of a project while communicating with customers and other stakeholders. At each level the demands on my time have increased, while the expectations of improved productivity and reliable delivery have also increased.">
         }
-        {
-            slug "pbrain"
-        }
-        {
-            slug "windragsens"
-        }
-        {
-            slug "master-foo-and-the-technical-recruiter"
-        }
-        {
-            slug "dragsens"
-        }
-        {
-            slug "george-orwell-and-effective-coding"
-        }
-        {
-            slug "compute-magazine-archives"
-        }
-        {
-            slug "barcode-generator"
-        }
+        { slug "pbrain" }
+        { slug "windragsens" }
+        { slug "master-foo-and-the-technical-recruiter" }
+        { slug "dragsens" }
+        { slug "george-orwell-and-effective-coding" }
+        { slug "compute-magazine-archives" }
+        { slug "barcode-generator" }
     ]
 }
