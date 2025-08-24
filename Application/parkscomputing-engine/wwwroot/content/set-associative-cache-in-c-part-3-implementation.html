@@ -9,7 +9,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Set-Associative Cache in C#">
 <meta name="keyword" content="set associative cache,C#,.NET,data structures,coding,programming">
-<link rel="stylesheet" href="/highlightjs/styles/default.min.css">
 <script src="/highlightjs/highlight.min.js"></script>
 </head>
 
@@ -35,7 +34,7 @@ namespace ParksComputing.SetAssociativeCache {
         // Gets the capacity in each set.
         int Ways { get; }
 
-        // If the given key would cause an existing cache item to be evicted, returns true and sets 
+        // If the given key would cause an existing cache item to be evicted, returns true and sets
         // evictKey to the key of the cache item that would be evicted if the new key were added.
         bool TryGetEvictKey(TKey key, out TKey evictKey);
     }

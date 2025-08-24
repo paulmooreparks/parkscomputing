@@ -26,15 +26,52 @@
             ]
         }
         {
-            slug "links"
-            title "Links"
-            description "Links to my other sites"
+            slug "projects"
+            title "Projects"
+            description "Some personal projects"
             nav [
                 {
                     slug "xferlang.org"
                     title "XferLang"
                     url "https://xferlang.org/"
                     description "The Official XferLang Site"
+                }
+                {
+                    slug "a2c"
+                    title "Api2Cli"
+                    url "https://github.com/paulmooreparks/Api2Cli"
+                    description "A command-line tool for working with web APIs"
+                }
+                {
+                    slug "cliffer"
+                    title "Cliffer"
+                    url "https://github.com/paulmooreparks/Cliffer"
+                    description "A .NET library to make it easier to write CLI applications"
+                }
+                {
+                    slug "cliffer-basic"
+                    title "Cliffer Basic"
+                    url "https://github.com/paulmooreparks/ClifferBasic"
+                    description "An old-school Basic interpreter written with Cliffer"
+                }
+                {
+                    slug "site-engine"
+                    title "Site Engine"
+                    url "https://github.com/paulmooreparks/parkscomputing"
+                    description "The code for this site"
+                }
+            ]
+        }
+        {
+            slug "links"
+            title "Links"
+            description "Links to other sites"
+            nav [
+                {
+                    slug "padmajairam.com"
+                    title "Padma Jairam -- Counselling Psychologist"
+                    url "https://padmajairam.com/"
+                    description "My wife's counselling psychology practice"
                 }
                 {
                     slug "github"
@@ -77,7 +114,6 @@
         { slug "barbecue-and-project-management" }
         {
             slug "scheduling-every-minute-revisited"
-            excerpt <"In this article, I revisit my approach to scheduling every minute of my day and share some updates based on my experiences.">
         }
         {
             slug "conways-game-of-life"
@@ -85,7 +121,6 @@
         }
         {
             slug "how-i-plan-my-day"
-            excerpt <"Over the years, I have progressed from being a software developer who focuses on code all day, to a designer who designs and codes, to a technical lead who communicates a design and technical strategy to a team of developers, to a technical and project lead who leads developers in the implementation of a project while communicating with customers and other stakeholders. At each level the demands on my time have increased, while the expectations of improved productivity and reliable delivery have also increased.">
         }
         { slug "pbrain" }
         { slug "windragsens" }

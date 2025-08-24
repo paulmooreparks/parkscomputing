@@ -7,21 +7,26 @@
     </li>
     @if (Model.Nav != null)
     {
-        @foreach (var link in Model.Nav)
+        // Determine the index of the last dropdown (nav item that itself has children)
+        var lastDropdownIndex = System.Array.FindLastIndex(Model.Nav, n => n?.Nav != null && n.Nav.Length > 0);
+        for (int i = 0; i < Model.Nav.Length; i++)
         {
+            var link = Model.Nav[i];
             var linkTip = link?.Description ?? link?.Excerpt ?? link?.Title ?? string.Empty;
             if (link?.Nav != null && link.Nav.Length > 0)
             {
+                // Apply Bootstrap's end alignment only to the final dropdown to avoid viewport overflow.
+                var menuClasses = (i == lastDropdownIndex) ? "dropdown-menu dropdown-menu-end" : "dropdown-menu";
                 <li class='nav-item dropdown'>
-                    <a class='nav-link dropdown-toggle text-light' href='@link.Url' role="button" data-bs-toggle="dropdown" data-bs-delay='{"show":150,"hide":50}' title='@linkTip'>@link.Title</a>
-                    <ul class="dropdown-menu">
+                    <a class='nav-link dropdown-toggle text-light' href='@link.Url' role="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-delay='{"show":150,"hide":50}' title='@linkTip'>@link.Title</a>
+                    <ul class="@menuClasses">
                         @foreach (var sublink in link.Nav)
                         {
                             var subTip = sublink?.Description ?? sublink?.Excerpt ?? sublink?.Title ?? string.Empty;
                             if (sublink != null)
                             {
-                                <li class='dropdown-item'>
-                                    <a href='@sublink.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@subTip' @if (!string.IsNullOrEmpty(sublink.Target)) {<text>target='@sublink.Target'</text>}>@sublink.Title</a>
+                                <li>
+                                    <a class="dropdown-item" href='@sublink.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@subTip' @if (!string.IsNullOrEmpty(sublink.Target)) {<text>target='@sublink.Target'</text>}>@sublink.Title</a>
                                 </li>
                             }
                         }

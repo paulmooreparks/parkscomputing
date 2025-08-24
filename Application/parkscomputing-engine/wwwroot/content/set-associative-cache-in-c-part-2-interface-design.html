@@ -6,7 +6,6 @@
     <meta http-equiv="last-modified" content="2022-11-30T10:04:30" />
     <meta name="description" content="Set-Associative Cache in C#" />
     <meta name="keyword" content="set associative cache,C#,.NET,data structures,coding,programming" />
-    <link rel="stylesheet" href="/highlightjs/styles/default.min.css">
     <script src="/highlightjs/highlight.min.js"></script>
 </head>
 <body>
@@ -101,9 +100,9 @@ coupleCache.Add(new("Brad", "Angelina"));</code></pre>
 
 <pre class="wp-block-preformatted"><code class="language-csharp">namespace System.Collections.Generic {
     // Represents a generic collection of key/value pairs.
-    public interface IDictionary&lt;TKey, TValue&gt; : ICollection&lt;KeyValuePair&lt;TKey, TValue&gt;&gt;, 
-                                                 IEnumerable&lt;KeyValuePair&lt;TKey, TValue&gt;&gt;, 
-                                                 IEnumerable 
+    public interface IDictionary&lt;TKey, TValue&gt; : ICollection&lt;KeyValuePair&lt;TKey, TValue&gt;&gt;,
+                                                 IEnumerable&lt;KeyValuePair&lt;TKey, TValue&gt;&gt;,
+                                                 IEnumerable
     {
         // Gets or sets the element with the specified key.
         TValue this[TKey key] {
@@ -159,7 +158,7 @@ namespace ParksComputing.SetAssociativeCache {
         // Gets the capacity in each set.
         int Ways { get; }
 
-        // If the given key would cause an existing cache item to be evicted, returns true and sets 
+        // If the given key would cause an existing cache item to be evicted, returns true and sets
         // evictKey to the key of the cache item that would be evicted if the new key were added.
         bool TryGetEvictKey(TKey key, out TKey evictKey);
     }

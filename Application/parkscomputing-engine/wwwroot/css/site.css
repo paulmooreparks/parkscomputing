@@ -78,6 +78,12 @@ for details on configuring this project to bundle and minify static web assets. 
     color: var(--pc-menu-text);
 }
 
+/* Ensure the final top-level dropdown aligns to the right edge to avoid viewport overflow. */
+.navbar-nav > li.nav-item.dropdown:last-child .dropdown-menu {
+    right: 0;
+    left: auto;
+}
+
 a.navbar-brand {
     white-space: normal;
     text-align: center;
@@ -242,7 +248,25 @@ table.has-fixed-layout {
     text-align: left;
 }
 
-.nav-link { text-decoration: none; color: var(--pc-nav-text) !important; }
+@media (prefers-color-scheme: dark) {
+    table.has-fixed-layout {
+        border: 2px solid #364a59;
+        background: #1a222a;
+    }
+    .has-fixed-layout th, .has-fixed-layout td {
+        border: 1px solid #364a59;
+        background: #1e2630;
+        color: var(--pc-text);
+    }
+    .has-fixed-layout thead > tr > th {
+        background: #2a3440;
+        color: var(--pc-nav-text);
+        border: 1px solid #3a4a57;
+    }
+    .wp-block-table { color: var(--pc-text); }
+}
+
+.nav-link { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; color: var(--pc-nav-text) !important; }
 
 .posted-on { font-style: italic; font-size: smaller; color: var(--pc-text-muted); }
 
@@ -290,33 +314,32 @@ figcaption {
 
 .post-card:hover:before { opacity: 1; }
 
-.post-card-title { font-size: 1.15rem; font-weight: 600; line-height: 1.3; text-decoration: none; color: var(--pc-link); }
+.post-card-title { font-size: 1.15rem; font-weight: 600; line-height: 1.3; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; color: var(--pc-link); }
 
-.post-card-title:hover { text-decoration: underline; color: var(--pc-link-hover); }
+.post-card-title:hover { color: var(--pc-link-hover); }
 
-.post-card-meta { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--pc-text-muted); margin-top: .35rem; margin-bottom: .35rem; }
+.post-card-meta { font-size: .75rem; text-transform: none; color: var(--pc-text-muted); margin-top: .35rem; margin-bottom: .35rem; }
 
 .post-card-excerpt { font-size: .9rem; line-height: 1.4; flex-grow: 1; margin-bottom: .75rem; color: var(--pc-text); }
 
-.post-card-more { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; text-decoration: none; color: var(--pc-accent); }
+.post-card-more { font-size: .75rem; text-transform: uppercase; font-weight: 600; text-decoration: none; text-decoration-thickness: 1.5px; text-underline-offset: 2px; color: var(--pc-accent); }
 
-.post-card-more:hover { text-decoration: underline; }
+.post-card-more:hover { color: var(--pc-link-hover); }
 
 /* Individual post page */
 .post-content {
     max-width: 860px;
     margin: 0 auto 3rem;
-    padding-top: 1.5rem;
+    padding-top: .5rem;
 }
 
-.post-header { margin-bottom: 1.75rem; }
+.post-header { margin-bottom: .75rem; }
 
 .post-title {
     font-size: clamp(1.9rem, 2.6vw, 2.6rem);
     font-weight: 600;
     line-height: 1.15;
     margin: 0 0 .6rem;
-    letter-spacing: -.5px;
 }
 
 .post-meta { font-size: .85rem; color: var(--pc-text-muted); }
@@ -380,19 +403,18 @@ figcaption {
 
 .post-card + .post-card { border-top: 1px solid var(--pc-border); padding-top: 1.5rem; }
 
-.post-card-meta { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; color: var(--pc-text-muted); margin: 0 0 .45rem; }
+.post-card-meta { font-size: 0.7rem; text-transform: none; font-weight: 600; color: var(--pc-text-muted); margin: 0 0 .45rem; }
 
-.post-card-title { font-size: 1.35rem; line-height: 1.25; font-weight: 600; margin: 0 0 .5rem; color: var(--pc-link); text-decoration: none; }
-.post-card-title:hover { text-decoration: underline; }
+.post-card-title { font-size: 1.35rem; line-height: 1.25; font-weight: 600; margin: 0 0 .5rem; color: var(--pc-link); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
 
 .post-card-excerpt { margin: 0; font-size: .95rem; line-height: 1.5; max-width: 60ch; color: var(--pc-text); }
 
 .post-card-more {
     margin-top: .6rem;
     font-size: .7rem;
-    text-transform: uppercase;
-    letter-spacing: .08em;
+    text-transform: none;
     font-weight: 600;
+    text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px;
 }
 
 @media (max-width: 640px) {
