@@ -9,6 +9,11 @@ h2 {
     text-transform: uppercase;
 }
 
+/* Dark mode: invert underline (use a light line instead of black). */
+@media (prefers-color-scheme: dark) {
+    h2 { border-bottom: 1px solid #e6edf3; }
+}
+
 address {
     display: inline;
     font-weight: normal;
@@ -28,14 +33,4 @@ address {
     padding-top: 10px;
 }
 
-.employer {
-}
-
-.location {
-}
-
-.timespan {
-}
-
-.skills {
-}
+/* Removed empty rules (.employer, .location, .timespan, .skills) to satisfy linter. */
