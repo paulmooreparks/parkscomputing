@@ -1,0 +1,23 @@
+{
+  "name": "insert-iso-utc",
+  "displayName": "Insert ISO UTC Timestamp",
+  "description": "Inserts current UTC date/time in ISO 8601 format at the cursor (e.g., 2025-08-24T13:45:12Z).",
+  "version": "0.0.1",
+  "publisher": "local",
+  "engines": { "vscode": ">=1.70.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onCommand:insertIsoUtc.insert"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "insertIsoUtc.insert", "title": "Insert ISO 8601 UTC Timestamp" }
+    ],
+    "keybindings": [
+      {
+        "command": "insertIsoUtc.insert",
+        "key": "ctrl+alt+t",
+        "when": "editorTextFocus"
+      }
+    ]
+  }
+}

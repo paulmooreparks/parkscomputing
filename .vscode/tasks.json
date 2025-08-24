@@ -1,0 +1,55 @@
+{
+  // Tasks to build the solution and restart the local Docker container for rapid content iteration.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "rebuild-and-run",
+      "type": "process",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+  "$ErrorActionPreference='Stop'; $name='parkscomputing-local'; if (docker ps -a --format '{{.Names}}' | Where-Object { $_ -eq $name }) { docker rm -f $name | Out-Null }; dotnet clean Application/parkscomputing.sln --configuration Debug; dotnet build Application/parkscomputing.sln --configuration Debug; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; docker build -t parkscomputing-local:dev -f Application/parkscomputing-engine/Dockerfile Application; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; docker run -d --name $name -p 8080:8080 parkscomputing-local:dev | Out-Null; Write-Host 'Container running at http://localhost:8080'"
+      ],
+      "problemMatcher": ["$msCompile"],
+      "group": { "kind": "build", "isDefault": true }
+  },
+    {
+      "label": "watch-no-container",
+      "type": "process",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$ErrorActionPreference='Stop'; $env:ASPNETCORE_URLS='http://localhost:8080'; dotnet watch --project Application/parkscomputing-engine/parkscomputing-engine.csproj run"
+      ],
+      "detail": "Run the app directly with dotnet watch (no Docker) for fastest code + content hot reload.",
+      "problemMatcher": ["$msCompile"],
+      "group": "none"
+    },
+    {
+      "label": "run-container-mount-wwwroot",
+      "type": "process",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$ErrorActionPreference='Stop'; $name='parkscomputing-local'; if (docker ps -a --format '{{.Names}}' | Where-Object { $_ -eq $name }) { docker rm -f $name | Out-Null }; if (-not (docker image ls -q parkscomputing-local:dev)) { Write-Host 'Local image not found; building...'; docker build -t parkscomputing-local:dev -f Application/parkscomputing-engine/Dockerfile Application; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }; docker run -d --name $name -p 8080:8080 -v ${workspaceFolder}/Application/parkscomputing-engine/wwwroot:/app/wwwroot:ro parkscomputing-local:dev | Out-Null; Write-Host 'Mounted wwwroot; live static & markdown edits at http://localhost:8080'"
+      ],
+      "detail": "Run container with host wwwroot bind-mounted (static & markdown changes reflected without rebuild).",
+      "problemMatcher": []
+    },
+    {
+      "label": "rebuild-image-only",
+      "type": "process",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$ErrorActionPreference='Stop'; docker build -t parkscomputing-local:dev -f Application/parkscomputing-engine/Dockerfile Application"
+      ],
+      "detail": "Rebuild Docker image (no run).",
+      "problemMatcher": []
+    }
+  ]
+}

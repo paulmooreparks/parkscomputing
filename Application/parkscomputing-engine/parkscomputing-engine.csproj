@@ -14,6 +14,8 @@
 			<AssemblyName>ParksComputing.Engine</AssemblyName>
 			<RootNamespace>ParksComputing.Engine</RootNamespace>
 			<Nullable>enable</Nullable>
+			<!-- Disable default static web assets precompression discovery to work around duplicate asset key issue (android-chrome-192x192.png). -->
+			<EnableDefaultStaticWebAssetsCompression>false</EnableDefaultStaticWebAssetsCompression>
 	 </PropertyGroup>
 
 	 <ItemGroup>
@@ -22,6 +24,7 @@
 			<PackageReference Include="LibSassBuilder" Version="3.0.0" />
 			<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
 			<PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+			<PackageReference Include="Markdig" Version="0.37.0" />
 	 </ItemGroup>
 
 	 <ItemGroup>

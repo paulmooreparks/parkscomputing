@@ -1,0 +1,13 @@
+{
+  // Launch configuration to open browser after container (re)build
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Rebuild container and open browser",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://localhost:8080",
+      "preLaunchTask": "rebuild-and-run"
+    }
+  ]
+}

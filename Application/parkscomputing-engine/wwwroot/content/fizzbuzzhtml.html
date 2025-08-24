@@ -12,7 +12,7 @@
 <body>
     <h1>FizzBuzz</h1>
 
-    <p>The <a href="https://en.wikipedia.org/wiki/Fizz_buzz">FizzBuzz test</a> is just one of those things you have to write, apparently. 
+    <p>The <a href="https://en.wikipedia.org/wiki/Fizz_buzz">FizzBuzz test</a> is just one of those things you have to write, apparently.
     Before anyone asks, here is mine, in C++.</p>
 
 <pre><code class="language-cpp">#include &lt;iostream>
@@ -46,19 +46,19 @@ int main() {
 
     <h2>The Motivation</h2>
 
-    <p>FizzBuzz is a very simple programming test designed to see if, for example, an interview candidate has any inkling 
-    at all about how to write code. If a developer can't write FizzBuzz, that developer is probably going to have trouble 
+    <p>FizzBuzz is a very simple programming test designed to see if, for example, an interview candidate has any inkling
+    at all about how to write code. If a developer can't write FizzBuzz, that developer is probably going to have trouble
     with more complex tasks. Since I'm currently in interview-prep mode, I thought I'd give it a whirl just for fun.</p>
 
     <h2>The Explanation</h2>
 
-    <p>The stock answer is to use a modulo operator (%) to test if the number is divisible by three or by five. That's 
-    typically slower than simply incrementing a register, however. What I'm doing instead is maintaining separate counters, 
-    one for every three numbers counted and another for every five numbers counted. When one of these reaches its target 
-    number, I output "Fizz" or "Buzz" as appropriate. If both have reached their targets, the output is "FizzBuzz". 
+    <p>The stock answer is to use a modulo operator (%) to test if the number is divisible by three or by five. That's
+    typically slower than simply incrementing a register, however. What I'm doing instead is maintaining separate counters,
+    one for every three numbers counted and another for every five numbers counted. When one of these reaches its target
+    number, I output "Fizz" or "Buzz" as appropriate. If both have reached their targets, the output is "FizzBuzz".
     If neither counter has been reset to zero, then the output is the current number. </p>
 
-    <p>See the <a href="https://godbolt.org/z/MefoavTob">compilation on GodBolt.org</a> for an idea how this compiles to 
+    <p>See the <a href="https://godbolt.org/z/MefoavTob">compilation on GodBolt.org</a> for an idea how this compiles to
     assembly language for your compiler and CPU of choice.</p>
 
     <p>Drink up, and let the debate begin.</p>
