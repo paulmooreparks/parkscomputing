@@ -91,5 +91,16 @@
         });
     </script>
     @RenderSection("BodyScripts", required: false)
+    <script src="/highlightjs/highlight.min.js"></script>
+    <script>
+        (function initHljs() {
+            if (!window.hljs) { return; }
+            try { hljs.highlightAll(); } catch (_) { }
+        })();
+        // In case highlight.js loads after this inline (slow network), fallback listener
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initHljs, { once: true });
+        }
+    </script>
 </body>
 </html>

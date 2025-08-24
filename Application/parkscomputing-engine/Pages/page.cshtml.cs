@@ -156,7 +156,7 @@ namespace ParksComputing.Engine.Pages {
                 }
 
                 // Build synthetic HTML document so existing parsing logic still works
-                string headHighlight = hasCodeBlocks ? "<link rel=\"stylesheet\" href=\"/highlightjs/styles/default.min.css\" /><script src=\"/highlightjs/highlight.min.js\"></script>" : string.Empty;
+                // string headHighlight = hasCodeBlocks ? "<link rel=\"stylesheet\" href=\"/highlightjs/styles/default.min.css\" /><script src=\"/highlightjs/highlight.min.js\"></script>" : string.Empty;
                 string bodyHighlight = hasCodeBlocks ? "<script>hljs.highlightAll();</script>" : string.Empty;
 
                 string synthetic = $"<html lang=\"{metadata.Lang}\"><head><title>{System.Net.WebUtility.HtmlEncode(metadata.Title)}</title>" +
@@ -165,7 +165,7 @@ namespace ParksComputing.Engine.Pages {
                                    (string.IsNullOrWhiteSpace(metadata.Description) ? string.Empty : $"<meta name=\"description\" content=\"{System.Net.WebUtility.HtmlEncode(metadata.Description)}\" />") +
                                    $"<meta name=\"comments-allowed\" content=\"{metadata.CommentsAllowed.ToString().ToLowerInvariant()}\" />" +
                                    $"<meta name=\"comments-enabled\" content=\"{metadata.CommentsEnabled.ToString().ToLowerInvariant()}\" />" +
-                                   headHighlight +
+                                   // headHighlight +
                                    "</head><body>" + htmlBody + bodyHighlight + "</body></html>";
 
                 var doc = new HtmlDocument();

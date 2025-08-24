@@ -1,4 +1,4 @@
-<! document { version "0.15" } !>
+<! document { xferlang "0.15" } !>
 {
     slug "home"
     title "Home"
@@ -53,6 +53,8 @@
         { slug "resume-of-paul-m-parks" title "My Résumé" }
     ]
     posts [
+        </ { slug "xferlang-site-navigation" } />
+        </ { slug "my-llm-experience" } />
         {
             slug "sudoku"
             excerpt <"I didn't like most of the Sudoku apps I found, so I decided to write one as a fun little evening and weekend project. It lets you edit and share games.">

@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.StaticFiles;
 
 namespace ParksComputing.Engine {
     public class Startup {
@@ -62,7 +63,19 @@ namespace ParksComputing.Engine {
 
             ConfigureRedirects(app, env);
 
-            app.UseStaticFiles();
+            // Serve static files, ensuring custom extensions like .xfer are exposed
+            var contentTypeProvider = new FileExtensionContentTypeProvider();
+            // Map .xfer (XferLang source) to a text-based content type so it isn't rejected as unknown
+            if (!contentTypeProvider.Mappings.ContainsKey(".xfer")) {
+                contentTypeProvider.Mappings[".xfer"] = "text/plain"; // or application/x-xferlang
+            }
+            // Optionally also expose .xfer backups/alternatives if desired
+            if (!contentTypeProvider.Mappings.ContainsKey(".xferlang")) {
+                contentTypeProvider.Mappings[".xferlang"] = "text/plain";
+            }
+            app.UseStaticFiles(new StaticFileOptions {
+                ContentTypeProvider = contentTypeProvider
+            });
             app.UseCookiePolicy();
             app.UseSession();
             app.UseRouting();
