@@ -130,33 +130,12 @@ SOFTWARE.
     padding: 0;
 }
 
-.hint {
-    position: relative;
-    top: 0;
-    left: 50%;
-    transform: translate(-50%, 0); /* Adjust for exact centering */
-    width: calc(100% / 3);
-    height: calc(100% / 3);
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: calc(.5vw + .5vh);
-    font-weight: bold;
-    gap: 0;
-}
-
-.hints {
-    justify-content: center;
-    align-items: center;
-    position: absolute;
-    top: 50%; /* Center vertically */
-    left: 50%; /* Center horizontally */
-    transform: translate(-50%, -50%); /* Adjust for exact centering */
-    gap: 0;
-    width: 100%;
-    height: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr 1fr;
-    color: antiquewhite;
+.hints { position:absolute; inset:0; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); color:#d6c9b5; }
+.hint { width:100%; height:100%; font-family:Arial, Helvetica, sans-serif; font-size:calc(.5vw + .5vh); font-weight:bold; line-height:1; opacity:.55; }
+.hints .active-hint { opacity:1; color:#0d47a1; }
+@media (prefers-color-scheme: dark) {
+        .hints { color:#4b5862; }
+    .hints .active-hint { color:#63b3ff; }
 }
 
 .selected {
@@ -168,9 +147,7 @@ SOFTWARE.
     background: lightgreen;
 }
 
-.active-hint {
-    color: blue;
-}
+/* active hint color now handled above for contrast */
 
 .static-number {
     color: black;
@@ -179,6 +156,40 @@ SOFTWARE.
 
 .game-number {
     color: blue;
+}
+
+/* Dark mode color adaptation for preset & solved numbers */
+@media (prefers-color-scheme: dark) {
+    .static-number { color: #e6edf3; }
+    .game-number { color: #63b3ff; }
+}
+
+/* Dark mode grid line contrast adjustments */
+@media (prefers-color-scheme: dark) {
+    /* subtle inner cell lines */
+    .cell { border-right: 1px solid #2d353c; border-bottom: 1px solid #2d353c; }
+    /* heavier 3x3 boundaries */
+    .cell-right { border-right: 3px solid #7a8894; }
+    .cell-left { border-left: 3px solid #7a8894; }
+    .cell-top { border-top: 3px solid #7a8894; }
+    .cell-bottom { border-bottom: 3px solid #7a8894; }
+}
+
+/* Light mode grid line adjustments (distinct from dark mode) */
+@media (prefers-color-scheme: light) {
+    /* darker overall grid for readability */
+    .cell { border-right: 1px solid #222; border-bottom: 1px solid #222; }
+    /* strong 3x3 boundaries */
+    .cell-right { border-right: 3px solid #111; }
+    .cell-left { border-left: 3px solid #111; }
+    .cell-top { border-top: 3px solid #111; }
+    .cell-bottom { border-bottom: 3px solid #111; }
+    /* darker main numbers */
+    .static-number { color: #111; }
+    .game-number { color: #0d2f7a; }
+    /* lighter, more subtle inactive hints */
+    .hints { color: #e9e2d8; }
+    .hint { opacity: .35; }
 }
 
 .invalid-number {

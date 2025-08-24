@@ -6,6 +6,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>Parks Computing - @ViewData["Title"]</title>
 
     <environment include="Development">
@@ -25,6 +26,8 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     @RenderSection("Meta", required: false)
+    <link rel="stylesheet" href="/highlightjs/styles/github.min.css" media="(prefers-color-scheme: light)">
+    <link rel="stylesheet" href="/highlightjs/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
     @RenderSection("Links", required: false)
     @RenderSection("Style", required: false)
     @RenderSection("HeadScripts", required: false)
