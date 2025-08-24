@@ -31,8 +31,30 @@
     width: 5em;
 }
 
+
+/* Light mode defaults */
+:root {
+    --conway-dead: #ffffff;
+    --conway-live: #000000;
+    --conway-grid: #d3d3d3;
+    --conway-bg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --conway-dead: #0d1117;      /* page background shade */
+        --conway-live: #2fa8ff;      /* cyan accent for live cells */
+        --conway-grid: #364a59;      /* subtle grid lines */
+        --conway-bg: #1a222a;        /* canvas background */
+    }
+}
+
+body {
+    background: var(--conway-dead);
+}
+
 #grid {
-    border: 1px solid black;
+    border: 1px solid var(--conway-grid);
     padding: 0;
     margin: 0;
     cursor: crosshair;

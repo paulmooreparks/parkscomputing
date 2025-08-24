@@ -3,15 +3,15 @@ window.addEventListener('load', function () {
   /* Initial location of each filled cell, in 'x,y' coordinates separated by ';' */
   var init = "5,6;6,7;7,5;7,6;7,7;1,2;2,2;3,2;";
 
-  /* Linear array of cells. I don't store cells as a two-dimensional array. It's a little easier to 
+  /* Linear array of cells. I don't store cells as a two-dimensional array. It's a little easier to
   work with as a 2D array, at least initially, but it's slower and more difficult to optimize. */
   var board = [];
 
   var liveTracker = []; /* Tracks the locations in the 'board' array which are live (1). */
 
   /* Since the cells in the board are stored in a linear array, the 'offsets' map stores the
-  offsets into the 'board' array which surround any given cell. 
-  
+  offsets into the 'board' array which surround any given cell.
+
   The layout of the offsets for each cell, by index, is thus:
 
      0 | 1 | 2
@@ -21,12 +21,12 @@ window.addEventListener('load', function () {
      5 | 6 | 7
 
   In other words, index 0 is a row above the current cell, one position to the left. Index 7 is a
-  row below, one position to the right. 
+  row below, one position to the right.
 
-  For example, if the game board is a 10x10 board, the indices in the 'board' array will from 0 to 
+  For example, if the game board is a 10x10 board, the indices in the 'board' array will from 0 to
   99 and will map to the game board as shown below.
 
-      0 |   1 |   2 |   3 |   4 |   5 |   6 |   7 |   8 |   9  
+      0 |   1 |   2 |   3 |   4 |   5 |   6 |   7 |   8 |   9
     ----------------------------------------------------------
      10 |  11 |  12 |  13 |  14 |  15 |  16 |  17 |  18 |  19
     ----------------------------------------------------------
@@ -40,7 +40,7 @@ window.addEventListener('load', function () {
     ----------------------------------------------------------
      60 |  61 |  62 |  63 |  64 |  65 |  66 |  67 |  68 |  69
     ----------------------------------------------------------
-     70 |  71 |  72 |  73 |  74 |  75 |  76 |  77 |  78 |  79 
+     70 |  71 |  72 |  73 |  74 |  75 |  76 |  77 |  78 |  79
     ----------------------------------------------------------
      80 |  81 |  82 |  83 |  84 |  85 |  86 |  87 |  88 |  89
     ----------------------------------------------------------
@@ -48,21 +48,21 @@ window.addEventListener('load', function () {
 
    The 'offsets' map will contain an array of indices that surround each index in the 'board' array.
    In the example board above, offsets[69] = [57, 58, 59, 67, 69, 77, 78, 79]
-  
+
    */
   var offsets = {};
 
-  /* When we spawn a generation of cells, we don't want to examine every single index in the 
-  game board, since most of them will not be relevant. The only interesting cells are the ones 
-  which are near live cells. Any cell surrounded by dead cells will remain dead, so it's not 
-  worth spending cycles to evaluate those. Since we have the 'liveTracker' array to track live 
-  cells, and we have the 'offsets' map to track offsets around each cell, we use these to create 
-  and maintain 'cellList', which is a map of cells which are either live or near other live cells. 
-  These are the cells to evaluate on each generation. */ 
+  /* When we spawn a generation of cells, we don't want to examine every single index in the
+  game board, since most of them will not be relevant. The only interesting cells are the ones
+  which are near live cells. Any cell surrounded by dead cells will remain dead, so it's not
+  worth spending cycles to evaluate those. Since we have the 'liveTracker' array to track live
+  cells, and we have the 'offsets' map to track offsets around each cell, we use these to create
+  and maintain 'cellList', which is a map of cells which are either live or near other live cells.
+  These are the cells to evaluate on each generation. */
   var cellList = {};
 
-  /* The board is clickable while the game is running, so we don't want to risk modifying the 
-  live 'cellList' map during a generation. Clicks go into 'tempCellList' instead, and this map 
+  /* The board is clickable while the game is running, so we don't want to risk modifying the
+  live 'cellList' map during a generation. Clicks go into 'tempCellList' instead, and this map
   is merged into 'cellList' at the start of each generation. */
   var tempCellList = {};
 
@@ -73,23 +73,44 @@ window.addEventListener('load', function () {
 
   var wrap = true; /* If true, cell effects wrap around the edges of the board */
 
-  /* If 'saveHistory' is true, a history of live cells is updated after each generation, so that 
-  users may use browse history (back button & forward button) to move forward or backward in time 
+  /* If 'saveHistory' is true, a history of live cells is updated after each generation, so that
+  users may use browse history (back button & forward button) to move forward or backward in time
   over generations. Impacts performance. */
-  var saveHistory = false; 
+  var saveHistory = false;
 
-  var deadColor = "white"; /* The color of empty (dead) cells */
-  var liveColor = "black"; /* The color of filled (live) cells */
-  var gridColor = "lightgray"; /* The color of the grid lines separating cells */
+  /* Colors sourced from CSS custom properties for light/dark mode support */
+  var rootStyles = getComputedStyle(document.documentElement);
+  var deadColor = rootStyles.getPropertyValue('--conway-dead').trim() || "white"; /* The color of empty (dead) cells */
+  var liveColor = rootStyles.getPropertyValue('--conway-live').trim() || "black"; /* The color of filled (live) cells */
+  var gridColor = rootStyles.getPropertyValue('--conway-grid').trim() || "lightgray"; /* The color of the grid lines separating cells */
 
-  /* Lets me choose a color quickly by indexing 'cellColors' with the state of a cell (0 is dead, 
+  /* Lets me choose a color quickly by indexing 'cellColors' with the state of a cell (0 is dead,
   1 is live). Need to update this array if 'deadColor' or 'liveColor' change from the default. */
   var cellColors = [deadColor, liveColor];
+
+  /* Update colors if the preferred color scheme changes (e.g., user toggles OS theme) */
+  var mql = window.matchMedia('(prefers-color-scheme: dark)');
+  var updateThemeColors = function() {
+    rootStyles = getComputedStyle(document.documentElement);
+    deadColor = rootStyles.getPropertyValue('--conway-dead').trim() || deadColor;
+    liveColor = rootStyles.getPropertyValue('--conway-live').trim() || liveColor;
+    gridColor = rootStyles.getPropertyValue('--conway-grid').trim() || gridColor;
+    cellColors = [deadColor, liveColor];
+    /* Redraw entire board with new palette */
+    ctx.strokeStyle = gridColor;
+    for (var i = 0; i < board.length; ++i) {
+      if (i >= cellCount) break;
+      var x = i % boardSize;
+      var y = Math.floor(i / boardSize);
+      drawCell(x, y, board[i]);
+    }
+  };
+  mql.addEventListener ? mql.addEventListener('change', updateThemeColors) : mql.addListener(updateThemeColors);
 
   /* The CANVAS element used to display the board */
   var grid = document.getElementById("grid");
 
-  /* Get a two-dimensional drawing context into the canvas. We'll use this to draw the grid and 
+  /* Get a two-dimensional drawing context into the canvas. We'll use this to draw the grid and
   the cells. */
   var ctx = grid.getContext("2d");
 
@@ -115,7 +136,7 @@ window.addEventListener('load', function () {
 
   /* Update the link to the current state with the necessary URL parameters EXCEPT the 'init' parameter. */
   var generateLinkWithoutInit = function () {
-    /* Note 'saveHistory' and 'wrap', and the ternary logic used. Those parameters are only 
+    /* Note 'saveHistory' and 'wrap', and the ternary logic used. Those parameters are only
     appended if there is a value to be set. If no value, then no parameter. */
     return "?boardSize=" + boardSize + "&cellSize=" + cellSize + "&speed=" + speed +
       (saveHistory ? ("&saveHistory=" + saveHistory) : "") + (!wrap ? ("&wrap=" + wrap) : "");
@@ -138,7 +159,7 @@ window.addEventListener('load', function () {
     /* Reset 'init' parameter value to empty. */
     init = "";
 
-    /* The liveTracker array contains the indices into the board array which contain live cells. 
+    /* The liveTracker array contains the indices into the board array which contain live cells.
     Loop through them and convert them into coordinates in the 'init' parameter. */
     for (i = 0; i < liveTracker.length; ++i) {
       init += (liveTracker[i] % boardSize) /* x */ + "," +
@@ -149,7 +170,7 @@ window.addEventListener('load', function () {
     updateLink();
   };
 
-  /* Take a snapshot of the current state of the board and, if 'saveHistory' is set, push that state 
+  /* Take a snapshot of the current state of the board and, if 'saveHistory' is set, push that state
   onto the history stack. */
   var updateHistory = function () {
     updateInit();
@@ -189,7 +210,7 @@ window.addEventListener('load', function () {
     if (state) {
       liveTracker.push(offset);
 
-      /* Add this cell and all surrounding cells to the list of cells to be evaluated during 
+      /* Add this cell and all surrounding cells to the list of cells to be evaluated during
       the next generation. */
       tempCellList[offset] = 0;
       tempCellList[offsets[offset][0]] = 0;
@@ -212,7 +233,7 @@ window.addEventListener('load', function () {
     setState(x, y, board[y * boardSize + x] ^ 1); /* XOR the cell state with 1 to flip it. */
   };
 
-  /* Set up the board and the game's data structures from the default starting settings or the URL 
+  /* Set up the board and the game's data structures from the default starting settings or the URL
   parameters, if provided. */
   var initializeBoard = function () {
     var row = 0;
@@ -274,7 +295,7 @@ window.addEventListener('load', function () {
           }
         }
 
-        /* Cache the indices in the 'offsets' map, to use later in populating 'cellList' with the 
+        /* Cache the indices in the 'offsets' map, to use later in populating 'cellList' with the
         cells we want to evaluate on the next generation. */
         offsets[row * boardSize + col] = [o1, o2, o3, o4, o5, o6, o7, o8];
 
@@ -367,8 +388,8 @@ window.addEventListener('load', function () {
     startLink = generateLinkWithoutInit() + "&init=";
   };
 
-  /* This array determines the rules of the game. Each index in the array corresponds to a number 
-  of live cells surrounding the cell being evaluated. At each index is a function that returns if 
+  /* This array determines the rules of the game. Each index in the array corresponds to a number
+  of live cells surrounding the cell being evaluated. At each index is a function that returns if
   the cell should live or die. */
   var cellCountResults = [
     function () { return 0; },          // 0 live cells surrounding the current cell
@@ -382,7 +403,7 @@ window.addEventListener('load', function () {
     function () { return 0; }           // 8
   ];
 
-  /* Calculate the next generation based on the current state of the board. This is the main 
+  /* Calculate the next generation based on the current state of the board. This is the main
   game function, so it must be the most highly optimized path. */
   var generation = function () {
     startGen = performance.now();
@@ -400,7 +421,7 @@ window.addEventListener('load', function () {
 
     tempCellList = {};
 
-    /* Walk through the "interesting" cells, which are the cells that are adjacent to only live 
+    /* Walk through the "interesting" cells, which are the cells that are adjacent to only live
     cells. This way, areas of empty cells are never evaluated, since they'd be dead anyway. */
     for (var cell in cellList) {
       const position = +cell;

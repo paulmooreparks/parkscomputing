@@ -4,8 +4,6 @@
     <title>pbrain Language Compiler</title>
     <meta http-equiv="date" content="2015-06-02T01:14:28" />
     <meta http-equiv="last-modified" content="2021-06-25T03:48:40" />
-    <link rel="stylesheet" href="/highlightjs/styles/default.min.css">
-    <script src="/highlightjs/highlight.min.js"></script>
 </head>
 <body>
     <h1>pbrain Language Compiler</h1>
@@ -152,7 +150,7 @@ namespace ParksComputing.Pbrain {
          //ldsfld int32 pbout.mp
          il.Emit(OpCodes.Ldsfld, mp);
 
-         //ldc.i4 1	
+         //ldc.i4 1
          Ldc(il, count);
 
          //add
@@ -167,7 +165,7 @@ namespace ParksComputing.Pbrain {
          //ldsfld int32 pbout.mp
          il.Emit(OpCodes.Ldsfld, mp);
 
-         //ldc.i4 1	
+         //ldc.i4 1
          Ldc(il, count);
 
          //sub
@@ -185,7 +183,7 @@ namespace ParksComputing.Pbrain {
          //ldsfld int32 pbout.mp
          il.Emit(OpCodes.Ldsfld, mp);
 
-         //ldelem.i4 
+         //ldelem.i4
          il.Emit(OpCodes.Ldelem_I4);
 
          //ldc.i4 1
@@ -203,7 +201,7 @@ namespace ParksComputing.Pbrain {
          //ldsfld int32 pbout.mp
          il.Emit(OpCodes.Ldsfld, mp);
 
-         //ldsfld int32 pbout.tmp	
+         //ldsfld int32 pbout.tmp
          il.Emit(OpCodes.Ldsfld, tmp);
 
          //stelem.i4
@@ -218,10 +216,10 @@ namespace ParksComputing.Pbrain {
          //ldsfld int32 pbout.mp
          il.Emit(OpCodes.Ldsfld, mp);
 
-         //ldelem.i4 
+         //ldelem.i4
          il.Emit(OpCodes.Ldelem_I4);
 
-         //ldc.i4 1	
+         //ldc.i4 1
          Ldc(il, count);
 
          //sub
@@ -236,7 +234,7 @@ namespace ParksComputing.Pbrain {
          //ldsfld int32 pbout.mp
          il.Emit(OpCodes.Ldsfld, mp);
 
-         //ldsfld int32 pbout.tmp	
+         //ldsfld int32 pbout.tmp
          il.Emit(OpCodes.Ldsfld, tmp);
 
          //stelem.i4
@@ -266,7 +264,7 @@ namespace ParksComputing.Pbrain {
          //ldsfld int32 pbout.mp
          il.Emit(OpCodes.Ldsfld, mp);
 
-         //ldelem.i4 
+         //ldelem.i4
          il.Emit(OpCodes.Ldelem_I4);
 
          //call void [mscorlib]System.Console.Write(char)
@@ -281,7 +279,7 @@ namespace ParksComputing.Pbrain {
          //ldsfld int32 pbout.mp
          il.Emit(OpCodes.Ldsfld, mp);
 
-         //ldelem.i4 
+         //ldelem.i4
          il.Emit(OpCodes.Ldelem_I4);
 
          //brfalse loop_1_end
@@ -305,7 +303,7 @@ namespace ParksComputing.Pbrain {
          //ldsfld int32 pbout.mp
          il.Emit(OpCodes.Ldsfld, mp);
 
-         //ldelem.i4 
+         //ldelem.i4
          il.Emit(OpCodes.Ldelem_I4);
 
          //box int32
@@ -375,7 +373,7 @@ namespace ParksComputing.Pbrain {
          il.Emit(OpCodes.Ldsfld, mem);
          // ldsfld int32 pbout.mp
          il.Emit(OpCodes.Ldsfld, mp);
-         // ldelem.i4 
+         // ldelem.i4
          il.Emit(OpCodes.Ldelem_I4);
 
          // ret
@@ -619,7 +617,7 @@ namespace ParksComputing.Pbrain {
                         //ldsfld int32 pbout.mp
                         il.Emit(OpCodes.Ldsfld, mp);
 
-                        //ldelem.i4 
+                        //ldelem.i4
                         il.Emit(OpCodes.Ldelem_I4);
 
                         //box int32
@@ -790,7 +788,7 @@ size_t mp = 0;
 template&lt;typename Ch&gt; struct io_types {};
 
 
-// Define appropriate I/O and stream iterator types for working with byte 
+// Define appropriate I/O and stream iterator types for working with byte
 // characters.
 template&lt;&gt; struct io_types&lt;char&gt; {
    static std::istream&amp; cin;
@@ -803,7 +801,7 @@ std::istream&amp; io_types&lt;char&gt;::cin = std::cin;
 std::ostream&amp; io_types&lt;char&gt;::cout = std::cout;
 
 
-// Define appropriate I/O and stream iterator types for working with wide 
+// Define appropriate I/O and stream iterator types for working with wide
 // characters.
 template&lt;&gt; struct io_types&lt;wchar_t&gt; {
    static std::wistream&amp; cin;
@@ -847,7 +845,7 @@ template&lt;typename It&gt; void interpret(It ii, It eos)
             ++mp;
 
 #ifndef PBRAIN_STATIC_MEMORY
-            // If memory is kept in a dynamic array, the array will grow as 
+            // If memory is kept in a dynamic array, the array will grow as
             // needed.
             try {
                if (mp == mem.size()) {
@@ -915,8 +913,8 @@ template&lt;typename It&gt; void interpret(It ii, It eos)
                   throw 4;
                }
 
-               // At this point the iterator will point at the matching ] 
-               // character, which is one instruction past the end of the range 
+               // At this point the iterator will point at the matching ]
+               // character, which is one instruction past the end of the range
                // of instructions to be processed in a loop.
                loop(begin, ii);
             }
@@ -941,7 +939,7 @@ template&lt;typename It&gt; void interpret(It ii, It eos)
 
          case ':':
          {
-            // Look up the source block that matches the value at the current 
+            // Look up the source block that matches the value at the current
             // location. If found, execute it.
             Procedures::iterator i = procedures.find(mem[mp]);
 
@@ -965,7 +963,7 @@ template&lt;typename It&gt; void interpret(It ii, It eos)
 
 template&lt;typename It&gt; void loop(It ii, It eos)
 {
-   // Interpret instructions until the value in the current memory location 
+   // Interpret instructions until the value in the current memory location
    // is zero
    while (mem[mp]) {
       interpret(ii, eos);
@@ -1016,6 +1014,5 @@ catch (...) {
 }
 </code></pre>
 
-<script>hljs.highlightAll();</script>
 </body>
 </html>

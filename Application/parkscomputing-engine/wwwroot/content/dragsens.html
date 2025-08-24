@@ -4,25 +4,23 @@
     <title>Dragsens &#8211; Console-based Drag Sensitivity Utility</title>
     <meta http-equiv="date" content="2015-05-29T17:30:58" />
     <meta http-equiv="last-modified" content="2021-06-16T05:35:45" />
-    <link rel="stylesheet" href="/highlightjs/styles/default.min.css">
-    <script src="/highlightjs/highlight.min.js"></script>
 </head>
 <body>
     <h1>Dragsens &#8211; Console-based Drag Sensitivity Utility</h1>
 
-    <p>Inspired by an article by Raymond Chen about <a href="https://devblogs.microsoft.com/oldnewthing/20090410-00/?p=18583">how to 
-    correctly change the Windows mouse drag sensitivity</a>, I wrote a simple utility called <em>dragsens</em>. It's a small 
-    command-line utility that will allow you to change the number of pixels the mouse has to travel before a drag operation is 
+    <p>Inspired by an article by Raymond Chen about <a href="https://devblogs.microsoft.com/oldnewthing/20090410-00/?p=18583">how to
+    correctly change the Windows mouse drag sensitivity</a>, I wrote a simple utility called <em>dragsens</em>. It's a small
+    command-line utility that will allow you to change the number of pixels the mouse has to travel before a drag operation is
     initiated. Just download and unzip the utility, then run it at the command line.</p>
 
     <p>Providing a single numeric parameter specifies the number of pixels for the mouse to travel.</p>
 
     <div class="example">
-<pre class="lang:batch decode:true"><code class="language-dos">dragsens 4
+<pre><code class="language-dos">dragsens 4
 </code></pre>
     </div>
 
-    <p>To specify a different number of pixels for the X (horizontal) and Y (vertical) axes, use the <strong>/X</strong> and 
+    <p>To specify a different number of pixels for the X (horizontal) and Y (vertical) axes, use the <strong>/X</strong> and
     <strong>/Y</strong> parameters.</p>
 
     <div class="example">
@@ -55,7 +53,7 @@ paul@parkscomputing.com
 
     <p><a href="https://github.com/paulmooreparks/DragSens/releases">https://github.com/paulmooreparks/DragSens/releases</a></p>
 
-    <p>If you'd like to examine or modify the source code or build your own executable rather than relying on the executable above, 
+    <p>If you'd like to examine or modify the source code or build your own executable rather than relying on the executable above,
     you may download the Visual Studio 2015 project and source from GitHub:</p>
 
     <p><a href="https://github.com/paulmooreparks/DragSens/tree/master">https://github.com/paulmooreparks/DragSens/tree/master</a></p>
@@ -63,7 +61,7 @@ paul@parkscomputing.com
 
     <h2 id="about">About the Utility</h2>
 
-    <p>The utility is actually very simple. It accepts a single parameter, which is the number of pixels the mouse must travel with 
+    <p>The utility is actually very simple. It accepts a single parameter, which is the number of pixels the mouse must travel with
     a button depressed before the motion registers as a drag action.</p>
 
 <pre><code class="language-cpp">BOOL success = FALSE;
@@ -84,7 +82,7 @@ if (!success) {
   return 1;
 }</code></pre>
     <h2>License</h2>
-    <p>There isn't one, really. Dragsens is completely free to download, use, modify, and distribute. Dragsens is provided as-is, 
+    <p>There isn't one, really. Dragsens is completely free to download, use, modify, and distribute. Dragsens is provided as-is,
     without warranty and without support.</p>
     <h2>Change Log</h2>
     <h3 id="version15">Version 1.5</h3>
@@ -98,6 +96,5 @@ if (!success) {
     <h3 id="update">Version 1.1</h3>
     <p>Version resource and support for a "/?" parameter.</p>
 
-    <script>hljs.highlightAll();</script>
 </body>
 </html>
