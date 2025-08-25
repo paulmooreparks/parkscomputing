@@ -2,6 +2,7 @@
 for details on configuring this project to bundle and minify static web assets. */
 
 /* Theme variables */
+/* Light mode base (Option 1: softer panel background for nav/footer) */
 :root {
     --pc-bg: #ffffff;
     --pc-text: #1e2930;
@@ -14,8 +15,10 @@ for details on configuring this project to bundle and minify static web assets. 
     --pc-inline-code-bg: #f1f3f5;
     --pc-blockquote-bg: #f8f9fa;
     --pc-blockquote-bar: #0d6efd;
-    --pc-nav-bg: #111418;
-    --pc-nav-text: #f8f9fa;
+    /* Updated option 1 colors */
+    --pc-nav-bg: #e6eef5; /* soft blue-gray panel */
+    --pc-nav-border: #d1dde6; /* subtle separator */
+    --pc-nav-text: #1e2930; /* same as body text for readability */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -51,10 +54,11 @@ for details on configuring this project to bundle and minify static web assets. 
 
 /* Dropdown menu theming (light + dark) */
 :root {
-    --pc-menu-bg: #ffffff;
-    --pc-menu-text: #1e2930;
-    --pc-menu-hover-bg: #f1f5f9;
-    --pc-menu-border: #e2e8f0;
+    /* Make dropdown background same as header/footer panel */
+    --pc-menu-bg: var(--pc-nav-bg);
+    --pc-menu-text: var(--pc-text);
+    --pc-menu-hover-bg: #dbe6ef; /* slight darken for hover within panel */
+    --pc-menu-border: var(--pc-nav-border);
 }
 @media (prefers-color-scheme: dark) {
     :root {
@@ -66,10 +70,10 @@ for details on configuring this project to bundle and minify static web assets. 
 }
 
 .navbar .dropdown-menu {
-    background: var(--pc-menu-bg);
+    background: var(--pc-menu-bg); /* now same as nav/footer */
     color: var(--pc-menu-text);
     border: 1px solid var(--pc-menu-border);
-    box-shadow: 0 4px 14px rgba(0,0,0,.45);
+    box-shadow: 0 4px 14px rgba(0,0,0,.18);
 }
 .navbar .dropdown-menu .dropdown-item { color: var(--pc-menu-text); }
 .navbar .dropdown-menu .dropdown-item:hover,
@@ -77,6 +81,31 @@ for details on configuring this project to bundle and minify static web assets. 
     background: var(--pc-menu-hover-bg);
     color: var(--pc-menu-text);
 }
+
+/* Navbar link styling logic:
+    - Plain nav links (no dropdown) use global link styles (already default)
+    - Dropdown toggles: remove underline to distinguish they open menus
+    - Dropdown menu items: normal underlined links; nested submenu toggles (if any) remove underline */
+.navbar .nav-item.dropdown > .nav-link { text-decoration: none; }
+.navbar .nav-item.dropdown > .nav-link:hover,
+.navbar .nav-item.dropdown > .nav-link:focus { text-decoration: none; }
+.navbar .dropdown-menu a.dropdown-item { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; color: var(--pc-link); }
+.navbar .dropdown-menu a.dropdown-item:hover, .navbar .dropdown-menu a.dropdown-item:focus { color: var(--pc-link-hover); }
+.navbar .dropdown-menu .dropdown-toggle { text-decoration: none; }
+
+/* Plain (non-dropdown) top-level nav links: standard link styling */
+.navbar .navbar-nav > li.nav-item:not(.dropdown) > a { color: var(--pc-link); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
+.navbar .navbar-nav > li.nav-item:not(.dropdown) > a:hover,
+.navbar .navbar-nav > li.nav-item:not(.dropdown) > a:focus,
+.navbar .navbar-nav > li.nav-item:not(.dropdown) > a.active { color: var(--pc-link-hover); }
+
+/* Header palette refinement: plain links keep link color; dropdown toggles use normal text color */
+.navbar.bg-dark .navbar-nav > li.nav-item:not(.dropdown) > a { color: var(--pc-link) !important; }
+.navbar.bg-dark .navbar-nav > li.nav-item:not(.dropdown) > a:hover,
+.navbar.bg-dark .navbar-nav > li.nav-item:not(.dropdown) > a:focus { color: var(--pc-link-hover) !important; }
+.navbar.bg-dark .navbar-nav > li.nav-item.dropdown > a.nav-link { color: var(--pc-nav-text) !important; }
+.navbar.bg-dark .navbar-nav > li.nav-item.dropdown > a.nav-link:hover,
+.navbar.bg-dark .navbar-nav > li.nav-item.dropdown > a.nav-link:focus { color: var(--pc-nav-text) !important; }
 
 /* Ensure the final top-level dropdown aligns to the right edge to avoid viewport overflow. */
 .navbar-nav > li.nav-item.dropdown:last-child .dropdown-menu {
@@ -100,10 +129,7 @@ a:hover, a:focus { color: var(--pc-link-hover); }
 }
 
 /* Footer link palette override (light mode: vivid cyan; dark mode already uses these via variables) */
-@media (prefers-color-scheme: light) {
-    .footer a { color: #2fa8ff !important; }
-    .footer a:hover, .footer a:focus { color: #7bd3ff !important; }
-}
+/* Removed footer light-mode link override so footer links match body */
 
 /* Sticky footer styles
 -------------------------------------------------- */
@@ -266,7 +292,8 @@ table.has-fixed-layout {
     .wp-block-table { color: var(--pc-text); }
 }
 
-.nav-link { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; color: var(--pc-nav-text) !important; }
+/* Remove previous global .nav-link color override to allow custom rules above.
+    (Bootstrap still supplies spacing/active styles.) */
 
 .posted-on { font-style: italic; font-size: smaller; color: var(--pc-text-muted); }
 
@@ -375,6 +402,21 @@ figcaption {
 .post-body figure { margin: 1.5rem 0; }
 .post-body figcaption { text-align: center; margin-top: .4rem; color: var(--pc-text-muted); }
 
+/* Dark mode code block emphasis (provide a similar visual "pop" as light mode) */
+@media (prefers-color-scheme: dark) {
+    .post-body pre {
+        /* Slight gradient to lift block from surrounding background */
+        background: linear-gradient(145deg, #232e39, #1b232c);
+        /* Layered shadows: subtle inner border, depth, and faint accent halo */
+        box-shadow:
+            inset 0 0 0 1px rgba(255,255,255,0.05), /* inner hairline */
+            0 1px 2px rgba(0,0,0,0.55),            /* small base shadow */
+            0 4px 14px -2px rgba(0,0,0,0.65),      /* spread for depth */
+            0 0 0 3px rgba(71,157,255,0.10),       /* soft accent ring */
+            0 0 20px -4px rgba(71,157,255,0.22);   /* glow to mimic light-mode elevation */
+    }
+}
+
 /* Responsive tweaks */
 @media (max-width: 640px) {
     .post-card { padding: 1rem .95rem .85rem; }
@@ -408,6 +450,21 @@ figcaption {
 .post-card-title { font-size: 1.35rem; line-height: 1.25; font-weight: 600; margin: 0 0 .5rem; color: var(--pc-link); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
 
 .post-card-excerpt { margin: 0; font-size: .95rem; line-height: 1.5; max-width: 60ch; color: var(--pc-text); }
+/* Allow wider excerpts on large viewports so they align with intro paragraphs */
+@media (min-width: 900px) {
+    .post-grid .post-card-excerpt { max-width: 68ch; }
+}
+@media (min-width: 1200px) {
+    .post-grid .post-card-excerpt { max-width: 72ch; }
+}
+@media (min-width: 1600px) {
+    .post-grid .post-card-excerpt { max-width: 78ch; }
+}
+
+/* On very wide viewports we ultimately want excerpts to align with intro paragraphs; remove cap */
+@media (min-width: 1800px) {
+    .post-grid .post-card-excerpt { max-width: none; }
+}
 
 .post-card-more {
     margin-top: .6rem;

@@ -22,7 +22,7 @@
             nav [
                 { slug "sudoku" }
                 { slug "conways-game-of-life" }
-                { slug "barcode-generator" }
+                </ { slug "barcode-generator" } />
             ]
         }
         {
@@ -112,16 +112,9 @@
         { slug "set-associative-cache-in-c-part-2-interface-design" }
         { slug "set-associative-cache-in-c-part-1-analysis-initial-design" }
         { slug "barbecue-and-project-management" }
-        {
-            slug "scheduling-every-minute-revisited"
-        }
-        {
-            slug "conways-game-of-life"
-            description "The famous game implemented in JavaScript"
-        }
-        {
-            slug "how-i-plan-my-day"
-        }
+        { slug "scheduling-every-minute-revisited" }
+        { slug "conways-game-of-life" }
+        { slug "how-i-plan-my-day" }
         { slug "pbrain" }
         { slug "windragsens" }
         { slug "master-foo-and-the-technical-recruiter" }

@@ -40,7 +40,14 @@
     @foreach (var post in Model.Root.Posts)
     {
         <li class="post-card">
-            <div class="post-card-meta">@(post.Date?.ToLongDateString() ?? "")</div>
+            <div class="post-card-meta">
+                @if (post.Date != null) {
+                    <time datetime="@post.Date.Value.ToString("s", CultureInfo.InvariantCulture)">@post.Date.Value.ToLongDateString()</time>
+                }
+                @if (post.Updated != null && post.Date != null && post.Updated.Value.ToUniversalTime() != post.Date.Value.ToUniversalTime()) {
+                    <span class="updated-on"> &nbsp;· Updated <time datetime="@post.Updated.Value.ToString("s", CultureInfo.InvariantCulture)">@post.Updated.Value.ToLongDateString()</time></span>
+                }
+            </div>
             <a class="post-card-title" href="@post.Url">@post.Title</a>
             <p class="post-card-excerpt">@post.Excerpt</p>
             <div class="mt-auto">

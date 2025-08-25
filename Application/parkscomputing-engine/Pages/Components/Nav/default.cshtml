@@ -3,7 +3,7 @@
 {
     var rootTip = Model.Description ?? Model.Excerpt ?? Model.Title ?? string.Empty;
     <li class='nav-item'>
-        <a class='nav-link text-light' href='@Model.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@rootTip'>@Model.Title</a>
+        <a href='@Model.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@rootTip'>@Model.Title</a>
     </li>
     @if (Model.Nav != null)
     {
@@ -18,7 +18,7 @@
                 // Apply Bootstrap's end alignment only to the final dropdown to avoid viewport overflow.
                 var menuClasses = (i == lastDropdownIndex) ? "dropdown-menu dropdown-menu-end" : "dropdown-menu";
                 <li class='nav-item dropdown'>
-                    <a class='nav-link dropdown-toggle text-light' href='@link.Url' role="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-delay='{"show":150,"hide":50}' title='@linkTip'>@link.Title</a>
+                    <a class='nav-link dropdown-toggle' href='@link.Url' role="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-delay='{"show":150,"hide":50}' title='@linkTip'>@link.Title</a>
                     <ul class="@menuClasses">
                         @foreach (var sublink in link.Nav)
                         {
@@ -36,7 +36,7 @@
             else
             {
                 <li class='nav-item'>
-                    <a class='nav-link text-light' href='@link?.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@linkTip'>@link?.Title</a>
+                    <a href='@link?.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@linkTip'>@link?.Title</a>
                 </li>
             }
         }
