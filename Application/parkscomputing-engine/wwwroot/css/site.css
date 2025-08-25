@@ -94,15 +94,15 @@ for details on configuring this project to bundle and minify static web assets. 
 .navbar .dropdown-menu .dropdown-toggle { text-decoration: none; }
 
 /* Plain (non-dropdown) top-level nav links: standard link styling */
-.navbar .navbar-nav > li.nav-item:not(.dropdown) > a { color: var(--pc-link); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
-.navbar .navbar-nav > li.nav-item:not(.dropdown) > a:hover,
-.navbar .navbar-nav > li.nav-item:not(.dropdown) > a:focus,
-.navbar .navbar-nav > li.nav-item:not(.dropdown) > a.active { color: var(--pc-link-hover); }
+.navbar .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link { color: var(--pc-link); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
+.navbar .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link:hover,
+.navbar .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link:focus,
+.navbar .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link.active { color: var(--pc-link-hover); }
 
 /* Header palette refinement: plain links keep link color; dropdown toggles use normal text color */
-.navbar.bg-dark .navbar-nav > li.nav-item:not(.dropdown) > a { color: var(--pc-link) !important; }
-.navbar.bg-dark .navbar-nav > li.nav-item:not(.dropdown) > a:hover,
-.navbar.bg-dark .navbar-nav > li.nav-item:not(.dropdown) > a:focus { color: var(--pc-link-hover) !important; }
+.navbar.bg-dark .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link { color: var(--pc-link) !important; }
+.navbar.bg-dark .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link:hover,
+.navbar.bg-dark .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link:focus { color: var(--pc-link-hover) !important; }
 .navbar.bg-dark .navbar-nav > li.nav-item.dropdown > a.nav-link { color: var(--pc-nav-text) !important; }
 .navbar.bg-dark .navbar-nav > li.nav-item.dropdown > a.nav-link:hover,
 .navbar.bg-dark .navbar-nav > li.nav-item.dropdown > a.nav-link:focus { color: var(--pc-nav-text) !important; }

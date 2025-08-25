@@ -3,7 +3,8 @@
 {
     var rootTip = Model.Description ?? Model.Excerpt ?? Model.Title ?? string.Empty;
     <li class='nav-item'>
-        <a href='@Model.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@rootTip'>@Model.Title</a>
+        <!-- Re-added nav-link class for consistent padding/height across browsers -->
+        <a class="nav-link" href='@Model.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@rootTip'>@Model.Title</a>
     </li>
     @if (Model.Nav != null)
     {
@@ -36,7 +37,8 @@
             else
             {
                 <li class='nav-item'>
-                    <a href='@link?.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@linkTip'>@link?.Title</a>
+                    <!-- Re-added nav-link class for consistent cross-browser vertical alignment -->
+                    <a class="nav-link" href='@link?.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@linkTip'>@link?.Title</a>
                 </li>
             }
         }
