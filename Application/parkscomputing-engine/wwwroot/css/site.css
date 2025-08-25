@@ -15,10 +15,10 @@ for details on configuring this project to bundle and minify static web assets. 
     --pc-inline-code-bg: #f1f3f5;
     --pc-blockquote-bg: #f8f9fa;
     --pc-blockquote-bar: #0d6efd;
-    /* Updated option 1 colors */
-    --pc-nav-bg: #e6eef5; /* soft blue-gray panel */
-    --pc-nav-border: #d1dde6; /* subtle separator */
-    --pc-nav-text: #1e2930; /* same as body text for readability */
+    /* Updated option 1 colors (darken one step for stronger separation) */
+    --pc-nav-bg: #d9e4ec; /* slightly darker blue-gray */
+    --pc-nav-border: #c4d2dd; /* adjust border accordingly */
+    --pc-nav-text: #1e2930; /* body text for readability */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -54,10 +54,10 @@ for details on configuring this project to bundle and minify static web assets. 
 
 /* Dropdown menu theming (light + dark) */
 :root {
-    /* Make dropdown background same as header/footer panel */
+    /* Make dropdown background same as header/footer panel (now slightly darker) */
     --pc-menu-bg: var(--pc-nav-bg);
     --pc-menu-text: var(--pc-text);
-    --pc-menu-hover-bg: #dbe6ef; /* slight darken for hover within panel */
+    --pc-menu-hover-bg: #cdd9e3; /* subtle hover change */
     --pc-menu-border: var(--pc-nav-border);
 }
 @media (prefers-color-scheme: dark) {
@@ -77,10 +77,7 @@ for details on configuring this project to bundle and minify static web assets. 
 }
 .navbar .dropdown-menu .dropdown-item { color: var(--pc-menu-text); }
 .navbar .dropdown-menu .dropdown-item:hover,
-.navbar .dropdown-menu .dropdown-item:focus {
-    background: var(--pc-menu-hover-bg);
-    color: var(--pc-menu-text);
-}
+.navbar .dropdown-menu .dropdown-item:focus { background: var(--pc-menu-hover-bg); color: var(--pc-menu-text); }
 
 /* Navbar link styling logic:
     - Plain nav links (no dropdown) use global link styles (already default)
@@ -117,6 +114,24 @@ a.navbar-brand {
     white-space: normal;
     text-align: center;
     word-break: break-all;
+}
+
+/* Hamburger (navbar-toggler) contrast adjustments */
+.navbar .navbar-toggler { border: 1px solid rgba(0,0,0,.25); background: linear-gradient(#ffffff,#d9e4ec); padding:.3rem .55rem; border-radius:4px; }
+.navbar .navbar-toggler:focus, .navbar .navbar-toggler:hover { outline:2px solid #0d47a1; outline-offset:2px; background: linear-gradient(#ffffff,#cdd9e3); }
+@media (prefers-color-scheme: dark) {
+    .navbar .navbar-toggler { border:1px solid #42525e; background: linear-gradient(#35424c,#2a3946); }
+    .navbar .navbar-toggler:focus, .navbar .navbar-toggler:hover { outline:2px solid #63b3ff; background: linear-gradient(#3d4e5a,#32424f); }
+}
+
+/* Recolored hamburger icon for contrast (light + dark) */
+.navbar .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(13,71,161,0.95)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+}
+@media (prefers-color-scheme: dark) {
+    .navbar .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(230,237,243,0.95)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+    }
 }
 
 /* Generic link styling pulls from theme variables */
@@ -478,4 +493,44 @@ figcaption {
     .post-card-title { font-size: 1.18rem; }
     .post-card { padding: 0; }
 }
+
+/* --- Container padding override -------------------------------------------------
+   The default Bootstrap container adds left/right padding that causes precision-
+   centered narrow interactive canvases (e.g. Sudoku board sized by vw/vh) to look
+   slightly off-center on small viewports. We remove that horizontal gutter while
+   preserving automatic horizontal centering via auto margins. If future content
+   needs a tiny gutter, we reintroduce a reduced value with a custom variable. */
+
+:root { --pc-container-x: .5rem; }
+
+/* Remove padding by default (desktop & mobile) */
+.container, .container-fluid, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
+    padding-left: 0; /* eliminate lateral shift */
+    padding-right: 0;
+}
+
+/* If a minimal gutter improves readability on wider viewports, add a very small one */
+@media (min-width: 900px) {
+    .container, .container-fluid, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
+        padding-left: var(--pc-container-x);
+        padding-right: var(--pc-container-x);
+    }
+}
+
+/* Explicitly ensure nested centered elements (like .sudoku-stage) stay centered */
+.container > .sudoku-top, .container > .sudoku-stage { margin-left:auto; margin-right:auto; }
+
+/* Restore intentional padding just for nav/footer so brand + toggler aren't flush */
+:root { --pc-nav-pad: .85rem; }
+.navbar > .container, .navbar > .container-fluid,
+.footer > .container, .footer > .container-fluid {
+    padding-left: max(var(--pc-nav-pad), env(safe-area-inset-left, 0));
+    padding-right: max(var(--pc-nav-pad), env(safe-area-inset-right, 0));
+}
+@media (min-width: 900px) {
+    /* allow a little more breathing room on wider screens without affecting Sudoku centering */
+    .navbar > .container, .navbar > .container-fluid,
+    .footer > .container, .footer > .container-fluid { padding-left: 1.25rem; padding-right: 1.25rem; }
+}
+
 

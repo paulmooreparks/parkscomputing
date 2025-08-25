@@ -26,7 +26,7 @@ SOFTWARE.
     display: grid;
     grid-template-columns: repeat(9, 1fr);
     grid-template-rows: 1fr;
-    width: 90vw;
+    width: min(90vw,60vh);
     max-width: 60vh;
     gap: .2em;
     margin: auto;
@@ -57,7 +57,7 @@ SOFTWARE.
 .controls-centered {
     --control-size: clamp(60px, 10vmin, 88px); /* larger (about 2x prior) square buttons */
     max-width: 60vh; /* align with board max */
-    width: 90vw; /* container spans board width */
+    width: min(90vw,60vh); /* container spans but matches board width */
     margin-left: auto;
     margin-right: auto;
     display: flex;
@@ -109,12 +109,15 @@ SOFTWARE.
     grid-template-columns: repeat(9, 1fr);
     grid-template-rows: repeat(9, 1fr);
     aspect-ratio: 1/1;
-    width: 90vw;
+    width: min(90vw,60vh);
     max-width: 60vh;
     gap: 0;
     margin: .1em auto 0 auto; /* slight top margin reduction */
     box-sizing: border-box;
 }
+
+/* Wrapper to ensure perfect centering of board + pads */
+.sudoku-stage { width:min(90vw,60vh); max-width:60vh; margin:0 auto; display:flex; flex-direction:column; align-items:center; }
 
 #helpText {
     position: absolute;
@@ -367,7 +370,7 @@ button:focus-visible, .number-button:focus-visible { outline:2px solid #0d47a1; 
 .number-controls { margin-top:.45em; margin-bottom:.4em; }
 
 /* Top title + mode controls alignment */
-.sudoku-top { max-width:60vh; width:90vw; margin:0 auto .25em auto; display:flex; flex-direction:column; align-items:center; }
+.sudoku-top { max-width:60vh; width:min(90vw,60vh); margin:0 auto .25em auto; display:flex; flex-direction:column; align-items:center; }
 .sudoku-top h1 { margin:.15em 0 .25em 0; text-align:center; }
 
 /* Horizontal layout for mode controls with wrapping */
@@ -383,5 +386,15 @@ button:focus-visible, .number-button:focus-visible { outline:2px solid #0d47a1; 
 /* Ensure consistent sizing on very small screens */
 @media (max-width:420px){
     .sudoku-top select#difficultyDropdown, .sudoku-top .mode-controls button { height:2.6em; line-height:2.6em; }
+}
+
+/* Prevent early wrap of Solve button on ~390-410px width devices by reducing padding */
+@media (max-width:430px){
+    .sudoku-top .mode-controls button { padding:0 .65em; }
+    .sudoku-top select#difficultyDropdown { padding:0 .55em; }
+}
+@media (max-width:380px){
+    .sudoku-top .mode-controls button { padding:0 .55em; font-size:.95rem; }
+    .sudoku-top select#difficultyDropdown { padding:0 .45em; font-size:.95rem; }
 }
 
