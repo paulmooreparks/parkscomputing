@@ -7,7 +7,8 @@
     <meta http-equiv="last-modified" content="2023-07-26T23:45:00" />
     <meta name="description" content="An Excel spreadsheet for tracking employee utilisation and capacity for project work." />
     <meta name="keyword" content="Excel,spreadsheet,project management,professional services,spreadsheets,employees,utilisation,utilization,capacity" />
-    <link rel="stylesheet" href="/highlightjs/styles/default.min.css">
+    <link rel="stylesheet" href="/highlightjs/styles/github.min.css" media="(prefers-color-scheme: light)">
+    <link rel="stylesheet" href="/highlightjs/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
     <script src="/highlightjs/highlight.min.js"></script>
     <style>
         figcaption {
@@ -20,49 +21,49 @@
     <h1 id="top">Excel Employee Capacity Spreadsheet</h1>
 
     <p>
-        Once, when working for a professional-services organisation, I managed a team of business analysts and another team of 
-        software engineers. As professional-services employees, they were assigned to customer projects, sometimes more 
-        than one project at a time. Our organisation had KPIs for employee utilisation, so making sure employees were 
-        assigned to enough projects at the correct level was critical. At the same time, we also needed to reserve 
+        Once, when working for a professional-services organisation, I managed a team of business analysts and another team of
+        software engineers. As professional-services employees, they were assigned to customer projects, sometimes more
+        than one project at a time. Our organisation had KPIs for employee utilisation, so making sure employees were
+        assigned to enough projects at the correct level was critical. At the same time, we also needed to reserve
         capacity for upcoming projects.
     </p>
 
     <p>
-        In order to be able to see utilisation and capacity at a glance, and also to be able to report on utilisation for 
-        montly and quarterly business reviews, I developed an Excel spreadsheet that would display colourful graphs that 
-        could quickly reveal when employees were over- or under-utilised. It took a bit of Excel 
-        <a href="https://en.wikipedia.org/wiki/My_kung_fu_is_stronger_than_yours" target="_blank">"kung fu"</a> to accomplish 
-        this. 
+        In order to be able to see utilisation and capacity at a glance, and also to be able to report on utilisation for
+        montly and quarterly business reviews, I developed an Excel spreadsheet that would display colourful graphs that
+        could quickly reveal when employees were over- or under-utilised. It took a bit of Excel
+        <a href="https://en.wikipedia.org/wiki/My_kung_fu_is_stronger_than_yours" target="_blank">"kung fu"</a> to accomplish
+        this.
     </p>
-    
+
     <p>
-        Since I've left that company, I no longer have that spreadsheet available, so I re-created it to share it here 
-        and explain the techniques that make it work. In this article, I'll walk the reader through the various worksheets, 
-        show how they fit together, and explain the formulas, table relationships, and formatting tricks that enable 
+        Since I've left that company, I no longer have that spreadsheet available, so I re-created it to share it here
+        and explain the techniques that make it work. In this article, I'll walk the reader through the various worksheets,
+        show how they fit together, and explain the formulas, table relationships, and formatting tricks that enable
         the graphical display.
     </p>
 
     <p>
-        If you'd like to follow along, you may 
-        <a href="https://github.com/paulmooreparks/excel-employee-capacity/raw/main/Employee%20Utilisation.xlsx" target="_blank">download the spreadsheet</a> 
-        from my <a href="https://github.com/paulmooreparks/excel-employee-capacity/" target="_blank">GitHub repository</a>. The spreadsheet is 
-        released under an <a href="https://mit-license.org/" target="_blank">MIT License</a>, so please feel free to adapt it to your 
+        If you'd like to follow along, you may
+        <a href="https://github.com/paulmooreparks/excel-employee-capacity/raw/main/Employee%20Utilisation.xlsx" target="_blank">download the spreadsheet</a>
+        from my <a href="https://github.com/paulmooreparks/excel-employee-capacity/" target="_blank">GitHub repository</a>. The spreadsheet is
+        released under an <a href="https://mit-license.org/" target="_blank">MIT License</a>, so please feel free to adapt it to your
         own needs.
     </p>
 
     <h2 id="at_a_glance">Capacity and Utilisation At a Glance</h2>
 
     <p>
-        In my old job, whenever a new project was confirmed, the project manager would contact the relevant line managers 
-        about the availability of needed resources. We would then look at how heavily loaded our staff were, and for how 
-        long they were committed to their current tasks. We needed a way to tell at a glance who was over-committed and 
-        who had enough slack to take on the assignment. Those where the primary needs that drove the development of the 
+        In my old job, whenever a new project was confirmed, the project manager would contact the relevant line managers
+        about the availability of needed resources. We would then look at how heavily loaded our staff were, and for how
+        long they were committed to their current tasks. We needed a way to tell at a glance who was over-committed and
+        who had enough slack to take on the assignment. Those where the primary needs that drove the development of the
         spreadsheet.
     </p>
 
     <p>
-        In the figure below, we can see that Louie, a Quality Engineer on the Mighty Ducks team, has at least 75% capacity. 
-        The rest of the Mighty Ducks team has from 26% to 50% capacity. The Stooges team has quite a bit less capacity. The 
+        In the figure below, we can see that Louie, a Quality Engineer on the Mighty Ducks team, has at least 75% capacity.
+        The rest of the Mighty Ducks team has from 26% to 50% capacity. The Stooges team has quite a bit less capacity. The
         red blocks beside Larry Fine and Moe Howard indicate dates when those employees will be out of office.
     </p>
 
@@ -75,12 +76,12 @@
     </figure>
 
     <p>
-        Likewise, when it came time to evaluate where we stood vis-à-vis the utilisation metrics, the opposite at-a-glance view 
+        Likewise, when it came time to evaluate where we stood vis-à-vis the utilisation metrics, the opposite at-a-glance view
         would be useful to tell us if we were tracking where we needed to or if we needed to find more work.
     </p>
 
     <p>
-        The figure below shows roughly the opposite view as the capacity chart. We now see a red bar next to Louie's name, indicating 
+        The figure below shows roughly the opposite view as the capacity chart. We now see a red bar next to Louie's name, indicating
         he is critically under-utilised. Curly Joe DeRita is a bit more engaged, and the rest of each team is at least at 50% utilisation.
     </p>
 
@@ -93,7 +94,7 @@
     </figure>
 
     <p>
-        Finally, we needed to be able to account for scheduled time off. Although it was reflected in the capacity chart, it was 
+        Finally, we needed to be able to account for scheduled time off. Although it was reflected in the capacity chart, it was
         also useful to view time off independently from project assignments.
     </p>
 
@@ -108,33 +109,33 @@
     <h2>Techniques</h2>
 
     <p>
-        There are a few basic techniques in play with this spreadsheet: 
-        <a href="https://support.microsoft.com/en-us/office/overview-of-excel-tables-7ab0bb7d-3a9e-4b56-a3c9-6c94334e492c" target="_blank">tables</a>, 
-        <a href="https://support.microsoft.com/en-us/office/using-structured-references-with-excel-tables-f5ed2452-2337-4f71-bed3-c8ae6d2b276e" target="_blank">structured references</a>, 
-        <a href="https://support.microsoft.com/en-us/office/xlookup-function-b7fd680e-6d10-43e6-84f9-88eae8bf5929" target="_blank">table lookups</a>, 
-        <a href="https://support.microsoft.com/en-us/office/names-in-formulas-fc2935f9-115d-4bef-a370-3aa8bb4c91f1" target="_blank">cell/region names</a>, 
-        <a href="https://support.microsoft.com/en-us/office/apply-data-validation-to-cells-29fecbcc-d1b9-42c1-9d76-eff3ce5f7249" target="_blank">data validation</a>, 
-        <a href="https://support.microsoft.com/en-us/office/let-function-34842dd8-b92b-4d3f-b325-b8b8f9908999" target="_blank">the LET function</a>, 
-        and 
+        There are a few basic techniques in play with this spreadsheet:
+        <a href="https://support.microsoft.com/en-us/office/overview-of-excel-tables-7ab0bb7d-3a9e-4b56-a3c9-6c94334e492c" target="_blank">tables</a>,
+        <a href="https://support.microsoft.com/en-us/office/using-structured-references-with-excel-tables-f5ed2452-2337-4f71-bed3-c8ae6d2b276e" target="_blank">structured references</a>,
+        <a href="https://support.microsoft.com/en-us/office/xlookup-function-b7fd680e-6d10-43e6-84f9-88eae8bf5929" target="_blank">table lookups</a>,
+        <a href="https://support.microsoft.com/en-us/office/names-in-formulas-fc2935f9-115d-4bef-a370-3aa8bb4c91f1" target="_blank">cell/region names</a>,
+        <a href="https://support.microsoft.com/en-us/office/apply-data-validation-to-cells-29fecbcc-d1b9-42c1-9d76-eff3ce5f7249" target="_blank">data validation</a>,
+        <a href="https://support.microsoft.com/en-us/office/let-function-34842dd8-b92b-4d3f-b325-b8b8f9908999" target="_blank">the LET function</a>,
+        and
         <a href="https://support.microsoft.com/en-us/office/use-conditional-formatting-to-highlight-information-fed60dfa-1d3f-4e13-9ecb-f1951ff89d7f" target="_blank">conditional formatting</a>
-        are the main ones. 
+        are the main ones.
     </p>
 
     <p>
-        First of all, any data of consequence is in a table. That's my primary rule for using Excel: If it's tabular data, <em>put it 
-        into a table!</em> Tables make editing, sorting, filtering, and correlating data vastly easier, and they also discourage some bad 
+        First of all, any data of consequence is in a table. That's my primary rule for using Excel: If it's tabular data, <em>put it
+        into a table!</em> Tables make editing, sorting, filtering, and correlating data vastly easier, and they also discourage some bad
         habits that can quickly make a mess of an otherwise tidy spreadsheet.
     </p>
 
     <p>
-        One big advantage of using tables is that you may use 
-        <a href="https://support.microsoft.com/en-us/office/using-structured-references-with-excel-tables-f5ed2452-2337-4f71-bed3-c8ae6d2b276e" target="_blank">structured references</a> 
-        to those tables when writing formulas. This lets you do table lookups, refer to entire columns, filter rows by column data in 
+        One big advantage of using tables is that you may use
+        <a href="https://support.microsoft.com/en-us/office/using-structured-references-with-excel-tables-f5ed2452-2337-4f71-bed3-c8ae6d2b276e" target="_blank">structured references</a>
+        to those tables when writing formulas. This lets you do table lookups, refer to entire columns, filter rows by column data in
         formulas, and so on. You'll see examples of this in the formulas below.
     </p>
 
     <p>
-        The main feature of this spreadsheet, though, is the graphical display of percentages. I use conditional formatting to achieve this 
+        The main feature of this spreadsheet, though, is the graphical display of percentages. I use conditional formatting to achieve this
         by setting the text and background colours to the same colour, and varying the colour based on the value of the percentage.
     </p>
 
@@ -145,14 +146,14 @@
     <h2 id="setup">Set-Up Worksheets</h2>
 
     <p>
-        The spreadsheet runs off of a number of tables, basically like a database. In fact, I'd like to develop a web app 
+        The spreadsheet runs off of a number of tables, basically like a database. In fact, I'd like to develop a web app
         based on this spreadsheet at some point, but for now it's easy to prototype in Excel.
     </p>
 
     <h3 id="teams">Teams</h3>
 
     <p>
-        This table lists the names of the teams to which the employees belong. This could also be the names of the managers to which 
+        This table lists the names of the teams to which the employees belong. This could also be the names of the managers to which
         the employees report.
     </p>
 
@@ -165,8 +166,8 @@
     </figure>
 
     <p>
-        This is also used a data-validation list for the <code>Team</code> column in the 
-        <a href="#employees"><code>Employees</code></a> table. The way to set this up is to first 
+        This is also used a data-validation list for the <code>Team</code> column in the
+        <a href="#employees"><code>Employees</code></a> table. The way to set this up is to first
         select the column that should serve as a source list.
     </p>
 
@@ -203,7 +204,7 @@
     </figure>
 
     <p>
-        Finally, select the <em>Data Validation</em> command from the <em>Data</em> tab and enable list validation using the list 
+        Finally, select the <em>Data Validation</em> command from the <em>Data</em> tab and enable list validation using the list
         name you just created.
     </p>
 
@@ -216,7 +217,7 @@
     </figure>
 
     <p>
-        Now, when you edit a value in the column, a drop-down tab will appear with values from the validation list. You may also type 
+        Now, when you edit a value in the column, a drop-down tab will appear with values from the validation list. You may also type
         values, but they will be validated against the list.
     </p>
 
@@ -235,7 +236,7 @@
     <h3 id="roles">Roles</h3>
 
     <p>
-        This table lists the various roles that employees may fill. Usually an employee will have a primary role, but they may also 
+        This table lists the various roles that employees may fill. Usually an employee will have a primary role, but they may also
         step into another role in a project, depending on the need.
     </p>
 
@@ -248,14 +249,14 @@
     </figure>
 
     <p>
-        As with the <a href="#teams"><code>Teams</code></a> list, this is also a data-validation list for the <code>Primary Role</code> column in the 
+        As with the <a href="#teams"><code>Teams</code></a> list, this is also a data-validation list for the <code>Primary Role</code> column in the
         <a href="#employees"><code>Employees</code></a> table.
     </p>
 
     <h3 id="employees">Employees</h3>
 
     <p>
-        Now we're getting into the interesting bits. The <code>Employees</code> table contains all of the employees in the organisation 
+        Now we're getting into the interesting bits. The <code>Employees</code> table contains all of the employees in the organisation
         whose utilisation should be tracked in our spreadsheet.
     </p>
 
@@ -268,17 +269,17 @@
     </figure>
 
     <p>
-        As mentioned earlier, the <code>Primary Role</code> and <code>Team</code> columns are validated against the 
+        As mentioned earlier, the <code>Primary Role</code> and <code>Team</code> columns are validated against the
         <a href="#roles"><code>Roles</code></a> and <a href="#teams"><code>Teams</code></a> tables.
     </p>
 
     <p>
-        The <code>Primary Role</code> is the role that the employee was hired to fill. It may be possible that an employee could fill 
+        The <code>Primary Role</code> is the role that the employee was hired to fill. It may be possible that an employee could fill
         a different role on a given project, however.
     </p>
 
     <p>
-        The <code>Start Date</code> is the date on which the employee commences work, and the <code>End Date</code> is the date 
+        The <code>Start Date</code> is the date on which the employee commences work, and the <code>End Date</code> is the date
         when the employee will cease to work (if known). If there is no known end date, this column is blank.
     </p>
 
@@ -289,7 +290,7 @@
     <h3 id="customers">Customers</h3>
 
     <p>
-        This table is just a list of customers that may have projects running. There could be additional columns in this table 
+        This table is just a list of customers that may have projects running. There could be additional columns in this table
         should you wish to track other details about your customers.
     </p>
 
@@ -304,20 +305,20 @@
     <h2 id="project_details">Project Details</h2>
 
     <p>
-        With all of the basic tables filled, we now move onto the project tables. These tables begin to combine the basic setup tables and 
+        With all of the basic tables filled, we now move onto the project tables. These tables begin to combine the basic setup tables and
         show some of the special features of this spreadsheet.
     </p>
 
     <h3 id="projects">Projects</h3>
 
     <p>
-        Now that we have our customer table, we can define the projects we have with those customers and their start and end dates. This 
+        Now that we have our customer table, we can define the projects we have with those customers and their start and end dates. This
         table will demonstrate how the Gantt-chart representation of dates works.
     </p>
 
     <p>
-        Before we get to the chart portion of the table, we'll quickly cover the left-most data columns. Since we are tracking 
-        projects by customer, we need to define a unique project name, assign it to a customer, and set the start and end dates 
+        Before we get to the chart portion of the table, we'll quickly cover the left-most data columns. Since we are tracking
+        projects by customer, we need to define a unique project name, assign it to a customer, and set the start and end dates
         for the project. The <code>Customer</code> column is validated against the <a href="#customers">Customers</a> table.
     </p>
 
@@ -330,8 +331,8 @@
     </figure>
 
     <p>
-        You'll notice the strip of dates above the top of the table that correspond to the beginning of each week. These dates 
-        drive the graphical chart. The left-most date cell refers to a cell on the "Home" worksheet that is labeled <code>StartDate</code>. 
+        You'll notice the strip of dates above the top of the table that correspond to the beginning of each week. These dates
+        drive the graphical chart. The left-most date cell refers to a cell on the "Home" worksheet that is labeled <code>StartDate</code>.
         The spreadsheet user sets this to the date from which the spreadsheet should report its timelines.
     </p>
 
@@ -366,7 +367,7 @@
     </figure>
 
     <p>
-        This is accomplished with <a href="https://support.microsoft.com/en-us/office/use-conditional-formatting-to-highlight-information-fed60dfa-1d3f-4e13-9ecb-f1951ff89d7f" target="_blank">conditional formatting</a>. 
+        This is accomplished with <a href="https://support.microsoft.com/en-us/office/use-conditional-formatting-to-highlight-information-fed60dfa-1d3f-4e13-9ecb-f1951ff89d7f" target="_blank">conditional formatting</a>.
         For the weekly cell, this is set up by selecting all the weekly cells across and creating a conditional-formatting rule.
     </p>
 
@@ -379,7 +380,7 @@
     </figure>
 
     <p>
-        The rule is active for dates occurring in the current week, so the weekly cell that covers the current day will be highlighted with 
+        The rule is active for dates occurring in the current week, so the weekly cell that covers the current day will be highlighted with
         a red background and bold white text.
     </p>
 
@@ -392,20 +393,20 @@
     </figure>
 
     <p>
-        The red borders around the cells in the table for the current day are accomplished similarly, but with a formula. All of the cells 
-        on row 5 contain a formula that evaluates each cell to a day of the week in the weekly cell above it, but offset for the correct 
+        The red borders around the cells in the table for the current day are accomplished similarly, but with a formula. All of the cells
+        on row 5 contain a formula that evaluates each cell to a day of the week in the weekly cell above it, but offset for the correct
         day of the week. These cells are then used to control formatting in the table below.
     </p>
 
     <p>
-        Select all of the table cells beneath the date cells and set a conditional-formatting rule that places a red border on 
+        Select all of the table cells beneath the date cells and set a conditional-formatting rule that places a red border on
         either side of the cell, with the following formula:
     </p>
 
     <pre><code class="language-excel">=E$5=TODAY()</code></pre>
 
     <p>
-        Cell <code>E$5</code> is the first date cell, but since the column is relative and the row is absolute the effect is to test 
+        Cell <code>E$5</code> is the first date cell, but since the column is relative and the row is absolute the effect is to test
         the date cell directly above each cell being formatted.
     </p>
 
@@ -418,13 +419,13 @@
     </figure>
 
     <p>
-        Finally, there's a bit of a trick to displaying only the initial letter for each day of the week. If you select one of the standard 
-        date formats, the cell will only show "###" if the column width is too narrow to display the fully formatted date. If you make the 
+        Finally, there's a bit of a trick to displaying only the initial letter for each day of the week. If you select one of the standard
+        date formats, the cell will only show "###" if the column width is too narrow to display the fully formatted date. If you make the
         column too narrow to even display a "#", you'll only see a blank cell.
     </p>
 
     <p>
-        To work around this, we turn again to custom formatting. Select all of the day-of-week cells and create seven more conditional 
+        To work around this, we turn again to custom formatting. Select all of the day-of-week cells and create seven more conditional
         formats. Each is driven by a formula. For Mondays...
     </p>
 
@@ -469,60 +470,60 @@
     </figure>
 
     <p>
-        With these formats applied all the way across, with a small monospace font and a narrow column width, we're ready to work on the 
+        With these formats applied all the way across, with a small monospace font and a narrow column width, we're ready to work on the
         body of the Gantt chart.
     </p>
 
     <p>
-        Each cell in the table body underneath the day-of-week columns contains a formula like the one below. In each column, the 
-        <code>E$5</code> cell reference will change to match the appropriate column, but everything else will remain the same. 
+        Each cell in the table body underneath the day-of-week columns contains a formula like the one below. In each column, the
+        <code>E$5</code> cell reference will change to match the appropriate column, but everything else will remain the same.
     </p>
 
-    <pre><code class="language-excel">=LET(thisDate, E$5, 
+    <pre><code class="language-excel">=LET(thisDate, E$5,
     IF(
         AND(
-            NOT(ISBLANK(ProjectTable[@[Project]:[Project]])), 
-            ProjectTable[@[End Date]:[End Date]]>=thisDate, 
+            NOT(ISBLANK(ProjectTable[@[Project]:[Project]])),
+            ProjectTable[@[End Date]:[End Date]]>=thisDate,
             ProjectTable[@[Start Date]:[Start Date]]<=thisDate
-        ), 
+        ),
         1, 0
     )
 )</code></pre>
 
     <p>
-        The first thing this formula does is use the 
-        <a href="https://support.microsoft.com/en-us/office/let-function-34842dd8-b92b-4d3f-b325-b8b8f9908999" target="_blank"><code>LET</code> function</a> 
-        to assign a name, <code>thisDate</code>, to the evaluation of cell <code>E$5</code> (or the equivalent column). 
+        The first thing this formula does is use the
+        <a href="https://support.microsoft.com/en-us/office/let-function-34842dd8-b92b-4d3f-b325-b8b8f9908999" target="_blank"><code>LET</code> function</a>
+        to assign a name, <code>thisDate</code>, to the evaluation of cell <code>E$5</code> (or the equivalent column).
     </p>
 
     <pre><code class="language-excel">=LET(thisDate, E$5, </code></pre>
-    
+
     <p>
         The final parameter to the <code>LET</code> function is the calculation to execute. In this case, it uses the <code>IF</code>
-        function to test three different conditions to make sure they are all <code>TRUE</code>. If they are, then it sets a value of 
-        <code>1</code> in the cell. If any of the values are not <code>TRUE</code>, it sets the cell to <code>0</code>. The first test 
+        function to test three different conditions to make sure they are all <code>TRUE</code>. If they are, then it sets a value of
+        <code>1</code> in the cell. If any of the values are not <code>TRUE</code>, it sets the cell to <code>0</code>. The first test
         is to check if the <code>Project</code> column in the current row contains a value:
     </p>
 
     <pre><code class="language-excel">NOT(ISBLANK(ProjectTable[@[Project]:[Project]]))</code></pre>
-    
+
     <p>
-        The next test is whether the date in the <code>End Date</code> column in the current row is greater than or equal to the date 
+        The next test is whether the date in the <code>End Date</code> column in the current row is greater than or equal to the date
         of the column being evaluated:
     </p>
 
     <pre><code class="language-excel">ProjectTable[@[End Date]:[End Date]]>=thisDate</code></pre>
-    
+
     <p>
-        The final test is whether the date in the <code>Start Date</code> column in the current row is less than or equal to the date 
+        The final test is whether the date in the <code>Start Date</code> column in the current row is less than or equal to the date
         of the column being evaluated:
     </p>
 
     <pre><code class="language-excel">ProjectTable[@[Start Date]:[Start Date]]<=thisDate</code></pre>
 
     <p>
-        If all of the tests are true and the cell evaluates to <code>1</code>, then we want to highlight the cell in dark green 
-        so that we can see that the project is active on that day. Again, we do this with conditional formatting. If you look 
+        If all of the tests are true and the cell evaluates to <code>1</code>, then we want to highlight the cell in dark green
+        so that we can see that the project is active on that day. Again, we do this with conditional formatting. If you look
         again at the body of the table, you'll see vertical stripes that mark the weekends.
     </p>
 
@@ -535,11 +536,11 @@
     </figure>
 
     <p>
-        To do this, we need two formats for when the cell contains a <code>0</code>: when the date is a weekday, the background will be plain white, 
-        and when the date is a weekday it will be light grey. When the cell contains a <code>1</code>, the backgrounds are dark green and darker 
+        To do this, we need two formats for when the cell contains a <code>0</code>: when the date is a weekday, the background will be plain white,
+        and when the date is a weekday it will be light grey. When the cell contains a <code>1</code>, the backgrounds are dark green and darker
         green, respectively. We use formulas to determine the appropriate conditional format to use.
     </p>
-    
+
     <figure>
         <a href="/images/excel-employee-capacity-spreadsheet/projects-conditional-formatting-1-lg.png" target="_blank" rel="noopener"><img decoding="async"
             loading="lazy" class="aligncenter" src="/images/excel-employee-capacity-spreadsheet/projects-conditional-formatting-1-lg.png" alt="Project details table"
@@ -561,17 +562,17 @@
     </figure>
 
     <p>
-        Now we have all of the basic tools for creating a date-driven graphical table display. The rest of the worksheets build on the 
+        Now we have all of the basic tools for creating a date-driven graphical table display. The rest of the worksheets build on the
         same basic formatting, but with percentage ranges rather than "1" or "0".
     </p>
 
     <h3 id="time_off_detail">Time Off Detail</h3>
 
     <p>
-        Each scheduled instance of time off is recorded in the Time Off Detail worksheet, by employee, listing the start and end date 
-        of each break. This is used in the <a href="#time_off_summary">Time-off Summary table</a> and in the 
-        <a href="#capacity">capacity table</a> to show when an employee is unavailable for work. The <code>Employee</code> column is 
-        validated against the column of the same name in the <a href="#employees">Employees</a> table. 
+        Each scheduled instance of time off is recorded in the Time Off Detail worksheet, by employee, listing the start and end date
+        of each break. This is used in the <a href="#time_off_summary">Time-off Summary table</a> and in the
+        <a href="#capacity">capacity table</a> to show when an employee is unavailable for work. The <code>Employee</code> column is
+        validated against the column of the same name in the <a href="#employees">Employees</a> table.
     </p>
 
     <figure>
@@ -583,8 +584,8 @@
     </figure>
 
     <p>
-        The rest of the worksheet is almost identical in structure to the <a href="#projects">Projects</a> worksheet. The formula 
-        used in the body of the graphical display differs slightly from the Projects table, in that it reports a percentage value 
+        The rest of the worksheet is almost identical in structure to the <a href="#projects">Projects</a> worksheet. The formula
+        used in the body of the graphical display differs slightly from the Projects table, in that it reports a percentage value
         from the <code>%</code> column rather than "1".
     </p>
 
@@ -600,8 +601,8 @@
 )</code></pre>
 
     <p>
-        The conditional formatting for the graphical display also changes depending upon the percentage range. For values of 100%, 
-        the background color will be solid red. For values less than 100%, the background color will be yellow. As in the 
+        The conditional formatting for the graphical display also changes depending upon the percentage range. For values of 100%,
+        the background color will be solid red. For values less than 100%, the background color will be yellow. As in the
         <a href="#projects">Projects</a> table, the weekends will be highlighted in a darker color.
     </p>
 
@@ -614,8 +615,8 @@
     </figure>
 
     <p>
-        Each line in the table corresponds to one instance of time off, with a single start date and single end date. These will be 
-        consolidated in the <a href="#time_off_summary">Time Off Summary</a> worksheet. For example, the four Fridays shown above 
+        Each line in the table corresponds to one instance of time off, with a single start date and single end date. These will be
+        consolidated in the <a href="#time_off_summary">Time Off Summary</a> worksheet. For example, the four Fridays shown above
         as Annual Leave for Curly Howard will appear as follows in the summary sheet:
     </p>
 
@@ -630,11 +631,11 @@
     <h3 id="assignments">Assignments</h3>
 
     <p>
-        The Assignments table continues to build on the earlier tables we've discussed. In this table, employees defined in the 
-        <a href="#employees">Employees</a> table are assigned to projects defined in the <a href="#projects">Projects</a> table. 
-        Each assignment places an employee into a <a href="#roles">role</a> on a project, with a start and end date and a percentage 
-        of commitment for the duration of the assignment. The <code>Project</code>, <code>Employee</code>, and <code>Project Role</code> 
-        columns are all validated against their respective definition tables. 
+        The Assignments table continues to build on the earlier tables we've discussed. In this table, employees defined in the
+        <a href="#employees">Employees</a> table are assigned to projects defined in the <a href="#projects">Projects</a> table.
+        Each assignment places an employee into a <a href="#roles">role</a> on a project, with a start and end date and a percentage
+        of commitment for the duration of the assignment. The <code>Project</code>, <code>Employee</code>, and <code>Project Role</code>
+        columns are all validated against their respective definition tables.
     </p>
 
     <figure>
@@ -657,22 +658,22 @@
 )</code></pre>
 
     <p>
-        You may have noticed that the seven right-most columns are all in dark-blue italic text. This is because these columns are 
+        You may have noticed that the seven right-most columns are all in dark-blue italic text. This is because these columns are
         calculated based on the other columns.
     </p>
 
     <p>
-        The <code>Emp Start Date</code> and <code>Emp End Date</code> columns are read from the <a href="#employees">Employees</a> 
-        table using the name in the <code>Employee</code> column. This is done with the 
-        <a href="https://support.microsoft.com/en-us/office/xlookup-function-b7fd680e-6d10-43e6-84f9-88eae8bf5929" target="_blank"><code>XLOOKUP</code></a> 
+        The <code>Emp Start Date</code> and <code>Emp End Date</code> columns are read from the <a href="#employees">Employees</a>
+        table using the name in the <code>Employee</code> column. This is done with the
+        <a href="https://support.microsoft.com/en-us/office/xlookup-function-b7fd680e-6d10-43e6-84f9-88eae8bf5929" target="_blank"><code>XLOOKUP</code></a>
         function.
     </p>
-    
+
     <pre><code class="language-excel">=XLOOKUP([@Employee],EmployeeTable[Employee],EmployeeTable[Start Date],"")
 =XLOOKUP([@Employee],EmployeeTable[Employee],EmployeeTable[End Date],"")</code></pre>
 
     <p>
-        The <code>Customer</code>, <code>Project Start</code>, and <code>Project End</code> columns are looked up in the 
+        The <code>Customer</code>, <code>Project Start</code>, and <code>Project End</code> columns are looked up in the
         <a href="#projects">Projects</a> table using the value in the <code>Project</code> column.
     </p>
 
@@ -681,7 +682,7 @@
 =XLOOKUP([@Project],ProjectTable[Project],ProjectTable[End Date],"")</code></pre>
 
     <p>
-        Since it is possible that an empty value could be returned from <code>XLOOKUP</code> and displayed as a <code>0</code>, 
+        Since it is possible that an empty value could be returned from <code>XLOOKUP</code> and displayed as a <code>0</code>,
         we use more conditional formatting so that these values are instead rendered as blanks.
     </p>
 
@@ -694,7 +695,7 @@
     </figure>
 
     <p>
-        Then, for values of zero, just like in the body of the graphical display we use a custom format of <code>""</code> so that there is 
+        Then, for values of zero, just like in the body of the graphical display we use a custom format of <code>""</code> so that there is
         no value shown in the cell.
     </p>
 
@@ -709,14 +710,14 @@
     <h2 id="reporting_worksheets">Reporting Worksheets</h2>
 
     <p>
-        Now that all of the project tables are set up, we can get to the real stars of the spreadsheet, which are the reporting worksheets. These tables use the same 
+        Now that all of the project tables are set up, we can get to the real stars of the spreadsheet, which are the reporting worksheets. These tables use the same
         formatting techniques explained above, so we'll just look at the formulas used in the reporting.
     </p>
 
     <h3 id="time_off_summary">Time Off Summary</h3>
 
     <p>
-        When assigning staff to projects, it's helpful to see any scheduled time off for each staff member. This table summarises the individual entries in the 
+        When assigning staff to projects, it's helpful to see any scheduled time off for each staff member. This table summarises the individual entries in the
         <a href="#time_off_detail">Time Off Detail</a> table to present a consolidated schedule of time off for all staff.
     </p>
 
@@ -741,8 +742,8 @@ Else...
     Of those entries, sum the percentage of time off for the current date.</pre>
 
     <p>
-        This logic translates to the following Excel formula placed in each cell of the graphical portion of the table. 
-        The variables <code>thisDate</code>, <code>employee</code>, <code>endDate</code>, and <code>terminated</code> 
+        This logic translates to the following Excel formula placed in each cell of the graphical portion of the table.
+        The variables <code>thisDate</code>, <code>employee</code>, <code>endDate</code>, and <code>terminated</code>
         are defined prior to the evaluation of the <code>IF</code> formula.
     </p>
 
@@ -764,14 +765,14 @@ Else...
 )</code></pre>
 
     <p>
-        Any cell containing a percentage of 100% (or greater, if that happens) is shown as a red cell. Percentages 
+        Any cell containing a percentage of 100% (or greater, if that happens) is shown as a red cell. Percentages
         from 1% to 99% are shown as yellow, and the rest are shown as blank.
     </p>
-    
+
     <h3 id="utilisation">Utilisation</h3>
 
     <p>
-        The Utilisation table shows how much each employee is being utilised across various projects. This table summarises the <a href="#assigments">Assigment</a> 
+        The Utilisation table shows how much each employee is being utilised across various projects. This table summarises the <a href="#assigments">Assigment</a>
         table to present the current utilisation for each employee. In this spreadsheet, optimal utilisation is between 75% and 100%. This may vary in other organisations, of course.
     </p>
 
@@ -793,24 +794,24 @@ Of those entries, find the entries that end on or after the date of the current 
 Of those entries, sum the percentage of time assigned for the current date.</pre>
 
 <p>
-    This logic translates to the following Excel formula placed in each cell of the graphical portion of the table. 
+    This logic translates to the following Excel formula placed in each cell of the graphical portion of the table.
 </p>
 
 <pre><code class="language-excel">=LET(
     thisDate,D$5,
     SUM(
-        (UtilisationTable[@[Employee]:[Employee]] = AssignmentTable[[Employee]:[Employee]]) * 
-        (thisDate >= AssignmentTable[[Start Date]:[Start Date]]) * 
-        (thisDate <= AssignmentTable[[End Date]:[End Date]]) * 
+        (UtilisationTable[@[Employee]:[Employee]] = AssignmentTable[[Employee]:[Employee]]) *
+        (thisDate >= AssignmentTable[[Start Date]:[Start Date]]) *
+        (thisDate <= AssignmentTable[[End Date]:[End Date]]) *
         (AssignmentTable[[%]:[%]])
     )
 )</code></pre>
-    
+
     <h3 id="capacity">Capacity</h3>
 
     <p>
-        The Capacity table reports how free each employee is to take on new tasks. This table summarises the 
-        <a href="#assigments">Assigment</a> table and the <a href="#time_off_detail">Time Off Detail</a> to present the available 
+        The Capacity table reports how free each employee is to take on new tasks. This table summarises the
+        <a href="#assigments">Assigment</a> table and the <a href="#time_off_detail">Time Off Detail</a> to present the available
         capacity for each employee.
     </p>
 
@@ -841,7 +842,7 @@ Else...
         Of those entries, sum the percentage of time off for the current date.</pre>
 
     <p>
-        This logic translates to the following Excel formula placed in each cell of the graphical portion of the table. 
+        This logic translates to the following Excel formula placed in each cell of the graphical portion of the table.
     </p>
 
 <pre><code class="language-excel">=LET(
@@ -854,15 +855,15 @@ Else...
         1,
         SUM(
             SUM(
-                (employee = AssignmentTable[[Employee]:[Employee]]) * 
-                (thisDate >= AssignmentTable[[Start Date]:[Start Date]]) * 
-                (thisDate <= AssignmentTable[[End Date]:[End Date]]) * 
+                (employee = AssignmentTable[[Employee]:[Employee]]) *
+                (thisDate >= AssignmentTable[[Start Date]:[Start Date]]) *
+                (thisDate <= AssignmentTable[[End Date]:[End Date]]) *
                 (AssignmentTable[[%]:[%]])
             ),
             SUM(
-                (employee = TimeOffTable[[Employee]:[Employee]]) * 
-                (thisDate >= TimeOffTable[[Start Date]:[Start Date]]) * 
-                (thisDate <= TimeOffTable[[End Date]:[End Date]]) * 
+                (employee = TimeOffTable[[Employee]:[Employee]]) *
+                (thisDate >= TimeOffTable[[Start Date]:[Start Date]]) *
+                (thisDate <= TimeOffTable[[End Date]:[End Date]]) *
                 (TimeOffTable[[%]:[%]])
             )
         )
@@ -872,7 +873,7 @@ Else...
 <h2 id="summary">Summary</h2>
 
 <p>
-    Thanks so much for reading this far. If you have any questions or suggestions, please 
+    Thanks so much for reading this far. If you have any questions or suggestions, please
     <a href="mailto:paul@parkscomputing.com?subject=Excel%20Employee%20Capacity%20Spreadsheet">send an email</a> and let me know.
 </p>
 

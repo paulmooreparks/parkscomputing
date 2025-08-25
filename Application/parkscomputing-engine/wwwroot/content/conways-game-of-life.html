@@ -6,10 +6,13 @@
     <meta http-equiv="date" content="2015-11-20T15:05:09" />
     <meta http-equiv="last-modified" content="2022-12-11T06:18:02" />
     <link rel='stylesheet' id='conway-css' href='/css/conway.css' type='text/css; charset=UTF-8' media='all' />
+    <link rel="preload" as="style" href="/highlightjs/styles/github.min.css" media="(prefers-color-scheme: light)">
+    <link rel="preload" as="style" href="/highlightjs/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" href="/highlightjs/styles/github.min.css" media="(prefers-color-scheme: light)">
+    <link rel="stylesheet" href="/highlightjs/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+    <script src="/highlightjs/highlight.min.js"></script>
     <script src="/js/htmx.min.js"></script>
     <script src="/js/conway.js"></script>
-    <link rel="stylesheet" href="/highlightjs/styles/default.min.css">
-    <script src="/highlightjs/highlight.min.js"></script>
 </head>
 <body>
     <h1>Conway&#8217;s Game of Life</h1>
@@ -76,12 +79,25 @@
         <a href="/js/conway.js">JavaScript</a> as well.
     </p>
 
-<pre><code class="language-js" hx-get="/js/conway.js" hx-trigger="load"></code></pre>
+<pre><code id="conway-source" class="language-javascript"></code></pre>
 
     <script>
-        document.body.addEventListener('htmx:afterSwap', function (evt) {
-            hljs.highlightAll();
-        });
+        (function loadAndHighlight(){
+            var el = document.getElementById('conway-source');
+            if (!el) return;
+            fetch('/js/conway.js')
+                .then(r => r.ok ? r.text() : Promise.reject())
+                .then(t => {
+                    el.textContent = t;
+                    // Wait until hljs available then highlight this element only
+                    function apply(){
+                        if (!window.hljs) { return setTimeout(apply, 30); }
+                        try { hljs.highlightElement(el); } catch(_) {}
+                    }
+                    apply();
+                })
+                .catch(()=>{});
+        })();
     </script>
 </body>
 </html>

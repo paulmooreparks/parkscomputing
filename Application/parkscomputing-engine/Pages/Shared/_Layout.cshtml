@@ -1,6 +1,16 @@
 ﻿@using ParksComputing.Engine.Pages.Services
 @inject StaticFileReaderService FileReaderService
 
+@{ // Top-level flag indicating markdown content so it is in scope for entire layout
+    bool mdFlag = ViewData["IsMarkdown"] as bool? ?? false;
+    string? contentFormat = ViewData["ContentFormat"] as string;
+    string? pageId = ViewData["PageId"] as string; // slug only (no extension)
+    // Derive from explicit format, or fallback to mdFlag, or presence of code blocks flag.
+    bool isMarkdown = (contentFormat?.Equals("markdown", System.StringComparison.OrdinalIgnoreCase) ?? false) || mdFlag;
+    // If HasCodeBlocks set but not flagged markdown yet, still treat as markdown for highlight assets.
+    if (!isMarkdown && (ViewData["HasCodeBlocks"] as bool? ?? false)) { isMarkdown = true; }
+}
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -31,8 +41,12 @@
     @RenderSection("HeadScripts", required: false)
     <link rel="manifest" href="/site.webmanifest">
     @Html.RenderStaticFile("/content/head-section.html", FileReaderService)
-    <link rel="stylesheet" href="/highlightjs/styles/github.min.css" media="(prefers-color-scheme: light)">
-    <link rel="stylesheet" href="/highlightjs/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+    @if (isMarkdown)
+    {
+        <link rel="stylesheet" href="/highlightjs/styles/github.min.css" media="(prefers-color-scheme: light)">
+        <link rel="stylesheet" href="/highlightjs/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+        <script src="/highlightjs/highlight.min.js"></script>
+    }
 </head>
 <body>
     <header>
@@ -54,11 +68,12 @@
         <div class="content-body">
         @RenderBody()
         @{
-            string pageId = ViewData["PageId"]?.ToString()!;
+            // pageId already captured at top-level if needed; avoid redeclaration
+            string pageIdLocal = ViewData["PageId"]?.ToString()!;
             bool commentsEnabled = ViewData["CommentsEnabled"] as bool? ?? false;
             bool commentsAllowed = ViewData["CommentsAllowed"] as bool? ?? false;
         }
-        @await Component.InvokeAsync("Comments", new { pageId = pageId, commentsEnabled = Model.CommentsEnabled, commentsAllowed = Model.CommentsAllowed, commentPosted = Model.CommentPosted })
+    @await Component.InvokeAsync("Comments", new { pageId = pageIdLocal, commentsEnabled = Model.CommentsEnabled, commentsAllowed = Model.CommentsAllowed, commentPosted = Model.CommentPosted })
         </div>
     </div>
 
@@ -91,16 +106,9 @@
         });
     </script>
     @RenderSection("BodyScripts", required: false)
-    <script src="/highlightjs/highlight.min.js"></script>
-    <script>
-        (function initHljs() {
-            if (!window.hljs) { return; }
-            try { hljs.highlightAll(); } catch (_) { }
-        })();
-        // In case highlight.js loads after this inline (slow network), fallback listener
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initHljs, { once: true });
-        }
-    </script>
+    @if (isMarkdown)
+    {
+        <script>hljs.highlightAll();</script>
+    }
 </body>
 </html>

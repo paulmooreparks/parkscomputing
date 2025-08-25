@@ -10,12 +10,12 @@
     <meta http-equiv="last-modified" content="2022-12-23T11:52:09" />
 
     <link rel='canonical' href='http://www.parkscomputing.com/page/barcode-generator/' />
-    <link rel="stylesheet" href="/highlightjs/styles/default.min.css" />
     <link rel="stylesheet" href="/css/barcode.css" />
-
+    <link rel="stylesheet" href="/highlightjs/styles/github.min.css" media="(prefers-color-scheme: light)">
+    <link rel="stylesheet" href="/highlightjs/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+    <script src="/highlightjs/highlight.min.js"></script>
     <script src="/js/barcode.js"></script>
     <script src="/js/htmx.min.js"></script>
-    <script src="/highlightjs/highlight.min.js"></script>
 </head>
 
 <body>
@@ -210,10 +210,6 @@
 
         <pre><code class="language-javascript" hx-get="/css/barcode.css" hx-trigger="load" ></code></pre>
     </div>
-    <script>
-        document.body.addEventListener('htmx:afterSwap', function (evt) {
-            hljs.highlightAll();
-        });
-    </script>
+    <script>hljs.highlightAll();</script>
 </body>
 </html>

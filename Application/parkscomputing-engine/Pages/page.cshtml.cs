@@ -130,7 +130,7 @@ namespace ParksComputing.Engine.Pages {
             }
         }
 
-        private Task<IActionResult> LoadMarkdownAndRender(string mdPath, string slug) {
+    private Task<IActionResult> LoadMarkdownAndRender(string mdPath, string slug) {
             try {
                 string raw = System.IO.File.ReadAllText(mdPath);
                 var (frontMatter, body) = SplitFrontMatter(raw);
@@ -150,6 +150,8 @@ namespace ParksComputing.Engine.Pages {
 
                 // Detect code blocks to decide whether to inject highlight.js assets.
                 bool hasCodeBlocks = htmlBody.Contains("<pre><code", StringComparison.OrdinalIgnoreCase);
+                ViewData["IsMarkdown"] = true; // signal to layout
+                if (hasCodeBlocks) { ViewData["HasCodeBlocks"] = true; }
 
                 if (string.IsNullOrWhiteSpace(metadata.Title)) {
                     metadata.Title = ExtractFirstHeading(htmlBody) ?? slug;
