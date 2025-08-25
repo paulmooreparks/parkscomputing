@@ -36,24 +36,24 @@ SOFTWARE.
 </head>
 
 <body>
-    <h1>Sudoku</h1>
+    <div class="sudoku-top">
+        <h1>Sudoku</h1>
+        <div class="mode-controls">
+            <select id="difficultyDropdown" aria-label="Select difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+                <option value="veryhard">Very Hard</option>
+            </select>
 
-    <div class="mode-controls">
-        <select id="difficultyDropdown">
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-            <option value="veryhard">Very Hard</option>
-        </select>
-
-        <button id="generateBoardButton">New</button>
-        <button id="resetGame" type="button">Restart</button>
-        <button id="clearBoard" type="button">Clear</button>
-        <button id="toggleEditMode" type="button">Editor</button>
-        <button id="solveBoard" type="button">Solve</button>
-        <br />
-        <a id="shareableLink" href="#">Link to Current Board</a>
-        <a href="https://github.com/parkscomputing/sudoku" target="_blank">GitHub</a>
+            <button id="generateBoardButton" type="button">New</button>
+            <button id="resetGame" type="button">Restart</button>
+            <button id="clearBoard" type="button">Clear</button>
+            <button id="toggleEditMode" type="button">Editor</button>
+            <button id="solveBoard" type="button">Solve</button>
+            <!-- Share link moved near bottom controls; leaving here hidden for progressive enhancement if JS relies on it -->
+            <a id="shareableLink" href="#" class="hidden-initial">Link to Current Board</a>
+        </div>
     </div>
 
     <div class="sudoku-board" id="sudoku-board">
@@ -139,7 +139,7 @@ SOFTWARE.
         <div id="cell-8-7" class="cell cell-bottom"><div class="hints"><div class="hint">1</div><div class="hint">2</div><div class="hint">3</div><div class="hint">4</div><div class="hint">5</div><div class="hint">6</div><div class="hint">7</div><div class="hint">8</div><div class="hint">9</div></div><div class="main-number"></div></div>
         <div id="cell-8-8" class="cell cell-right cell-bottom"><div class="hints"><div class="hint">1</div><div class="hint">2</div><div class="hint">3</div><div class="hint">4</div><div class="hint">5</div><div class="hint">6</div><div class="hint">7</div><div class="hint">8</div><div class="hint">9</div></div><div class="main-number"></div></div>
         <div id="helpText">
-            <p><a href="https://en.wikipedia.org/wiki/Sudoku" target="_blank">Sudoku</a> by Paul Parks</p>
+            <p><a href="https://en.wikipedia.org/wiki/Sudoku" target="_blank" rel="noopener">Sudoku</a> by Paul Parks</p>
             <ul>
                 <li>Touch any cell or use the arrow keys to select a cell.</li>
                 <li>To enter a number, touch one of the number buttons or type a number.</li>
@@ -152,7 +152,7 @@ SOFTWARE.
             </ul>
             <p>Game state is saved in the browser history. Use your browser's back and forward functions to undo and redo entries.</p>
             <p>To share your game with someone, simply share the current page. All of the clues, hints, and number entries will be preserved.</p>
-            <p>Licensed under <a href="https://mit-license.org/" target="_blank">MIT License</a>. Source available on <a href="https://github.com/parkscomputing/sudoku" target="_blank">GitHub</a>.</p>
+            <p>Licensed under <a href="https://mit-license.org/" target="_blank" rel="noopener">MIT License</a>. Source available on <a href="https://github.com/parkscomputing/sudoku" target="_blank" rel="noopener">GitHub</a>.</p>
         </div>
     </div>
 
@@ -168,10 +168,11 @@ SOFTWARE.
         <button class="number-button cell" id="num-9">9</button>
     </div>
 
-    <div class="number-controls">
+    <div class="number-controls number-controls-bottom controls-centered">
         <button class="cell" id="toggleEditHintMode">&#x270F;</button>
         <button class="cell" id="deleteEntry">&#x274C;</button>
         <button class="cell" id="helpButton">&#x2753;</button>
+        <button class="cell" id="shareBoardButton" title="Copy shareable URL">&#x2197;</button>
     </div>
 
 </body>

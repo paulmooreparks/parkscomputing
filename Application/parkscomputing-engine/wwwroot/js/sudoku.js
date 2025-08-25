@@ -48,7 +48,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let selectedRow = 0, selectedCol = 0;
     let selectedCell = document.getElementById(`cell-${selectedRow}-${selectedCol}`);
 
-    if (selectedCell !== null) { 
+    if (selectedCell !== null) {
         selectedCell.classList.add('selected');
     }
 
@@ -293,7 +293,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     document.getElementById("toggleEditMode").addEventListener("click", function (event) {
-        isEditingMode = !isEditingMode; 
+        isEditingMode = !isEditingMode;
         const resetGame = document.getElementById("resetGame");
         const clearBoard = document.getElementById("clearBoard");
 
@@ -312,7 +312,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     function toggleHint() {
-        isHintMode = !isHintMode; 
+        isHintMode = !isHintMode;
         const button = document.getElementById("toggleEditHintMode")
 
         if (isHintMode) {
@@ -387,11 +387,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function selectCell(row, col) {
-        selectedCell.classList.remove('selected'); 
+        selectedCell.classList.remove('selected');
         selectedRow = row;
         selectedCol = col;
         selectedCell = document.getElementById(`cell-${selectedRow}-${selectedCol}`);
-        selectedCell.classList.add('selected'); 
+        selectedCell.classList.add('selected');
 
         for (var digit = 0; digit < 10; ++digit) {
             const hintElement = document.getElementById(`num-${digit}`);
@@ -420,8 +420,8 @@ document.addEventListener("DOMContentLoaded", function () {
     function clearCell(row, col) {
         const numberElement = selectedCell.querySelector(".main-number");
         const hints = selectedCell.querySelectorAll(".hint");
-        updateBoard(row, col, 0); 
-        drawNumber(0, numberElement, hints); 
+        updateBoard(row, col, 0);
+        drawNumber(0, numberElement, hints);
         checkBoard();
         selectCell(row, col);
         updateBoardStateInURL();
@@ -451,7 +451,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const isShiftPressed = event.shiftKey;
         const isHintEntry = isShiftPressed || isHintMode;
 
-        selectedCell.classList.remove('selected'); 
+        selectedCell.classList.remove('selected');
         const numberElement = selectedCell.querySelector(".main-number");
 
         if (isEditingMode || numberElement.getAttribute('data-editable') !== 'false') {
@@ -459,11 +459,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 clearCell(selectedRow, selectedCol);
             }
             else if (event.code.startsWith('Digit')) {
-                const digit = parseInt(event.code.replace('Digit', ''), 10); 
+                const digit = parseInt(event.code.replace('Digit', ''), 10);
                 updateNumberCell(digit, selectedCell, isHintEntry);
             }
             else if (event.code.startsWith('Numpad') && event.getModifierState("NumLock")) {
-                const digit = parseInt(event.code.replace('Numpad', ''), 10); 
+                const digit = parseInt(event.code.replace('Numpad', ''), 10);
 
                 if (Number.isInteger(digit) && digit >= 1 && digit <= 9) {
                     updateNumberCell(digit, selectedCell, isHintEntry);
@@ -471,8 +471,8 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        /* Yeah, I could probably fix the following code so that the logic isn't duplicated, 
-        but that would mean creating four tiny functions. If I ever DO modify the selection 
+        /* Yeah, I could probably fix the following code so that the logic isn't duplicated,
+        but that would mean creating four tiny functions. If I ever DO modify the selection
         logic, I'll make the abstractions then. */
 
         if (event.code.startsWith('Arrow')) {
@@ -490,7 +490,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     selectedCol = (selectedCol + 1) % 9;
                     break;
                 default:
-                    selectedCell.classList.add('selected'); 
+                    selectedCell.classList.add('selected');
                     return;
             }
         }
@@ -518,8 +518,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const numberElement = selectedCell.querySelector(".main-number");
         const hints = selectedCell.querySelectorAll(".hint");
 
-        numberElement.classList.remove('invalid-number'); 
-        numberElement.classList.remove('game-number'); 
+        numberElement.classList.remove('invalid-number');
+        numberElement.classList.remove('game-number');
 
         if (isHintEntry) {
             let hintsArray = getHints(selectedRow, selectedCol);
@@ -527,11 +527,11 @@ document.addEventListener("DOMContentLoaded", function () {
             const hintElement = selectedCell.querySelector(`.hint:nth-child(${digit})`);
 
             if (hintIndex === -1) {
-                hintsArray.push(digit); 
-                if (hintElement !== null) hintElement.classList.add('active-hint'); 
+                hintsArray.push(digit);
+                if (hintElement !== null) hintElement.classList.add('active-hint');
             } else {
-                hintsArray.splice(hintIndex, 1); 
-                if (hintElement !== null) hintElement.classList.remove('active-hint'); 
+                hintsArray.splice(hintIndex, 1);
+                if (hintElement !== null) hintElement.classList.remove('active-hint');
             }
 
             updateHints(selectedRow, selectedCol, hintsArray);
@@ -611,6 +611,34 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // Share button logic: builds current URL (already contains state) and copies to clipboard
+    const shareBtn = document.getElementById('shareBoardButton');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', () => {
+            try {
+                updateBoardStateInURL(); // ensure URL reflects latest board
+                const url = window.location.href;
+                navigator.clipboard.writeText(url).then(() => {
+                    const originalTitle = shareBtn.title;
+                    shareBtn.title = 'Copied to clipboard';
+                    shareBtn.setAttribute('aria-label','Copied to clipboard');
+                    setTimeout(()=> { shareBtn.title = originalTitle; shareBtn.setAttribute('aria-label', originalTitle); }, 1800);
+                }).catch(()=> {
+                    // Fallback: reveal text link for manual copy
+                    const link = document.getElementById('shareableLink');
+                    if (link) link.classList.remove('hidden-initial');
+                    const originalTitle = shareBtn.title;
+                    shareBtn.title = 'Link displayed below';
+                    shareBtn.setAttribute('aria-label','Link displayed below');
+                    setTimeout(()=> { shareBtn.title = originalTitle; shareBtn.setAttribute('aria-label', originalTitle); }, 2200);
+                });
+            } catch {
+                const link = document.getElementById('shareableLink');
+                if (link) link.classList.remove('hidden-initial');
+            }
+        });
+    }
+
     function checkBoard() {
         let isValidBoard = true;
         let isComplete = true;
@@ -682,7 +710,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const boardStateString = params.get('board');
 
         if (!boardStateString) {
-            return false; 
+            return false;
         }
 
         const rows = boardStateString.split('-');
@@ -772,5 +800,5 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
     }
-}); 
+});
 
