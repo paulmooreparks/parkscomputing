@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using ParksComputing.Engine.Auth;
 using ParksComputing.Engine.Xfer;
 using ParksComputing.Xfer.Lang.Attributes;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ParksComputing.Engine.Api {
     [ApiController]
@@ -15,9 +16,9 @@ namespace ParksComputing.Engine.Api {
     public class AuthController : ControllerBase {
         private readonly TokenService _tokens;
         private readonly ILogger<AuthController> _logger;
-    private readonly ICredentialService _creds;
-    private readonly IXferService _xfer;
-    public AuthController(TokenService tokens, ILogger<AuthController> logger, ICredentialService creds, IXferService xfer) { _tokens = tokens; _logger = logger; _creds = creds; _xfer = xfer; }
+        private readonly ICredentialService _creds;
+        private readonly IXferService _xfer;
+        public AuthController(TokenService tokens, ILogger<AuthController> logger, ICredentialService creds, IXferService xfer) { _tokens = tokens; _logger = logger; _creds = creds; _xfer = xfer; }
 
         public class LoginRequest {
             [Required]
@@ -31,28 +32,22 @@ namespace ParksComputing.Engine.Api {
         }
         public record TokenResponse(string AccessToken, string TokenType, int ExpiresInSeconds);
 
-        /// <summary>Returns an example LoginRequest serialized as application/xfer so clients can mirror the syntax.</summary>
-        [HttpGet("token/example")]
-        [Produces("application/xfer")]
-        public ActionResult GetExampleXfer() {
-            var example = new LoginRequest { Username = "admin", Password = "ChangeMe!" };
-            var serialized = _xfer.Serialize(example); // generic strongly-typed call
-            return Content(serialized, XferService.ApplicationXfer);
-        }
-
         /// <summary>
         /// Issue a JWT access token in exchange for credentials (placeholder static credential check).
         /// </summary>
         /// <remarks>
-        /// Supports application/json or application/x-www-form-urlencoded.
+        /// Supports application/json, application/xfer, or application/x-www-form-urlencoded.
         /// Example JSON: { "username":"admin", "password":"change-me" }
+        /// Example Xfer: {\n  username "admin"\n  password "change-me"\n}
         /// Example form fields: username=admin&amp;password=change-me
+        /// Successful token (truncated): { "accessToken":"eyJhbGciOi...","tokenType":"Bearer","expiresInSeconds":28800 }
         /// </remarks>
         /// <response code="200">Token issued</response>
         /// <response code="400">Validation / malformed body</response>
         /// <response code="401">Invalid credentials</response>
-    [HttpPost("token")]
-    [Consumes("application/json", "application/x-www-form-urlencoded", "application/xfer")]
+        [HttpPost("token")]
+        [AllowAnonymous]
+        [Consumes("application/json", "application/x-www-form-urlencoded", "application/xfer")]
         [Produces("application/json")]
         [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -97,13 +92,17 @@ namespace ParksComputing.Engine.Api {
                 _logger.LogInformation("Invalid credentials for user {User}", request.Username);
                 return Unauthorized();
             }
+
             var token = _tokens.IssueToken(request.Username!);
             _logger.LogInformation("Token issued for user {User}", request.Username);
             return Ok(new TokenResponse(token, "Bearer", 8 * 3600));
         }
 
         private static string Truncate(string? value, int max) {
-            if (string.IsNullOrEmpty(value)) { return string.Empty; }
+            if (string.IsNullOrEmpty(value)) {
+                return string.Empty;
+            }
+
             return value.Length <= max ? value : value.Substring(0, max) + "…";
         }
     }

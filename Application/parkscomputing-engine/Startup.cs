@@ -22,9 +22,12 @@ using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 namespace ParksComputing.Engine {
-    public class Startup {
+    public partial class Startup {
         public Startup(IConfiguration configuration) {
             Configuration = configuration;
         }
@@ -111,9 +114,24 @@ namespace ParksComputing.Engine {
                     IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
                     ClockSkew = TimeSpan.FromMinutes(2)
                 };
+                options.Events = new JwtBearerEvents {
+                    OnChallenge = context => {
+                        // Suppress default WWW-Authenticate header body
+                        context.HandleResponse();
+                        return WriteProblem(context.HttpContext, 401, "Unauthorized", "Authentication required or invalid token");
+                    },
+                    OnForbidden = context => WriteProblem(context.HttpContext, 403, "Forbidden", "Insufficient permissions")
+                };
             });
 
             services.AddAuthorization();
+            // Simple built-in fixed window limiter (metadata only; custom middleware adds headers/body)
+            services.AddRateLimiter(o => {
+                o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx => RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: ctx.User?.Identity?.Name ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+                    factory: _ => new FixedWindowRateLimiterOptions { AutoReplenishment = true, PermitLimit = 600, QueueLimit = 0, Window = TimeSpan.FromMinutes(1) }));
+                o.RejectionStatusCode = 429;
+            });
             services.AddSingleton<ParksComputing.Engine.Api.TokenService>();
 
             // Swagger / OpenAPI for discoverability
@@ -137,7 +155,7 @@ namespace ParksComputing.Engine {
                 };
 
                 c.AddSecurityDefinition("Bearer", securityScheme);
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement {{ securityScheme, new string[]{} }});
+                // Do not add a blanket global security requirement; handled per-operation via SecurityOperationFilter
                 // Include XML docs if generated
                 var xml = System.IO.Path.Combine(AppContext.BaseDirectory, "ParksComputing.Engine.xml");
 
@@ -147,7 +165,12 @@ namespace ParksComputing.Engine {
 
                 // Register XferLang Swagger filters so application/xfer appears with examples
                 c.OperationFilter<ParksComputing.Engine.Xfer.XferOperationFilter>();
+                c.OperationFilter<ParksComputing.Engine.Api.SecurityOperationFilter>();
+                // Rate limit headers & 429 response added before examples so examples filter can enrich 429
+                c.OperationFilter<ParksComputing.Engine.Api.RateLimitOperationFilter>();
+                c.OperationFilter<ParksComputing.Engine.Api.ErrorExamplesOperationFilter>();
                 c.DocumentFilter<ParksComputing.Engine.Xfer.XferDocumentFilter>();
+                c.DocumentFilter<ParksComputing.Engine.Api.HardeningDocumentFilter>();
             });
         }
 
@@ -241,8 +264,12 @@ namespace ParksComputing.Engine {
             app.UseCookiePolicy();
             app.UseSession();
             app.UseRouting();
+            app.UseRateLimiter();
+            app.UseMiddleware<ParksComputing.Engine.Api.RateLimitMiddleware>();
+            app.UseMiddleware<ParksComputing.Engine.Api.CachingMiddleware>();
             app.UseAuthentication();
             app.UseAuthorization();
+            // 404 ProblemDetails for unmatched API routes handled inside RateLimitMiddleware after pipeline
 
             app.UseEndpoints(endpoints => {
                 endpoints.MapRazorPages();
@@ -261,5 +288,34 @@ namespace ParksComputing.Engine {
         private string WordPressHandler(int year, int month, string slug) {
             return $"Retrieve content for URL /{year:0000}/{month:00}/{slug}";
         }
+    }
+}
+
+namespace ParksComputing.Engine {
+    public partial class Startup {
+        private static System.Threading.Tasks.Task WriteProblem(Microsoft.AspNetCore.Http.HttpContext ctx, int status, string title, string detail) {
+            // Avoid rewriting if response started (e.g., websocket upgrade)
+            if (ctx.Response.HasStarted) { return System.Threading.Tasks.Task.CompletedTask; }
+            ctx.Response.StatusCode = status;
+            string accept = ctx.Request.Headers["Accept"].ToString();
+            string instance = ctx.Request.Path;
+            if (!string.IsNullOrEmpty(accept) && accept.Contains("application/xfer", StringComparison.OrdinalIgnoreCase)) {
+                ctx.Response.ContentType = "application/xfer";
+                var sb = new StringBuilder();
+                sb.AppendLine("{");
+                sb.AppendLine($"  type \"https://httpstatuses.com/{status}\"");
+                sb.AppendLine($"  title \"{Escape(title)}\"");
+                sb.AppendLine($"  status {status}");
+                sb.AppendLine($"  detail \"{Escape(detail)}\"");
+                sb.AppendLine($"  instance \"{Escape(instance)}\"");
+                sb.AppendLine("}");
+                return ctx.Response.WriteAsync(sb.ToString());
+            } else {
+                ctx.Response.ContentType = "application/json";
+                var json = $"{{\"type\":\"https://httpstatuses.com/{status}\",\"title\":\"{Escape(title)}\",\"status\":{status},\"detail\":\"{Escape(detail)}\",\"instance\":\"{Escape(instance)}\"}}";
+                return ctx.Response.WriteAsync(json);
+            }
+        }
+        private static string Escape(string v) => v.Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 }

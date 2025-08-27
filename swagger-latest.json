@@ -1,0 +1,1112 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "ParksComputing Content API",
+    "description": "RESTful hypermedia API for managing site content (markdown pages/posts).",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/auth/token/example": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Returns an example LoginRequest serialized as application/xfer so clients can mirror the syntax.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "ETag": {
+                "description": "Entity or aggregate ETag",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Cache directives",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/401",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication required or invalid token",
+                  "instance": "/api/content/{id}"
+                }
+              },
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/403",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Insufficient permissions",
+                  "instance": "/api/content/{id}"
+                }
+              },
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/404",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Resource not found",
+                  "instance": "/api/content/{id}"
+                }
+              },
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/auth/token": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Issue a JWT access token in exchange for credentials (placeholder static credential check).",
+        "description": "Supports application/json, application/xfer, or application/x-www-form-urlencoded.\r\nExample JSON: { \"username\":\"admin\", \"password\":\"change-me\" }\r\nExample Xfer: {\\n  username \"admin\"\\n  password \"change-me\"\\n}\r\nExample form fields: username=admin&password=change-me\r\nSuccessful token (truncated): { \"accessToken\":\"eyJhbGciOi...\",\"tokenType\":\"Bearer\",\"expiresInSeconds\":28800 }",
+        "requestBody": {
+          "content": {
+            "application/xfer": {
+              "schema": {
+                "type": "string",
+                "description": "XferLang representation",
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              },
+              "example": "Microsoft.OpenApi.Any.OpenApiString",
+              "examples": {
+                "xfer": {
+                  "summary": "XferLang",
+                  "description": "XferLang media representation",
+                  "value": "{\r\n  username \"SampleName\"\r\n  password \"string\"\r\n}"
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token issued",
+            "headers": {
+              "ETag": {
+                "description": "Entity or aggregate ETag",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Cache directives",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString",
+                "examples": {
+                  "xfer": {
+                    "summary": "XferLang",
+                    "description": "XferLang media representation",
+                    "value": "{\r\n  accessToken \"string\"\r\n  tokenType \"string\"\r\n  expiresInSeconds 42\r\n}"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation / malformed body",
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/400",
+                  "title": "Bad Request",
+                  "status": 400,
+                  "detail": "Validation failed",
+                  "instance": "/api/content/{id}"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
+    },
+    "/api/content": {
+      "get": {
+        "tags": [
+          "Content"
+        ],
+        "summary": "List content items (paged).",
+        "parameters": [
+          {
+            "name": "prefix",
+            "in": "query",
+            "description": "Optional path/slug prefix filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "1-based page index (>=1).",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Items per page (1-100).",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "ETag": {
+                "description": "Entity or aggregate ETag",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Cache directives",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Total-Count": {
+                "description": "Total items for current filter",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Page": {
+                "description": "Current page",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Page-Size": {
+                "description": "Page size",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Request limit per window (illustrative)",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Remaining requests in window",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Epoch seconds window resets",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString",
+                "examples": {
+                  "xfer": {
+                    "summary": "XferLang",
+                    "description": "XferLang media representation",
+                    "value": "(\r\n  {\r\n    id \"sample-slug\"\r\n    slug \"string\"\r\n    title \"string\"\r\n    description <\"Sample description\">\r\n    createdUtc \"string\"\r\n    updatedUtc \"string\"\r\n    language \"string\"\r\n    rawMarkdown \"string\"\r\n    rawHtml \"string\"\r\n    published ~true \r\n    links (\r\n      {\r\n        rel \"string\"\r\n        method \"string\"\r\n        href \"string\"\r\n      }\r\n    )\r\n  }\r\n)"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ContentResource"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Content"
+        ],
+        "requestBody": {
+          "content": {
+            "application/xfer": {
+              "schema": {
+                "type": "string",
+                "description": "XferLang representation",
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              },
+              "example": "Microsoft.OpenApi.Any.OpenApiString",
+              "examples": {
+                "xfer": {
+                  "summary": "XferLang",
+                  "description": "XferLang media representation",
+                  "value": "{\r\n  slug \"string\"\r\n  title \"string\"\r\n  description <\"Sample description\">\r\n  language \"string\"\r\n  bodyMarkdown \"string\"\r\n}"
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString",
+                "examples": {
+                  "xfer": {
+                    "summary": "XferLang",
+                    "description": "XferLang media representation",
+                    "value": "{\r\n  id \"sample-slug\"\r\n  slug \"string\"\r\n  title \"string\"\r\n  description <\"Sample description\">\r\n  createdUtc \"string\"\r\n  updatedUtc \"string\"\r\n  language \"string\"\r\n  rawMarkdown \"string\"\r\n  rawHtml \"string\"\r\n  published ~true \r\n  links (\r\n    {\r\n      rel \"string\"\r\n      method \"string\"\r\n      href \"string\"\r\n    }\r\n  )\r\n}"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentResource"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/409",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "Resource already exists",
+                  "instance": "/api/content/{id}"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/401",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication required or invalid token",
+                  "instance": "/api/content/{id}"
+                }
+              },
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/403",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Insufficient permissions",
+                  "instance": "/api/content/{id}"
+                }
+              },
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/404",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Resource not found",
+                  "instance": "/api/content/{id}"
+                }
+              },
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/content/{id}": {
+      "get": {
+        "tags": [
+          "Content"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "ETag": {
+                "description": "Entity or aggregate ETag",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Cache directives",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString",
+                "examples": {
+                  "xfer": {
+                    "summary": "XferLang",
+                    "description": "XferLang media representation",
+                    "value": "{\r\n  id \"sample-slug\"\r\n  slug \"string\"\r\n  title \"string\"\r\n  description <\"Sample description\">\r\n  createdUtc \"string\"\r\n  updatedUtc \"string\"\r\n  language \"string\"\r\n  rawMarkdown \"string\"\r\n  rawHtml \"string\"\r\n  published ~true \r\n  links (\r\n    {\r\n      rel \"string\"\r\n      method \"string\"\r\n      href \"string\"\r\n    }\r\n  )\r\n}"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/404",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Resource not found",
+                  "instance": "/api/content/{id}"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not Modified"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Content"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/xfer": {
+              "schema": {
+                "type": "string",
+                "description": "XferLang representation",
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              },
+              "example": "Microsoft.OpenApi.Any.OpenApiString",
+              "examples": {
+                "xfer": {
+                  "summary": "XferLang",
+                  "description": "XferLang media representation",
+                  "value": "{\r\n  title \"string\"\r\n  description <\"Sample description\">\r\n  language \"string\"\r\n  bodyMarkdown \"string\"\r\n}"
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateContentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "ETag": {
+                "description": "Entity or aggregate ETag",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Cache directives",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString",
+                "examples": {
+                  "xfer": {
+                    "summary": "XferLang",
+                    "description": "XferLang media representation",
+                    "value": "{\r\n  slug \"string\"\r\n  title \"string\"\r\n  description <\"Sample description\">\r\n  language \"string\"\r\n  rawMarkdown \"string\"\r\n  published ~true\r\n}"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/404",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Resource not found",
+                  "instance": "/api/content/{id}"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Client Error",
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/412",
+                  "title": "Precondition Failed",
+                  "status": 412,
+                  "detail": "ETag mismatch; supply current ETag via If-Match",
+                  "instance": "/api/content/{id}"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Client Error",
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/428",
+                  "title": "Precondition Required",
+                  "status": 428,
+                  "detail": "Missing If-Match header for update",
+                  "instance": "/api/content/{id}"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/401",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication required or invalid token",
+                  "instance": "/api/content/{id}"
+                }
+              },
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/403",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Insufficient permissions",
+                  "instance": "/api/content/{id}"
+                }
+              },
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Content"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/404",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Resource not found",
+                  "instance": "/api/content/{id}"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Client Error",
+            "content": {
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/412",
+                  "title": "Precondition Failed",
+                  "status": 412,
+                  "detail": "ETag mismatch; supply current ETag via If-Match",
+                  "instance": "/api/content/{id}"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/401",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Authentication required or invalid token",
+                  "instance": "/api/content/{id}"
+                }
+              },
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                },
+                "example": {
+                  "type": "https://httpstatuses.com/403",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "detail": "Insufficient permissions",
+                  "instance": "/api/content/{id}"
+                }
+              },
+              "application/xfer": {
+                "schema": {
+                  "type": "string",
+                  "description": "XferLang representation",
+                  "example": "Microsoft.OpenApi.Any.OpenApiString"
+                },
+                "example": "Microsoft.OpenApi.Any.OpenApiString"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ContentResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "slug": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updatedUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "language": {
+            "type": "string",
+            "nullable": true
+          },
+          "rawMarkdown": {
+            "type": "string",
+            "nullable": true
+          },
+          "rawHtml": {
+            "type": "string",
+            "nullable": true
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinkStub"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateContentRequest": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "language": {
+            "type": "string",
+            "nullable": true
+          },
+          "bodyMarkdown": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LinkStub": {
+        "type": "object",
+        "properties": {
+          "rel": {
+            "type": "string",
+            "nullable": true
+          },
+          "method": {
+            "type": "string",
+            "nullable": true
+          },
+          "href": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoginRequest": {
+        "required": [
+          "password",
+          "username"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "tokenType": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateContentRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "language": {
+            "type": "string",
+            "nullable": true
+          },
+          "bodyMarkdown": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Fields a client is allowed to modify for an existing content item."
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "Enter 'Bearer {token}'",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

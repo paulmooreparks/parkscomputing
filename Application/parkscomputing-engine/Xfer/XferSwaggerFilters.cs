@@ -63,7 +63,8 @@ namespace ParksComputing.Engine.Xfer {
             }
         }
 
-        private object? BuildExample(OpenApiSchema? schema, OperationFilterContext context, string method) {
+    private static readonly HashSet<string> ServerControlled = new(StringComparer.OrdinalIgnoreCase){"id","createdUtc","updatedUtc","rawHtml","eTag","links"};
+    private object? BuildExample(OpenApiSchema? schema, OperationFilterContext context, string method) {
             // If no schema, return lightweight fallback including method name.
             if (schema == null) {
                 return new { message = $"Example from {method}", timestamp = DateTime.UtcNow };
@@ -87,6 +88,10 @@ namespace ParksComputing.Engine.Xfer {
 
             var visited = new HashSet<OpenApiSchema>();
             var shaped = ShapeFromSchema(schema, context, visited, 0);
+            if (shaped is Dictionary<string, object?> dict && method.StartsWith("Put", StringComparison.OrdinalIgnoreCase)) {
+                // Remove server-controlled fields from PUT examples
+                foreach (var k in ServerControlled.ToList()) { dict.Remove(k); }
+            }
             if (shaped != null) {
                 return shaped;
             }
@@ -183,6 +188,7 @@ namespace ParksComputing.Engine.Xfer {
                 return true;
             }
 
+            if (lower == "id") { return "sample-slug"; }
             if (lower.EndsWith("id")) {
                 if (string.Equals(schema.Format, "uuid", StringComparison.OrdinalIgnoreCase)) {
                     return "00000000-0000-0000-0000-000000000001";

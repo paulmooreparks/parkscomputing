@@ -24,11 +24,31 @@ namespace ParksComputing.Engine.Api {
 
         public record CreateContentRequest(string? Slug, string? Title, string? Description, string? Language, string? BodyMarkdown);
 
-        // GET api/content?prefix=blog/2025
+        /// <summary>List content items (paged).</summary>
+        /// <param name="prefix">Optional path/slug prefix filter.</param>
+        /// <param name="page">1-based page index (>=1).</param>
+        /// <param name="pageSize">Items per page (1-100).</param>
+        /// <param name="ct">Cancellation token.</param>
+        // GET api/content?prefix=blog/2025&page=1&pageSize=20
         [HttpGet]
         [AllowAnonymous]
-        public async Task<ActionResult<IEnumerable<ContentResource>>> List([FromQuery]string? prefix, CancellationToken ct) {
-            var list = await _storage.ListAsync(prefix, ct);
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<ContentResource>>> List([FromQuery] string? prefix, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) {
+            if (page < 1) {
+                page = 1;
+            }
+
+            if (pageSize < 1) {
+                pageSize = 1;
+            }
+
+            if (pageSize > 100) {
+                pageSize = 100;
+            }
+
+            var full = await _storage.ListAsync(prefix, ct);
+            var total = full.Count();
+            var list = full.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
             foreach (var item in list) {
                 ApplyHypermedia(item);
@@ -46,12 +66,16 @@ namespace ParksComputing.Engine.Api {
                 }
             }
 
+            Response.Headers["X-Total-Count"] = total.ToString();
+            Response.Headers["X-Page"] = page.ToString();
+            Response.Headers["X-Page-Size"] = pageSize.ToString();
             return Ok(list);
         }
 
         // HEAD api/content
         [HttpHead]
         [AllowAnonymous]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<IActionResult> HeadCollection([FromQuery] string? prefix, CancellationToken ct) {
             var list = await _storage.ListAsync(prefix, ct);
             var etags = list.Where(i => !string.IsNullOrEmpty(i.ETag)).Select(i => i.ETag!).OrderBy(e => e).ToArray();
@@ -66,6 +90,7 @@ namespace ParksComputing.Engine.Api {
         // OPTIONS api/content
         [HttpOptions]
         [AllowAnonymous]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public IActionResult OptionsCollection() {
             Response.Headers["Allow"] = "GET,HEAD,OPTIONS,POST";
             return Ok();
@@ -74,7 +99,10 @@ namespace ParksComputing.Engine.Api {
         // GET api/content/{id}
         [HttpGet("{id}")]
         [AllowAnonymous]
-        public async Task<ActionResult> Get(string id, CancellationToken ct) {
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status304NotModified)]
+        public async Task<ActionResult<ContentResource>> Get(string id, CancellationToken ct) {
             var res = await _storage.GetAsync(id, ct);
 
             if (res == null) {
@@ -108,6 +136,7 @@ namespace ParksComputing.Engine.Api {
         // HEAD api/content/{id} => metadata only (ETag) per REST uniform interface
         [HttpHead("{id}")]
         [AllowAnonymous]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public async Task<IActionResult> Head(string id, CancellationToken ct) {
             var res = await _storage.GetAsync(id, ct);
 
@@ -120,16 +149,50 @@ namespace ParksComputing.Engine.Api {
         }
 
         // PUT api/content/{id}
-    [HttpPut("{id}")]
-    [Consumes("application/json", "application/xfer")]
+        [HttpPut("{id}")]
+        [Consumes("application/json", "application/xfer")]
         [Authorize]
-        public async Task<ActionResult<ContentResource>> Put(string id, [FromBody]ContentResource resource, CancellationToken ct) {
-            if (resource == null) {
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status412PreconditionFailed)]
+        [ProducesResponseType(StatusCodes.Status428PreconditionRequired)]
+        public async Task<ActionResult<ContentResource>> Put(string id, [FromBody] UpdateContentRequest request, CancellationToken ct) {
+            if (request == null) {
                 return BadRequest();
             }
 
-            resource.Id = id;
             string? ifMatch = Request.Headers.TryGetValue("If-Match", out var v) ? Unquote(v.FirstOrDefault()) : null;
+            var existing = await _storage.GetAsync(id, ct);
+            var now = DateTime.UtcNow;
+            ContentResource resource;
+
+            if (existing == null) {
+                // Create via PUT (idempotent creation)
+                resource = new ContentResource {
+                    Id = id,
+                    Slug = id,
+                    Title = request.Title,
+                    Description = request.Description,
+                    Language = request.Language,
+                    CreatedUtc = now,
+                    UpdatedUtc = now,
+                    RawMarkdown = request.BodyMarkdown
+                };
+            }
+            else {
+                // Concurrency requires If-Match when updating
+                if (ifMatch == null) {
+                    // Signal client to supply ETag (precondition required)
+                    return StatusCode(StatusCodes.Status428PreconditionRequired);
+                }
+
+                resource = existing;
+                resource.Title = request.Title;
+                resource.Description = request.Description;
+                resource.Language = request.Language;
+                resource.RawMarkdown = request.BodyMarkdown;
+                resource.UpdatedUtc = now;
+            }
 
             try {
                 var saved = await _storage.UpsertAsync(resource, ifMatch, ct);
@@ -144,10 +207,12 @@ namespace ParksComputing.Engine.Api {
         }
 
         // POST api/content (create with server or client provided slug)
-    [HttpPost]
-    [Consumes("application/json", "application/xfer")]
+        [HttpPost]
+        [Consumes("application/json", "application/xfer")]
         [Authorize]
-        public async Task<ActionResult<ContentResource>> Post([FromBody]CreateContentRequest request, CancellationToken ct) {
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<ActionResult<ContentResource>> Post([FromBody] CreateContentRequest request, CancellationToken ct) {
             if (request == null) {
                 return BadRequest();
             }
@@ -178,6 +243,9 @@ namespace ParksComputing.Engine.Api {
         // DELETE api/content/{id}
         [HttpDelete("{id}")]
         [Authorize]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status412PreconditionFailed)]
         public async Task<IActionResult> Delete(string id, CancellationToken ct) {
             string? ifMatch = Request.Headers.TryGetValue("If-Match", out var v) ? Unquote(v.FirstOrDefault()) : null;
             try {
@@ -185,9 +253,9 @@ namespace ParksComputing.Engine.Api {
                 if (!deleted) {
                     return NotFound();
                 }
-
                 return NoContent();
-            } catch (ETagMismatchException ex) {
+            }
+            catch (ETagMismatchException ex) {
                 Response.Headers["ETag"] = Quote(ex.CurrentETag);
                 return StatusCode(StatusCodes.Status412PreconditionFailed);
             }
@@ -196,6 +264,7 @@ namespace ParksComputing.Engine.Api {
         // OPTIONS api/content/{id}
         [HttpOptions("{id}")]
         [AllowAnonymous]
+        [ApiExplorerSettings(IgnoreApi = true)]
         public IActionResult OptionsForResource() {
             Response.Headers["Allow"] = "GET,HEAD,OPTIONS,PUT,DELETE";
             return Ok();
