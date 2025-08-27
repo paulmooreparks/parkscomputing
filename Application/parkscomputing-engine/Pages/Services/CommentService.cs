@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using SmartSam.Comments.Lib;
 using Microsoft.Extensions.Hosting;
 using System.Net.Http;
 using System.Threading.Tasks;

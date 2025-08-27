@@ -45,7 +45,17 @@ namespace ParksComputing.Engine {
             services.AddRazorPages();
             services.AddControllers().AddJsonOptions(o => {
                 o.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+            })
+            .AddMvcOptions(o => {
+                // Insert Xfer formatters at the front so application/xfer is honored when requested.
+                // We resolve the service provider later via an options configuration stage, so build a temporary provider here is avoided.
             });
+
+            // Register XferLang services & formatters
+            services.AddSingleton<ParksComputing.Engine.Xfer.IXferService, ParksComputing.Engine.Xfer.XferService>();
+            services.AddSingleton<ParksComputing.Engine.Xfer.XferInputFormatter>();
+            services.AddSingleton<ParksComputing.Engine.Xfer.XferOutputFormatter>();
+            services.AddSingleton<Microsoft.Extensions.Options.IConfigureOptions<MvcOptions>, ParksComputing.Engine.Xfer.XferMvcOptionsConfigurator>();
 
             services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options => {
                 // Allow controller code to handle ModelState errors so we can return a ProblemDetails body instead of empty 400.
@@ -134,6 +144,10 @@ namespace ParksComputing.Engine {
                 if (System.IO.File.Exists(xml)) {
                     c.IncludeXmlComments(xml);
                 }
+
+                // Register XferLang Swagger filters so application/xfer appears with examples
+                c.OperationFilter<ParksComputing.Engine.Xfer.XferOperationFilter>();
+                c.DocumentFilter<ParksComputing.Engine.Xfer.XferDocumentFilter>();
             });
         }
 

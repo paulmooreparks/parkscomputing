@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
-using SmartSam.Comments.Lib;
 
 namespace ParksComputing.Engine.Pages.Services {
     public class CommentForm {
@@ -13,7 +12,7 @@ namespace ParksComputing.Engine.Pages.Services {
         public string? Title { get; set; } = string.Empty;
         [StringLength(4000, ErrorMessage = "Comment text may not contain more than 4000 characters.")]
         public required string Text { get; set; }
-        public Comment ToComment(string domain, string pageId) {
+    public Comment ToComment(string domain, string pageId) {
             return new Comment {
                 Name = Name,
                 Email = Email,

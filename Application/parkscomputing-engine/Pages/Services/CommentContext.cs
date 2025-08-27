@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SmartSam.Comments.Lib;
 
 namespace ParksComputing.Engine.Pages.Services {
     public class CommentContext : DbContext {

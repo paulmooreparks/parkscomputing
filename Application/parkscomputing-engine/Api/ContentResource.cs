@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ParksComputing.Engine.Pages.Services;
 
 namespace ParksComputing.Engine.Api {
     // Canonical representation of a content item (post, page, draft) as a REST resource.
@@ -15,6 +16,6 @@ namespace ParksComputing.Engine.Api {
         public string? RawHtml { get; set; }
         public bool Published { get; set; }
         public string? ETag { get; set; } // For conditional requests
-        public List<SmartSam.Comments.Lib.Link>? Links { get; set; }
+    public List<LinkStub>? Links { get; set; }
     }
 }

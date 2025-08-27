@@ -12,7 +12,7 @@
     <h2 class="page-comments">Comments</h2>
 @foreach (var element in @Model.CommentResponseList) {
     var comment = element.Comment;
-    @if (comment.Status == SmartSam.Comments.Lib.CommentStatus.Approved) {
+    @if (comment.Status == ParksComputing.Engine.Pages.Services.CommentStatus.Approved) {
     <div class="page-comment" id="@comment.CommentId">
             <h3 class="page-comment-title">@if (string.IsNullOrEmpty(comment.Title)) { @($"Comment from {comment.Name}") } else {@(comment.Title)}</h3>
             <div class="page-comment-author">

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using ParksComputing.Engine.Pages.Services; // LinkStub
 
 namespace ParksComputing.Engine.Api {
     [ApiController]
@@ -119,7 +120,8 @@ namespace ParksComputing.Engine.Api {
         }
 
         // PUT api/content/{id}
-        [HttpPut("{id}")]
+    [HttpPut("{id}")]
+    [Consumes("application/json", "application/xfer")]
         [Authorize]
         public async Task<ActionResult<ContentResource>> Put(string id, [FromBody]ContentResource resource, CancellationToken ct) {
             if (resource == null) {
@@ -142,7 +144,8 @@ namespace ParksComputing.Engine.Api {
         }
 
         // POST api/content (create with server or client provided slug)
-        [HttpPost]
+    [HttpPost]
+    [Consumes("application/json", "application/xfer")]
         [Authorize]
         public async Task<ActionResult<ContentResource>> Post([FromBody]CreateContentRequest request, CancellationToken ct) {
             if (request == null) {
@@ -199,19 +202,17 @@ namespace ParksComputing.Engine.Api {
         }
 
         private void ApplyHypermedia(ContentResource r) {
-            r.Links ??= new List<SmartSam.Comments.Lib.Link>();
+            r.Links ??= new List<LinkStub>();
             string self = Url.ActionLink(nameof(Get), values: new { id = r.Id })!;
 
             if (!r.Links.Any(l => l.Rel == "self")) {
-                r.Links.Add(new SmartSam.Comments.Lib.Link { Rel = "self", Method = "GET", Href = self });
+                r.Links.Add(new LinkStub { Rel = "self", Method = "GET", Href = self });
             }
-
             if (!r.Links.Any(l => l.Rel == "upsert")) {
-                r.Links.Add(new SmartSam.Comments.Lib.Link { Rel = "upsert", Method = "PUT", Href = self });
+                r.Links.Add(new LinkStub { Rel = "upsert", Method = "PUT", Href = self });
             }
-
             if (!r.Links.Any(l => l.Rel == "delete")) {
-                r.Links.Add(new SmartSam.Comments.Lib.Link { Rel = "delete", Method = "DELETE", Href = self });
+                r.Links.Add(new LinkStub { Rel = "delete", Method = "DELETE", Href = self });
             }
         }
 

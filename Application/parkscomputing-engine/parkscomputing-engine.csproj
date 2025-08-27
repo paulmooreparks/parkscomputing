@@ -19,6 +19,14 @@
 			<!-- Re-disabled due to duplicate static web asset key build failure (android-chrome-192x192.png). -->
 			<EnableDefaultStaticWebAssetsCompression>false</EnableDefaultStaticWebAssetsCompression>
 			<StaticWebAssetEnableCompression>false</StaticWebAssetEnableCompression>
+			<!-- Completely disable static web assets pipeline (serving will be manual / dynamic). -->
+			<DisableImplicitStaticWebAssets>true</DisableImplicitStaticWebAssets>
+			<!-- Additional hard disable to prevent DefineStaticWebAssets from running -->
+			<StaticWebAssetProjectMode>Disable</StaticWebAssetProjectMode>
+			<GenerateStaticWebAssetsPropsFile>false</GenerateStaticWebAssetsPropsFile>
+			<GenerateStaticWebAssetsManifest>false</GenerateStaticWebAssetsManifest>
+			<UseStaticWebAssets>false</UseStaticWebAssets>
+			<StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
 	 </PropertyGroup>
 
 	 <ItemGroup>
@@ -40,16 +48,36 @@
 			<!-- <PackageReference Include="ParksComputing.Xfer.Lang" Version="0.1.0-preview" /> -->
 	 </ItemGroup>
 
+	<!-- Exclude IDE / build artifacts accidentally under wwwroot that cause large deployments & duplicate static web asset keys -->
+	<ItemGroup>
+		<!-- Global exclusion: remove ALL wwwroot static web assets (served / accessed only via direct file IO per user). -->
+		<Content Remove="wwwroot\**" />
+		<Content Remove="wwwroot\\**\\.vs\\**" />
+		<Content Remove="wwwroot\\content\\**\\.vs\\**" />
+		<Content Remove="wwwroot\\content\\**\\*.ipch" />
+		<Content Remove="wwwroot\\content\\**\\*.vc.db" />
+		<Content Remove="wwwroot\\content\\**\\Browse.VC.db" />
+		<Content Remove="wwwroot\\content\\**\\*.vsidx" />
+		<Content Remove="wwwroot\\content\\**\\slnx.sqlite" />
+		<Content Remove="wwwroot\\content\\**\\*.sqlite" />
+		<!-- Remove ClickOnce style deployment folder containing many duplicate binary blobs with identical content hashes -->
+		<Content Remove="wwwroot\\CliCalc\\Application Files\\**" />
+		<!-- Remove duplicate Spanish mirror of highlight.js bundle that appears to contain identical/minified duplicates -->
+		<Content Remove="wwwroot\\highlightjs\\es\\**" />
+	</ItemGroup>
+
 
 	 <ItemGroup>
 		 <Folder Include="wwwroot\src\" />
 	 </ItemGroup>
 
-	 <ItemGroup>
-		 <ProjectReference Include="..\SmartSamCommentsLib\SmartSamCommentsLib.csproj" />
-	 </ItemGroup>
+	 <!-- Removed SmartSamComments project references temporarily -->
 
 	<!-- Bypass duplicate static asset key failure by overriding the DiscoverPrecompressedAssets target (no-op). -->
 	<Target Name="DiscoverPrecompressedAssets" />
+	<!-- Hard override of DefineStaticWebAssets target to no-op to bypass hashing collision during incremental builds. -->
+	<Target Name="DefineStaticWebAssets" Returns="@(StaticWebAsset)">
+		<Message Text="DefineStaticWebAssets disabled" Importance="low" />
+	</Target>
 
 </Project>
