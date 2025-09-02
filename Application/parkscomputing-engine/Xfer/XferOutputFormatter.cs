@@ -8,6 +8,7 @@ using Microsoft.Net.Http.Headers;
 namespace ParksComputing.Engine.Xfer {
     public class XferOutputFormatter : TextOutputFormatter {
         private readonly IXferService _xfer;
+
         public XferOutputFormatter(IXferService xfer) {
             _xfer = xfer;
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse(XferService.ApplicationXfer));

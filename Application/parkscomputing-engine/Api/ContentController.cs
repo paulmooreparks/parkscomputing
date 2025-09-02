@@ -28,12 +28,13 @@ namespace ParksComputing.Engine.Api {
         /// <param name="prefix">Optional path/slug prefix filter.</param>
         /// <param name="page">1-based page index (>=1).</param>
         /// <param name="pageSize">Items per page (1-100).</param>
-        /// <param name="ct">Cancellation token.</param>
+    /// <param name="includeDrafts">Include draft items (default false).</param>
+    /// <param name="ct">Cancellation token.</param>
         // GET api/content?prefix=blog/2025&page=1&pageSize=20
         [HttpGet]
         [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<ContentResource>>> List([FromQuery] string? prefix, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) {
+    public async Task<ActionResult<IEnumerable<ContentResource>>> List([FromQuery] string? prefix, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] bool includeDrafts = false, CancellationToken ct = default) {
             if (page < 1) {
                 page = 1;
             }
@@ -47,6 +48,9 @@ namespace ParksComputing.Engine.Api {
             }
 
             var full = await _storage.ListAsync(prefix, ct);
+            if (!includeDrafts) {
+                full = full.Where(c => c.Published).ToList();
+            }
             var total = full.Count();
             var list = full.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 

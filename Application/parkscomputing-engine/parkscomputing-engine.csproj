@@ -42,7 +42,8 @@
 			<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.6.0" />
 			<!-- Auth storage packages -->
 			<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
-			<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.8" />
+			<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+			<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8" PrivateAssets="All" />
 			<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
 			<!-- TODO: Add real version once package is published -->
 			<!-- <PackageReference Include="ParksComputing.Xfer.Lang" Version="0.1.0-preview" /> -->
@@ -50,8 +51,6 @@
 
 	<!-- Exclude IDE / build artifacts accidentally under wwwroot that cause large deployments & duplicate static web asset keys -->
 	<ItemGroup>
-		<!-- Global exclusion: remove ALL wwwroot static web assets (served / accessed only via direct file IO per user). -->
-		<Content Remove="wwwroot\**" />
 		<Content Remove="wwwroot\\**\\.vs\\**" />
 		<Content Remove="wwwroot\\content\\**\\.vs\\**" />
 		<Content Remove="wwwroot\\content\\**\\*.ipch" />
@@ -60,10 +59,6 @@
 		<Content Remove="wwwroot\\content\\**\\*.vsidx" />
 		<Content Remove="wwwroot\\content\\**\\slnx.sqlite" />
 		<Content Remove="wwwroot\\content\\**\\*.sqlite" />
-		<!-- Remove ClickOnce style deployment folder containing many duplicate binary blobs with identical content hashes -->
-		<Content Remove="wwwroot\\CliCalc\\Application Files\\**" />
-		<!-- Remove duplicate Spanish mirror of highlight.js bundle that appears to contain identical/minified duplicates -->
-		<Content Remove="wwwroot\\highlightjs\\es\\**" />
 	</ItemGroup>
 
 

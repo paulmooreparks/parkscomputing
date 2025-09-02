@@ -13,8 +13,12 @@ namespace ParksComputing.Engine.Api {
         public TokenService(IConfiguration config) {
             _config = config;
             var secret = _config.GetSection("Jwt").GetValue<string>("Secret")
-                         ?? Environment.GetEnvironmentVariable("JWT_SECRET")
-                         ?? "dev-insecure-secret-change-please-rotate-now!!"; //  Forty+ chars (>=32 bytes)
+                         ?? Environment.GetEnvironmentVariable("JWT_SECRET");
+
+            if (string.IsNullOrWhiteSpace(secret)) {
+                throw new InvalidOperationException("JWT secret missing. Set Jwt:Secret or JWT_SECRET environment variable (32+ bytes).");
+            }
+
             _keyBytes = Encoding.UTF8.GetBytes(secret);
 
             if (_keyBytes.Length < 32) {

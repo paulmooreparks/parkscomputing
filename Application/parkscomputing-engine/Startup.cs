@@ -67,8 +67,7 @@ namespace ParksComputing.Engine {
 
             services.AddHttpClient();
             services.AddDistributedMemoryCache();
-            services.AddSession(options =>
-            {
+            services.AddSession(options => {
                 options.IdleTimeout = TimeSpan.FromMinutes(30);
                 options.Cookie.HttpOnly = true;
                 options.Cookie.IsEssential = true; // Make sure the cookie is marked as essential
@@ -82,19 +81,40 @@ namespace ParksComputing.Engine {
             });
 
             services.AddSingleton<StaticFileReaderService>();
+            services.AddOptions<ParksComputing.Engine.Api.ContentStorageOptions>();
             services.AddSingleton<ParksComputing.Engine.Api.IContentStorage, ParksComputing.Engine.Api.FileContentStorage>();
 
-            // SQLite auth database (file-based). Connection string configurable via Jwt:AuthDb or env AUTH_DB_PATH
-            var authDbPath = Configuration.GetValue<string>("Auth:DbPath") ?? Environment.GetEnvironmentVariable("AUTH_DB_PATH") ?? System.IO.Path.Combine(AppContext.BaseDirectory, "auth.db");
-            services.AddDbContext<ParksComputing.Engine.Auth.AuthDbContext>(options => options.UseSqlite($"Data Source={authDbPath}"));
+            // Auth database provider: SQL Server only (Azure or local dev). Requires Auth:ConnectionString or AUTH_CONNECTION_STRING.
+            // Accept multiple sources (App Settings or App Service Connection Strings blade). App Service 'Connection strings' inject
+            // environment variables with prefixes: SQLAZURECONNSTR_, SQLSERVERCONNSTR_, MYSQLCONNSTR_, POSTGRESQLCONNSTR_, CUSTOMCONNSTR_.
+            // If the user created a connection string named AUTH_CONNECTION_STRING in that blade, its env var will be e.g. SQLAZURECONNSTR_AUTH_CONNECTION_STRING.
+            var configuredConn =
+                Configuration.GetValue<string>("Auth:ConnectionString")
+                ?? Environment.GetEnvironmentVariable("AUTH_CONNECTION_STRING")
+                ?? Environment.GetEnvironmentVariable("SQLAZURECONNSTR_AUTH_CONNECTION_STRING")
+                ?? Environment.GetEnvironmentVariable("SQLSERVERCONNSTR_AUTH_CONNECTION_STRING")
+                ?? Environment.GetEnvironmentVariable("CUSTOMCONNSTR_AUTH_CONNECTION_STRING");
+
+            if (string.IsNullOrWhiteSpace(configuredConn)) {
+                throw new InvalidOperationException("Auth:ConnectionString (or AUTH_CONNECTION_STRING env var) is required; SQLite fallback removed.");
+            }
+
+            services.AddDbContext<ParksComputing.Engine.Auth.AuthDbContext>(options => {
+                options.UseSqlServer(configuredConn, sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(5), null));
+            });
+
             services.AddScoped<ParksComputing.Engine.Auth.ICredentialService, ParksComputing.Engine.Auth.CredentialService>();
 
             // Basic JWT configuration (symmetric key) - Replace with secure key management
             // Use same retrieval logic as TokenService to avoid signing/validation key mismatch.
             var jwtSection = Configuration.GetSection("Jwt");
             var secret = jwtSection.GetValue<string>("Secret")
-                         ?? Environment.GetEnvironmentVariable("JWT_SECRET")
-                         ?? "dev-insecure-secret-change-please-rotate-now!!"; // Fallback (>=32 bytes) DO NOT use in production
+                         ?? Environment.GetEnvironmentVariable("JWT_SECRET");
+
+            if (string.IsNullOrWhiteSpace(secret)) {
+                throw new InvalidOperationException("JWT secret missing. Set Jwt:Secret or JWT_SECRET environment variable (32+ bytes).");
+            }
+
             var keyBytes = Encoding.UTF8.GetBytes(secret);
 
             if (keyBytes.Length < 32) {
@@ -125,6 +145,7 @@ namespace ParksComputing.Engine {
             });
 
             services.AddAuthorization();
+
             // Simple built-in fixed window limiter (metadata only; custom middleware adds headers/body)
             services.AddRateLimiter(o => {
                 o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx => RateLimitPartition.GetFixedWindowLimiter(
@@ -132,6 +153,7 @@ namespace ParksComputing.Engine {
                     factory: _ => new FixedWindowRateLimiterOptions { AutoReplenishment = true, PermitLimit = 600, QueueLimit = 0, Window = TimeSpan.FromMinutes(1) }));
                 o.RejectionStatusCode = 429;
             });
+
             services.AddSingleton<ParksComputing.Engine.Api.TokenService>();
 
             // Swagger / OpenAPI for discoverability
@@ -155,7 +177,7 @@ namespace ParksComputing.Engine {
                 };
 
                 c.AddSecurityDefinition("Bearer", securityScheme);
-                // Do not add a blanket global security requirement; handled per-operation via SecurityOperationFilter
+                // Per-operation requirements are added via SecurityOperationFilter only for [Authorize] endpoints.
                 // Include XML docs if generated
                 var xml = System.IO.Path.Combine(AppContext.BaseDirectory, "ParksComputing.Engine.xml");
 
@@ -186,34 +208,14 @@ namespace ParksComputing.Engine {
                     // model is applied causes 'no such table'. We defensively EnsureCreated first, then Migrate so that
                     // once you add explicit migrations later they can still run (EnsureCreated + later migrations is safe
                     // as long as the schema hasn't diverged yet).
-                    db.Database.EnsureCreated();
+                    // Apply migrations (idempotent). If zero migrations and SQLite, bootstrap schema with EnsureCreated first.
                     db.Database.Migrate();
-                    // Extra defensive fallback: explicitly create Users table if for any reason it still doesn't exist (e.g. EnsureCreated short‑circuited).
-                    // Only create Users table manually if it truly does not exist (avoid noisy CREATE TABLE log every startup)
-                    using (var conn = db.Database.GetDbConnection()) {
-                        if (conn.State != System.Data.ConnectionState.Open) { conn.Open(); }
-                        using (var cmd = conn.CreateCommand()) {
-                            cmd.CommandText = "SELECT 1 FROM sqlite_master WHERE type='table' AND name='Users'";
-                            var exists = cmd.ExecuteScalar() != null;
-                            if (!exists) {
-                                using (var create = conn.CreateCommand()) {
-                                    create.CommandText = @"CREATE TABLE Users (
-                                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                        Username TEXT NOT NULL UNIQUE,
-                                        PasswordHash TEXT NOT NULL,
-                                        CreatedUtc TEXT NOT NULL,
-                                        IsActive INTEGER NOT NULL
-                                    );";
-                                    create.ExecuteNonQuery();
-                                    logger.LogInformation("Users table created via fallback (no migrations present).");
-                                }
-                            }
-                        }
-                    }
-                } catch (Exception ex) {
+                }
+                catch (Exception ex) {
                     logger.LogError(ex, "Auth DB migration error");
                     throw; // rethrow so startup still fails visibly
                 }
+
                 var seedUser = Configuration.GetValue<string>("Auth:Seed:Username") ?? Environment.GetEnvironmentVariable("SEED_ADMIN_USERNAME");
                 var seedHash = Configuration.GetValue<string>("Auth:Seed:PasswordHash") ?? Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD_HASH");
                 ParksComputing.Engine.Auth.CredentialService.SeedIfEmptyAsync(db, seedUser, seedHash, logger).GetAwaiter().GetResult();
@@ -234,6 +236,7 @@ namespace ParksComputing.Engine {
                     ctx.Response.Redirect("/swagger/", permanent: false);
                     return;
                 }
+
                 await next();
             });
 
@@ -295,10 +298,14 @@ namespace ParksComputing.Engine {
     public partial class Startup {
         private static System.Threading.Tasks.Task WriteProblem(Microsoft.AspNetCore.Http.HttpContext ctx, int status, string title, string detail) {
             // Avoid rewriting if response started (e.g., websocket upgrade)
-            if (ctx.Response.HasStarted) { return System.Threading.Tasks.Task.CompletedTask; }
+            if (ctx.Response.HasStarted) {
+                return System.Threading.Tasks.Task.CompletedTask;
+            }
+
             ctx.Response.StatusCode = status;
             string accept = ctx.Request.Headers["Accept"].ToString();
             string instance = ctx.Request.Path;
+
             if (!string.IsNullOrEmpty(accept) && accept.Contains("application/xfer", StringComparison.OrdinalIgnoreCase)) {
                 ctx.Response.ContentType = "application/xfer";
                 var sb = new StringBuilder();
@@ -310,12 +317,14 @@ namespace ParksComputing.Engine {
                 sb.AppendLine($"  instance \"{Escape(instance)}\"");
                 sb.AppendLine("}");
                 return ctx.Response.WriteAsync(sb.ToString());
-            } else {
+            }
+            else {
                 ctx.Response.ContentType = "application/json";
                 var json = $"{{\"type\":\"https://httpstatuses.com/{status}\",\"title\":\"{Escape(title)}\",\"status\":{status},\"detail\":\"{Escape(detail)}\",\"instance\":\"{Escape(instance)}\"}}";
                 return ctx.Response.WriteAsync(json);
             }
         }
+
         private static string Escape(string v) => v.Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 }

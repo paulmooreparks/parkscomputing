@@ -9,6 +9,7 @@ using ParksComputing.Engine.Auth;
 using ParksComputing.Engine.Xfer;
 using ParksComputing.Xfer.Lang.Attributes;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Data.SqlClient; // for SqlException timeout detection
 
 namespace ParksComputing.Engine.Api {
     [ApiController]
@@ -52,6 +53,7 @@ namespace ParksComputing.Engine.Api {
         [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
         public async System.Threading.Tasks.Task<ActionResult<TokenResponse>> Token([FromBody] LoginRequest? body) {
             _logger.LogInformation("Auth token request received (ContentType={ContentType})", Request.ContentType);
 
@@ -88,7 +90,49 @@ namespace ParksComputing.Engine.Api {
                 return ValidationProblem(ModelState);
             }
 
-            if (!await _creds.ValidateAsync(request!.Username!, request.Password!)) {
+            bool valid;
+            try {
+                valid = await _creds.ValidateAsync(request!.Username!, request.Password!);
+            }
+            catch (SqlException ex) when (ex.Number == -2) { // -2 = timeout (often cold start / serverless resume)
+                _logger.LogWarning(ex, "Auth DB timeout during credential validation (likely cold database resume). Returning 503 to advise retry.");
+
+                // Advise client to retry shortly
+                Response.Headers["Retry-After"] = "5"; // seconds; tune as desired
+
+                var problem = new ProblemDetails {
+                    Status = StatusCodes.Status503ServiceUnavailable,
+                    Title = "Service Unavailable",
+                    Detail = "Authentication store is waking up; retry in a few seconds.",
+                    Type = "https://httpstatuses.com/503",
+                    Instance = HttpContext.Request.Path
+                };
+
+                // If client prefers xfer, mirror minimal structure (keep simple)
+                var accept = Request.Headers["Accept"].ToString();
+                if (!string.IsNullOrEmpty(accept) && accept.Contains("application/xfer", StringComparison.OrdinalIgnoreCase)) {
+                    Response.ContentType = "application/xfer";
+                    var xfer = "{\n  type \"https://httpstatuses.com/503\"\n  title \"Service Unavailable\"\n  status 503\n  detail \"Authentication store is waking up; retry in a few seconds.\"\n  instance \"" + HttpContext.Request.Path + "\"\n}";
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable, xfer);
+                }
+
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, problem);
+            }
+            catch (SqlException ex) {
+                _logger.LogError(ex, "Unexpected SQL error during credential validation");
+                // Hide internal details but signal temporary issue
+                Response.Headers["Retry-After"] = "10";
+                var problem = new ProblemDetails {
+                    Status = StatusCodes.Status503ServiceUnavailable,
+                    Title = "Service Unavailable",
+                    Detail = "Authentication service temporarily unavailable.",
+                    Type = "https://httpstatuses.com/503",
+                    Instance = HttpContext.Request.Path
+                };
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, problem);
+            }
+
+            if (!valid) {
                 _logger.LogInformation("Invalid credentials for user {User}", request.Username);
                 return Unauthorized();
             }

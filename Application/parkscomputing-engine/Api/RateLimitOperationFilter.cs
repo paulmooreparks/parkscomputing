@@ -6,11 +6,17 @@ namespace ParksComputing.Engine.Api {
     public class RateLimitOperationFilter : IOperationFilter {
         public void Apply(OpenApiOperation operation, OperationFilterContext context) {
             var name = context.MethodInfo.Name;
-            if (!operation.Responses.TryGetValue("200", out var resp)) { return; }
+
+            if (!operation.Responses.TryGetValue("200", out var resp)) {
+                return;
+            }
+
             resp.Headers ??= new System.Collections.Generic.Dictionary<string, OpenApiHeader>();
+
             // Always include ETag + Cache-Control
             Add(resp, "ETag", "Entity or aggregate ETag");
             Add(resp, "Cache-Control", "Cache directives");
+
             // Apply pagination + rate headers only for list
             if (name == "List") {
                 Add(resp, "X-Total-Count", "Total items for current filter");
@@ -26,6 +32,7 @@ namespace ParksComputing.Engine.Api {
                 operation.Responses["429"] = new Microsoft.OpenApi.Models.OpenApiResponse { Description = "Too Many Requests" };
             }
         }
+
         private static void Add(OpenApiResponse r, string name, string desc) {
             if (!r.Headers.ContainsKey(name)) {
                 r.Headers[name] = new OpenApiHeader { Description = desc, Schema = new OpenApiSchema { Type = "string" } };

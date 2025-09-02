@@ -7,6 +7,7 @@ using System.IO;
 namespace ParksComputing.Engine.Xfer {
     public class XferInputFormatter : TextInputFormatter {
         private readonly IXferService _xfer;
+
         public XferInputFormatter(IXferService xfer) {
             _xfer = xfer;
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse(XferService.ApplicationXfer));
@@ -20,7 +21,8 @@ namespace ParksComputing.Engine.Xfer {
             try {
                 var obj = await _xfer.DeserializeAsync(context.HttpContext.Request.Body, context.ModelType);
                 return await InputFormatterResult.SuccessAsync(obj);
-            } catch (Exception ex) {
+            }
+            catch (Exception ex) {
                 // Provide concise error plus first 80 chars of payload for debugging (without leaking full secrets)
                 context.HttpContext.Request.Body.Position = 0;
                 using var reader = new StreamReader(context.HttpContext.Request.Body, System.Text.Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);

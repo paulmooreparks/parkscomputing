@@ -17,10 +17,13 @@ namespace ParksComputing.Engine.Xfer {
                     if (response.Content == null || response.Content.Count == 0) {
                         continue;
                     }
+
                     EnsureXferFirst(response.Content, context, context.MethodInfo.Name, TryInferPrimarySchema(response.Content));
                 }
             }
+
             var requestContent = operation.RequestBody?.Content;
+
             if (requestContent != null && requestContent.Count > 0) {
                 EnsureXferFirst(requestContent, context, context.MethodInfo.Name, TryInferPrimarySchema(requestContent));
             }
@@ -31,6 +34,7 @@ namespace ParksComputing.Engine.Xfer {
             if (content.TryGetValue("application/json", out var json) && json.Schema != null) {
                 return json.Schema;
             }
+
             return content.Values.FirstOrDefault(v => v.Schema != null)?.Schema;
         }
 
@@ -54,17 +58,21 @@ namespace ParksComputing.Engine.Xfer {
 
             // Rebuild dictionary placing application/xfer first
             var reordered = new Dictionary<string, OpenApiMediaType> { [XferService.ApplicationXfer] = xferMedia };
+
             foreach (var kv in content) {
                 reordered[kv.Key] = kv.Value;
             }
+
             content.Clear();
+
             foreach (var kv in reordered) {
                 content[kv.Key] = kv.Value;
             }
         }
 
-    private static readonly HashSet<string> ServerControlled = new(StringComparer.OrdinalIgnoreCase){"id","createdUtc","updatedUtc","rawHtml","eTag","links"};
-    private object? BuildExample(OpenApiSchema? schema, OperationFilterContext context, string method) {
+        private static readonly HashSet<string> ServerControlled = new(StringComparer.OrdinalIgnoreCase) { "id", "createdUtc", "updatedUtc", "rawHtml", "eTag", "links" };
+
+        private object? BuildExample(OpenApiSchema? schema, OperationFilterContext context, string method) {
             // If no schema, return lightweight fallback including method name.
             if (schema == null) {
                 return new { message = $"Example from {method}", timestamp = DateTime.UtcNow };
@@ -76,7 +84,7 @@ namespace ParksComputing.Engine.Xfer {
             // Respect explicit example on the schema if present.
             if (schema.Example is IOpenApiPrimitive primitive) {
                 return primitive switch {
-                    OpenApiString s => (object?)s.Value,
+                    OpenApiString s => (object?) s.Value,
                     OpenApiInteger i => i.Value,
                     OpenApiLong l => l.Value,
                     OpenApiDouble d => d.Value,
@@ -88,10 +96,14 @@ namespace ParksComputing.Engine.Xfer {
 
             var visited = new HashSet<OpenApiSchema>();
             var shaped = ShapeFromSchema(schema, context, visited, 0);
+
             if (shaped is Dictionary<string, object?> dict && method.StartsWith("Put", StringComparison.OrdinalIgnoreCase)) {
                 // Remove server-controlled fields from PUT examples
-                foreach (var k in ServerControlled.ToList()) { dict.Remove(k); }
+                foreach (var k in ServerControlled.ToList()) {
+                    dict.Remove(k);
+                }
             }
+
             if (shaped != null) {
                 return shaped;
             }
@@ -100,30 +112,34 @@ namespace ParksComputing.Engine.Xfer {
             return new { message = "Hello Xfer", ok = true };
         }
 
-    private object? ShapeFromSchema(OpenApiSchema schema, OperationFilterContext context, HashSet<OpenApiSchema> visited, int depth, string? propName = null) {
+        private object? ShapeFromSchema(OpenApiSchema schema, OperationFilterContext context, HashSet<OpenApiSchema> visited, int depth, string? propName = null) {
             if (depth > 3) {
                 return null; // prevent runaway recursion
             }
+
             if (!visited.Add(schema)) {
                 return null; // cycle protection
             }
 
             // Arrays
             if (schema.Type == "array" && schema.Items != null) {
-        var item = ShapeFromSchema(ResolveReference(schema.Items, context) ?? schema.Items, context, visited, depth + 1, propName);
+                var item = ShapeFromSchema(ResolveReference(schema.Items, context) ?? schema.Items, context, visited, depth + 1, propName);
                 return item != null ? new[] { item } : Array.Empty<object>();
             }
 
             // Objects (treat missing Type but with properties as object)
-        schema = ResolveReference(schema, context) ?? schema;
+            schema = ResolveReference(schema, context) ?? schema;
             bool looksObject = schema.Type == "object" || (schema.Type == null && schema.Properties?.Count > 0);
+
             if (looksObject && schema.Properties != null && schema.Properties.Count > 0) {
                 var dict = new Dictionary<string, object?>();
+
                 foreach (var kv in schema.Properties.Take(15)) { // cap property count for brevity
-            var resolvedProp = ResolveReference(kv.Value, context) ?? kv.Value;
-            var value = BuildPropertyValue(kv.Key, resolvedProp, context, visited, depth + 1);
+                    var resolvedProp = ResolveReference(kv.Value, context) ?? kv.Value;
+                    var value = BuildPropertyValue(kv.Key, resolvedProp, context, visited, depth + 1);
                     dict[kv.Key] = value;
                 }
+
                 return dict;
             }
 
@@ -131,11 +147,11 @@ namespace ParksComputing.Engine.Xfer {
             return PrimitiveValue(schema, propName);
         }
 
-    private object? BuildPropertyValue(string name, OpenApiSchema propertySchema, OperationFilterContext context, HashSet<OpenApiSchema> visited, int depth) {
+        private object? BuildPropertyValue(string name, OpenApiSchema propertySchema, OperationFilterContext context, HashSet<OpenApiSchema> visited, int depth) {
             // Use property example if provided.
             if (propertySchema.Example is IOpenApiPrimitive prim) {
                 return prim switch {
-                    OpenApiString s => (object?)s.Value,
+                    OpenApiString s => (object?) s.Value,
                     OpenApiInteger i => i.Value,
                     OpenApiLong l => l.Value,
                     OpenApiDouble d => d.Value,
@@ -168,15 +184,18 @@ namespace ParksComputing.Engine.Xfer {
                     return resolved;
                 }
             }
+
             // Merge first allOf if present (common pattern for composed models)
             if (schema.AllOf != null && schema.AllOf.Count > 0) {
                 foreach (var part in schema.AllOf) {
                     var resolved = ResolveReference(part, context) ?? part;
+
                     if (resolved.Properties?.Count > 0) {
                         return resolved;
                     }
                 }
             }
+
             return null;
         }
 
@@ -184,29 +203,39 @@ namespace ParksComputing.Engine.Xfer {
             var name = propName ?? string.Empty;
             string lower = name.ToLowerInvariant();
             bool looksBool = schema.Type == "boolean" || lower.StartsWith("is") || lower.StartsWith("has") || lower.StartsWith("can") || lower.EndsWith("enabled");
+
             if (looksBool) {
                 return true;
             }
 
-            if (lower == "id") { return "sample-slug"; }
+            if (lower == "id") {
+                return "sample-slug";
+            }
+
             if (lower.EndsWith("id")) {
                 if (string.Equals(schema.Format, "uuid", StringComparison.OrdinalIgnoreCase)) {
                     return "00000000-0000-0000-0000-000000000001";
                 }
+
                 return 1;
             }
+
             if (lower.Contains("date") && !lower.Contains("updated")) {
                 return DateTime.UtcNow.ToString("yyyy-MM-dd");
             }
+
             if (lower.Contains("time")) {
                 return DateTime.UtcNow.ToString("HH:mm:ss");
             }
+
             if (lower.Contains("email")) {
                 return "user@example.com";
             }
+
             if (lower.Contains("name")) {
                 return "SampleName";
             }
+
             if (lower.Contains("message") || lower.Contains("description")) {
                 return $"Sample {propName}".Trim();
             }
@@ -234,6 +263,7 @@ namespace ParksComputing.Engine.Xfer {
             if (swaggerDoc.Paths == null) {
                 return;
             }
+
             foreach (var path in swaggerDoc.Paths.Values) {
                 if (path.Operations == null) {
                     continue;
@@ -242,11 +272,15 @@ namespace ParksComputing.Engine.Xfer {
                     // Responses
                     if (op.Responses != null) {
                         foreach (var resp in op.Responses.Values) {
-                            if (resp.Content == null) { continue; }
+                            if (resp.Content == null) {
+                                continue;
+                            }
+
                             if (resp.Content.TryGetValue(XferService.ApplicationXfer, out var media) && media != null && media.Example is IOpenApiAny mediaExample) {
                                 var mediaText = mediaExample.ToString() ?? string.Empty;
                                 var trimmed = mediaText.Trim('"');
                                 media.Example = new OpenApiString(trimmed);
+
                                 if (media.Schema is { } schema) {
                                     schema.Example = new OpenApiString(trimmed);
                                 }
@@ -255,10 +289,12 @@ namespace ParksComputing.Engine.Xfer {
                     }
                     // Request body
                     var rbContent = op.RequestBody?.Content;
+
                     if (rbContent != null && rbContent.TryGetValue(XferService.ApplicationXfer, out var rbMedia) && rbMedia != null && rbMedia.Example is IOpenApiAny rbExample) {
                         var rbText = rbExample.ToString() ?? string.Empty;
                         var trimmedReq = rbText.Trim('"');
                         rbMedia.Example = new OpenApiString(trimmedReq);
+
                         if (rbMedia.Schema is { } rbSchema) {
                             rbSchema.Example = new OpenApiString(trimmedReq);
                         }

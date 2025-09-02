@@ -2,9 +2,6 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../../xfer/examples/XferService"
 		}
 	],
 	"settings": {}

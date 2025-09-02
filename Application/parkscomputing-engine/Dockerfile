@@ -11,17 +11,17 @@ COPY ../*.sln ./
 COPY parkscomputing-engine/*.csproj ./parkscomputing-engine/
 
 # Copy the dependencies (tests not required for runtime image, omitted)
-COPY SmartSamCommentsLib/*.csproj ./SmartSamCommentsLib/
-COPY SmartSamCommentsApi/*.csproj ./SmartSamCommentsApi/
-COPY SmartSamCommentsData/*.csproj ./SmartSamCommentsData/
+#COPY SmartSamCommentsLib/*.csproj ./SmartSamCommentsLib/
+#COPY SmartSamCommentsApi/*.csproj ./SmartSamCommentsApi/
+#COPY SmartSamCommentsData/*.csproj ./SmartSamCommentsData/
 
 
 # Copy everything else and build
 COPY parkscomputing-engine ./parkscomputing-engine/
 # (Test project sources omitted from runtime image)
-COPY SmartSamCommentsApi/ ./SmartSamCommentsApi/
-COPY SmartSamCommentsLib/ ./SmartSamCommentsLib/
-COPY SmartSamCommentsData/ ./SmartSamCommentsData/
+#COPY SmartSamCommentsApi/ ./SmartSamCommentsApi/
+#COPY SmartSamCommentsLib/ ./SmartSamCommentsLib/
+#COPY SmartSamCommentsData/ ./SmartSamCommentsData/
 
 # Copy all static site content from wwwroot (populated from W:/) into the image
 COPY parkscomputing-engine/wwwroot ./parkscomputing-engine/wwwroot/

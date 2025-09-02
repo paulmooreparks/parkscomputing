@@ -30,32 +30,48 @@ namespace ParksComputing.Engine.Xfer {
         public string MediaType => ApplicationXfer;
 
         // Generic implementations (direct calls, no reflection)
-    public string Serialize<T>(T value, bool compact = false) => value == null ? string.Empty : XferConvert.Serialize(value, compact ? Formatting.None : Formatting.Pretty);
+        public string Serialize<T>(T value, bool compact = false) => value == null ? string.Empty : XferConvert.Serialize(value, compact ? Formatting.None : Formatting.Pretty);
+
         public async Task<string> SerializeAsync<T>(T value, bool compact = false, CancellationToken ct = default) {
-            if (value == null) { return string.Empty; }
+            if (value == null) {
+                return string.Empty;
+            }
+
             using var writer = new StringWriter();
             await XferConvert.SerializeAsync(value, writer, compact ? Formatting.None : Formatting.Pretty, ct);
             return writer.ToString();
         }
+
         public T? Deserialize<T>(string text) => XferConvert.Deserialize<T>(text);
+
         public async Task<T?> DeserializeAsync<T>(Stream stream, CancellationToken ct = default) {
             using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
             var txt = await reader.ReadToEndAsync();
             return XferConvert.Deserialize<T>(txt);
         }
+
         // Non-generic shims
         public string Serialize(object? value, Type type) {
-            if (value == null) { return string.Empty; }
+            if (value == null) {
+                return string.Empty;
+            }
+
             // dynamic lets runtime pick the closed generic Serialize<T>(T,Formatting)
-            return XferConvert.Serialize((dynamic)value, Formatting.Pretty);
+            return XferConvert.Serialize((dynamic) value, Formatting.Pretty);
         }
+
         public async Task<string> SerializeAsync(object? value, Type type, CancellationToken ct = default) {
-            if (value == null) { return string.Empty; }
+            if (value == null) {
+                return string.Empty;
+            }
+
             using var writer = new StringWriter();
-            await XferConvert.SerializeAsync((dynamic)value, writer, Formatting.Pretty, ct);
+            await XferConvert.SerializeAsync((dynamic) value, writer, Formatting.Pretty, ct);
             return writer.ToString();
         }
+
         public object? Deserialize(string text, Type type) => XferConvert.Deserialize(text, type);
+
         public async Task<object?> DeserializeAsync(Stream stream, Type type, CancellationToken ct = default) {
             using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
             var txt = await reader.ReadToEndAsync();

@@ -9,12 +9,13 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 
 namespace ParksComputing.Engine.Api {
-    // File-based implementation storing markdown under wwwroot/content and drafts under wwwroot/content/drafts
+    // File-based implementation storing markdown & html under wwwroot/content; drafts in a drafts/ subfolder.
     public class FileContentStorage : IContentStorage {
         private readonly IWebHostEnvironment _env;
+        private readonly ContentStorageOptions _options;
 
-        public FileContentStorage(IWebHostEnvironment env) {
-            _env = env;
+        public FileContentStorage(IWebHostEnvironment env, Microsoft.Extensions.Options.IOptions<ContentStorageOptions> options) {
+            _env = env; _options = options.Value;
         }
 
         private string ContentRoot => Path.Combine(_env.ContentRootPath, "wwwroot", "content");
@@ -27,7 +28,8 @@ namespace ParksComputing.Engine.Api {
             }
 
             var text = File.ReadAllText(path);
-            var res = ParseFile(id, text, isMarkdown);
+            var isDraft = IsDraft(path);
+            var res = isMarkdown ? ParseMarkdownFile(id, text, isDraft) : ParseHtmlFile(id, text, isDraft);
             res.ETag = ComputeETag(text);
             return Task.FromResult<ContentResource?>(res);
         }
@@ -39,16 +41,23 @@ namespace ParksComputing.Engine.Api {
                 return Task.FromResult<IReadOnlyList<ContentResource>>(list);
             }
 
-            foreach (var file in Directory.EnumerateFiles(ContentRoot, "*.md", SearchOption.AllDirectories)) {
-                var rel = Path.GetRelativePath(ContentRoot, file).Replace('\\', '/');
+            var allowed = new HashSet<string>(_options.Extensions.Select(e => e.ToLowerInvariant()));
+            foreach (var file in Directory.EnumerateFiles(ContentRoot, "*.*", SearchOption.AllDirectories)) {
+                var ext = Path.GetExtension(file).ToLowerInvariant();
+                if (!allowed.Contains(ext)) {
+                    continue;
+                }
 
+                var rel = Path.GetRelativePath(ContentRoot, file).Replace('\\', '/');
                 if (!string.IsNullOrWhiteSpace(prefix) && !rel.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
                     continue;
                 }
 
                 var text = File.ReadAllText(file);
-                var id = rel.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ? rel[..^3] : rel;
-                var res = ParseFile(id, text, isMarkdown: true);
+                var id = rel.EndsWith(ext, StringComparison.OrdinalIgnoreCase) ? rel.Substring(0, rel.Length - ext.Length) : rel;
+                bool isMarkdown = string.Equals(ext, ".md", StringComparison.OrdinalIgnoreCase);
+                bool isDraft = IsDraft(file);
+                var res = isMarkdown ? ParseMarkdownFile(id, text, isDraft) : ParseHtmlFile(id, text, isDraft);
                 res.ETag = ComputeETag(text);
                 list.Add(res);
             }
@@ -112,15 +121,24 @@ namespace ParksComputing.Engine.Api {
         }
 
         private (string? path, bool isMarkdown) ResolvePath(string id) {
-            var md = Path.Combine(ContentRoot, id + ".md");
-            if (File.Exists(md)) {
-                return (md, true);
+            // Try each configured extension in order
+            foreach (var ext in _options.Extensions) {
+                var candidate = Path.Combine(ContentRoot, id + ext);
+                if (File.Exists(candidate)) {
+                    bool isMd = string.Equals(ext, ".md", StringComparison.OrdinalIgnoreCase);
+                    return (candidate, isMd);
+                }
             }
-
             return (null, true);
         }
 
-        private ContentResource ParseFile(string id, string text, bool isMarkdown) {
+        private bool IsDraft(string fullPath) {
+            var rel = Path.GetRelativePath(ContentRoot, fullPath).Replace('\\','/');
+            var segments = rel.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return segments.Any(s => string.Equals(s, _options.DraftsFolderName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private ContentResource ParseMarkdownFile(string id, string text, bool isDraft) {
             DateTime? created = null, updated = null; string? title = null, description = null, lang = null; string body = text;
 
             if (text.StartsWith("---")) {
@@ -186,8 +204,113 @@ namespace ParksComputing.Engine.Api {
                 UpdatedUtc = updated ?? created,
                 Language = lang,
                 RawMarkdown = text,
-                Published = true
+                Published = !isDraft
             };
+        }
+
+        private ContentResource ParseHtmlFile(string id, string text, bool isDraft) {
+            // Extremely lightweight extraction (avoid bringing full HTML parser dependency):
+            string? title = ExtractBetween(text, "<title>", "</title>");
+            string? description = ExtractMeta(text, "description");
+            DateTime? created = TryParseMetaHttp(text, "date");
+            DateTime? updated = TryParseMetaHttp(text, "last-modified") ?? created;
+            // Language can come from <html lang="en">
+            string? lang = ExtractHtmlLang(text);
+            return new ContentResource {
+                Id = id,
+                Slug = id,
+                Title = title,
+                Description = description,
+                CreatedUtc = created,
+                UpdatedUtc = updated,
+                Language = lang,
+                RawHtml = text,
+                Published = !isDraft
+            };
+        }
+
+        private static string? ExtractBetween(string src, string startTag, string endTag) {
+            var start = src.IndexOf(startTag, StringComparison.OrdinalIgnoreCase);
+            if (start < 0) {
+                return null;
+            }
+            start += startTag.Length;
+            var end = src.IndexOf(endTag, start, StringComparison.OrdinalIgnoreCase);
+            if (end < 0) {
+                return null;
+            }
+            return src.Substring(start, end - start).Trim();
+        }
+
+        private static string? ExtractMeta(string html, string name) {
+            // crude pattern search for meta name="name" content="..."
+            var idx = html.IndexOf("<meta", StringComparison.OrdinalIgnoreCase);
+            int searchFrom = 0;
+            while (idx >= 0) {
+                var close = html.IndexOf('>', idx);
+                if (close < 0) {
+                    break;
+                }
+                var fragment = html.Substring(idx, close - idx + 1);
+                if (fragment.IndexOf("name=\"" + name + "\"", StringComparison.OrdinalIgnoreCase) >= 0) {
+                    var contentIdx = fragment.IndexOf("content=\"", StringComparison.OrdinalIgnoreCase);
+                    if (contentIdx >= 0) {
+                        contentIdx += 9; // len of content="
+                        var end = fragment.IndexOf('"', contentIdx);
+                        if (end > contentIdx) {
+                            return fragment.Substring(contentIdx, end - contentIdx).Trim();
+                        }
+                    }
+                }
+                searchFrom = close + 1;
+                idx = html.IndexOf("<meta", searchFrom, StringComparison.OrdinalIgnoreCase);
+            }
+            return null;
+        }
+
+        private static DateTime? TryParseMetaHttp(string html, string httpEquiv) {
+            // meta http-equiv="date" content="..."
+            var token = "http-equiv=\"" + httpEquiv + "\"";
+            var idx = html.IndexOf(token, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) {
+                return null;
+            }
+            var contentIdx = html.IndexOf("content=\"", idx, StringComparison.OrdinalIgnoreCase);
+            if (contentIdx < 0) {
+                return null;
+            }
+            contentIdx += 9;
+            var end = html.IndexOf('"', contentIdx);
+            if (end < 0) {
+                return null;
+            }
+            var val = html.Substring(contentIdx, end - contentIdx).Trim();
+            if (DateTime.TryParse(val, out var dt)) {
+                return dt;
+            }
+            return null;
+        }
+
+        private static string? ExtractHtmlLang(string html) {
+            var idx = html.IndexOf("<html", StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) {
+                return null;
+            }
+            var close = html.IndexOf('>', idx);
+            if (close < 0) {
+                return null;
+            }
+            var fragment = html.Substring(idx, close - idx + 1);
+            var langIdx = fragment.IndexOf("lang=\"", StringComparison.OrdinalIgnoreCase);
+            if (langIdx < 0) {
+                return null;
+            }
+            langIdx += 6;
+            var end = fragment.IndexOf('"', langIdx);
+            if (end < 0) {
+                return null;
+            }
+            return fragment.Substring(langIdx, end - langIdx);
         }
 
         private static string BuildMarkdown(ContentResource r) {

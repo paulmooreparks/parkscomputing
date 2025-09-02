@@ -5,21 +5,30 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 namespace ParksComputing.Engine.Api {
     /// <summary>Adds ProblemDetails and Xfer examples for 412 and 428 responses.</summary>
     public class ErrorExamplesOperationFilter : IOperationFilter {
-    private static readonly int[] Codes = { 400,401,403,404,409,412,428,429 };
+        private static readonly int[] Codes = { 400, 401, 403, 404, 409, 412, 428, 429 };
+
         public void Apply(OpenApiOperation operation, OperationFilterContext context) {
             foreach (var code in Codes) {
                 var key = code.ToString();
-                if (!operation.Responses.TryGetValue(key, out var resp)) { continue; }
+
+                if (!operation.Responses.TryGetValue(key, out var resp)) {
+                    continue;
+                }
+
                 resp.Content ??= new Dictionary<string, OpenApiMediaType>();
+
                 if (!resp.Content.ContainsKey("application/json")) {
                     resp.Content["application/json"] = new OpenApiMediaType {
                         Schema = new OpenApiSchema { Reference = new OpenApiReference { Type = ReferenceType.Schema, Id = "ProblemDetails" } }
                     };
                 }
+
                 var json = resp.Content["application/json"];
-                if (json.Example == null) { json.Example = ExampleJson(code); }
+
+                json.Example ??= ExampleJson(code);
                 var xfer = Xfer.XferService.ApplicationXfer;
                 var text = ExampleXfer(code);
+
                 resp.Content[xfer] = new OpenApiMediaType {
                     Schema = new OpenApiSchema { Type = "string", Description = "XferLang representation", Example = new Microsoft.OpenApi.Any.OpenApiString(text) },
                     Example = new Microsoft.OpenApi.Any.OpenApiString(text)

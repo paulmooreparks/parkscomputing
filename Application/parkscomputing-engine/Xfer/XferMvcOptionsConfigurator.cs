@@ -14,6 +14,7 @@ namespace ParksComputing.Engine.Xfer {
             if (!options.InputFormatters.Contains(_input)) {
                 options.InputFormatters.Insert(0, _input);
             }
+
             if (!options.OutputFormatters.Contains(_output)) {
                 options.OutputFormatters.Insert(0, _output);
             }
