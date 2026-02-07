@@ -1,0 +1,38 @@
+@using System.Globalization;
+@model ParksComputing.Engine.Pages.Models.PostsContentModel
+
+@{
+    var posts = Model.GetFilteredPosts();
+    var cssClass = "post-grid list-unstyled";
+    if (!string.IsNullOrEmpty(Model.Style)) {
+        cssClass += $" post-grid-{Model.Style}";
+    }
+}
+
+@if (posts.Any())
+{
+    <ul class="@cssClass">
+    @foreach (var post in posts)
+    {
+        <li class="post-card">
+            @if (Model.ShowDates) {
+                <div class="post-card-meta">
+                    @if (post.Date != null) {
+                        <time datetime="@post.Date.Value.ToString("s", CultureInfo.InvariantCulture)">@post.Date.Value.ToLongDateString()</time>
+                    }
+                    @if (post.Updated != null && post.Date != null && post.Updated.Value.ToUniversalTime() != post.Date.Value.ToUniversalTime()) {
+                        <span class="updated-on"> &nbsp;· Updated <time datetime="@post.Updated.Value.ToString("s", CultureInfo.InvariantCulture)">@post.Updated.Value.ToLongDateString()</time></span>
+                    }
+                </div>
+            }
+            <a class="post-card-title" href="@post.Url">@post.Title</a>
+            @if (Model.ShowExcerpts && !string.IsNullOrEmpty(post.Excerpt)) {
+                <p class="post-card-excerpt">@post.Excerpt</p>
+            }
+            <div class="mt-auto">
+                <a class="post-card-more" href="@post.Url">Read more &raquo;</a>
+            </div>
+        </li>
+    }
+    </ul>
+}

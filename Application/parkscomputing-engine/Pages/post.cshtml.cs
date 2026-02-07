@@ -25,46 +25,82 @@ namespace ParksComputing.Engine.Pages {
         public string? WpJson { get; set; }
 
         public async Task<IActionResult> OnGetAsync() {
-            object slugObject = HttpContext.Request.RouteValues["slug"]!;
-            string Baseurl = $"https://www.parkscomputing.com/wp-json/wp/v2/posts?slug={slugObject.ToString()}";
+            // Safely obtain slug from route values
+            if (!HttpContext.Request.RouteValues.TryGetValue("slug", out var slugObj) || slugObj is null) {
+                return NotFound(); // No slug route value
+            }
+
+            var slug = slugObj.ToString()?.Trim();
+            
+            if (string.IsNullOrEmpty(slug)) {
+                return NotFound();
+            }
+
+            string baseUrl = $"https://www.parkscomputing.com/wp-json/wp/v2/posts?slug={Uri.EscapeDataString(slug)}";
 
             try {
-                using (var client = new HttpClient()) {
-                    HttpRequestMessage request = new HttpRequestMessage();
-                    request.RequestUri = new Uri(Baseurl);
-                    request.Method = HttpMethod.Get;
-                    // request.Headers.Add("SecureApiKey", "12345");
-                    HttpResponseMessage response = await client.SendAsync(request);
-                    var responseString = response.Content.ReadAsStringAsync();
-                    var statusCode = response.StatusCode;
+                using var client = new HttpClient();
+                var response = await client.GetAsync(baseUrl);
 
-                    if (response.IsSuccessStatusCode) {
-                        string json = await response.Content.ReadAsStringAsync();
-                        var cvt = JsonSerializer.Deserialize<object>(json);
-                        JsonElement array = (JsonElement)cvt!;
-                        WpCreatedGmt = array[0].GetProperty("date_gmt").GetString()!;
-                        WpModifiedGmt = array[0].GetProperty("modified_gmt").GetString()!;
+                if (!response.IsSuccessStatusCode) {
+                    // Upstream WP API failure or slug not found
+                    return NotFound();
+                }
 
-                        var createDate = DateTime.ParseExact(WpCreatedGmt, "s", DateTimeFormatInfo.InvariantInfo);
-                        var modDate = DateTime.ParseExact(WpModifiedGmt, "s", DateTimeFormatInfo.InvariantInfo);
-                        WpCreated = createDate.ToLongDateString();
-                        WpModified = modDate.ToLongDateString();
+                var json = await response.Content.ReadAsStringAsync();
+                JsonDocument doc;
+                try {
+                    doc = JsonDocument.Parse(json);
+                }
+                catch {
+                    return StatusCode(502);
+                } // Invalid JSON from upstream
 
-                        var link = array[0].GetProperty("link").GetString();
-                        var linkUri = new Uri(link!);
+                var root = doc.RootElement;
+
+                if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() == 0) {
+                    return NotFound(); // No post returned for slug
+                }
+
+                var post = root[0];
+
+                // Defensive property extraction
+                if (post.TryGetProperty("date_gmt", out var dateGmt)) {
+                    WpCreatedGmt = dateGmt.GetString();
+                }
+
+                if (post.TryGetProperty("modified_gmt", out var modifiedGmt)) {
+                    WpModifiedGmt = modifiedGmt.GetString();
+                }
+
+                if (!string.IsNullOrEmpty(WpCreatedGmt) && DateTime.TryParseExact(WpCreatedGmt, "s", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out var createDate)) {
+                    WpCreated = createDate.ToLongDateString();
+                }
+
+                if (!string.IsNullOrEmpty(WpModifiedGmt) && DateTime.TryParseExact(WpModifiedGmt, "s", DateTimeFormatInfo.InvariantInfo, DateTimeStyles.None, out var modDate)) {
+                    WpModified = modDate.ToLongDateString();
+                }
+
+                if (post.TryGetProperty("link", out var linkProp)) {
+                    var linkStr = linkProp.GetString();
+                    if (!string.IsNullOrEmpty(linkStr) && Uri.TryCreate(linkStr, UriKind.Absolute, out var linkUri)) {
                         WpLink = linkUri.PathAndQuery;
-
-                        WpTitle = array[0].GetProperty("title").GetProperty("rendered").GetString()!;
-                        WpContent = array[0].GetProperty("content").GetProperty("rendered").GetString()!;
-
-                        // Url
-                    }
-                    else {
-                        //API Call Failed, Check Error Details
                     }
                 }
+
+                if (post.TryGetProperty("title", out var titleProp) && titleProp.TryGetProperty("rendered", out var titleRendered)) {
+                    WpTitle = titleRendered.GetString();
+                }
+
+                if (post.TryGetProperty("content", out var contentProp) && contentProp.TryGetProperty("rendered", out var contentRendered)) {
+                    WpContent = contentRendered.GetString();
+                }
+            }
+            catch (HttpRequestException) {
+                return StatusCode(503); // Upstream temporary issue
             }
             catch (Exception) {
+                // Let higher middleware handle unexpected errors
                 throw;
             }
 

@@ -2,7 +2,27 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../../../../bin"
+		},
+		{
+			"path": "../../../../OneDrive/Documents/padmajairam.com"
+		},
+		{
+			"path": "../../../../.config/docker-sites"
+		},
+		{
+			"path": "../../../../OneDrive/Documents/parkscomputing.com"
+		},
+		{
+			"path": "../../../../wordpress-padmajairam"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"powershell.cwd": "parkscomputing",
+		"markdownlint.config": {
+			"MD033": false
+		}
+	}
 }

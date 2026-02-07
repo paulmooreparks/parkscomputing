@@ -1,0 +1,29 @@
+@model ParksComputing.Engine.Pages.Models.NavContentModel
+@{
+    var navNode = Model.NavNode;
+    var containerClass = Model.GetContainerCssClass();
+}
+
+@if (navNode != null && navNode.Nav != null)
+{
+    <nav class="@containerClass" aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            @if (Model.ShowRoot)
+            {
+                <li class="breadcrumb-item">
+                    <a href="@navNode.Url">@navNode.Title</a>
+                </li>
+            }
+
+            @foreach (var link in navNode.Nav.Take(Model.MaxDepth))
+            {
+                if (link != null)
+                {
+                    <li class="breadcrumb-item">
+                        <a href="@link.Url">@link.Title</a>
+                    </li>
+                }
+            }
+        </ol>
+    </nav>
+}

@@ -1,0 +1,70 @@
+@model ParksComputing.Engine.Pages.Models.NavContentModel
+@{
+    var navNode = Model.NavNode;
+    var containerClass = Model.GetContainerCssClass();
+}
+
+@if (navNode != null)
+{
+    <ul class="@containerClass navbar-nav">
+        @if (Model.ShowRoot)
+        {
+            var rootTip = Model.ShowDescriptions ? (navNode.Description ?? navNode.Excerpt ?? navNode.Title ?? string.Empty) : "";
+            <li class="nav-item">
+                <a class="nav-link" href="@navNode.Url"
+                   @if (Model.ShowDescriptions && !string.IsNullOrEmpty(rootTip)) {
+                       <text>data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title="@rootTip"</text>
+                   }>@navNode.Title</a>
+            </li>
+        }
+
+        @if (navNode.Nav != null && Model.MaxDepth > 0)
+        {
+            // Determine the index of the last dropdown (nav item that itself has children)
+            var lastDropdownIndex = System.Array.FindLastIndex(navNode.Nav, n => n?.Nav != null && n.Nav.Length > 0);
+            for (int i = 0; i < navNode.Nav.Length; i++)
+            {
+                var link = navNode.Nav[i];
+                var linkTip = Model.ShowDescriptions ? (link?.Description ?? link?.Excerpt ?? link?.Title ?? string.Empty) : "";
+                if (link?.Nav != null && link.Nav.Length > 0 && Model.MaxDepth > 1)
+                {
+                    // Apply Bootstrap's end alignment only to the final dropdown to avoid viewport overflow.
+                    var menuClasses = (i == lastDropdownIndex) ? "dropdown-menu dropdown-menu-end" : "dropdown-menu";
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="@link.Url" role="button" data-bs-toggle="dropdown" aria-expanded="false"
+                           @if (Model.ShowDescriptions && !string.IsNullOrEmpty(linkTip)) {
+                               <text>data-bs-delay='{"show":150,"hide":50}' title="@linkTip"</text>
+                           }>@link.Title</a>
+                        <ul class="@menuClasses">
+                            @foreach (var sublink in link.Nav)
+                            {
+                                var subTip = Model.ShowDescriptions ? (sublink?.Description ?? sublink?.Excerpt ?? sublink?.Title ?? string.Empty) : "";
+                                if (sublink != null)
+                                {
+                                    <li>
+                                        <a class="dropdown-item" href="@sublink.Url"
+                                           @if (Model.ShowDescriptions && !string.IsNullOrEmpty(subTip)) {
+                                               <text>data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title="@subTip"</text>
+                                           }
+                                           @if (!string.IsNullOrEmpty(sublink.Target)) {
+                                               <text>target="@sublink.Target"</text>
+                                           }>@sublink.Title</a>
+                                    </li>
+                                }
+                            }
+                        </ul>
+                    </li>
+                }
+                else
+                {
+                    <li class="nav-item">
+                        <a class="nav-link" href="@link?.Url"
+                           @if (Model.ShowDescriptions && !string.IsNullOrEmpty(linkTip)) {
+                               <text>data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title="@linkTip"</text>
+                           }>@link?.Title</a>
+                    </li>
+                }
+            }
+        }
+    </ul>
+}

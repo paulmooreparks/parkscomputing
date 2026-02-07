@@ -9,8 +9,10 @@ using HtmlAgilityPack;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using System.IO;
 using ParksComputing.Engine.Pages.Services;
+using ParksComputing.Engine.Pages.Models;
 using System.Collections.Generic;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
@@ -43,7 +45,8 @@ namespace ParksComputing.Engine.Pages {
 
         public IOptions<CommentServiceConfig> CommentServiceConfig { get; set; }
         public ICommentService CommentService { get; set; }
-        protected IHostEnvironment Environment { get; set; }
+        public INavService NavService { get; set; }
+        protected IWebHostEnvironment Environment { get; set; }
         protected IHttpClientFactory ClientFactory { get; set; }
         public List<CommentResponse>? CommentResponse { get; set; }
         public string CommentStatus { get; set; } = string.Empty;
@@ -55,6 +58,7 @@ namespace ParksComputing.Engine.Pages {
             Environment = services.Environment;
             ClientFactory = services.ClientFactory;
             CommentService = services.CommentService;
+            NavService = services.NavService;
         }
 
         virtual public Task<IActionResult> OnGetAsync() {
@@ -107,7 +111,7 @@ namespace ParksComputing.Engine.Pages {
 
         protected Task<IActionResult> RetrievePage(string slug) {
             try {
-                var baseDir = $"{Environment.ContentRootPath}/wwwroot/content";
+                var baseDir = $"{Environment.WebRootPath}/content";
                 // Prefer markdown first
                 var mdPath = Path.Combine(baseDir, slug + ".md");
                 if (System.IO.File.Exists(mdPath)) {
@@ -244,10 +248,30 @@ namespace ParksComputing.Engine.Pages {
             } catch { return null; }
         }
 
+        protected virtual string ProcessContentPlaceholders(string content) {
+            // Process custom elements
+            var customElements = CustomElementParser.ParseCustomElements(content);
+
+            foreach (var element in customElements)
+            {
+                if (element.TagName == "nav-content")
+                {
+                    var marker = $"RENDER_NAV_{Guid.NewGuid():N}";
+                    var navModel = NavContentModel.FromAttributes(element.Attributes, NavService.GetRoot());
+                    ViewData[marker] = navModel; // Store NavContentModel for rendering
+                    content = CustomElementParser.ReplaceCustomElement(content, element, marker);
+                }
+            }
+
+            return content;
+        }
+
         private Task<IActionResult> ExtractAndRender(HtmlDocument doc, string slug) {
             var node = doc.DocumentNode.SelectSingleNode("//body");
             if (node is null) { return Task.FromResult<IActionResult>(NotFound()); }
-            PageContent = node.InnerHtml;
+
+            // Process placeholders in the content
+            PageContent = ProcessContentPlaceholders(node.InnerHtml);
 
             var titleElement = doc.DocumentNode.SelectSingleNode("//title");
             if (titleElement is not null) { Title = titleElement.InnerText; }

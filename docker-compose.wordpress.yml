@@ -1,0 +1,40 @@
+version: '3.9'
+
+services:
+  wpdb:
+    image: mysql:8.0
+    container_name: padmajairam-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+      MYSQL_ROOT_PASSWORD: rootwordpress
+    command: ["--default-authentication-plugin=mysql_native_password", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - wpdb_data:/var/lib/mysql
+    ports:
+      - "3308:3306"
+
+  wordpress:
+    image: wordpress:latest
+    container_name: padmajairam-wp
+    restart: unless-stopped
+    depends_on:
+      - wpdb
+    environment:
+      WORDPRESS_DB_HOST: wpdb:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_TABLE_PREFIX: wp_
+      WORDPRESS_DEBUG: 'true'
+    volumes:
+      - wp_content:/var/www/html/wp-content
+      - ./wp-local-uploads:/var/www/html/wp-content/uploads
+    ports:
+      - "8085:80"
+
+volumes:
+  wpdb_data:
+  wp_content:

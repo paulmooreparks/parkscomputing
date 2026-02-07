@@ -1,0 +1,62 @@
+@model ParksComputing.Engine.Pages.Models.NavContentModel
+@{
+    var navNode = Model.NavNode;
+    var containerClass = Model.GetContainerCssClass();
+}
+
+@if (navNode != null && navNode.Nav != null)
+{
+    <div class="@containerClass">
+        @if (Model.ShowRoot && !string.IsNullOrEmpty(navNode.Title))
+        {
+            var rootTip = Model.ShowDescriptions ? (navNode.Description ?? navNode.Excerpt ?? navNode.Title ?? string.Empty) : "";
+            <div class="nav-sidebar-header">
+                <a class="nav-sidebar-title" href="@navNode.Url">@navNode.Title</a>
+                @if (Model.ShowDescriptions && !string.IsNullOrEmpty(rootTip))
+                {
+                    <div class="nav-sidebar-description">@rootTip</div>
+                }
+            </div>
+        }
+
+        <ul class="nav-sidebar-list list-unstyled">
+            @foreach (var link in navNode.Nav)
+            {
+                var linkTip = Model.ShowDescriptions ? (link?.Description ?? link?.Excerpt ?? link?.Title ?? string.Empty) : "";
+                if (link != null)
+                {
+                    <li class="nav-sidebar-item">
+                        <a class="nav-sidebar-link" href="@link.Url">@link.Title</a>
+                        @if (Model.ShowDescriptions && !string.IsNullOrEmpty(linkTip))
+                        {
+                            <div class="nav-sidebar-item-description">@linkTip</div>
+                        }
+
+                        @if (link.Nav != null && link.Nav.Length > 0 && Model.MaxDepth > 1)
+                        {
+                            <ul class="nav-sidebar-submenu list-unstyled">
+                                @foreach (var sublink in link.Nav)
+                                {
+                                    var subTip = Model.ShowDescriptions ? (sublink?.Description ?? sublink?.Excerpt ?? sublink?.Title ?? string.Empty) : "";
+                                    if (sublink != null)
+                                    {
+                                        <li class="nav-sidebar-subitem">
+                                            <a class="nav-sidebar-sublink" href="@sublink.Url"
+                                               @if (!string.IsNullOrEmpty(sublink.Target)) {
+                                                   <text>target="@sublink.Target"</text>
+                                               }>@sublink.Title</a>
+                                            @if (Model.ShowDescriptions && !string.IsNullOrEmpty(subTip))
+                                            {
+                                                <div class="nav-sidebar-sub-description">@subTip</div>
+                                            }
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        }
+                    </li>
+                }
+            }
+        </ul>
+    </div>
+}

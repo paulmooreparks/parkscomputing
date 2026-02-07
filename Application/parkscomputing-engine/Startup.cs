@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -21,7 +22,6 @@ using System.Text;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
@@ -100,6 +100,7 @@ namespace ParksComputing.Engine {
             }
 
             services.AddDbContext<ParksComputing.Engine.Auth.AuthDbContext>(options => {
+                // Use SQL Server for all database connections
                 options.UseSqlServer(configuredConn, sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(5), null));
             });
 

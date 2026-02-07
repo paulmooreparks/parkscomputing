@@ -1,0 +1,25 @@
+@using System.Globalization;
+@model ParksComputing.Engine.Pages.Models.PostsContentModel
+
+@{
+    var posts = Model.GetFilteredPosts();
+    var cssClass = "post-links";
+    if (!string.IsNullOrEmpty(Model.Style)) {
+        cssClass += $" post-links-{Model.Style}";
+    }
+}
+
+@if (posts.Any())
+{
+    <ul class="@cssClass list-unstyled">
+    @foreach (var post in posts)
+    {
+        <li class="post-link-item">
+            @if (Model.ShowDates && post.Date != null) {
+                <span class="post-link-date">@post.Date.Value.ToShortDateString()</span>
+            }
+            <a class="post-link-title" href="@post.Url">@post.Title</a>
+        </li>
+    }
+    </ul>
+}

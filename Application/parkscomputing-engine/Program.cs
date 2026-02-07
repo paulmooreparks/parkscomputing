@@ -24,6 +24,8 @@ namespace ParksComputing.Engine {
             WebHost.CreateDefaultBuilder(args)
                 // Bind to provided ASPNETCORE_URLS or fall back to all interfaces on 8080 for container hosting
                 .UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://0.0.0.0:8080")
+                // Allow override of web root path for development
+                .UseWebRoot(Environment.GetEnvironmentVariable("ASPNETCORE_WEBROOT") ?? "wwwroot")
                 .UseStartup<Startup>();
     }
 }

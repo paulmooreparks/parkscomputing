@@ -8,19 +8,20 @@ using System.Threading.Tasks;
 using Markdig;
 
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Hosting;
 
 using ParksComputing.Xfer.Lang; // Xfer language parsing
 using Microsoft.Extensions.Logging;
 namespace ParksComputing.Engine.Pages.Services {
     public class NavService : INavService {
-    private IHostEnvironment Environment { get; set; }
+    private IWebHostEnvironment Environment { get; set; }
     private readonly ILogger<NavService> _logger;
 
         private readonly object _sync = new();
         private DateTime _lastWriteUtc;
     private NavNode? _cached;
 
-        public NavService(IHostEnvironment environment, ILogger<NavService> logger) {
+        public NavService(IWebHostEnvironment environment, ILogger<NavService> logger) {
             Environment = environment;
             _logger = logger;
         }
@@ -41,7 +42,7 @@ namespace ParksComputing.Engine.Pages.Services {
         }
 
         public NavNode GetRoot() {
-            var xferPath = Path.Combine(Environment.ContentRootPath, "wwwroot", "sitenav.xfer");
+            var xferPath = Path.Combine(Environment.WebRootPath, "sitenav.xfer");
             if (!File.Exists(xferPath)) { return _cached ?? new NavNode { Slug = "root" }; }
             DateTime writeUtc = File.GetLastWriteTimeUtc(xferPath);
             if (_cached != null && writeUtc == _lastWriteUtc) { return _cached; }
@@ -156,7 +157,7 @@ namespace ParksComputing.Engine.Pages.Services {
 
     private bool TryEnrichFromMarkdown(NavNode post) {
             try {
-                var mdPath = Path.Combine(Environment.ContentRootPath, "wwwroot", "content", post.Slug + ".md");
+                var mdPath = Path.Combine(Environment.WebRootPath, "content", post.Slug + ".md");
                 if (!File.Exists(mdPath)) { return false; }
                 string raw = File.ReadAllText(mdPath);
                 string frontMatter = string.Empty;
@@ -229,7 +230,7 @@ namespace ParksComputing.Engine.Pages.Services {
 
     private bool TryEnrichFromHtml(NavNode post) {
             try {
-                var contentPath = Path.Combine(Environment.ContentRootPath, "wwwroot", "content", post.Slug + ".html");
+                var contentPath = Path.Combine(Environment.WebRootPath, "content", post.Slug + ".html");
                 if (!File.Exists(contentPath)) { return false; }
                 var doc = new HtmlDocument();
                 doc.Load(contentPath);

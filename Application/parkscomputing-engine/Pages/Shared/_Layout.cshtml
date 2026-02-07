@@ -17,21 +17,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <title>Parks Computing - @ViewData["Title"]</title>
+    <title>@ViewData["Title"]</title>
 
-    <environment include="Development">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
-              integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65"
-              crossorigin="anonymous">
-        <link rel="stylesheet" href="~/css/site.css" />
-    </environment>
-    <environment exclude="Development">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
-              integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65"
-              crossorigin="anonymous">
-    <link rel="stylesheet" href="~/css/site.min.css" />
-    </environment>
-    <link rel="alternate" type="application/rss+xml" title="RSS Feed for ParksComputing.com" href="/rss">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+            integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65"
+            crossorigin="anonymous">
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed for @ViewData["Title"]" href="/rss">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -50,6 +42,7 @@
 </head>
 <body>
     <header>
+        @Html.RenderStaticFile("/content/header-section.html", FileReaderService)
         <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
             <div class="container-fluid">
                 <a class="navbar-brand" href="/"><img src="~/favicon-32x32.png"/></a>
@@ -65,6 +58,7 @@
         </nav>
     </header>
     <div class="container">
+        @Html.RenderStaticFile("/content/main-section.html", FileReaderService)
         <div class="content-body">
         @RenderBody()
         @{
@@ -73,7 +67,7 @@
             bool commentsEnabled = ViewData["CommentsEnabled"] as bool? ?? false;
             bool commentsAllowed = ViewData["CommentsAllowed"] as bool? ?? false;
         }
-    @await Component.InvokeAsync("Comments", new { pageId = pageIdLocal, commentsEnabled = Model.CommentsEnabled, commentsAllowed = Model.CommentsAllowed, commentPosted = Model.CommentPosted })
+    @await Component.InvokeAsync("Comments", new { pageId = pageIdLocal, commentsEnabled = commentsEnabled, commentsAllowed = commentsAllowed, commentPosted = (ViewData["CommentPosted"] as bool? ?? false) })
         </div>
     </div>
 
@@ -98,7 +92,7 @@
                 integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
                 crossorigin="anonymous"></script>
     </environment>
-    <script src="~/js/site.min.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));

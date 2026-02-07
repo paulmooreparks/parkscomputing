@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver-local
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=ParksComputing123!
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'ParksComputing123!' -Q 'SELECT 1' -C"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  parkscomputing:
+    image: parkscomputing-local:dev
+    container_name: parkscomputing-dev
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - AUTH_CONNECTION_STRING=Server=sqlserver,1433;Database=ParksComputingAuth;User Id=sa;Password=ParksComputing123!;TrustServerCertificate=true;Encrypt=false;
+      - JWT_SECRET=DVL5rfK4o4g1KYai7OHjJlG4RbaP3f2kPQ/GAt4CASU=
+    ports:
+      - "80:8080"
+    volumes:
+      - C:\Users\paul\OneDrive\Documents\parkscomputing.com\wwwroot:/app/wwwroot:ro
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  padmajairam:
+    image: padmajairam-local:dev
+    container_name: padmajairam-dev
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - AUTH_CONNECTION_STRING=Server=sqlserver,1433;Database=PadmaJairamSite;User Id=sa;Password=ParksComputing123!;TrustServerCertificate=true;Encrypt=false;
+      - JWT_SECRET=DVL5rfK4o4g1KYai7OHjJlG4RbaP3f2kPQ/GAt4CASU=
+    ports:
+      - "8081:8080"
+    volumes:
+      - C:\Users\paul\OneDrive\Documents\padmajairam.com\wwwroot:/app/wwwroot:ro
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  sqlserver-data:
+    external: true

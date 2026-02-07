@@ -1,0 +1,28 @@
+@using System.Globalization;
+@model ParksComputing.Engine.Pages.Models.PostsContentModel
+
+@{
+    var posts = Model.GetFilteredPosts();
+    var cssClass = "post-excerpts";
+    if (!string.IsNullOrEmpty(Model.Style)) {
+        cssClass += $" post-excerpts-{Model.Style}";
+    }
+}
+
+@if (posts.Any())
+{
+    <div class="@cssClass">
+    @foreach (var post in posts)
+    {
+        <article class="post-excerpt-item">
+            @if (Model.ShowDates && post.Date != null) {
+                <time class="post-excerpt-date" datetime="@post.Date.Value.ToString("s", CultureInfo.InvariantCulture)">@post.Date.Value.ToLongDateString()</time>
+            }
+            <h3 class="post-excerpt-title"><a href="@post.Url">@post.Title</a></h3>
+            @if (Model.ShowExcerpts && !string.IsNullOrEmpty(post.Excerpt)) {
+                <p class="post-excerpt-text">@post.Excerpt</p>
+            }
+        </article>
+    }
+    </div>
+}

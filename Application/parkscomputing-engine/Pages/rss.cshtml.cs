@@ -10,12 +10,10 @@ using System;
 
 namespace ParksComputing.Engine.Pages {
     public class RssModel : PageLoaderModel {
-        public INavService NavService { get; set; }
-    public NavNode? Root { get; set; }
+        public NavNode? Root { get; set; }
         public List<string>? NavNodes { get; set; } = new();
 
         public RssModel(AppServices services) : base(services) {
-            NavService = services.NavService;
         }
 
         override public Task<IActionResult> OnGetAsync() {

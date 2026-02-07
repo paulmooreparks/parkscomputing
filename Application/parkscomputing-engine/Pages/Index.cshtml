@@ -1,5 +1,7 @@
 ﻿@page "/"
 @using System.Globalization;
+@using System.IO;
+@using ParksComputing.Engine.Pages.Models;
 @model ParksComputing.Engine.Pages.IndexModel
 @{
     Layout = "_Layout";
@@ -31,29 +33,75 @@
 }
 
 <div class="main-container">
-    @Html.Raw(Model.PageContent)
-</div>
+    @{
+        var processedContent = Model.PageContent;
 
-@if (Model.Root?.Posts != null)
-{
-    <ul class="post-grid list-unstyled">
-    @foreach (var post in Model.Root.Posts)
-    {
-        <li class="post-card">
-            <div class="post-card-meta">
-                @if (post.Date != null) {
-                    <time datetime="@post.Date.Value.ToString("s", CultureInfo.InvariantCulture)">@post.Date.Value.ToLongDateString()</time>
+        if (processedContent != null)
+        {
+            // Process all RENDER_POSTS_ markers
+            foreach (var key in ViewData.Keys.Where(k => k.StartsWith("RENDER_POSTS_")))
+            {
+                if (ViewData[key] is PostsContentModel model && processedContent.Contains(key))
+                {
+                    var partialName = model.Format switch
+                    {
+                        "links" => "_PostsLinks",
+                        "excerpts" => "_PostsExcerpts",
+                        _ => "_PostsPartial" // cards format (default)
+                    };
+
+                    var postsHtml = await Html.PartialAsync(partialName, model);
+
+                    // Convert IHtmlContent to string properly
+                    using var writer = new StringWriter();
+                    postsHtml.WriteTo(writer, System.Text.Encodings.Web.HtmlEncoder.Default);
+                    var postsString = writer.ToString();
+
+                    processedContent = processedContent.Replace(key, postsString);
                 }
-                @if (post.Updated != null && post.Date != null && post.Updated.Value.ToUniversalTime() != post.Date.Value.ToUniversalTime()) {
-                    <span class="updated-on"> &nbsp;· Updated <time datetime="@post.Updated.Value.ToString("s", CultureInfo.InvariantCulture)">@post.Updated.Value.ToLongDateString()</time></span>
+            }
+
+            // Process all RENDER_NAV_ markers
+            foreach (var key in ViewData.Keys.Where(k => k.StartsWith("RENDER_NAV_")))
+            {
+                // Debug: Check what's in ViewData
+                var debugInfo = $"Found nav marker: {key}, Value type: {ViewData[key]?.GetType().Name ?? "null"}";
+                processedContent = processedContent.Replace(key, $"<!-- DEBUG: {debugInfo} --> {key}");
+
+                if (ViewData[key] is NavContentModel navModel && processedContent.Contains(key))
+                {
+                    var partialName = navModel.Format switch
+                    {
+                        "vertical" => "_NavVertical",
+                        "breadcrumb" => "_NavBreadcrumb",
+                        "sidebar" => "_NavSidebar",
+                        _ => "_NavHorizontal" // horizontal format (default)
+                    };
+
+                    var navHtml = await Html.PartialAsync(partialName, navModel);
+
+                    // Convert IHtmlContent to string properly
+                    using var writer = new StringWriter();
+                    navHtml.WriteTo(writer, System.Text.Encodings.Web.HtmlEncoder.Default);
+                    var navString = writer.ToString();
+
+                    processedContent = processedContent.Replace(key, navString);
                 }
-            </div>
-            <a class="post-card-title" href="@post.Url">@post.Title</a>
-            <p class="post-card-excerpt">@post.Excerpt</p>
-            <div class="mt-auto">
-                <a class="post-card-more" href="@post.Url">Read more &raquo;</a>
-            </div>
-        </li>
+            }
+
+            // Legacy support for old RENDER_POSTS_HERE marker
+            if (processedContent.Contains("RENDER_POSTS_HERE") && Model.Root?.Posts != null)
+            {
+                var legacyModel = new PostsContentModel { NavNode = Model.Root };
+                var postsHtml = await Html.PartialAsync("_PostsPartial", legacyModel);
+
+                using var writer = new StringWriter();
+                postsHtml.WriteTo(writer, System.Text.Encodings.Web.HtmlEncoder.Default);
+                var postsString = writer.ToString();
+
+                processedContent = processedContent.Replace("RENDER_POSTS_HERE", postsString);
+            }
+        }
     }
-    </ul>
-}
+    @Html.Raw(processedContent)
+</div>

@@ -87,11 +87,15 @@
                 }
             ]
         }
-        { slug "resume-of-paul-m-parks" title "My Résumé" }
+        {
+            slug "resume-of-paul-m-parks"
+            title "My Résumé"
+        }
     ]
     posts [
         </ { slug "xferlang-site-navigation" } />
         </ { slug "my-llm-experience" } />
+        { slug "parks-laws-of-debugging" }
         {
             slug "sudoku"
             excerpt <"I didn't like most of the Sudoku apps I found, so I decided to write one as a fun little evening and weekend project. It lets you edit and share games.">
