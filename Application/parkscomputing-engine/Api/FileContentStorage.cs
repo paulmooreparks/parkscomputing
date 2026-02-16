@@ -70,7 +70,7 @@ namespace ParksComputing.Engine.Api {
                 throw new ArgumentException("Id required");
             }
 
-            var id = resource.Id.Replace('\\','/');
+            var id = resource.Id.Replace('\\', '/');
             var fullDir = ContentRoot;
             var name = id;
 
@@ -133,14 +133,14 @@ namespace ParksComputing.Engine.Api {
         }
 
         private bool IsDraft(string fullPath) {
-            var rel = Path.GetRelativePath(ContentRoot, fullPath).Replace('\\','/');
+            var rel = Path.GetRelativePath(ContentRoot, fullPath).Replace('\\', '/');
             var segments = rel.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             return segments.Any(s => string.Equals(s, _options.DraftsFolderName, StringComparison.OrdinalIgnoreCase));
         }
 
         private ContentResource ParseMarkdownFile(string id, string text, bool isDraft) {
-            DateTime? created = null, updated = null; 
-            string? title = null, description = null, lang = null; 
+            DateTime? created = null, updated = null;
+            string? title = null, description = null, lang = null;
             var tags = new List<string>();
             string body = text;
 
