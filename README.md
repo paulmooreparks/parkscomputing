@@ -4,7 +4,7 @@ This is the source code for my personal web site, https://www.parkscomputing.com
 
 ## Content Management
 
-Production content is stored locally in `C:\Users\paul\OneDrive\Documents\parkscomputing.com\wwwroot` and mounted as a read-only volume into the Docker container.
+Production content is stored locally and mounted as a read-only volume into the Docker container.
 
 The `Application/parkscomputing-engine/wwwroot` directory contains development/testing content.
 
