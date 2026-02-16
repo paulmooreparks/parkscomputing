@@ -1,0 +1,212 @@
+@model IEnumerable<ParksComputing.Engine.Api.ContentResource>
+@{
+    ViewData["Title"] = "Posts";
+    var tag = ViewData["Tag"] as string;
+    var tags = ViewData["Tags"] as string;
+    var currentPage = (int)ViewData["Page"];
+    var totalPages = (int)ViewData["TotalPages"];
+    var total = (int)ViewData["Total"];
+    
+    if (!string.IsNullOrEmpty(tag))
+    {
+        ViewData["Title"] = $"Posts tagged with '{tag}'";
+    }
+    else if (!string.IsNullOrEmpty(tags))
+    {
+        ViewData["Title"] = $"Posts tagged with '{tags}'";
+    }
+}
+
+<h1>@ViewData["Title"]</h1>
+
+@if (!string.IsNullOrEmpty(tag) || !string.IsNullOrEmpty(tags))
+{
+    <p class="filter-info">
+        Showing @total post@(total == 1 ? "" : "s") 
+        @if (!string.IsNullOrEmpty(tag))
+        {
+            <span>tagged with <strong>@tag</strong></span>
+        }
+        else if (!string.IsNullOrEmpty(tags))
+        {
+            <span>tagged with <strong>@tags</strong></span>
+        }
+        | <a href="/posts">Show all posts</a>
+    </p>
+}
+else
+{
+    <p>Showing all @total post@(total == 1 ? "" : "s")</p>
+}
+
+@if (Model.Any())
+{
+    <div class="posts-list">
+        @foreach (var post in Model)
+        {
+            <article class="post-summary">
+                <h2><a href="/@post.Id">@post.Title</a></h2>
+                
+                @if (!string.IsNullOrEmpty(post.Description))
+                {
+                    <p class="description">@post.Description</p>
+                }
+                
+                <div class="post-meta">
+                    @if (post.CreatedUtc.HasValue)
+                    {
+                        <span class="date">@post.CreatedUtc.Value.ToString("MMMM d, yyyy")</span>
+                    }
+                    
+                    @if (post.Tags != null && post.Tags.Any())
+                    {
+                        <div class="tags">
+                            <span class="tags-label">Tags:</span>
+                            @foreach (var postTag in post.Tags)
+                            {
+                                <a href="/posts?tag=@Uri.EscapeDataString(postTag)" class="tag">@postTag</a>
+                            }
+                        </div>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+    
+    @if (totalPages > 1)
+    {
+        <nav class="pagination">
+            @if (currentPage > 1)
+            {
+                var prevUrl = "/posts";
+                if (!string.IsNullOrEmpty(tag)) { prevUrl += $"?tag={Uri.EscapeDataString(tag)}"; }
+                else if (!string.IsNullOrEmpty(tags)) { prevUrl += $"?tags={Uri.EscapeDataString(tags)}"; }
+                if (currentPage > 2) { prevUrl += (prevUrl.Contains("?") ? "&" : "?") + $"page={currentPage - 1}"; }
+                
+                <a href="@prevUrl" class="pagination-link">← Previous</a>
+            }
+            
+            <span class="pagination-info">Page @currentPage of @totalPages</span>
+            
+            @if (currentPage < totalPages)
+            {
+                var nextUrl = "/posts";
+                if (!string.IsNullOrEmpty(tag)) { nextUrl += $"?tag={Uri.EscapeDataString(tag)}"; }
+                else if (!string.IsNullOrEmpty(tags)) { nextUrl += $"?tags={Uri.EscapeDataString(tags)}"; }
+                nextUrl += (nextUrl.Contains("?") ? "&" : "?") + $"page={currentPage + 1}";
+                
+                <a href="@nextUrl" class="pagination-link">Next →</a>
+            }
+        </nav>
+    }
+}
+else
+{
+    <div class="no-posts">
+        <p>No posts found matching your criteria.</p>
+        <p><a href="/posts">View all posts</a></p>
+    </div>
+}
+
+<style>
+    .filter-info {
+        background: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    
+    .posts-list {
+        margin-bottom: 30px;
+    }
+    
+    .post-summary {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .post-summary:last-child {
+        border-bottom: none;
+    }
+    
+    .post-summary h2 {
+        margin-bottom: 10px;
+    }
+    
+    .post-summary h2 a {
+        text-decoration: none;
+        color: #333;
+    }
+    
+    .post-summary h2 a:hover {
+        color: #0066cc;
+    }
+    
+    .description {
+        color: #666;
+        margin-bottom: 10px;
+    }
+    
+    .post-meta {
+        font-size: 0.9em;
+        color: #666;
+    }
+    
+    .date {
+        margin-right: 15px;
+    }
+    
+    .tags {
+        display: inline-block;
+    }
+    
+    .tags-label {
+        margin-right: 5px;
+    }
+    
+    .tag {
+        display: inline-block;
+        background: #e7f3ff;
+        color: #0066cc;
+        padding: 2px 8px;
+        margin: 0 4px 4px 0;
+        border-radius: 3px;
+        text-decoration: none;
+        font-size: 0.85em;
+    }
+    
+    .tag:hover {
+        background: #d0e7ff;
+    }
+    
+    .pagination {
+        text-align: center;
+        padding: 20px 0;
+    }
+    
+    .pagination-link {
+        background: #f0f0f0;
+        padding: 8px 16px;
+        margin: 0 10px;
+        text-decoration: none;
+        border-radius: 4px;
+        color: #333;
+    }
+    
+    .pagination-link:hover {
+        background: #e0e0e0;
+    }
+    
+    .pagination-info {
+        margin: 0 15px;
+        color: #666;
+    }
+    
+    .no-posts {
+        text-align: center;
+        padding: 40px;
+        background: #f9f9f9;
+        border-radius: 8px;
+    }
+</style>

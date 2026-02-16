@@ -1,0 +1,70 @@
+/* ==========================================================================
+   Essential Accessibility Enhancements - CSS Only
+   ========================================================================== */
+
+/* Focus indicators for keyboard navigation */
+*:focus {
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+}
+
+/* Screen reader only content */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Ensure interactive elements are large enough for touch */
+button,
+input[type="button"],
+input[type="submit"],
+a {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Ensure text remains readable when zoomed to 200% */
+@media (min-width: 1280px) {
+    html {
+        font-size: 18px;
+    }
+}
+
+/* Print styles for better accessibility */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    a[href]:after {
+        content: " (" attr(href) ")";
+        font-size: 0.8em;
+        color: #666;
+    }
+
+    a[href^="/"]:after {
+        content: " (https://parkscomputing.com" attr(href) ")";
+    }
+}

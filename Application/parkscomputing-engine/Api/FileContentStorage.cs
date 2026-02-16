@@ -139,7 +139,10 @@ namespace ParksComputing.Engine.Api {
         }
 
         private ContentResource ParseMarkdownFile(string id, string text, bool isDraft) {
-            DateTime? created = null, updated = null; string? title = null, description = null, lang = null; string body = text;
+            DateTime? created = null, updated = null; 
+            string? title = null, description = null, lang = null; 
+            var tags = new List<string>();
+            string body = text;
 
             if (text.StartsWith("---")) {
                 int second = text.IndexOf("\n---", 3, StringComparison.Ordinal);
@@ -190,6 +193,27 @@ namespace ParksComputing.Engine.Api {
                             case "lang":
                                 lang ??= val;
                                 break;
+
+                            case "tags":
+                                // Parse tags as JSON array or comma-separated values
+                                if (val.StartsWith("[") && val.EndsWith("]")) {
+                                    // JSON array format: ["programming", "algorithms"]
+                                    try {
+                                        var tagArray = System.Text.Json.JsonSerializer.Deserialize<string[]>(val);
+                                        if (tagArray != null) {
+                                            tags.AddRange(tagArray);
+                                        }
+                                    }
+                                    catch {
+                                        // Fallback to comma-separated if JSON parsing fails
+                                        tags.AddRange(val.Trim('[', ']').Split(',').Select(t => t.Trim().Trim('"')).Where(t => !string.IsNullOrWhiteSpace(t)));
+                                    }
+                                }
+                                else {
+                                    // Comma-separated format: programming, algorithms
+                                    tags.AddRange(val.Split(',').Select(t => t.Trim()).Where(t => !string.IsNullOrWhiteSpace(t)));
+                                }
+                                break;
                         }
                     }
                 }
@@ -204,7 +228,8 @@ namespace ParksComputing.Engine.Api {
                 UpdatedUtc = updated ?? created,
                 Language = lang,
                 RawMarkdown = text,
-                Published = !isDraft
+                Published = !isDraft,
+                Tags = tags
             };
         }
 
@@ -335,6 +360,10 @@ namespace ParksComputing.Engine.Api {
 
             if (!string.IsNullOrWhiteSpace(r.Language)) {
                 sb.AppendLine($"lang: {r.Language}");
+            }
+
+            if (r.Tags != null && r.Tags.Count > 0) {
+                sb.AppendLine($"tags: {System.Text.Json.JsonSerializer.Serialize(r.Tags)}");
             }
 
             sb.AppendLine("---");

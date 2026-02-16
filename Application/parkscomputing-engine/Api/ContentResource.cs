@@ -16,6 +16,7 @@ namespace ParksComputing.Engine.Api {
         public string? RawMarkdown { get; set; }
         public string? RawHtml { get; set; }
         public bool Published { get; set; }
+        public List<string> Tags { get; set; } = new();
         [JsonIgnore]
         public string? ETag { get; set; } // Internal (header only)
         public List<LinkStub>? Links { get; set; }

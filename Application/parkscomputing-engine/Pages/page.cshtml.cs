@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -18,6 +19,7 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Markdig;
+using ParksComputing.Engine.Api;
 
 namespace ParksComputing.Engine.Pages {
     public class PageLoaderModel : Microsoft.AspNetCore.Mvc.RazorPages.PageModel {
@@ -133,7 +135,7 @@ namespace ParksComputing.Engine.Pages {
             }
         }
 
-    private Task<IActionResult> LoadMarkdownAndRender(string mdPath, string slug) {
+        private Task<IActionResult> LoadMarkdownAndRender(string mdPath, string slug) {
             try {
                 string raw = System.IO.File.ReadAllText(mdPath);
                 var (frontMatter, body) = SplitFrontMatter(raw);
@@ -161,7 +163,6 @@ namespace ParksComputing.Engine.Pages {
                 }
 
                 // Build synthetic HTML document so existing parsing logic still works
-                // string headHighlight = hasCodeBlocks ? "<link rel=\"stylesheet\" href=\"/highlightjs/styles/default.min.css\" /><script src=\"/highlightjs/highlight.min.js\"></script>" : string.Empty;
                 string bodyHighlight = hasCodeBlocks ? "<script>hljs.highlightAll();</script>" : string.Empty;
 
                 string synthetic = $"<html lang=\"{metadata.Lang}\"><head><title>{System.Net.WebUtility.HtmlEncode(metadata.Title)}</title>" +
@@ -170,7 +171,14 @@ namespace ParksComputing.Engine.Pages {
                                    (string.IsNullOrWhiteSpace(metadata.Description) ? string.Empty : $"<meta name=\"description\" content=\"{System.Net.WebUtility.HtmlEncode(metadata.Description)}\" />") +
                                    $"<meta name=\"comments-allowed\" content=\"{metadata.CommentsAllowed.ToString().ToLowerInvariant()}\" />" +
                                    $"<meta name=\"comments-enabled\" content=\"{metadata.CommentsEnabled.ToString().ToLowerInvariant()}\" />" +
-                                   // headHighlight +
+                                   // Audio metadata
+                                   $"<meta name=\"has-audio\" content=\"{metadata.HasAudio.ToString().ToLowerInvariant()}\" />" +
+                                   (string.IsNullOrWhiteSpace(metadata.AudioFile) ? string.Empty : $"<meta name=\"audio-file\" content=\"{System.Net.WebUtility.HtmlEncode(metadata.AudioFile)}\" />") +
+                                   $"<meta name=\"audio-transcript\" content=\"{metadata.AudioTranscript.ToString().ToLowerInvariant()}\" />" +
+                                   // Video metadata
+                                   (string.IsNullOrWhiteSpace(metadata.VideoLink) ? string.Empty : $"<meta name=\"youtube-link\" content=\"{System.Net.WebUtility.HtmlEncode(metadata.VideoLink)}\" />") +
+                                   (metadata.ReadingTimeMinutes > 0 ? $"<meta name=\"reading-time\" content=\"{metadata.ReadingTimeMinutes}\" />" : string.Empty) +
+                                   (metadata.Keywords.Length > 0 ? $"<meta name=\"keywords\" content=\"{System.Net.WebUtility.HtmlEncode(string.Join(", ", metadata.Keywords))}\" />" : string.Empty) +
                                    "</head><body>" + htmlBody + bodyHighlight + "</body></html>";
 
                 var doc = new HtmlDocument();
@@ -187,15 +195,15 @@ namespace ParksComputing.Engine.Pages {
                 int second = raw.IndexOf("\n---", 3, StringComparison.Ordinal);
                 if (second > -1) {
                     int fmEnd = second + 4; // position after second delimiter line
-                    var fm = raw.Substring(3, second - 3).Trim('\r','\n');
-                    var body = raw.Substring(fmEnd).TrimStart('\r','\n');
+                    var fm = raw.Substring(3, second - 3).Trim('\r', '\n');
+                    var body = raw.Substring(fmEnd).TrimStart('\r', '\n');
                     return (fm, body);
                 }
             }
             return (string.Empty, raw);
         }
 
-        private (string Title, string Description, DateTime DateUtc, DateTime LastModifiedUtc, bool CommentsAllowed, bool CommentsEnabled, string Lang) ParseFrontMatter(string fm, string path) {
+        private (string Title, string Description, DateTime DateUtc, DateTime LastModifiedUtc, bool CommentsAllowed, bool CommentsEnabled, string Lang, bool HasAudio, string AudioFile, bool AudioTranscript, string VideoLink, int ReadingTimeMinutes, string[] Keywords) ParseFrontMatter(string fm, string path) {
             DateTime fileCreate = System.IO.File.GetCreationTimeUtc(path);
             DateTime fileMod = System.IO.File.GetLastWriteTimeUtc(path);
             string title = string.Empty;
@@ -205,6 +213,12 @@ namespace ParksComputing.Engine.Pages {
             bool commentsAllowed = false;
             bool commentsEnabled = false;
             string lang = "en-us";
+            bool hasAudio = false;
+            string audioFile = string.Empty;
+            bool audioTranscript = false;
+            string videoLink = string.Empty;
+            int readingTimeMinutes = 0;
+            string[] keywords = Array.Empty<string>();
 
             if (!string.IsNullOrWhiteSpace(fm)) {
                 using var reader = new StringReader(fm);
@@ -232,11 +246,30 @@ namespace ParksComputing.Engine.Pages {
                             if (bool.TryParse(val, out var ce)) { commentsEnabled = ce; }
                             break;
                         case "lang": lang = val; break;
+                        case "hasaudio":
+                            if (bool.TryParse(val, out var ha)) { hasAudio = ha; }
+                            break;
+                        case "audiofile": audioFile = val; break;
+                        case "audiotranscript":
+                            if (bool.TryParse(val, out var at)) { audioTranscript = at; }
+                            break;
+                        case "youtubelink":
+                        case "videolink":
+                            videoLink = val;
+                            break;
+                        case "readingtime":
+                            if (int.TryParse(val, out var rt)) { readingTimeMinutes = rt; }
+                            break;
+                        case "keywords":
+                            keywords = val.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                          .Select(k => k.Trim())
+                                          .ToArray();
+                            break;
                     }
                 }
             }
 
-            return (title, description, dateUtc, lastModUtc, commentsAllowed, commentsEnabled, lang);
+            return (title, description, dateUtc, lastModUtc, commentsAllowed, commentsEnabled, lang, hasAudio, audioFile, audioTranscript, videoLink, readingTimeMinutes, keywords);
         }
 
         private string? ExtractFirstHeading(string htmlBody) {
@@ -245,17 +278,16 @@ namespace ParksComputing.Engine.Pages {
                 temp.LoadHtml(htmlBody);
                 var h1 = temp.DocumentNode.SelectSingleNode("//h1");
                 return h1?.InnerText.Trim();
-            } catch { return null; }
+            }
+            catch { return null; }
         }
 
         protected virtual string ProcessContentPlaceholders(string content) {
             // Process custom elements
             var customElements = CustomElementParser.ParseCustomElements(content);
 
-            foreach (var element in customElements)
-            {
-                if (element.TagName == "nav-content")
-                {
+            foreach (var element in customElements) {
+                if (element.TagName == "nav-content") {
                     var marker = $"RENDER_NAV_{Guid.NewGuid():N}";
                     var navModel = NavContentModel.FromAttributes(element.Attributes, NavService.GetRoot());
                     ViewData[marker] = navModel; // Store NavContentModel for rendering
@@ -269,6 +301,81 @@ namespace ParksComputing.Engine.Pages {
         private Task<IActionResult> ExtractAndRender(HtmlDocument doc, string slug) {
             var node = doc.DocumentNode.SelectSingleNode("//body");
             if (node is null) { return Task.FromResult<IActionResult>(NotFound()); }
+
+            // Check for audio content - first check meta tag from Markdown front matter
+            var hasAudioMeta = doc.DocumentNode.SelectSingleNode("//meta[@name='has-audio']");
+            var audioFileMeta = doc.DocumentNode.SelectSingleNode("//meta[@name='audio-file']");
+            var audioTranscriptMeta = doc.DocumentNode.SelectSingleNode("//meta[@name='audio-transcript']");
+            var readingTimeMeta = doc.DocumentNode.SelectSingleNode("//meta[@name='reading-time']");
+            var keywordsMeta = doc.DocumentNode.SelectSingleNode("//meta[@name='keywords']");
+
+            bool hasAudio = false;
+            string audioFile = string.Empty;
+            bool audioTranscript = false;
+            int readingTime = 0;
+            string keywords = string.Empty;
+
+            // Parse metadata from front matter if available
+            if (hasAudioMeta is not null && bool.TryParse(hasAudioMeta.GetAttributeValue("content", "false"), out var ha)) {
+                hasAudio = ha;
+            }
+            if (audioFileMeta is not null) {
+                audioFile = audioFileMeta.GetAttributeValue("content", string.Empty);
+            }
+            if (audioTranscriptMeta is not null && bool.TryParse(audioTranscriptMeta.GetAttributeValue("content", "false"), out var at)) {
+                audioTranscript = at;
+            }
+            if (readingTimeMeta is not null && int.TryParse(readingTimeMeta.GetAttributeValue("content", "0"), out var rt)) {
+                readingTime = rt;
+            }
+            if (keywordsMeta is not null) {
+                keywords = keywordsMeta.GetAttributeValue("content", string.Empty);
+            }
+
+            // Fallback to file-based detection if no metadata
+            if (!hasAudio && string.IsNullOrEmpty(audioFile)) {
+                hasAudio = Environment.HasAudioVersion(slug);
+                if (hasAudio) {
+                    // Use default audio file path
+                    audioFile = $"/audio/articles/{slug}.mp3";
+                }
+            }
+
+            ViewData["HasAudio"] = hasAudio;
+
+            if (hasAudio && !string.IsNullOrEmpty(audioFile)) {
+                var audioMetadata = new {
+                    FilePath = audioFile,
+                    HasTranscript = audioTranscript,
+                    ReadingTime = readingTime,
+                    Keywords = keywords
+                };
+                ViewData["AudioMetadata"] = audioMetadata;
+                ViewData["AudioFilePath"] = audioFile;
+                ViewData["HasTranscript"] = audioTranscript;
+
+                // If transcript is enabled, try to load it
+                if (audioTranscript) {
+                    var transcript = Environment.GetTranscript(slug);
+                    ViewData["AudioTranscript"] = transcript;
+                }
+            }
+
+            // Process video metadata
+            var videoMeta = doc.DocumentNode.SelectSingleNode("//meta[@name='youtube-link']") ??
+                           doc.DocumentNode.SelectSingleNode("//meta[@name='video-link']");
+
+            if (videoMeta != null) {
+                var videoLink = videoMeta.GetAttributeValue("content", string.Empty);
+                if (!string.IsNullOrEmpty(videoLink)) {
+                    var videoInfo = AudioContentExtensions.ParseVideoUrl(videoLink);
+                    if (videoInfo != null) {
+                        ViewData["HasVideo"] = true;
+                        ViewData["VideoInfo"] = videoInfo;
+                        ViewData["VideoLink"] = videoLink;
+                    }
+                }
+            }
 
             // Process placeholders in the content
             PageContent = ProcessContentPlaceholders(node.InnerHtml);
@@ -321,7 +428,8 @@ namespace ParksComputing.Engine.Pages {
                             }
                         }
                     }
-                } catch { /* swallow fallback errors */ }
+                }
+                catch { /* swallow fallback errors */ }
             }
 
             var commentNode = doc.DocumentNode.SelectSingleNode("//meta[@name='comments-allowed']/@content");

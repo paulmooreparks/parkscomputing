@@ -22,19 +22,21 @@ namespace ParksComputing.Engine.Api {
             _storage = storage; _logger = logger;
         }
 
-        public record CreateContentRequest(string? Slug, string? Title, string? Description, string? Language, string? BodyMarkdown);
+        public record CreateContentRequest(string? Slug, string? Title, string? Description, string? Language, string? BodyMarkdown, List<string>? Tags);
 
         /// <summary>List content items (paged).</summary>
         /// <param name="prefix">Optional path/slug prefix filter.</param>
+        /// <param name="tag">Single tag to filter by.</param>
+        /// <param name="tags">Multiple tags to filter by (comma-separated).</param>
         /// <param name="page">1-based page index (>=1).</param>
         /// <param name="pageSize">Items per page (1-100).</param>
-    /// <param name="includeDrafts">Include draft items (default false).</param>
-    /// <param name="ct">Cancellation token.</param>
-        // GET api/content?prefix=blog/2025&page=1&pageSize=20
+        /// <param name="includeDrafts">Include draft items (default false).</param>
+        /// <param name="ct">Cancellation token.</param>
+        // GET api/content?prefix=blog/2025&tag=programming&page=1&pageSize=20
         [HttpGet]
         [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<ContentResource>>> List([FromQuery] string? prefix, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] bool includeDrafts = false, CancellationToken ct = default) {
+        public async Task<ActionResult<IEnumerable<ContentResource>>> List([FromQuery] string? prefix, [FromQuery] string? tag, [FromQuery] string? tags, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] bool includeDrafts = false, CancellationToken ct = default) {
             if (page < 1) {
                 page = 1;
             }
@@ -51,6 +53,18 @@ namespace ParksComputing.Engine.Api {
             if (!includeDrafts) {
                 full = full.Where(c => c.Published).ToList();
             }
+
+            // Apply tag filtering
+            if (!string.IsNullOrWhiteSpace(tag)) {
+                full = full.Where(c => c.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase)).ToList();
+            }
+            else if (!string.IsNullOrWhiteSpace(tags)) {
+                var tagList = tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (tagList.Length > 0) {
+                    full = full.Where(c => tagList.Any(t => c.Tags.Contains(t, StringComparer.OrdinalIgnoreCase))).ToList();
+                }
+            }
+
             var total = full.Count();
             var list = full.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
@@ -180,7 +194,8 @@ namespace ParksComputing.Engine.Api {
                     Language = request.Language,
                     CreatedUtc = now,
                     UpdatedUtc = now,
-                    RawMarkdown = request.BodyMarkdown
+                    RawMarkdown = request.BodyMarkdown,
+                    Tags = request.Tags ?? new List<string>()
                 };
             }
             else {
@@ -195,6 +210,7 @@ namespace ParksComputing.Engine.Api {
                 resource.Description = request.Description;
                 resource.Language = request.Language;
                 resource.RawMarkdown = request.BodyMarkdown;
+                resource.Tags = request.Tags ?? resource.Tags;
                 resource.UpdatedUtc = now;
             }
 
@@ -233,7 +249,8 @@ namespace ParksComputing.Engine.Api {
                 Language = request.Language,
                 CreatedUtc = DateTime.UtcNow,
                 UpdatedUtc = DateTime.UtcNow,
-                RawMarkdown = request.BodyMarkdown
+                RawMarkdown = request.BodyMarkdown,
+                Tags = request.Tags ?? new List<string>()
             };
 
             var saved = await _storage.UpsertAsync(resource, null, ct);

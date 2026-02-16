@@ -5,32 +5,48 @@
     ViewData["Title"] = Html.Raw(Model.Title);
 }
 
-@section Meta { @if (Model.MetaElements is not null) {
-@foreach (var element in @Model.MetaElements) {
-    @Html.Raw(element.OuterHtml)
-    @Html.Raw("\n")
-}}
+@section Meta {
+    @if (Model.MetaElements is not null)
+    {
+        @foreach (var element in @Model.MetaElements)
+        {
+            @Html.Raw(element.OuterHtml)
+            @Html.Raw("\n")
+        }
+    }
 }
 
-@section Links { @if (Model.LinkElements is not null) {
-@foreach (var element in @Model.LinkElements) {
-    @Html.Raw(element.OuterHtml)
-    @Html.Raw("\n")
-}}
+@section Links {
+    @if (Model.LinkElements is not null)
+    {
+        @foreach (var element in @Model.LinkElements)
+        {
+            @Html.Raw(element.OuterHtml)
+            @Html.Raw("\n")
+        }
+    }
 }
 
-@section Style { @if (Model.StyleElements is not null) {
-@foreach (var element in @Model.StyleElements) {
-    @Html.Raw(element.OuterHtml)
-    @Html.Raw("\n")
-}}
+@section Style {
+    @if (Model.StyleElements is not null)
+    {
+        @foreach (var element in @Model.StyleElements)
+        {
+            @Html.Raw(element.OuterHtml)
+            @Html.Raw("\n")
+        }
+    }
 }
 
-@section HeadScripts { @if (Model.HeadScriptElements is not null) {
-@foreach (var element in @Model.HeadScriptElements) {
-    @Html.Raw(element.OuterHtml)
-    @Html.Raw("\n")
-}}
+@section HeadScripts {
+    @if (Model.HeadScriptElements is not null)
+    {
+        @foreach (var element in @Model.HeadScriptElements)
+        {
+            @Html.Raw(element.OuterHtml)
+            @Html.Raw("\n")
+        }
+    }
 }
 
 @{
@@ -49,10 +65,68 @@
                 <span class="updated-on">&nbsp;· Updated <time datetime="@Model.ModifiedGmt">@Model.Modified</time></span>
             }
         </div>
+
+        @{
+            bool hasAudio = ViewData["HasAudio"] as bool? ?? false;
+            string? audioFilePath = ViewData["AudioFilePath"] as string;
+            bool hasTranscript = ViewData["HasTranscript"] as bool? ?? false;
+        }
+        @if (hasAudio && !string.IsNullOrEmpty(audioFilePath))
+        {
+            <div class="audio-accordion" role="region" aria-labelledby="audio-heading">
+                <a href="#audio-content" id="audio-heading" class="audio-toggle" data-bs-toggle="collapse"
+                       data-bs-target="#audio-content" aria-expanded="false" aria-controls="audio-content">
+                    <span class="audio-toggle-icon"></span>Listen to this article
+                </a>
+                <div id="audio-content" class="collapse" aria-labelledby="audio-heading">
+                    <div class="audio-player-container" role="complementary" aria-label="Audio version of article">
+                        <div id="main-audio-player" data-audio-player="true" data-audio-file="@audioFilePath"
+                             data-transcript="@(hasTranscript ? "true" : "false")"></div>
+                        <div class="audio-download">
+                            <a href="@audioFilePath" download class="audio-download-link">
+                                Download audio file
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @{
+            bool hasVideo = ViewData["HasVideo"] as bool? ?? false;
+            var videoInfo = ViewData["VideoInfo"] as ParksComputing.Engine.Api.VideoInfo;
+        }
+        @if (hasVideo && videoInfo != null)
+        {
+            <div class="video-accordion" role="region" aria-labelledby="video-heading">
+                <a href="#video-content" id="video-heading" class="video-toggle" data-bs-toggle="collapse"
+                       data-bs-target="#video-content" aria-expanded="false" aria-controls="video-content">
+                    <span class="video-toggle-icon"></span>Watch video commentary
+                </a>
+                <div id="video-content" class="collapse" aria-labelledby="video-heading">
+                    <div class="video-player-container" role="complementary" aria-label="Video commentary for article">
+                        @if (videoInfo.Platform == "YouTube")
+                        {
+                            <div class="youtube-embed">
+                                <iframe src="@videoInfo.EmbedUrl" title="Video commentary for @Model.Title" frameborder="0"
+                                        allowfullscreen loading="lazy" width="560" height="315">
+                                </iframe>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="generic-video-embed">
+                                <a href="@videoInfo.OriginalUrl" target="_blank" rel="noopener noreferrer">
+                                    Watch Video Commentary (@videoInfo.Platform)
+                                </a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
     </header>
     <div class="post-body">
         @Html.Raw(Model.PageContent)
     </div>
 </article>
-
-

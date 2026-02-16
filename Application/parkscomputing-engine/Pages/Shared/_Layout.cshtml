@@ -32,6 +32,20 @@
     @RenderSection("Style", required: false)
     @RenderSection("HeadScripts", required: false)
     <link rel="manifest" href="/site.webmanifest">
+
+    <!-- Accessibility enhancements -->
+    <link rel="stylesheet" href="/css/accessibility.css" />
+
+    <!-- Audio player support -->
+    @{
+        bool hasAudio = ViewData["HasAudio"] as bool? ?? false;
+    }
+    @if (hasAudio)
+    {
+        <link rel="stylesheet" href="/css/accessible-audio-player.css" />
+        <script src="/js/accessible-audio-player.js" defer></script>
+    }
+
     @Html.RenderStaticFile("/content/head-section.html", FileReaderService)
     @if (isMarkdown)
     {
@@ -59,7 +73,8 @@
     </header>
     <div class="container">
         @Html.RenderStaticFile("/content/main-section.html", FileReaderService)
-        <div class="content-body">
+
+        <div class="content-body" role="main" id="main-content" tabindex="-1">
         @RenderBody()
         @{
             // pageId already captured at top-level if needed; avoid redeclaration
@@ -74,6 +89,32 @@
     <footer class="border-top footer bg-dark text-light">
         @Html.RenderStaticFile("/content/footer-section.html", FileReaderService)
     </footer>
+
+    <!-- Image Lightbox Modal -->
+    <div class="modal fade" id="imageLightboxModal" tabindex="-1" aria-labelledby="imageLightboxModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content bg-transparent border-0 position-relative">
+                <!-- Navigation arrows positioned within modal-content but outside image -->
+                <button type="button" id="galleryPrev" aria-label="Previous image">
+                    ❮
+                </button>
+                <button type="button" id="galleryNext" aria-label="Next image">
+                    ❯
+                </button>
+
+                <div class="modal-header border-0 pb-0">
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="gallery-counter text-white small" id="galleryCounter"></div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                </div>
+                <div class="modal-body text-center p-0 position-relative">
+                    <img id="lightboxImage" src="" alt="" class="img-fluid">
+                    <div id="lightboxCaption" class="text-white mt-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <environment include="Development">
         <script src="~/lib/jquery/dist/jquery.js"></script>
@@ -97,6 +138,143 @@
         document.addEventListener('DOMContentLoaded', function () {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tooltipTriggerList.forEach(function (tooltipTriggerEl) { new bootstrap.Tooltip(tooltipTriggerEl); });
+
+            // Image lightbox gallery functionality
+            const lightboxModal = new bootstrap.Modal(document.getElementById('imageLightboxModal'));
+            const lightboxImage = document.getElementById('lightboxImage');
+            const lightboxCaption = document.getElementById('lightboxCaption');
+            const galleryCounter = document.getElementById('galleryCounter');
+            const galleryPrev = document.getElementById('galleryPrev');
+            const galleryNext = document.getElementById('galleryNext');
+
+            let currentImages = [];
+            let currentIndex = 0;
+
+            // Get all images in the current article/content area
+            function getContentImages() {
+                return Array.from(document.querySelectorAll('.content-body img, figure img')).filter(img => {
+                    return !img.closest('a') && !img.hasAttribute('data-no-lightbox');
+                });
+            }
+
+            function updateGalleryDisplay() {
+                galleryCounter.textContent = `${currentIndex + 1} of ${currentImages.length}`;
+                galleryCounter.style.display = 'block';
+
+                if (currentImages.length > 1) {
+                    galleryPrev.style.display = currentIndex > 0 ? 'block' : 'none';
+                    galleryNext.style.display = currentIndex < currentImages.length - 1 ? 'block' : 'none';
+                } else {
+                    galleryPrev.style.display = 'none';
+                    galleryNext.style.display = 'none';
+                }
+            }
+
+            function showImage(index) {
+                if (index < 0 || index >= currentImages.length) return;
+
+                currentIndex = index;
+                const img = currentImages[currentIndex];
+
+                lightboxImage.src = img.src;
+                lightboxImage.alt = img.alt;
+
+                // Get caption from figure caption or alt text
+                const figure = img.closest('figure');
+                const figcaption = figure ? figure.querySelector('figcaption') : null;
+                lightboxCaption.textContent = figcaption ? figcaption.textContent : img.alt;
+
+                updateGalleryDisplay();
+            }
+
+            // Navigation functions
+            function showPrevious() {
+                if (currentIndex > 0) {
+                    showImage(currentIndex - 1);
+                }
+            }
+
+            function showNext() {
+                if (currentIndex < currentImages.length - 1) {
+                    showImage(currentIndex + 1);
+                }
+            }
+
+            // Event listeners for navigation
+            if (galleryPrev && galleryNext) {
+                galleryPrev.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    showPrevious();
+                    return false;
+                });
+
+                galleryNext.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    showNext();
+                    return false;
+                });
+            }
+
+            // Keyboard navigation
+            document.addEventListener('keydown', function(e) {
+                if (lightboxModal._isShown) {
+                    if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        showPrevious();
+                    } else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        showNext();
+                    }
+                }
+            });
+
+            // Add click handlers to all images in content areas
+            function initializeImageHandlers() {
+                getContentImages().forEach(function(img, index) {
+                    // Add cursor pointer and title to indicate clickability
+                    img.style.cursor = 'pointer';
+                    if (!img.title) {
+                        img.title = 'Click to view full size';
+                    }
+
+                    img.addEventListener('click', function() {
+                        currentImages = getContentImages();
+                        currentIndex = currentImages.indexOf(this);
+                        showImage(currentIndex);
+                        lightboxModal.show();
+                    });
+                });
+            }
+
+            // Initialize on page load
+            initializeImageHandlers();
+
+            // Re-initialize if content changes (for dynamic content)
+            const observer = new MutationObserver(function(mutations) {
+                let shouldReinit = false;
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList') {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.nodeType === Node.ELEMENT_NODE &&
+                                (node.tagName === 'IMG' || node.querySelector('img'))) {
+                                shouldReinit = true;
+                            }
+                        });
+                    }
+                });
+                if (shouldReinit) {
+                    initializeImageHandlers();
+                }
+            });
+
+            const contentBody = document.querySelector('.content-body');
+            if (contentBody) {
+                observer.observe(contentBody, { childList: true, subtree: true });
+            }
         });
     </script>
     @RenderSection("BodyScripts", required: false)

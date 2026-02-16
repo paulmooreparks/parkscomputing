@@ -16,9 +16,14 @@ for details on configuring this project to bundle and minify static web assets. 
     --pc-blockquote-bg: #f8f9fa;
     --pc-blockquote-bar: #0d6efd;
     /* Updated option 1 colors (darken one step for stronger separation) */
-    --pc-nav-bg: #d9e4ec; /* slightly darker blue-gray */
-    --pc-nav-border: #c4d2dd; /* adjust border accordingly */
-    --pc-nav-text: #1e2930; /* body text for readability */
+    --pc-nav-bg: #d9e4ec;
+    /* slightly darker blue-gray */
+    --pc-header-bg: rgba(217, 228, 236, 0.88);
+    --pc-header-min-h: 4.1rem;
+    --pc-nav-border: #c4d2dd;
+    /* adjust border accordingly */
+    --pc-nav-text: #1e2930;
+    /* body text for readability */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -28,28 +33,51 @@ for details on configuring this project to bundle and minify static web assets. 
         --pc-text-muted: #88929d;
         --pc-border: #2d333b;
         /* Stronger, more luminous link palette for dark mode */
-        --pc-link: #2fa8ff; /* vivid cyan-blue */
-        --pc-link-hover: #7bd3ff; /* lighter hover */
+        --pc-link: #2fa8ff;
+        /* vivid cyan-blue */
+        --pc-link-hover: #7bd3ff;
+        /* lighter hover */
         --pc-accent: #479dff;
         --pc-code-bg: #1e2630;
         --pc-inline-code-bg: #2a333d;
         --pc-blockquote-bg: #1c242c;
         --pc-blockquote-bar: #347dcb;
         /* Lighten nav/footer a bit versus body for clearer separation */
-        --pc-nav-bg: #2a3946; /* was #090d11 */
+        --pc-nav-bg: #2a3946;
+        /* was #090d11 */
+        --pc-header-bg: rgba(42, 57, 70, 0.88);
         --pc-nav-border: #253341;
         --pc-nav-text: #e6edf3;
     }
 }
 
 /* Override Bootstrap's bg-dark for our navbar/footer to use themed variable (especially dark mode) */
-.navbar.bg-dark, .footer.bg-dark {
+.navbar.bg-dark,
+.footer.bg-dark {
     background: var(--pc-nav-bg) !important;
     color: var(--pc-nav-text) !important;
 }
+
+.navbar {
+    min-height: var(--pc-header-min-h);
+    padding-top: .6rem;
+    padding-bottom: .6rem;
+}
+
+.navbar.bg-dark {
+    background: var(--pc-header-bg) !important;
+    -webkit-backdrop-filter: saturate(135%) blur(6px);
+    backdrop-filter: saturate(135%) blur(6px);
+}
+
 @media (prefers-color-scheme: dark) {
-    .navbar.bg-dark { border-bottom: 1px solid var(--pc-nav-border, #2a3946); }
-    .footer.bg-dark { border-top: 1px solid var(--pc-nav-border, #2a3946); }
+    .navbar.bg-dark {
+        border-bottom: 1px solid var(--pc-nav-border, #2a3946);
+    }
+
+    .footer.bg-dark {
+        border-top: 1px solid var(--pc-nav-border, #2a3946);
+    }
 }
 
 /* Dropdown menu theming (light + dark) */
@@ -57,12 +85,15 @@ for details on configuring this project to bundle and minify static web assets. 
     /* Make dropdown background same as header/footer panel (now slightly darker) */
     --pc-menu-bg: var(--pc-nav-bg);
     --pc-menu-text: var(--pc-text);
-    --pc-menu-hover-bg: #cdd9e3; /* subtle hover change */
+    --pc-menu-hover-bg: #cdd9e3;
+    /* subtle hover change */
     --pc-menu-border: var(--pc-nav-border);
 }
+
 @media (prefers-color-scheme: dark) {
     :root {
-        --pc-menu-bg: #2a3946; /* lighter than nav to distinguish */
+        --pc-menu-bg: #2a3946;
+        /* lighter than nav to distinguish */
         --pc-menu-text: #e6edf3;
         --pc-menu-hover-bg: #364a59;
         --pc-menu-border: #3c4f5d;
@@ -70,42 +101,87 @@ for details on configuring this project to bundle and minify static web assets. 
 }
 
 .navbar .dropdown-menu {
-    background: var(--pc-menu-bg); /* now same as nav/footer */
+    background: var(--pc-menu-bg);
+    /* now same as nav/footer */
     color: var(--pc-menu-text);
     border: 1px solid var(--pc-menu-border);
-    box-shadow: 0 4px 14px rgba(0,0,0,.18);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
 }
-.navbar .dropdown-menu .dropdown-item { color: var(--pc-menu-text); }
+
+.navbar .dropdown-menu .dropdown-item {
+    color: var(--pc-menu-text);
+}
+
 .navbar .dropdown-menu .dropdown-item:hover,
-.navbar .dropdown-menu .dropdown-item:focus { background: var(--pc-menu-hover-bg); color: var(--pc-menu-text); }
+.navbar .dropdown-menu .dropdown-item:focus {
+    background: var(--pc-menu-hover-bg);
+    color: var(--pc-menu-text);
+}
 
 /* Navbar link styling logic:
     - Plain nav links (no dropdown) use global link styles (already default)
     - Dropdown toggles: remove underline to distinguish they open menus
     - Dropdown menu items: normal underlined links; nested submenu toggles (if any) remove underline */
-.navbar .nav-item.dropdown > .nav-link { text-decoration: none; }
-.navbar .nav-item.dropdown > .nav-link:hover,
-.navbar .nav-item.dropdown > .nav-link:focus { text-decoration: none; }
-.navbar .dropdown-menu a.dropdown-item { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; color: var(--pc-link); }
-.navbar .dropdown-menu a.dropdown-item:hover, .navbar .dropdown-menu a.dropdown-item:focus { color: var(--pc-link-hover); }
-.navbar .dropdown-menu .dropdown-toggle { text-decoration: none; }
+.navbar .nav-item.dropdown>.nav-link {
+    text-decoration: none;
+}
+
+.navbar .nav-item.dropdown>.nav-link:hover,
+.navbar .nav-item.dropdown>.nav-link:focus {
+    text-decoration: none;
+}
+
+.navbar .dropdown-menu a.dropdown-item {
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+    color: var(--pc-link);
+}
+
+.navbar .dropdown-menu a.dropdown-item:hover,
+.navbar .dropdown-menu a.dropdown-item:focus {
+    color: var(--pc-link-hover);
+}
+
+.navbar .dropdown-menu .dropdown-toggle {
+    text-decoration: none;
+}
 
 /* Plain (non-dropdown) top-level nav links: standard link styling */
-.navbar .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link { color: var(--pc-link); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
-.navbar .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link:hover,
-.navbar .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link:focus,
-.navbar .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link.active { color: var(--pc-link-hover); }
+.navbar .navbar-nav>li.nav-item:not(.dropdown)>a.nav-link {
+    color: var(--pc-link);
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+}
+
+.navbar .navbar-nav>li.nav-item:not(.dropdown)>a.nav-link:hover,
+.navbar .navbar-nav>li.nav-item:not(.dropdown)>a.nav-link:focus,
+.navbar .navbar-nav>li.nav-item:not(.dropdown)>a.nav-link.active {
+    color: var(--pc-link-hover);
+}
 
 /* Header palette refinement: plain links keep link color; dropdown toggles use normal text color */
-.navbar.bg-dark .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link { color: var(--pc-link) !important; }
-.navbar.bg-dark .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link:hover,
-.navbar.bg-dark .navbar-nav > li.nav-item:not(.dropdown) > a.nav-link:focus { color: var(--pc-link-hover) !important; }
-.navbar.bg-dark .navbar-nav > li.nav-item.dropdown > a.nav-link { color: var(--pc-nav-text) !important; }
-.navbar.bg-dark .navbar-nav > li.nav-item.dropdown > a.nav-link:hover,
-.navbar.bg-dark .navbar-nav > li.nav-item.dropdown > a.nav-link:focus { color: var(--pc-nav-text) !important; }
+.navbar.bg-dark .navbar-nav>li.nav-item:not(.dropdown)>a.nav-link {
+    color: var(--pc-link) !important;
+}
+
+.navbar.bg-dark .navbar-nav>li.nav-item:not(.dropdown)>a.nav-link:hover,
+.navbar.bg-dark .navbar-nav>li.nav-item:not(.dropdown)>a.nav-link:focus {
+    color: var(--pc-link-hover) !important;
+}
+
+.navbar.bg-dark .navbar-nav>li.nav-item.dropdown>a.nav-link {
+    color: var(--pc-nav-text) !important;
+}
+
+.navbar.bg-dark .navbar-nav>li.nav-item.dropdown>a.nav-link:hover,
+.navbar.bg-dark .navbar-nav>li.nav-item.dropdown>a.nav-link:focus {
+    color: var(--pc-nav-text) !important;
+}
 
 /* Ensure the final top-level dropdown aligns to the right edge to avoid viewport overflow. */
-.navbar-nav > li.nav-item.dropdown:last-child .dropdown-menu {
+.navbar-nav>li.nav-item.dropdown:last-child .dropdown-menu {
     right: 0;
     left: auto;
 }
@@ -117,30 +193,66 @@ a.navbar-brand {
 }
 
 /* Hamburger (navbar-toggler) contrast adjustments */
-.navbar .navbar-toggler { border: 1px solid rgba(0,0,0,.25); background: linear-gradient(#ffffff,#d9e4ec); padding:.3rem .55rem; border-radius:4px; }
-.navbar .navbar-toggler:focus, .navbar .navbar-toggler:hover { outline:2px solid #0d47a1; outline-offset:2px; background: linear-gradient(#ffffff,#cdd9e3); }
+.navbar .navbar-toggler {
+    border: 1px solid rgba(0, 0, 0, .25);
+    background: linear-gradient(#ffffff, #d9e4ec);
+    padding: .3rem .55rem;
+    border-radius: 4px;
+}
+
+.navbar .navbar-toggler:focus,
+.navbar .navbar-toggler:hover {
+    outline: 2px solid #0d47a1;
+    outline-offset: 2px;
+    background: linear-gradient(#ffffff, #cdd9e3);
+}
+
 @media (prefers-color-scheme: dark) {
-    .navbar .navbar-toggler { border:1px solid #42525e; background: linear-gradient(#35424c,#2a3946); }
-    .navbar .navbar-toggler:focus, .navbar .navbar-toggler:hover { outline:2px solid #63b3ff; background: linear-gradient(#3d4e5a,#32424f); }
+    .navbar .navbar-toggler {
+        border: 1px solid #42525e;
+        background: linear-gradient(#35424c, #2a3946);
+    }
+
+    .navbar .navbar-toggler:focus,
+    .navbar .navbar-toggler:hover {
+        outline: 2px solid #63b3ff;
+        background: linear-gradient(#3d4e5a, #32424f);
+    }
 }
 
 /* Recolored hamburger icon for contrast (light + dark) */
 .navbar .navbar-toggler-icon {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(13,71,161,0.95)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(13,71,161,0.95)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
 }
+
 @media (prefers-color-scheme: dark) {
     .navbar .navbar-toggler-icon {
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(230,237,243,0.95)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(230,237,243,0.95)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
     }
 }
 
 /* Generic link styling pulls from theme variables */
-a { color: var(--pc-link); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
+a {
+    color: var(--pc-link);
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+}
 
-a:hover, a:focus { color: var(--pc-link-hover); }
+a:hover,
+a:focus {
+    color: var(--pc-link-hover);
+}
+
 @media (prefers-color-scheme: dark) {
-    a { color: var(--pc-link); }
-    a:hover, a:focus { color: var(--pc-link-hover); }
+    a {
+        color: var(--pc-link);
+    }
+
+    a:hover,
+    a:focus {
+        color: var(--pc-link-hover);
+    }
 }
 
 /* Footer link palette override (light mode: vivid cyan; dark mode already uses these via variables) */
@@ -148,7 +260,9 @@ a:hover, a:focus { color: var(--pc-link-hover); }
 
 /* Sticky footer styles
 -------------------------------------------------- */
-html { font-size: 14px; }
+html {
+    font-size: 14px;
+}
 
 @media (min-width: 768px) {
     html {
@@ -192,13 +306,26 @@ html {
     min-height: 100%;
 }
 
-body { margin-bottom: 60px; background: var(--pc-bg); color: var(--pc-text); }
+body {
+    margin-bottom: 60px;
+    background: var(--pc-bg);
+    color: var(--pc-text);
+}
 
 .content-body {
     padding: 10px;
 }
 
-.footer { position: absolute; bottom: 0; width: 100%; white-space: nowrap; height: 60px; line-height: 60px; background: var(--pc-nav-bg); color: var(--pc-nav-text); }
+.footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    white-space: nowrap;
+    height: 60px;
+    line-height: 60px;
+    background: var(--pc-nav-bg);
+    color: var(--pc-nav-text);
+}
 
 .main-container {
     width: 100%;
@@ -276,13 +403,14 @@ table.has-fixed-layout {
     text-align: left;
 }
 
-.has-fixed-layout th, td {
+.has-fixed-layout th,
+td {
     border: 2px solid #111;
     padding: 2px 8px 0;
     text-align: left;
 }
 
-.has-fixed-layout thead > tr > th {
+.has-fixed-layout thead>tr>th {
     background-color: #cce;
     font-size: 14px;
     border: 2px solid #111;
@@ -294,23 +422,33 @@ table.has-fixed-layout {
         border: 2px solid #364a59;
         background: #1a222a;
     }
-    .has-fixed-layout th, .has-fixed-layout td {
+
+    .has-fixed-layout th,
+    .has-fixed-layout td {
         border: 1px solid #364a59;
         background: #1e2630;
         color: var(--pc-text);
     }
-    .has-fixed-layout thead > tr > th {
+
+    .has-fixed-layout thead>tr>th {
         background: #2a3440;
         color: var(--pc-nav-text);
         border: 1px solid #3a4a57;
     }
-    .wp-block-table { color: var(--pc-text); }
+
+    .wp-block-table {
+        color: var(--pc-text);
+    }
 }
 
 /* Remove previous global .nav-link color override to allow custom rules above.
     (Bootstrap still supplies spacing/active styles.) */
 
-.posted-on { font-style: italic; font-size: smaller; color: var(--pc-text-muted); }
+.posted-on {
+    font-style: italic;
+    font-size: smaller;
+    color: var(--pc-text-muted);
+}
 
 figcaption {
     font-size: smaller;
@@ -321,7 +459,7 @@ figcaption {
 .post-grid {
     display: grid;
     gap: 1rem 1rem;
-    grid-template-columns: repeat(auto-fill,minmax(260px,1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     margin: 1rem 0 2rem;
     padding: 0;
 }
@@ -333,7 +471,7 @@ figcaption {
     border: 1px solid #e3e6ea;
     border-radius: 8px;
     padding: 1.25rem 1.25rem 1rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,.04);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .04);
     transition: box-shadow .18s ease, transform .18s ease;
     position: relative;
     overflow: hidden;
@@ -343,30 +481,64 @@ figcaption {
     content: "";
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 30% 20%, rgba(0,123,255,.08), transparent 60%);
+    background: radial-gradient(circle at 30% 20%, rgba(0, 123, 255, .08), transparent 60%);
     opacity: 0;
     transition: opacity .3s ease;
     pointer-events: none;
 }
 
 .post-card:hover {
-    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .12);
     transform: translateY(-3px);
 }
 
-.post-card:hover:before { opacity: 1; }
+.post-card:hover:before {
+    opacity: 1;
+}
 
-.post-card-title { font-size: 1.15rem; font-weight: 600; line-height: 1.3; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; color: var(--pc-link); }
+.post-card-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    line-height: 1.3;
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+    color: var(--pc-link);
+}
 
-.post-card-title:hover { color: var(--pc-link-hover); }
+.post-card-title:hover {
+    color: var(--pc-link-hover);
+}
 
-.post-card-meta { font-size: .75rem; text-transform: none; color: var(--pc-text-muted); margin-top: .35rem; margin-bottom: .35rem; }
+.post-card-meta {
+    font-size: .75rem;
+    text-transform: none;
+    color: var(--pc-text-muted);
+    margin-top: .35rem;
+    margin-bottom: .35rem;
+}
 
-.post-card-excerpt { font-size: .9rem; line-height: 1.4; flex-grow: 1; margin-bottom: .75rem; color: var(--pc-text); }
+.post-card-excerpt {
+    font-size: .9rem;
+    line-height: 1.4;
+    flex-grow: 1;
+    margin-bottom: .75rem;
+    color: var(--pc-text);
+}
 
-.post-card-more { font-size: .75rem; text-transform: uppercase; font-weight: 600; text-decoration: none; text-decoration-thickness: 1.5px; text-underline-offset: 2px; color: var(--pc-accent); }
+.post-card-more {
+    font-size: .75rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    text-decoration: none;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+    color: var(--pc-accent);
+}
 
-.post-card-more:hover { color: var(--pc-link-hover); }
+.post-card-more:hover {
+    color: var(--pc-link-hover);
+}
 
 /* Individual post page */
 .post-content {
@@ -375,7 +547,9 @@ figcaption {
     padding-top: .5rem;
 }
 
-.post-header { margin-bottom: .75rem; }
+.post-header {
+    margin-bottom: .75rem;
+}
 
 .post-title {
     font-size: clamp(1.9rem, 2.6vw, 2.6rem);
@@ -384,20 +558,40 @@ figcaption {
     margin: 0 0 .6rem;
 }
 
-.post-meta { font-size: .85rem; color: var(--pc-text-muted); }
+.post-meta {
+    font-size: .85rem;
+    color: var(--pc-text-muted);
+}
 
 .post-body {
     font-size: 1.04rem;
     line-height: 1.6;
 }
 
-.post-body p { margin-bottom: 1.1rem; }
+.post-body p {
+    margin-bottom: 1.1rem;
+}
 
-.post-body h2, .post-body h3, .post-body h4 { scroll-margin-top: 4.5rem; }
+.post-body h2,
+.post-body h3,
+.post-body h4 {
+    scroll-margin-top: 4.5rem;
+}
 
-.post-body h2 { margin-top: 2.4rem; font-size: 1.65rem; }
-.post-body h3 { margin-top: 1.9rem; font-size: 1.35rem; }
-.post-body h4 { margin-top: 1.6rem; font-size: 1.15rem; }
+.post-body h2 {
+    margin-top: 2.4rem;
+    font-size: 1.65rem;
+}
+
+.post-body h3 {
+    margin-top: 1.9rem;
+    font-size: 1.35rem;
+}
+
+.post-body h4 {
+    margin-top: 1.6rem;
+    font-size: 1.15rem;
+}
 
 .post-body pre {
     background: var(--pc-code-bg);
@@ -406,16 +600,41 @@ figcaption {
     border-radius: 6px;
     font-size: .85rem;
     overflow: auto;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 2px 6px rgba(0,0,0,.25);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 2px 6px rgba(0, 0, 0, .25);
 }
 
-.post-body code:not(pre code) { background: var(--pc-inline-code-bg); padding: .15rem .4rem .2rem; border-radius: 4px; font-size: .85em; }
+.post-body code:not(pre code) {
+    background: var(--pc-inline-code-bg);
+    padding: .15rem .4rem .2rem;
+    border-radius: 4px;
+    font-size: .85em;
+}
 
-.post-body blockquote { margin: 1.4rem 0; padding: .75rem 1rem .75rem 1.1rem; background: var(--pc-blockquote-bg); border-left: 4px solid var(--pc-blockquote-bar); border-radius: 0 6px 6px 0; color: var(--pc-text); font-size: 1rem; }
+.post-body blockquote {
+    margin: 1.4rem 0;
+    padding: .75rem 1rem .75rem 1.1rem;
+    background: var(--pc-blockquote-bg);
+    border-left: 4px solid var(--pc-blockquote-bar);
+    border-radius: 0 6px 6px 0;
+    color: var(--pc-text);
+    font-size: 1rem;
+}
 
-.post-body img, .post-body figure { max-width: 100%; height: auto; }
-.post-body figure { margin: 1.5rem 0; }
-.post-body figcaption { text-align: center; margin-top: .4rem; color: var(--pc-text-muted); }
+.post-body img,
+.post-body figure {
+    max-width: 100%;
+    height: auto;
+}
+
+.post-body figure {
+    margin: 1.5rem 0;
+}
+
+.post-body figcaption {
+    text-align: center;
+    margin-top: .4rem;
+    color: var(--pc-text-muted);
+}
 
 /* Dark mode code block emphasis (provide a similar visual "pop" as light mode) */
 @media (prefers-color-scheme: dark) {
@@ -424,20 +643,37 @@ figcaption {
         background: linear-gradient(145deg, #232e39, #1b232c);
         /* Layered shadows: subtle inner border, depth, and faint accent halo */
         box-shadow:
-            inset 0 0 0 1px rgba(255,255,255,0.05), /* inner hairline */
-            0 1px 2px rgba(0,0,0,0.55),            /* small base shadow */
-            0 4px 14px -2px rgba(0,0,0,0.65),      /* spread for depth */
-            0 0 0 3px rgba(71,157,255,0.10),       /* soft accent ring */
-            0 0 20px -4px rgba(71,157,255,0.22);   /* glow to mimic light-mode elevation */
+            inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+            /* inner hairline */
+            0 1px 2px rgba(0, 0, 0, 0.55),
+            /* small base shadow */
+            0 4px 14px -2px rgba(0, 0, 0, 0.65),
+            /* spread for depth */
+            0 0 0 3px rgba(71, 157, 255, 0.10),
+            /* soft accent ring */
+            0 0 20px -4px rgba(71, 157, 255, 0.22);
+        /* glow to mimic light-mode elevation */
     }
 }
 
 /* Responsive tweaks */
 @media (max-width: 640px) {
-    .post-card { padding: 1rem .95rem .85rem; }
-    .post-card-title { font-size: 1.05rem; }
-    .post-content { padding-left: .75rem; padding-right: .75rem; }
-    .post-title { font-size: 1.9rem; }
+    .post-card {
+        padding: 1rem .95rem .85rem;
+    }
+
+    .post-card-title {
+        font-size: 1.05rem;
+    }
+
+    .post-content {
+        padding-left: .75rem;
+        padding-right: .75rem;
+    }
+
+    .post-title {
+        font-size: 1.9rem;
+    }
 }
 
 /* --- Minimal vertical post list variant (override card grid) --- */
@@ -458,27 +694,62 @@ figcaption {
     display: block;
 }
 
-.post-card + .post-card { border-top: 1px solid var(--pc-border); padding-top: 1.5rem; }
+.post-card+.post-card {
+    border-top: 1px solid var(--pc-border);
+    padding-top: 1.5rem;
+}
 
-.post-card-meta { font-size: 0.7rem; text-transform: none; font-weight: 600; color: var(--pc-text-muted); margin: 0 0 .45rem; }
+.post-card-meta {
+    font-size: 0.7rem;
+    text-transform: none;
+    font-weight: 600;
+    color: var(--pc-text-muted);
+    margin: 0 0 .45rem;
+}
 
-.post-card-title { font-size: 1.35rem; line-height: 1.25; font-weight: 600; margin: 0 0 .5rem; color: var(--pc-link); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
+.post-card-title {
+    font-size: 1.35rem;
+    line-height: 1.25;
+    font-weight: 600;
+    margin: 0 0 .5rem;
+    color: var(--pc-link);
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+}
 
-.post-card-excerpt { margin: 0; font-size: .95rem; line-height: 1.5; max-width: 60ch; color: var(--pc-text); }
+.post-card-excerpt {
+    margin: 0;
+    font-size: .95rem;
+    line-height: 1.5;
+    max-width: 60ch;
+    color: var(--pc-text);
+}
+
 /* Allow wider excerpts on large viewports so they align with intro paragraphs */
 @media (min-width: 900px) {
-    .post-grid .post-card-excerpt { max-width: 68ch; }
+    .post-grid .post-card-excerpt {
+        max-width: 68ch;
+    }
 }
+
 @media (min-width: 1200px) {
-    .post-grid .post-card-excerpt { max-width: 72ch; }
+    .post-grid .post-card-excerpt {
+        max-width: 72ch;
+    }
 }
+
 @media (min-width: 1600px) {
-    .post-grid .post-card-excerpt { max-width: 78ch; }
+    .post-grid .post-card-excerpt {
+        max-width: 78ch;
+    }
 }
 
 /* On very wide viewports we ultimately want excerpts to align with intro paragraphs; remove cap */
 @media (min-width: 1800px) {
-    .post-grid .post-card-excerpt { max-width: none; }
+    .post-grid .post-card-excerpt {
+        max-width: none;
+    }
 }
 
 .post-card-more {
@@ -486,12 +757,19 @@ figcaption {
     font-size: .7rem;
     text-transform: none;
     font-weight: 600;
-    text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px;
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
 }
 
 @media (max-width: 640px) {
-    .post-card-title { font-size: 1.18rem; }
-    .post-card { padding: 0; }
+    .post-card-title {
+        font-size: 1.18rem;
+    }
+
+    .post-card {
+        padding: 0;
+    }
 }
 
 /* --- Container padding override -------------------------------------------------
@@ -501,36 +779,209 @@ figcaption {
    preserving automatic horizontal centering via auto margins. If future content
    needs a tiny gutter, we reintroduce a reduced value with a custom variable. */
 
-:root { --pc-container-x: .5rem; }
+:root {
+    --pc-container-x: .5rem;
+}
 
 /* Remove padding by default (desktop & mobile) */
-.container, .container-fluid, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
-    padding-left: 0; /* eliminate lateral shift */
+.container,
+.container-fluid,
+.container-lg,
+.container-md,
+.container-sm,
+.container-xl,
+.container-xxl {
+    padding-left: 0;
+    /* eliminate lateral shift */
     padding-right: 0;
 }
 
 /* If a minimal gutter improves readability on wider viewports, add a very small one */
 @media (min-width: 900px) {
-    .container, .container-fluid, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
+
+    .container,
+    .container-fluid,
+    .container-lg,
+    .container-md,
+    .container-sm,
+    .container-xl,
+    .container-xxl {
         padding-left: var(--pc-container-x);
         padding-right: var(--pc-container-x);
     }
 }
 
 /* Explicitly ensure nested centered elements (like .sudoku-stage) stay centered */
-.container > .sudoku-top, .container > .sudoku-stage { margin-left:auto; margin-right:auto; }
+.container>.sudoku-top,
+.container>.sudoku-stage {
+    margin-left: auto;
+    margin-right: auto;
+}
 
 /* Restore intentional padding just for nav/footer so brand + toggler aren't flush */
-:root { --pc-nav-pad: .85rem; }
-.navbar > .container, .navbar > .container-fluid,
-.footer > .container, .footer > .container-fluid {
+:root {
+    --pc-nav-pad: .85rem;
+}
+
+.navbar>.container,
+.navbar>.container-fluid,
+.footer>.container,
+.footer>.container-fluid {
     padding-left: max(var(--pc-nav-pad), env(safe-area-inset-left, 0));
     padding-right: max(var(--pc-nav-pad), env(safe-area-inset-right, 0));
 }
+
 @media (min-width: 900px) {
+
     /* allow a little more breathing room on wider screens without affecting Sudoku centering */
-    .navbar > .container, .navbar > .container-fluid,
-    .footer > .container, .footer > .container-fluid { padding-left: 1.25rem; padding-right: 1.25rem; }
+    .navbar>.container,
+    .navbar>.container-fluid,
+    .footer>.container,
+    .footer>.container-fluid {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
 }
 
+/* Image Lightbox Enhancement */
+.content-body img,
+figure img {
+    transition: opacity 0.2s ease-in-out;
+}
 
+.content-body img:hover,
+figure img:hover {
+    opacity: 0.9;
+}
+
+#imageLightboxModal .modal-content {
+    background: transparent !important;
+    box-shadow: none;
+    max-height: calc(100vh - 1.5rem);
+    display: flex;
+    flex-direction: column;
+}
+
+#imageLightboxModal .modal-dialog {
+    max-width: min(96vw, 1400px);
+    margin: 0.75rem auto;
+}
+
+#imageLightboxModal .modal-header {
+    min-height: 3.5rem;
+    padding: 0.75rem 1rem 0.75rem !important;
+    background: rgba(10, 14, 20, 0.55);
+    -webkit-backdrop-filter: blur(10px) saturate(130%);
+    backdrop-filter: blur(10px) saturate(130%);
+    border-bottom: none !important;
+}
+
+#imageLightboxModal .modal-body {
+    background: transparent;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    justify-items: center;
+    align-items: center;
+    gap: 0.75rem;
+    overflow: hidden;
+}
+
+#lightboxImage {
+    max-height: 100%;
+    max-width: min(100%, calc(100vw - 4rem));
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+#imageLightboxModal .btn-close {
+    background-size: 1.1rem;
+    opacity: 0.95;
+    margin: 0;
+    padding: 0.85rem;
+    border-radius: 999px;
+    background-color: rgba(0, 0, 0, 0.55);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+#imageLightboxModal .btn-close:hover,
+#imageLightboxModal .btn-close:focus {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3), 0 4px 10px rgba(0, 0, 0, 0.42);
+}
+
+#lightboxCaption {
+    background: rgba(10, 14, 20, 0.58);
+    -webkit-backdrop-filter: blur(10px) saturate(130%);
+    backdrop-filter: blur(10px) saturate(130%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 0.5rem;
+    padding: 0.65rem 1rem;
+    margin: 0 auto;
+    max-width: min(80%, 65rem);
+    font-size: 0.95rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+#galleryPrev,
+#galleryNext {
+    z-index: 1002 !important;
+}
+
+#galleryPrev {
+    left: 0.75rem !important;
+}
+
+#galleryNext {
+    right: 0.75rem !important;
+}
+
+/* Gallery navigation arrows - hover effects and responsive positioning */
+#galleryPrev:hover,
+#galleryNext:hover {
+    background: rgba(0, 0, 0, 0.8) !important;
+    transform: translateY(-50%) scale(1.1) !important;
+}
+
+#galleryPrev:focus,
+#galleryNext:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Move arrows closer on smaller screens where space is limited */
+@media (max-width: 991px) {
+    #galleryPrev {
+        left: 0.5rem !important;
+    }
+
+    #galleryNext {
+        right: 0.5rem !important;
+    }
+}
+
+/* Hide arrows entirely on very small screens to avoid clipping */
+@media (max-width: 768px) {
+
+    #galleryPrev,
+    #galleryNext {
+        display: none !important;
+    }
+}
+
+.gallery-counter {
+    background: rgba(10, 14, 20, 0.5);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.3rem 0.75rem;
+    border-radius: 0.5rem;
+    font-family: monospace;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}

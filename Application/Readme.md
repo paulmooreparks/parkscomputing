@@ -1,5 +1,19 @@
-# Parks Computing Web Site
+# Parks Computing Application
 
-This is the source code for my personal web site, https://www.parkscomputing.com/. The site is written with ASP.NET Razor Pages on .NET 7.0.
+ASP.NET Razor Pages application for https://www.parkscomputing.com/.
 
-Note that the content in wwwroot is only for development and testing purposes. The actual content for the site is kept in Azure storage.
+## Technical Stack
+
+- **.NET 8.0** - ASP.NET Core Razor Pages
+- **SQL Server 2022** - Authentication and user data
+- **Docker** - Containerized deployment
+
+## Project Structure
+
+- **parkscomputing-engine/** - Main web application
+  - `Pages/` - Razor Pages
+  - `wwwroot/` - Development content (production content mounted separately)
+
+## Local Development
+
+See the root [DEPLOYMENT.md](../DEPLOYMENT.md) for setup and deployment instructions.

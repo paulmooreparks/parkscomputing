@@ -94,7 +94,7 @@
     ]
     posts [
         </ { slug "xferlang-site-navigation" } />
-        </ { slug "my-llm-experience" } />
+        </ { slug "my-llm-experience" tags ["programming"] } />
         { slug "parks-laws-of-debugging" }
         {
             slug "sudoku"

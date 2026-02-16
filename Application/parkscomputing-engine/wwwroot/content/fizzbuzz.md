@@ -6,6 +6,7 @@ lastModified: 2025-08-24T12:00:05+08
 commentsAllowed: false
 commentsEnabled: false
 lang: en-us
+tags: ["programming", "algorithms", "c++"]
 ---
 
 # FizzBuzz

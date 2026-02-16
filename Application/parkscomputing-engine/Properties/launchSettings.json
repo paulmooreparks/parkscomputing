@@ -1,12 +1,24 @@
 {
   "profiles": {
-    "aspnet-core-dotnet-core": {
+    "Development": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "VaultUri": "https://parkscomputingvault.vault.azure.net/",
-        "AZURE_USERNAME": "paul@smartsam.com"
+        "AZURE_USERNAME": "paul@smartsam.com",
+        "JWT_SECRET": "this-is-a-very-long-development-secret-key-for-local-testing-only-32-plus-bytes"
+      }
+    },
+    "Live Content": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "VaultUri": "https://parkscomputingvault.vault.azure.net/",
+        "AZURE_USERNAME": "paul@smartsam.com",
+        "JWT_SECRET": "this-is-a-very-long-development-secret-key-for-local-testing-only-32-plus-bytes",
+        "ASPNETCORE_WEBROOT": "C:\\Users\\paul\\OneDrive\\Documents\\parkscomputing.com\\wwwroot"
       }
     }
   }
