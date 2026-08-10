@@ -47,8 +47,11 @@ try {
     $env:ASPNETCORE_URLS = $config.ASPNETCORE_URLS
     $env:ASPNETCORE_ENVIRONMENT = $config.ASPNETCORE_ENVIRONMENT
     $env:ASPNETCORE_WEBROOT = $config.WebRootPath
-    $env:AUTH_CONNECTION_STRING = $config.Auth.ConnectionString
-    $env:JWT_SECRET = $config.Jwt.Secret
+    # Auth:ConnectionString and Jwt:Secret come from .NET user secrets, not from
+    # this file. See pc-4. Populate them once with:
+    #   dotnet user-secrets set "Auth:ConnectionString" "<local connection string>" --project parkscomputing-engine/parkscomputing-engine.csproj
+    #   dotnet user-secrets set "Jwt:Secret" "<local dev signing key>" --project parkscomputing-engine/parkscomputing-engine.csproj
+    # The engine throws at startup when either is missing.
 
     Write-Host "🚀 Starting Parks Computing site..." -ForegroundColor Green
     Write-Host "   URL: $($config.ASPNETCORE_URLS)" -ForegroundColor Cyan

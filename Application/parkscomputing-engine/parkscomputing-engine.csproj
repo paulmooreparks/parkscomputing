@@ -13,6 +13,7 @@
 			<AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
 			<AssemblyName>ParksComputing.Engine</AssemblyName>
 			<RootNamespace>ParksComputing.Engine</RootNamespace>
+			<UserSecretsId>parkscomputing-engine</UserSecretsId>
 			<Nullable>enable</Nullable>
 			<GenerateDocumentationFile>true</GenerateDocumentationFile>
 			<NoWarn>$(NoWarn);1591</NoWarn>

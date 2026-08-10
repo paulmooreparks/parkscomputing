@@ -1,11 +1,5 @@
 {
     "ASPNETCORE_URLS": "http://localhost:8080",
     "ASPNETCORE_ENVIRONMENT": "Development",
-    "WebRootPath": "C:\\Users\\paul\\OneDrive\\Documents\\parkscomputing.com\\wwwroot",
-    "Auth": {
-        "ConnectionString": "Data Source=parkscomputing-dev.db"
-    },
-    "Jwt": {
-        "Secret": "dev-secret-key-for-local-testing-only-do-not-use-in-production"
-    }
+    "WebRootPath": "C:\\Users\\paul\\OneDrive\\Documents\\parkscomputing.com\\wwwroot"
 }
