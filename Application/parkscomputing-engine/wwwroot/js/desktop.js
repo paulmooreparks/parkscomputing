@@ -75,9 +75,52 @@
         var layer = document.querySelector('[data-win-layer]');
         if (!layer) { return; }
 
+        /* Stepping between an article's image windows: the prev/next link is
+           a data-win-open link that pudl-windows opens as a sibling child;
+           once the sibling arrives, the window it was clicked in is closed
+           through its own close control, so one image shows at a time. */
+        var pendingClose = null;
+        layer.addEventListener('click', function (e) {
+            var nav = e.target.closest('[data-img-nav]');
+            if (!nav) { return; }
+            var win = nav.closest('.win');
+            if (!win) { return; }
+            var sibling = nav.getAttribute('data-win-open');
+            if (sibling && layer.querySelector('.win[data-win="' + sibling + '"]')) {
+                /* Already open: it is only raised, no open event fires. */
+                var close = win.querySelector('[data-win-action="close"]');
+                setTimeout(function () { if (close) { close.click(); } }, 0);
+            } else {
+                pendingClose = win;
+            }
+        });
+
         layer.addEventListener('pudl:window-open', function (e) {
             enhance(e.target);
+            if (pendingClose && pendingClose !== e.target) {
+                var close = pendingClose.querySelector('[data-win-action="close"]');
+                pendingClose = null;
+                if (close) { close.click(); }
+            }
         });
+
+        /* In an image window the plain arrow keys step between images, as
+           they do in the classic lightbox. Captured before pudl-windows'
+           own keyboard handling, which keeps Shift+arrows for resizing;
+           windows without image nav keep arrow-key movement. */
+        layer.addEventListener('keydown', function (e) {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') { return; }
+            if (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) { return; }
+            if (e.target.closest && e.target.closest('input, textarea, select')) { return; }
+            var win = e.target.closest && e.target.closest('.win');
+            if (!win) { return; }
+            var nav = win.querySelector('.win-img-nav');
+            if (!nav) { return; }
+            e.preventDefault();
+            e.stopPropagation();
+            var link = nav.querySelector('[data-img-nav="' + (e.key === 'ArrowLeft' ? 'prev' : 'next') + '"]');
+            if (link) { link.click(); }
+        }, true);
 
         /* Windows the server rendered from the URL fire no open event. */
         layer.querySelectorAll('.win').forEach(enhance);

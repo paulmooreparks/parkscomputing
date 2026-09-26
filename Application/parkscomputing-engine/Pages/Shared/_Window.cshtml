@@ -8,8 +8,10 @@
         ? $"--win-x:{Model.X:0.###}; --win-y:{Model.Y:0.###}; --win-w:{Model.W:0.###}; --win-h:{Model.H:0.###}"
         : string.Empty;
 }
+@* Razor renders data-* attributes even for null values, so the parent
+   attribute is emitted only for a child window. *@
 <article class="win @(Model.Active ? "active" : string.Empty)" data-win="@Model.Key"
-         data-win-parent="@Model.Parent"
+         @(Model.Parent is null ? null : Html.Raw($"data-win-parent=\"{Model.Parent}\""))
          data-win-mode="@(Model.Mode ?? "maximized")"
          role="dialog" aria-labelledby="win-@Model.Key-title"
          style="@style" hidden="@Model.Minimized">

@@ -279,13 +279,25 @@ body.desktop .app-section-bar { flex: none; }
 /* Windowed article prose keeps the page's reading measure. */
 .win-body .post-content { margin-bottom: 1.5rem; padding-top: 0; }
 
-/* An image opened as a child window. */
+/* An image opened as a child window. The body is a column: the figure
+   takes the room and the prev/next nav sits beneath it. */
+.win-body:has(> .win-image) {
+  display: flex; flex-direction: column;
+}
 .win-image {
-  margin: 0; height: 100%;
+  margin: 0; flex: 1; min-height: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
 }
-.win-image img { max-width: 100%; max-height: 85%; object-fit: contain; }
-.win-image figcaption { font-size: .9rem; font-style: italic; color: var(--text-muted); }
+.win-image img { max-width: 100%; max-height: 100%; min-height: 0; object-fit: contain; }
+.win-image figcaption { font-size: .9rem; font-style: italic; color: var(--text-muted); flex: none; }
+.win-img-nav {
+  flex: none;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding-top: 10px;
+}
+.win-img-nav .icon-btn { text-decoration: none; }
+.win-img-nav .is-disabled { opacity: .35; }
+.win-img-nav .num { font-size: .8rem; color: var(--text-muted); }
 
 /* An image wrapped as a child-window opener is content, not a link block. */
 .win-img-link { display: inline-block; line-height: 0; }

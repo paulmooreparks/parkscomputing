@@ -72,9 +72,32 @@ public class ArticleContentService {
         string body =
             $"<figure class=\"win-image\"><img src=\"{System.Net.WebUtility.HtmlEncode(image.Src)}\" alt=\"{caption}\" data-no-lightbox />" +
             (string.IsNullOrEmpty(caption) ? string.Empty : $"<figcaption>{caption}</figcaption>") +
-            "</figure>";
+            "</figure>" +
+            BuildImageNav(parentSlug, n, images.Count);
 
         return new ArticleWindowContent(key!, title, body, HasCode: false, HasMermaid: false);
+    }
+
+    /// <summary>
+    /// Prev/next controls between an article's image windows. Each is a
+    /// data-win-open link, so the script opens the sibling as a child of the
+    /// same article (desktop.js then closes this one); the href is the same
+    /// state as a URL for a browser without script. One image gets no nav.
+    /// </summary>
+    private static string BuildImageNav(string parentSlug, int n, int count) {
+        if (count < 2) { return string.Empty; }
+
+        string Link(int target, string dir, string glyph, string label) {
+            var key = $"{parentSlug}-img-{target}";
+            return $"<a class=\"icon-btn\" data-win-open=\"{key}\" data-img-nav=\"{dir}\" " +
+                   $"href=\"/desktop?open={parentSlug},{key}&amp;top={key}\" aria-label=\"{label}\">{glyph}</a>";
+        }
+
+        return "<nav class=\"win-img-nav\" aria-label=\"Images in this article\">" +
+               (n > 1 ? Link(n - 1, "prev", "❮", "Previous image") : "<span class=\"icon-btn is-disabled\" aria-hidden=\"true\">❮</span>") +
+               $"<span class=\"num\">{n} of {count}</span>" +
+               (n < count ? Link(n + 1, "next", "❯", "Next image") : "<span class=\"icon-btn is-disabled\" aria-hidden=\"true\">❯</span>") +
+               "</nav>";
     }
 
     private ArticleWindowContent? LoadRaw(string? slug) {
