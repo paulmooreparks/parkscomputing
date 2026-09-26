@@ -1,0 +1,291 @@
+/* ==========================================================================
+   parkscomputing.com site theme and site-specific styles, loaded after
+   pudl.css (and pudl-windows.css where the page uses windows). This file
+   replaces the Bootstrap-era site.css. It sets the palette tokens PUDL
+   invites a theme to set, and it styles the things PUDL has no component
+   for: article prose, the nav menus, the image lightbox, the comment
+   thread, and the desktop shell.
+   ========================================================================== */
+
+/* === Theme ================================================================
+   The accent carries the site's long-standing link blue. Everything else
+   stays PUDL's neutral graphite. */
+:root {
+  --accent: #0d47a1;
+  --accent-hover: #08306e;
+}
+
+[data-theme="dark"] {
+  --accent: #4da3ff;
+  --accent-hover: #7bd3ff;
+  --on-accent: #0d1117;
+}
+
+/* === Page shell =========================================================== */
+.site-main {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.site-header { position: sticky; top: 0; z-index: 90; }
+body.desktop .site-header { position: static; flex: none; }
+.brand img { display: block; width: 24px; height: 24px; }
+
+/* === Primary nav: a section-tab strip below the topbar ==================== */
+.site-nav {
+  display: flex; flex-wrap: wrap; align-items: stretch;
+  padding: 0 16px;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+/* A section with children is a native details element; its summary looks
+   like every other tab and its menu is a raised card. No script. */
+.nav-drop { position: relative; }
+.nav-drop > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-block;
+}
+.nav-drop > summary::-webkit-details-marker { display: none; }
+.nav-drop > summary::after {
+  content: " \25BE";
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.nav-menu {
+  position: absolute; top: 100%; left: 0; z-index: 95;
+  min-width: 220px;
+  margin: 0; padding: 6px;
+  display: flex; flex-direction: column;
+  background: var(--dialog-bg, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-card), 0 12px 32px rgb(0 0 0 / 0.22);
+}
+.nav-drop.nav-drop-end .nav-menu { left: auto; right: 0; }
+.nav-menu a {
+  padding: 7px 12px;
+  border-radius: 5px;
+  font-size: 13.5px; font-weight: 600;
+  color: var(--text); text-decoration: none;
+  white-space: nowrap;
+}
+.nav-menu a:hover { background: var(--surface-alt); color: var(--text); }
+
+/* === Footer =============================================================== */
+.site-footer {
+  margin-top: 48px;
+  padding: 18px 20px;
+  background: var(--tb-grad);
+  border-top: 1px solid var(--tb-border);
+  color: var(--tb-fg);
+  font-size: 13px;
+}
+.site-footer a { color: var(--tb-fg); }
+
+/* === Article prose ======================================================== */
+.post-content {
+  max-width: 860px;
+  margin: 0 auto 3rem;
+  padding-top: 1rem;
+}
+.post-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 2.6vw, 2.5rem);
+  font-weight: 700; line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0 0 .6rem;
+}
+.post-meta { font-size: .85rem; color: var(--text-muted); }
+.post-body { font-size: 1.04rem; line-height: 1.65; }
+.post-body p { margin-bottom: 1.1rem; }
+.post-body h1, .post-body h2, .post-body h3, .post-body h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+  scroll-margin-top: 6.5rem;
+}
+.post-body h2 { margin-top: 2.4rem; font-size: 1.6rem; }
+.post-body h3 { margin-top: 1.9rem; font-size: 1.3rem; }
+.post-body h4 { margin-top: 1.6rem; font-size: 1.1rem; }
+.post-body pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0;
+  font-size: .85rem;
+  overflow: auto;
+  box-shadow: var(--entry-shadow);
+}
+.post-body pre code { display: block; padding: 12px 14px; font-family: var(--mono); }
+.post-body code:not(pre code) {
+  font-family: var(--mono);
+  background: var(--surface-alt);
+  padding: .1rem .35rem;
+  border-radius: 4px;
+  font-size: .85em;
+}
+.post-body blockquote {
+  margin: 1.4rem 0;
+  padding: .75rem 1rem .75rem 1.1rem;
+  background: var(--surface);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.post-body img, .post-body figure { max-width: 100%; height: auto; }
+.post-body figure { margin: 1.5rem 0; }
+.post-body figcaption {
+  text-align: center; margin-top: .4rem;
+  font-size: smaller; font-style: italic;
+  color: var(--text-muted);
+}
+.post-body table:not(.kv-table) {
+  border-collapse: collapse; font-size: .95rem;
+}
+.post-body table:not(.kv-table) th,
+.post-body table:not(.kv-table) td {
+  border: 1px solid var(--border); padding: 6px 10px;
+}
+.posted-on { font-style: italic; font-size: smaller; color: var(--text-muted); }
+
+/* Article images invite the lightbox. */
+.content-body img:not([data-no-lightbox]), .win-body img:not([data-no-lightbox]) { cursor: pointer; }
+
+/* === Post listing ========================================================= */
+.post-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  margin: 1rem 0 2rem;
+  padding: 0;
+}
+.post-card {
+  display: flex; flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.25rem 1rem;
+  box-shadow: var(--shadow-card);
+}
+.post-card-title {
+  font-size: 1.1rem; font-weight: 600; line-height: 1.3;
+}
+.post-card-meta { font-size: .75rem; color: var(--text-muted); margin: .35rem 0; }
+.post-card-excerpt { font-size: .9rem; line-height: 1.4; flex-grow: 1; margin-bottom: .75rem; }
+.post-card-more { font-size: .78rem; font-weight: 600; }
+
+/* === Audio / video accordions (native details) ============================ */
+.media-accordion {
+  margin: .75rem 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.media-accordion > summary {
+  padding: 8px 12px;
+  font-size: .9rem; font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+.media-accordion > .media-accordion-body { padding: 4px 12px 12px; }
+
+/* === Comments ============================================================= */
+.page-comments h2 {
+  font-family: var(--font-display);
+  border-top: 1px solid var(--border);
+  padding-top: 1.5rem; margin-top: 2.5rem;
+}
+.page-comment {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 14px 18px;
+  margin: 0 0 14px;
+}
+.page-comment-title { margin: 0 0 4px; font-size: 1.05rem; }
+.page-comment-author { font-size: .8rem; color: var(--text-muted); margin-bottom: .5rem; }
+.page-post-comment { max-width: 560px; margin-top: 2rem; }
+
+/* === Image lightbox =======================================================
+   A native dialog, styled with PUDL's dialog vocabulary. The shell is
+   server-rendered in the layout; lightbox.js swaps the image in and out.
+   The image itself is flat content; the controls are raised. */
+.lightbox {
+  padding: 0; margin: auto;
+  max-width: min(94vw, 1400px); max-height: 94vh;
+  background: transparent; border: 0;
+  overflow: visible;
+}
+.lightbox::backdrop { background: rgb(0 0 0 / 0.62); }
+.lightbox-frame {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  position: relative;
+}
+.lightbox-img {
+  max-width: min(94vw, 1400px); max-height: 84vh;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.5);
+}
+.lightbox-caption {
+  color: #fff; font-size: .9rem; text-align: center;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+  max-width: 80ch;
+}
+.lightbox-counter {
+  color: #fff; font-size: .8rem; opacity: .85;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+}
+.lightbox-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--raise-border);
+  background: var(--raise-grad);
+  box-shadow: var(--raise-shadow);
+  color: var(--text);
+  font: 600 16px/1 var(--font);
+  cursor: pointer;
+}
+.lightbox-btn:hover { background: var(--raise-grad-hover); border-color: var(--raise-border-hover); }
+.lightbox-btn:focus-visible { outline: none; box-shadow: var(--raise-shadow), 0 0 0 3px var(--focus-ring); }
+.lightbox-close { position: absolute; top: -14px; right: -14px; }
+.lightbox-prev, .lightbox-next {
+  position: absolute; top: 50%; transform: translateY(-50%);
+}
+.lightbox-prev { left: -14px; }
+.lightbox-next { right: -14px; }
+.lightbox-prev[hidden], .lightbox-next[hidden] { display: none; }
+
+/* === Desktop mode =========================================================
+   The desktop is PUDL's master-detail layout with the windows as the
+   detail pane, after PUDL's samples/article-reader.html. pudl.css sizes
+   the layout itself (body:has(> .md-layout) fills the viewport); what
+   follows is only this site's stage styling. */
+body.desktop .md-toolbar .md-section-label { padding: 0; }
+body.desktop .md-sidebar { width: 300px; }
+body.desktop .app-section-bar { flex: none; }
+.desktop-filter-form { display: inline-flex; }
+.reader-stage { padding: 0; overflow: hidden; }
+.reader-col { display: flex; flex-direction: column; height: 100%; }
+.reader-col .md-back { margin: 12px 16px 4px; align-self: flex-start; }
+.reader-col .win-host { flex: 1; min-height: 0; position: relative; }
+.reader-empty {
+  height: 100%; overflow-y: auto; padding: 32px;
+}
+.reader-empty .card { max-width: 560px; margin: 10vh auto 0; }
+
+/* Windowed article prose keeps the page's reading measure. */
+.win-body .post-content { margin-bottom: 1.5rem; padding-top: 0; }
+
+/* An image opened as a child window. */
+.win-image {
+  margin: 0; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+}
+.win-image img { max-width: 100%; max-height: 85%; object-fit: contain; }
+.win-image figcaption { font-size: .9rem; font-style: italic; color: var(--text-muted); }
+
+/* An image wrapped as a child-window opener is content, not a link block. */
+.win-img-link { display: inline-block; line-height: 0; }

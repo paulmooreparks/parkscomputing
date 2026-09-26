@@ -1,10 +1,17 @@
 /* ==========================================================================
-   Essential Accessibility Enhancements - CSS Only
+   Essential accessibility enhancements.
+
+   Sizing and focus styling of controls belong to PUDL (pudl.css), so this
+   file no longer forces anchors and buttons into 44px boxes; that rule
+   predated PUDL and broke its list rows and window chrome. Touch-target
+   size on narrow layouts comes from PUDL's own row padding.
    ========================================================================== */
 
-/* Focus indicators for keyboard navigation */
-*:focus {
-    outline: 2px solid #0066cc;
+/* Keyboard focus indicator, only for keyboard focus, and in the theme's
+   accent so it stays visible on both palettes. PUDL components that draw
+   their own focus ring suppress the outline themselves. */
+:focus-visible {
+    outline: 2px solid var(--accent, #0066cc);
     outline-offset: 2px;
 }
 
@@ -19,18 +26,6 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
-}
-
-/* Ensure interactive elements are large enough for touch */
-button,
-input[type="button"],
-input[type="submit"],
-a {
-    min-height: 44px;
-    min-width: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
 }
 
 /* Reduce motion for users who prefer it */

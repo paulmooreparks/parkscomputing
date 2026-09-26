@@ -1,24 +1,28 @@
-﻿@model ParksComputing.Engine.Pages.Services.CommentForm
+@model ParksComputing.Engine.Pages.Services.CommentForm
 
 <div class="page-post-comment">
     <h3>Share Your Thoughts</h3>
     <form method="post">
-        <label for="name">Name</label><br />
-        <input id="name" name="Name" required asp-for="Name">
-        <br />
+        <div class="form-group">
+            <label class="form-label" for="name">Name</label>
+            <input class="form-input" id="name" name="Name" required asp-for="Name">
+        </div>
 
-        <label for="email">Email</label><br />
-        <input id="email" type="email" name="Email" required asp-for="Email">
-        <br />
+        <div class="form-group">
+            <label class="form-label" for="email">Email</label>
+            <input class="form-input" id="email" type="email" name="Email" required asp-for="Email">
+        </div>
 
-        <label for="comment-title">Title</label><br />
-        <input id="comment-title" name="Title" required asp-for="Title">
-        <br />
+        <div class="form-group">
+            <label class="form-label" for="comment-title">Title</label>
+            <input class="form-input" id="comment-title" name="Title" required asp-for="Title">
+        </div>
 
-        <label for="comment-text">Comment</label><br />
-        <textarea id="comment-text" name="Text" required asp-for="Text"></textarea>
-        <br />
+        <div class="form-group">
+            <label class="form-label" for="comment-text">Comment</label>
+            <textarea class="form-textarea" id="comment-text" name="Text" required asp-for="Text"></textarea>
+        </div>
 
-        <button type="submit">Submit Comment</button>
+        <button class="btn btn-primary" type="submit">Submit Comment</button>
     </form>
 </div>

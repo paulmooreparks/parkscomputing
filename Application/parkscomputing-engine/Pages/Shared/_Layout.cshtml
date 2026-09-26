@@ -1,14 +1,16 @@
-﻿@using ParksComputing.Engine.Pages.Services
+@using ParksComputing.Engine.Pages.Services
 @inject StaticFileReaderService FileReaderService
 
-@{ // Top-level flag indicating markdown content so it is in scope for entire layout
+@{
     bool mdFlag = ViewData["IsMarkdown"] as bool? ?? false;
     string? contentFormat = ViewData["ContentFormat"] as string;
-    string? pageId = ViewData["PageId"] as string; // slug only (no extension)
-    // Derive from explicit format, or fallback to mdFlag, or presence of code blocks flag.
+    bool hasMermaid = ViewData["HasMermaid"] as bool? ?? false;
+    bool isDesktop = ViewData["Desktop"] as bool? ?? false;
     bool isMarkdown = (contentFormat?.Equals("markdown", System.StringComparison.OrdinalIgnoreCase) ?? false) || mdFlag;
-    // If HasCodeBlocks set but not flagged markdown yet, still treat as markdown for highlight assets.
     if (!isMarkdown && (ViewData["HasCodeBlocks"] as bool? ?? false)) { isMarkdown = true; }
+    // The desktop loads articles into windows, so it always needs the
+    // highlighting assets.
+    bool needsHighlight = isMarkdown || isDesktop;
 }
 
 <!DOCTYPE html>
@@ -19,10 +21,14 @@
     <meta name="color-scheme" content="light dark" />
     <title>@ViewData["Title"]</title>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
-            integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65"
-            crossorigin="anonymous">
-    <link rel="stylesheet" href="~/css/site.css" />
+    <script src="~/pudl/pudl-theme.js"></script>
+    <link rel="stylesheet" href="~/pudl/pudl.css" />
+    @if (isDesktop)
+    {
+        <link rel="stylesheet" href="~/pudl/pudl-windows.css" />
+    }
+    <link rel="stylesheet" href="~/css/pudl-site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/accessibility.css" />
     <link rel="alternate" type="application/rss+xml" title="RSS Feed for @ViewData["Title"]" href="/rss">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -33,10 +39,6 @@
     @RenderSection("HeadScripts", required: false)
     <link rel="manifest" href="/site.webmanifest">
 
-    <!-- Accessibility enhancements -->
-    <link rel="stylesheet" href="/css/accessibility.css" />
-
-    <!-- Audio player support -->
     @{
         bool hasAudio = ViewData["HasAudio"] as bool? ?? false;
     }
@@ -47,240 +49,123 @@
     }
 
     @Html.RenderStaticFile("/content/head-section.html", FileReaderService)
-    @if (isMarkdown)
+    @if (needsHighlight)
     {
-        <link rel="stylesheet" href="/highlightjs/styles/vs.min.css" media="(prefers-color-scheme: light)">
-        <link rel="stylesheet" href="/highlightjs/styles/vs2015.min.css" media="(prefers-color-scheme: dark)">
+        <link id="hljs-light" rel="stylesheet" href="/highlightjs/styles/vs.min.css" media="(prefers-color-scheme: light)">
+        <link id="hljs-dark" rel="stylesheet" href="/highlightjs/styles/vs2015.min.css" media="(prefers-color-scheme: dark)">
         <script src="/highlightjs/highlight.min.js"></script>
+        @if (hasMermaid || isDesktop)
+        {
+            <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+        }
     }
 </head>
-<body>
-    <header>
+<body class="@(isDesktop ? "desktop" : null)">
+    <header class="site-header">
         @Html.RenderStaticFile("/content/header-section.html", FileReaderService)
-        <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="/"><img src="~/favicon-32x32.png"/></a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse d-sm-inline-flex flex-sm-row-reverse" id="navbarNav">
-                    <ul class="navbar-nav">
-                        @await Component.InvokeAsync("Nav")
-                    </ul>
-                </div>
+        <div class="topbar">
+            <a class="brand" href="/"><img src="~/favicon-32x32.png" alt="" /> Parks Computing</a>
+            <div class="topbar-chrome">
+                @if (isDesktop)
+                {
+                    <a class="topbar-pill" href="/">Classic view</a>
+                }
+                else
+                {
+                    <a class="topbar-pill" href="/desktop">Desktop view</a>
+                }
+                <button class="theme-toggle" type="button" title="Toggle light / dark"
+                        onclick="pudlToggleTheme()">◐</button>
             </div>
-        </nav>
-    </header>
-    <div class="container">
-        @Html.RenderStaticFile("/content/main-section.html", FileReaderService)
-
-        <div class="content-body" role="main" id="main-content" tabindex="-1">
-        @RenderBody()
-        @{
-            // pageId already captured at top-level if needed; avoid redeclaration
-            string pageIdLocal = ViewData["PageId"]?.ToString()!;
-            bool commentsEnabled = ViewData["CommentsEnabled"] as bool? ?? false;
-            bool commentsAllowed = ViewData["CommentsAllowed"] as bool? ?? false;
+        </div>
+        @if (!isDesktop)
+        {
+            <nav class="site-nav" aria-label="Site">
+                @await Component.InvokeAsync("Nav")
+            </nav>
         }
-    @await Component.InvokeAsync("Comments", new { pageId = pageIdLocal, commentsEnabled = commentsEnabled, commentsAllowed = commentsAllowed, commentPosted = (ViewData["CommentPosted"] as bool? ?? false) })
-        </div>
-    </div>
+    </header>
 
-    <footer class="border-top footer bg-dark text-light">
-        @Html.RenderStaticFile("/content/footer-section.html", FileReaderService)
-    </footer>
+    @if (isDesktop)
+    {
+        @RenderBody()
+    }
+    else
+    {
+        <div class="site-main">
+            @Html.RenderStaticFile("/content/main-section.html", FileReaderService)
 
-    <!-- Image Lightbox Modal -->
-    <div class="modal fade" id="imageLightboxModal" tabindex="-1" aria-labelledby="imageLightboxModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-xl">
-            <div class="modal-content bg-transparent border-0 position-relative">
-                <!-- Navigation arrows positioned within modal-content but outside image -->
-                <button type="button" id="galleryPrev" aria-label="Previous image">
-                    ❮
-                </button>
-                <button type="button" id="galleryNext" aria-label="Next image">
-                    ❯
-                </button>
-
-                <div class="modal-header border-0 pb-0">
-                    <div class="d-flex justify-content-between align-items-center w-100">
-                        <div class="gallery-counter text-white small" id="galleryCounter"></div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                </div>
-                <div class="modal-body text-center p-0 position-relative">
-                    <img id="lightboxImage" src="" alt="" class="img-fluid">
-                    <div id="lightboxCaption" class="text-white mt-2"></div>
-                </div>
+            <div class="content-body" role="main" id="main-content" tabindex="-1">
+                @RenderBody()
+                @{
+                    string pageIdLocal = ViewData["PageId"]?.ToString()!;
+                    bool commentsEnabled = ViewData["CommentsEnabled"] as bool? ?? false;
+                    bool commentsAllowed = ViewData["CommentsAllowed"] as bool? ?? false;
+                }
+                @await Component.InvokeAsync("Comments", new { pageId = pageIdLocal, commentsEnabled = commentsEnabled, commentsAllowed = commentsAllowed, commentPosted = (ViewData["CommentPosted"] as bool? ?? false) })
             </div>
         </div>
-    </div>
 
-    <environment include="Development">
-        <script src="~/lib/jquery/dist/jquery.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
-                integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
-                crossorigin="anonymous"></script>
-    </environment>
-    <environment exclude="Development">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"
-                asp-fallback-src="~/lib/jquery/dist/jquery.min.js"
-                asp-fallback-test="window.jQuery"
-                crossorigin="anonymous"
-                integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=">
-        </script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
-                integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
-                crossorigin="anonymous"></script>
-    </environment>
+        <footer class="site-footer">
+            @Html.RenderStaticFile("/content/footer-section.html", FileReaderService)
+        </footer>
+    }
+
+    @* The lightbox shell is server-rendered (PUDL: dialogs come from the
+       server); lightbox.js fills it with the clicked image. *@
+    <dialog class="lightbox" id="image-lightbox" aria-label="Image viewer">
+        <div class="lightbox-frame">
+            <img class="lightbox-img" src="" alt="">
+            <div class="lightbox-caption"></div>
+            <div class="lightbox-counter num"></div>
+            <button type="button" class="lightbox-btn lightbox-close" aria-label="Close">×</button>
+            <button type="button" class="lightbox-btn lightbox-prev" aria-label="Previous image" hidden>❮</button>
+            <button type="button" class="lightbox-btn lightbox-next" aria-label="Next image" hidden>❯</button>
+        </div>
+    </dialog>
+
     <script src="~/js/site.js" asp-append-version="true"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            tooltipTriggerList.forEach(function (tooltipTriggerEl) { new bootstrap.Tooltip(tooltipTriggerEl); });
-
-            // Image lightbox gallery functionality
-            const lightboxModal = new bootstrap.Modal(document.getElementById('imageLightboxModal'));
-            const lightboxImage = document.getElementById('lightboxImage');
-            const lightboxCaption = document.getElementById('lightboxCaption');
-            const galleryCounter = document.getElementById('galleryCounter');
-            const galleryPrev = document.getElementById('galleryPrev');
-            const galleryNext = document.getElementById('galleryNext');
-
-            let currentImages = [];
-            let currentIndex = 0;
-
-            // Get all images in the current article/content area
-            function getContentImages() {
-                return Array.from(document.querySelectorAll('.content-body img, figure img')).filter(img => {
-                    return !img.closest('a') && !img.hasAttribute('data-no-lightbox');
-                });
-            }
-
-            function updateGalleryDisplay() {
-                galleryCounter.textContent = `${currentIndex + 1} of ${currentImages.length}`;
-                galleryCounter.style.display = 'block';
-
-                if (currentImages.length > 1) {
-                    galleryPrev.style.display = currentIndex > 0 ? 'block' : 'none';
-                    galleryNext.style.display = currentIndex < currentImages.length - 1 ? 'block' : 'none';
-                } else {
-                    galleryPrev.style.display = 'none';
-                    galleryNext.style.display = 'none';
-                }
-            }
-
-            function showImage(index) {
-                if (index < 0 || index >= currentImages.length) return;
-
-                currentIndex = index;
-                const img = currentImages[currentIndex];
-
-                lightboxImage.src = img.src;
-                lightboxImage.alt = img.alt;
-
-                // Get caption from figure caption or alt text
-                const figure = img.closest('figure');
-                const figcaption = figure ? figure.querySelector('figcaption') : null;
-                lightboxCaption.textContent = figcaption ? figcaption.textContent : img.alt;
-
-                updateGalleryDisplay();
-            }
-
-            // Navigation functions
-            function showPrevious() {
-                if (currentIndex > 0) {
-                    showImage(currentIndex - 1);
-                }
-            }
-
-            function showNext() {
-                if (currentIndex < currentImages.length - 1) {
-                    showImage(currentIndex + 1);
-                }
-            }
-
-            // Event listeners for navigation
-            if (galleryPrev && galleryNext) {
-                galleryPrev.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                    showPrevious();
-                    return false;
-                });
-
-                galleryNext.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                    showNext();
-                    return false;
-                });
-            }
-
-            // Keyboard navigation
-            document.addEventListener('keydown', function(e) {
-                if (lightboxModal._isShown) {
-                    if (e.key === 'ArrowLeft') {
-                        e.preventDefault();
-                        showPrevious();
-                    } else if (e.key === 'ArrowRight') {
-                        e.preventDefault();
-                        showNext();
-                    }
-                }
-            });
-
-            // Add click handlers to all images in content areas
-            function initializeImageHandlers() {
-                getContentImages().forEach(function(img, index) {
-                    // Add cursor pointer and title to indicate clickability
-                    img.style.cursor = 'pointer';
-                    if (!img.title) {
-                        img.title = 'Click to view full size';
-                    }
-
-                    img.addEventListener('click', function() {
-                        currentImages = getContentImages();
-                        currentIndex = currentImages.indexOf(this);
-                        showImage(currentIndex);
-                        lightboxModal.show();
-                    });
-                });
-            }
-
-            // Initialize on page load
-            initializeImageHandlers();
-
-            // Re-initialize if content changes (for dynamic content)
-            const observer = new MutationObserver(function(mutations) {
-                let shouldReinit = false;
-                mutations.forEach(function(mutation) {
-                    if (mutation.type === 'childList') {
-                        mutation.addedNodes.forEach(function(node) {
-                            if (node.nodeType === Node.ELEMENT_NODE &&
-                                (node.tagName === 'IMG' || node.querySelector('img'))) {
-                                shouldReinit = true;
-                            }
-                        });
-                    }
-                });
-                if (shouldReinit) {
-                    initializeImageHandlers();
-                }
-            });
-
-            const contentBody = document.querySelector('.content-body');
-            if (contentBody) {
-                observer.observe(contentBody, { childList: true, subtree: true });
-            }
-        });
-    </script>
+    <script src="~/js/lightbox.js" asp-append-version="true"></script>
+    @if (isDesktop)
+    {
+        <script src="~/js/desktop.js" asp-append-version="true"></script>
+        <script src="~/pudl/pudl-windows.js" defer></script>
+    }
     @RenderSection("BodyScripts", required: false)
     @if (isMarkdown)
     {
-        <script>hljs.highlightAll();</script>
+        <script>
+            (function () {
+                function renderMarkdownEnhancements() {
+                    document.querySelectorAll('pre > code.language-mermaid, pre > code[class*="language-mermaid"]').forEach(function (codeBlock) {
+                        var pre = codeBlock.parentElement;
+                        if (!pre) { return; }
+
+                        var mermaidNode = document.createElement('div');
+                        mermaidNode.className = 'mermaid';
+                        mermaidNode.textContent = codeBlock.textContent || '';
+                        pre.replaceWith(mermaidNode);
+                    });
+
+                    if (window.mermaid && document.querySelector('.mermaid')) {
+                        window.mermaid.initialize({ startOnLoad: false });
+                        window.mermaid.run({ querySelector: '.mermaid' });
+                    }
+
+                    if (window.hljs) {
+                        document.querySelectorAll('pre code:not(.language-mermaid)').forEach(function (block) {
+                            window.hljs.highlightElement(block);
+                        });
+                    }
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', renderMarkdownEnhancements);
+                } else {
+                    renderMarkdownEnhancements();
+                }
+            })();
+        </script>
     }
 </body>
 </html>

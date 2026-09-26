@@ -155,8 +155,10 @@ namespace ParksComputing.Engine.Pages {
 
                 // Detect code blocks to decide whether to inject highlight.js assets.
                 bool hasCodeBlocks = htmlBody.Contains("<pre><code", StringComparison.OrdinalIgnoreCase);
+                bool hasMermaidBlocks = htmlBody.Contains("language-mermaid", StringComparison.OrdinalIgnoreCase);
                 ViewData["IsMarkdown"] = true; // signal to layout
                 if (hasCodeBlocks) { ViewData["HasCodeBlocks"] = true; }
+                if (hasMermaidBlocks) { ViewData["HasMermaid"] = true; }
 
                 if (string.IsNullOrWhiteSpace(metadata.Title)) {
                     metadata.Title = ExtractFirstHeading(htmlBody) ?? slug;

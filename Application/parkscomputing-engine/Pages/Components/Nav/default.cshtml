@@ -1,14 +1,10 @@
-﻿@model ParksComputing.Engine.Pages.Services.NavNode
+@model ParksComputing.Engine.Pages.Services.NavNode
 @if (Model != null)
 {
-    var rootTip = Model.Description ?? Model.Excerpt ?? Model.Title ?? string.Empty;
-    <li class='nav-item'>
-        <!-- Re-added nav-link class for consistent padding/height across browsers -->
-        <a class="nav-link" href='@Model.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@rootTip'>@Model.Title</a>
-    </li>
+    <a class="section-tab" href='@Model.Url' title='@(Model.Description ?? Model.Title)'>@Model.Title</a>
+
     @if (Model.Nav != null)
     {
-        // Determine the index of the last dropdown (nav item that itself has children)
         var lastDropdownIndex = System.Array.FindLastIndex(Model.Nav, n => n?.Nav != null && n.Nav.Length > 0);
         for (int i = 0; i < Model.Nav.Length; i++)
         {
@@ -16,30 +12,25 @@
             var linkTip = link?.Description ?? link?.Excerpt ?? link?.Title ?? string.Empty;
             if (link?.Nav != null && link.Nav.Length > 0)
             {
-                // Apply Bootstrap's end alignment only to the final dropdown to avoid viewport overflow.
-                var menuClasses = (i == lastDropdownIndex) ? "dropdown-menu dropdown-menu-end" : "dropdown-menu";
-                <li class='nav-item dropdown'>
-                    <a class='nav-link dropdown-toggle' href='@link.Url' role="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-delay='{"show":150,"hide":50}' title='@linkTip'>@link.Title</a>
-                    <ul class="@menuClasses">
+                // The final dropdown opens leftward so it cannot overflow the viewport.
+                var dropClasses = (i == lastDropdownIndex) ? "nav-drop nav-drop-end" : "nav-drop";
+                <details class='@dropClasses'>
+                    <summary class="section-tab" title='@linkTip'>@link.Title</summary>
+                    <div class="nav-menu">
                         @foreach (var sublink in link.Nav)
                         {
-                            var subTip = sublink?.Description ?? sublink?.Excerpt ?? sublink?.Title ?? string.Empty;
                             if (sublink != null)
                             {
-                                <li>
-                                    <a class="dropdown-item" href='@sublink.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@subTip' @if (!string.IsNullOrEmpty(sublink.Target)) {<text>target='@sublink.Target'</text>}>@sublink.Title</a>
-                                </li>
+                                <a href='@sublink.Url' title='@(sublink.Description ?? sublink.Excerpt ?? sublink.Title)'
+                                   @if (!string.IsNullOrEmpty(sublink.Target)) {<text>target='@sublink.Target'</text>}>@sublink.Title</a>
                             }
                         }
-                    </ul>
-                </li>
+                    </div>
+                </details>
             }
             else
             {
-                <li class='nav-item'>
-                    <!-- Re-added nav-link class for consistent cross-browser vertical alignment -->
-                    <a class="nav-link" href='@link?.Url' data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title='@linkTip'>@link?.Title</a>
-                </li>
+                <a class="section-tab" href='@link?.Url' title='@linkTip'>@link?.Title</a>
             }
         }
     }

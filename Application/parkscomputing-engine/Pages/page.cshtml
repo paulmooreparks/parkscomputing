@@ -73,12 +73,9 @@
         }
         @if (hasAudio && !string.IsNullOrEmpty(audioFilePath))
         {
-            <div class="audio-accordion" role="region" aria-labelledby="audio-heading">
-                <a href="#audio-content" id="audio-heading" class="audio-toggle" data-bs-toggle="collapse"
-                       data-bs-target="#audio-content" aria-expanded="false" aria-controls="audio-content">
-                    <span class="audio-toggle-icon"></span>Listen to this article
-                </a>
-                <div id="audio-content" class="collapse" aria-labelledby="audio-heading">
+            <details class="media-accordion" id="audio-content">
+                <summary>Listen to this article</summary>
+                <div class="media-accordion-body">
                     <div class="audio-player-container" role="complementary" aria-label="Audio version of article">
                         <div id="main-audio-player" data-audio-player="true" data-audio-file="@audioFilePath"
                              data-transcript="@(hasTranscript ? "true" : "false")"></div>
@@ -89,7 +86,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </details>
         }
 
         @{
@@ -98,12 +95,9 @@
         }
         @if (hasVideo && videoInfo != null)
         {
-            <div class="video-accordion" role="region" aria-labelledby="video-heading">
-                <a href="#video-content" id="video-heading" class="video-toggle" data-bs-toggle="collapse"
-                       data-bs-target="#video-content" aria-expanded="false" aria-controls="video-content">
-                    <span class="video-toggle-icon"></span>Watch video commentary
-                </a>
-                <div id="video-content" class="collapse" aria-labelledby="video-heading">
+            <details class="media-accordion" id="video-content">
+                <summary>Watch video commentary</summary>
+                <div class="media-accordion-body">
                     <div class="video-player-container" role="complementary" aria-label="Video commentary for article">
                         @if (videoInfo.Platform == "YouTube")
                         {
@@ -123,7 +117,7 @@
                         }
                     </div>
                 </div>
-            </div>
+            </details>
         }
     </header>
     <div class="post-body">
