@@ -15,7 +15,7 @@
 @{
     void RenderRow(NavNode node)
     {
-        var meta = node.Date?.ToString("d MMMM yyyy") ?? node.Description;
+        var meta = ParksComputing.Engine.Pages.DesktopModel.LatestDate(node)?.ToString("d MMMM yyyy") ?? node.Description;
         if (IsInternal(node))
         {
             var key = node.Slug!;

@@ -60,12 +60,18 @@ public class DesktopModel : PageModel {
 
     public string? CatTitle => Categories.FirstOrDefault(c => c.Slug == Cat).Title;
 
-    /// <summary>Posts newest first: by revision date, then by creation date
-    /// (Paul, 2026-09-26). NavService fills Updated from Date when absent.</summary>
+    /// <summary>A post's effective date: the latest of its updated and
+    /// created dates. It is both the sort key and the date the row shows.</summary>
+    public static DateTime? LatestDate(NavNode node) {
+        if (node.Updated is null) { return node.Date; }
+        if (node.Date is null) { return node.Updated; }
+        return node.Updated > node.Date ? node.Updated : node.Date;
+    }
+
+    /// <summary>Posts newest first by effective date (Paul, 2026-09-26).</summary>
     public IEnumerable<NavNode> SortedPosts =>
         (Root.Posts ?? Array.Empty<NavNode>())
-            .OrderByDescending(p => p.Updated ?? p.Date ?? DateTime.MinValue)
-            .ThenByDescending(p => p.Date ?? DateTime.MinValue);
+            .OrderByDescending(p => LatestDate(p) ?? DateTime.MinValue);
 
     public void OnGet() {
         Root = _navService.GetRoot();
