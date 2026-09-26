@@ -54,6 +54,10 @@ The classic top-bar menus translate to the desktop as two PUDL-native controls (
 
 Follow-ups: tag chips once posts carry `tags` in sitenav.xfer; a taskbar launcher (Start-menu style) is proposed to PUDL as a new control and will be adopted here if it ships.
 
+### D13. App content renders in its window as its own document
+
+An article that brings its own scripts or stylesheets (sudoku, Conway, the barcode generator, the resume's bespoke CSS) cannot render inline in a window: scripts in fetched window markup do not run by PUDL's rule, and head assets never arrive. Such content is detected in ArticleContentService (any script element, or a head stylesheet or style block) and its window hosts the article's page in an iframe at `/page/{slug}?frame`, a bare rendering without site chrome. The iframe was chosen over re-executing scripts in the desktop document (stale DOMContentLoaded handlers, global collisions, style bleed, no teardown) and over Shadow DOM (isolates CSS but not JS, and breaks `document.getElementById` in old app code): it gives each app a full document lifecycle with isolation both ways and free cleanup on close, the web's equivalent of a window hosting its own process. Iframe support is universal and current; it is `<frameset>` that is dead. The choice leaks into no contract, so any app can later be rewritten as a PUDL-native inline fragment. Prose articles keep rendering inline.
+
 ### D7. The fallback is the design, not a second implementation
 
 Every sidebar item's `href` is the article's real page. No script means plain navigation. The server renders whatever windows the `open`/`p.*` parameters name, so a bookmarked desktop arrangement reloads without script. Narrow viewports get the classic reading view via the article pages themselves; the desktop page remains usable on a phone because a maximized window is effectively a full-screen page with a close button.

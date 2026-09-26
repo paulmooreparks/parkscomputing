@@ -16,6 +16,10 @@ public class WindowViewModel {
     /// null for a top-level article window.</summary>
     public string? Parent { get; init; }
 
+    /// <summary>True for content that brings its own scripts or styles;
+    /// the window then hosts the article's page in a frame.</summary>
+    public bool OwnDocument { get; init; }
+
     public string? Mode { get; init; }
     public double? X { get; init; }
     public double? Y { get; init; }

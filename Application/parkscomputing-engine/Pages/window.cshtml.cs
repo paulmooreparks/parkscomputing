@@ -43,7 +43,8 @@ public class WindowModel : PageModel {
             Key = article.Slug,
             Title = article.Title,
             BodyHtml = article.BodyHtml,
-            PageUrl = $"/page/{article.Slug}"
+            PageUrl = $"/page/{article.Slug}",
+            OwnDocument = article.RequiresOwnDocument
         };
         return Page();
     }

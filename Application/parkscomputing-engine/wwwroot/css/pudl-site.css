@@ -301,3 +301,10 @@ body.desktop .app-section-bar { flex: none; }
 
 /* An image wrapped as a child-window opener is content, not a link block. */
 .win-img-link { display: inline-block; line-height: 0; }
+
+/* A window hosting an app page in a frame gives it the whole body. */
+.win-app-frame { display: block; width: 100%; height: 100%; border: 0; }
+.win-body:has(> .win-app-frame) { padding: 0; overflow: hidden; }
+
+/* A page rendered bare for a frame keeps a modest gutter. */
+.site-main-framed { padding: 0 16px; }

@@ -6,6 +6,8 @@
     string? contentFormat = ViewData["ContentFormat"] as string;
     bool hasMermaid = ViewData["HasMermaid"] as bool? ?? false;
     bool isDesktop = ViewData["Desktop"] as bool? ?? false;
+    // ?frame renders the page bare, for hosting inside a desktop window.
+    bool isFrame = Context.Request.Query.ContainsKey("frame");
     bool isMarkdown = (contentFormat?.Equals("markdown", System.StringComparison.OrdinalIgnoreCase) ?? false) || mdFlag;
     if (!isMarkdown && (ViewData["HasCodeBlocks"] as bool? ?? false)) { isMarkdown = true; }
     // The desktop loads articles into windows, so it always needs the
@@ -61,6 +63,8 @@
     }
 </head>
 <body class="@(isDesktop ? "desktop" : null)">
+    @if (!isFrame)
+    {
     <header class="site-header">
         @Html.RenderStaticFile("/content/header-section.html", FileReaderService)
         <div class="topbar">
@@ -85,6 +89,7 @@
             </nav>
         }
     </header>
+    }
 
     @if (isDesktop)
     {
@@ -92,8 +97,11 @@
     }
     else
     {
-        <div class="site-main">
-            @Html.RenderStaticFile("/content/main-section.html", FileReaderService)
+        <div class="site-main @(isFrame ? "site-main-framed" : null)">
+            @if (!isFrame)
+            {
+                @Html.RenderStaticFile("/content/main-section.html", FileReaderService)
+            }
 
             <div class="content-body" role="main" id="main-content" tabindex="-1">
                 @RenderBody()
@@ -106,9 +114,12 @@
             </div>
         </div>
 
+        if (!isFrame)
+        {
         <footer class="site-footer">
             @Html.RenderStaticFile("/content/footer-section.html", FileReaderService)
         </footer>
+        }
     }
 
     @* The lightbox shell is server-rendered (PUDL: dialogs come from the

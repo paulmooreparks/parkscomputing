@@ -128,6 +128,7 @@ public class DesktopModel : PageModel {
                 BodyHtml = article.BodyHtml,
                 PageUrl = $"/page/{parent ?? key}",
                 Parent = parent,
+                OwnDocument = article.RequiresOwnDocument,
                 Mode = placement?.Mode ?? "maximized",
                 X = placement?.X, Y = placement?.Y, W = placement?.W, H = placement?.H,
                 Minimized = minimized,

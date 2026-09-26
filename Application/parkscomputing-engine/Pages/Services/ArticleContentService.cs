@@ -10,7 +10,12 @@ using Microsoft.AspNetCore.Hosting;
 
 namespace ParksComputing.Engine.Pages.Services;
 
-public record ArticleWindowContent(string Slug, string Title, string BodyHtml, bool HasCode, bool HasMermaid);
+/// <summary>RequiresOwnDocument marks content that brings its own scripts
+/// or stylesheets (an interactive app, or a page with bespoke CSS): its
+/// window hosts the article's page in a frame instead of inlining the body,
+/// because scripts in fetched window markup do not run and head assets
+/// never arrive.</summary>
+public record ArticleWindowContent(string Slug, string Title, string BodyHtml, bool HasCode, bool HasMermaid, bool RequiresOwnDocument = false);
 
 public record ArticleImage(string Src, string? Caption);
 
@@ -224,7 +229,13 @@ public class ArticleContentService {
         doc.Load(path);
         var title = System.Net.WebUtility.HtmlDecode(doc.DocumentNode.SelectSingleNode("//title")?.InnerText.Trim());
         var body = doc.DocumentNode.SelectSingleNode("//body")?.InnerHtml ?? doc.DocumentNode.InnerHtml;
-        return Build(slug, title, body);
+
+        bool ownAssets =
+            doc.DocumentNode.SelectSingleNode("//script") is not null
+            || doc.DocumentNode.SelectSingleNode("//head/link[@rel='stylesheet']") is not null
+            || doc.DocumentNode.SelectSingleNode("//head/style") is not null;
+
+        return Build(slug, title, body) with { RequiresOwnDocument = ownAssets };
     }
 
     private static ArticleWindowContent Build(string slug, string? title, string bodyHtml) {
