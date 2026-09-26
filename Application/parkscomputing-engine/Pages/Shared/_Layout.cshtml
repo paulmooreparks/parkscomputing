@@ -137,12 +137,13 @@
 
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/lightbox.js" asp-append-version="true"></script>
-    <script src="~/js/applets.js" asp-append-version="true"></script>
+    <script src="~/pudl/pudl-menu.js" defer></script>
     @if (isDesktop)
     {
         <script src="~/js/desktop.js" asp-append-version="true"></script>
         <script src="~/pudl/pudl-windows.js" defer></script>
     }
+    <script src="~/pudl/pudl-applets.js" defer></script>
     @RenderSection("BodyScripts", required: false)
     @if (isMarkdown)
     {

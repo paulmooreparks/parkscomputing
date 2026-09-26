@@ -22,17 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* Sudoku as an applet (the site's applet rule): pcApps.sudoku.init(root,
-   opts) builds the whole game inside root, scopes every lookup and
-   listener to it, and returns an instance with destroy(). Stand-alone
-   (opts.ownUrl) it keeps the game in the page URL, with the browser's
-   back and forward as undo and redo, exactly as before; inside a PUDL
-   window it leaves the URL to the desktop and the share button carries
-   the game's own page URL instead. */
+/* Sudoku as a PUDL applet: init(root, opts) builds the whole game inside
+   root, scopes every lookup and listener to it, and returns an instance
+   with destroy(). Stand-alone (opts.ownsUrl) it keeps the game in the
+   page URL, with the browser's back and forward as undo and redo,
+   exactly as before; inside a PUDL window it leaves the URL to the
+   windows and the share button carries the game's own page URL instead. */
 (function () {
     'use strict';
-
-    window.pcApps = window.pcApps || {};
 
     var BOARD_SIZE = 9;
 
@@ -94,9 +91,9 @@ SOFTWARE.
               '</div>' +
               '<div class="number-controls">' + numbers + '</div>' +
               '<div class="number-controls controls-centered">' +
-                '<button type="button" class="btn" data-action="hintmode" title="Hint entry">✏</button>' +
+                '<button type="button" class="btn" data-action="hintmode" aria-pressed="false" title="Hint entry">✏</button>' +
                 '<button type="button" class="btn" data-action="delete" title="Clear cell">❌</button>' +
-                '<button type="button" class="btn" data-action="help" title="Help">❓</button>' +
+                '<button type="button" class="btn" data-action="help" aria-pressed="false" title="Help">❓</button>' +
                 '<button type="button" class="btn" data-action="share" title="Copy shareable URL" aria-label="Copy shareable URL">↗</button>' +
               '</div>' +
             '</div>';
@@ -104,7 +101,7 @@ SOFTWARE.
 
     function init(root, opts) {
         opts = opts || {};
-        var ownUrl = !!opts.ownUrl;
+        var ownUrl = !!opts.ownsUrl;
         var pageUrl = opts.pageUrl || location.pathname;
 
         buildMarkup(root);
@@ -503,14 +500,14 @@ SOFTWARE.
 
         function toggleHint() {
             isHintMode = !isHintMode;
-            q('[data-action="hintmode"]').classList.toggle('selected', isHintMode);
+            q('[data-action="hintmode"]').setAttribute('aria-pressed', String(isHintMode));
             selectCell(selectedRow, selectedCol);
         }
 
         function toggleHelp() {
             helpDisplay = !helpDisplay;
             helpText.classList.toggle('open', helpDisplay);
-            q('[data-action="help"]').classList.toggle('selected', helpDisplay);
+            q('[data-action="help"]').setAttribute('aria-pressed', String(helpDisplay));
         }
 
         /* === Wiring ======================================================= */
@@ -694,5 +691,5 @@ SOFTWARE.
         };
     }
 
-    window.pcApps.sudoku = { init: init };
+    window.pudlApplets.register('sudoku', { init: init });
 })();

@@ -94,7 +94,9 @@ public class ArticleContentService {
 
         string Link(int target, string dir, string glyph, string label) {
             var key = $"{parentSlug}-img-{target}";
-            return $"<a class=\"icon-btn\" data-win-open=\"{key}\" data-img-nav=\"{dir}\" " +
+            // data-win-replace swaps the sibling into this window's place
+            // (PUDL 0.10.0); the href is the equivalent state without script.
+            return $"<a class=\"icon-btn\" data-win-open=\"{key}\" data-win-replace data-img-nav=\"{dir}\" " +
                    $"href=\"?open={parentSlug},{key}&amp;top={key}\" aria-label=\"{label}\">{glyph}</a>";
         }
 
@@ -230,10 +232,11 @@ public class ArticleContentService {
         var title = System.Net.WebUtility.HtmlDecode(doc.DocumentNode.SelectSingleNode("//title")?.InnerText.Trim());
         var body = doc.DocumentNode.SelectSingleNode("//body")?.InnerHtml ?? doc.DocumentNode.InnerHtml;
 
-        // An applet mount (data-app-src) is inline-safe by contract: the
-        // applet runtime loads its assets and it runs in a window or as a
-        // page equally. Anything else that brings assets needs the frame.
-        bool isApplet = doc.DocumentNode.SelectSingleNode("//*[@data-app-src]") is not null;
+        // An applet mount (data-applet, PUDL 0.10.0) is inline-safe by
+        // contract: pudl-applets.js loads its assets and it runs in a window
+        // or as a page equally. Anything else that brings assets needs the
+        // frame.
+        bool isApplet = doc.DocumentNode.SelectSingleNode("//*[@data-applet]") is not null;
         bool ownAssets = !isApplet && (
             doc.DocumentNode.SelectSingleNode("//script") is not null
             || doc.DocumentNode.SelectSingleNode("//head/link[@rel='stylesheet']") is not null

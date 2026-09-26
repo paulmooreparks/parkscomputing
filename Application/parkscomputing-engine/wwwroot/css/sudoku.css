@@ -34,8 +34,6 @@ SOFTWARE.
   outline: none;
 }
 
-/* The hidden attribute must win over component display rules (.btn). */
-.pc-sudoku [hidden] { display: none !important; }
 
 .pc-sudoku .sudoku-top {
   width: min(92cqi, 64vh);
@@ -157,9 +155,11 @@ SOFTWARE.
   font-size: clamp(18px, 4cqi, 28px);
 }
 
-/* A latched toggle (hint mode, help, the matching number) reads as
-   pressed in, PUDL's active treatment. */
-.pc-sudoku .btn.selected {
+/* A number button lights while its digit matches the selected cell (or
+   its candidates in hint mode). This is a highlight, not a pressed
+   toggle, so it does not use aria-pressed; the hint and help toggles do,
+   and PUDL styles those. */
+.pc-sudoku .number-button.selected {
   background: var(--raise-active-bg);
   box-shadow: var(--raise-active-shadow);
   color: var(--accent);

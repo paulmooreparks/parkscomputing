@@ -82,7 +82,47 @@
 </nav>
 
 <div class="md-layout" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
-    <div class="md-toolbar">
+    <div class="md-toolbar md-site-tools">
+        @* The launcher (PUDL 0.8.0): everything the site offers, reachable
+           from inside a window on a phone because md-site-tools stays in
+           both panes. *@
+        <div class="menu">
+            <button class="btn btn-sm menu-btn" popovertarget="site-launcher"><svg class="launcher-icon" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg> Browse</button>
+            <nav class="menu-panel" id="site-launcher" popover aria-label="Everything on this site">
+                <input class="md-filter" type="search" placeholder="Find anything" aria-label="Find anything">
+                @if (Model.Root.Posts is { Length: > 0 })
+                {
+                    <div class="md-section-label">Articles</div>
+                    foreach (var post in Model.SortedPosts)
+                    {
+                        if (IsInternal(post))
+                        {
+                            <div class="md-row"><a class="md-item" href="@(post.Url ?? $"/page/{post.Slug}")" data-win-open="@post.Slug">@post.Title</a></div>
+                        }
+                    }
+                }
+                @foreach (var navSection in Model.Root.Nav ?? Array.Empty<NavNode>())
+                {
+                    var launcherRows = navSection.Nav is { Length: > 0 } ? navSection.Nav : new[] { navSection };
+                    <div class="md-section-label">@navSection.Title</div>
+                    foreach (var item in launcherRows)
+                    {
+                        if (IsInternal(item))
+                        {
+                            <div class="md-row"><a class="md-item" href="@(item.Url ?? $"/page/{item.Slug}")" data-win-open="@item.Slug">@item.Title</a></div>
+                        }
+                        else
+                        {
+                            <div class="md-row"><a class="md-item" href="@item.Url" target="_blank" rel="noopener">@item.Title</a></div>
+                        }
+                    }
+                }
+                <div class="md-section-label">Views</div>
+                <div class="md-row"><a class="md-item" href="/home">Classic view</a></div>
+                <hr class="menu-sep">
+                <button class="menu-action" type="button" onclick="pudlToggleTheme()"><span aria-hidden="true">&#x25D0;</span> Switch light and dark</button>
+            </nav>
+        </div>
         <form method="get" action="/" class="desktop-filter-form" role="search">
             @foreach (var kv in Model.FilterFormParams)
             {

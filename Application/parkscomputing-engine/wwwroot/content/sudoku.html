@@ -34,12 +34,13 @@ SOFTWARE.
 </head>
 
 <body>
-    <!-- The game is an applet (see js/applets.js): it builds itself inside
-         this mount and runs the same way in a PUDL window or as this page. -->
-    <div class="pc-app pc-sudoku" data-app="sudoku"
-         data-app-src="/js/sudoku.js"
-         data-app-css="/css/sudoku.css"
-         data-app-page="/page/sudoku"
+    <!-- The game is a PUDL applet (pudl-applets.js): it builds itself
+         inside this mount and runs the same way in a PUDL window or as
+         this page. -->
+    <div class="pc-sudoku" data-applet="sudoku"
+         data-applet-src="/js/sudoku.js"
+         data-applet-css="/css/sudoku.css"
+         data-applet-page="/page/sudoku"
          tabindex="0" role="application" aria-label="Sudoku game">
         <noscript>
             <p>This Sudoku game needs JavaScript to run.</p>

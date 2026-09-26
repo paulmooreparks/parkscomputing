@@ -309,19 +309,9 @@ body.desktop .app-section-bar { flex: none; }
 /* A page rendered bare for a frame keeps a modest gutter. */
 .site-main-framed { padding: 0 16px; }
 
-/* === Active window title bar, dark theme ==================================
-   PUDL's default fills the active title bar with the accent, which turns
-   garish with this theme's bright dark-mode accent. Until PUDL grows a
-   token for the active bar (proposed upstream), the dark theme takes a
-   quieter treatment: the raised gradient tinted toward the accent, the
-   normal text color, and an accent underline carrying the signal. */
-[data-theme="dark"] .win.active .win-head {
-  background: linear-gradient(
-      color-mix(in srgb, var(--accent) 24%, var(--raise-top)),
-      color-mix(in srgb, var(--accent) 14%, var(--surface-alt)));
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--raise-border));
-  box-shadow:
-      inset 0 1px color-mix(in srgb, var(--light) var(--lit), transparent),
-      inset 0 -2px var(--accent);
-  color: var(--text);
-}
+/* The active window title bar's quiet dark treatment became PUDL's own
+   default in 0.9.0 (with --win-active-* tokens for tuning), so the
+   override that prototyped it here is gone. */
+
+/* The launcher glyph, after PUDL's article-reader sample. */
+.launcher-icon { width: 14px; height: 14px; flex: none; }
