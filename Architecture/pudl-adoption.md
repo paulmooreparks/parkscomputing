@@ -94,7 +94,17 @@ The applet rule (Paul, 2026-09-26): a converted app runs in a PUDL window or in 
 
 ## Proposed upstream to PUDL
 
-Found while building this site, in PUDL's own territory rather than ours; each is a candidate for the PUDL repo, and the site adopts the released form when a version ships. Status 2026-09-26: the PUDL agent is staging several of these, plus fixes for issues it found on the site, into PUDL 0.9.0 and 0.10.0. When 0.10.0 tags, this site upgrades its pinned copy in one pass: replace `wwwroot/pudl/` from the tag, remove whatever site-side stand-ins the release covers (the dark active-title-bar override in pudl-site.css, the `[hidden]` guard in sudoku.css, and `js/applets.js` if a `pudl-applets.js` ships), and adjust the applet mounts to the released contract if its attribute names differ.
+Found while building this site, in PUDL's own territory rather than ours; each is a candidate for the PUDL repo, and the site adopts the released form when a version ships. Status 2026-09-26: the PUDL agent accepted all four, found three more gaps reading this site's code, and wrote all seven up in the PUDL repo (`docs/proposals/from-parkscomputing.md`). Staging: 0.9.0 takes the small contract-free three (the `[hidden]` fix with a hidden-until-found exception, `aria-pressed` for latched buttons, title-bar tokens with the quiet treatment as the dark default); 0.10.0 takes applets (`pudl-applets.js`, registration via `pudlApplets.register()`), a window-close event, a script interface for windows, and replace-in-place navigation, plus an applet sample. Applet-state-in-URL is deferred until a second applet needs it.
+
+### The site's upgrade pass when 0.10.0 tags
+
+- Replace `wwwroot/pudl/` from the tag (both wwwroot copies: repo and the production content volume).
+- 0.9.0 items: delete the dark title-bar override in pudl-site.css and the `[hidden]` guard in sudoku.css; move sudoku's latched `.btn.selected` styling to `aria-pressed="true"` (set the attribute in sudoku.js where it toggles classes today).
+- Applets: retire `js/applets.js` for `pudl-applets.js`; sudoku moves from the `pcApps` global to `pudlApplets.register()`, mostly renaming; drop desktop.js's boot/reap wiring if the module self-wires as described.
+- Window-close event: desktop.js stops reaping on every `pudl:windows-change`.
+- Script interface: the image child-window swap stops simulating clicks (`pendingClose` and the `close.click()` calls go away).
+- Replace-in-place: image prev/next becomes a window replacement instead of open-sibling-then-close-current; re-verify Escape, the sidebar child rows, and the URL after each step.
+- Re-verify the desktop, classic pages, and sudoku on both surfaces; redeploy.
 
 - The applet contract and runtime (D14): what embeddable content promises its host is host-independent, and `applets.js` could ship as `pudl-applets.js` with the contract in the README and a sample-page demo.
 - A token for the active window title bar. The bar derives straight from `--accent`, so a theme with a bright dark-mode accent (needed for link contrast) gets a garish filled bar and has no token to tune it. This site overrides the component's rule in `pudl-site.css` for the dark theme (accent-tinted raised gradient, normal text, accent underline), which trespasses on component CSS exactly because no token exists; the override carries a comment and comes out when PUDL provides the knob or adopts the quieter treatment.
