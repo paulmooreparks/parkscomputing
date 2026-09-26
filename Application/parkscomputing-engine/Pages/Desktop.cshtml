@@ -1,0 +1,178 @@
+@page "/desktop"
+@using ParksComputing.Engine.Pages.Services
+@model ParksComputing.Engine.Pages.DesktopModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Parks Computing";
+    ViewData["Desktop"] = true;
+}
+
+@functions {
+    private static bool IsInternal(NavNode node) =>
+        !node.External && string.IsNullOrEmpty(node.Target) && !string.IsNullOrEmpty(node.Slug);
+}
+
+@{
+    void RenderRow(NavNode node)
+    {
+        var meta = node.Date?.ToString("d MMMM yyyy") ?? node.Description;
+        if (IsInternal(node))
+        {
+            var key = node.Slug!;
+            var active = key == Model.TopKey;
+            <div class="md-row @(active ? "active" : null)" id="row-@key">
+                <a class="md-item" href="@(node.Url ?? $"/page/{key}")" data-win-open="@key"
+                   title="@node.Description" aria-current="@(active ? "true" : null)">
+                    @node.Title
+                    @if (!string.IsNullOrEmpty(meta))
+                    {
+                        <span class="md-meta">@meta</span>
+                    }
+                </a>
+            </div>
+            @* The same child rows the script renders, so a URL with child
+               windows open lists them without script. The script replaces
+               rows carrying data-win-child as the state changes. *@
+            if (Model.ChildrenOf.TryGetValue(key, out var children))
+            {
+                foreach (var child in children)
+                {
+                    <div class="md-row md-row-child @(child.Key == Model.TopKey ? "active" : null)" data-win-child="@child.Key">
+                        <a class="md-item" href="?open=@string.Join(",", Model.OpenKeys)&top=@child.Key"
+                           aria-current="@(child.Key == Model.TopKey ? "true" : null)">@child.Title</a>
+                    </div>
+                }
+            }
+        }
+        else
+        {
+            <div class="md-row">
+                <a class="md-item" href="@node.Url" target="_blank" rel="noopener" title="@node.Description">
+                    @node.Title <span class="md-meta">@(node.Description ?? node.Url)</span>
+                </a>
+            </div>
+        }
+    }
+}
+
+<nav class="app-section-bar" aria-label="Categories">
+    <a class="section-tab @(Model.Cat is null ? "active" : null)" href="@Model.CategoryUrl(null)">All</a>
+    @foreach (var (slug, title) in Model.Categories)
+    {
+        <a class="section-tab @(Model.Cat == slug ? "active" : null)" href="@Model.CategoryUrl(slug)">@title</a>
+    }
+    @* A leaf top-level node opens its window directly, as the classic nav
+       links straight to its page. The href is the same state as a real URL,
+       so it works without script. *@
+    @foreach (var leaf in Model.DirectTabs)
+    {
+        if (IsInternal(leaf))
+        {
+            @* No active state here: the strip's active tab means the selected
+               category, and the sidebar row already shows the front window. *@
+            <a class="section-tab"
+               href="@Model.OpenWindowUrl(leaf.Slug!)" data-win-open="@leaf.Slug"
+               title="@leaf.Description">@leaf.Title</a>
+        }
+        else
+        {
+            <a class="section-tab" href="@leaf.Url" target="_blank" rel="noopener" title="@leaf.Description">@leaf.Title</a>
+        }
+    }
+</nav>
+
+<div class="md-layout" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
+    <div class="md-toolbar">
+        <form method="get" action="/desktop" class="desktop-filter-form" role="search">
+            @foreach (var kv in Model.FilterFormParams)
+            {
+                <input type="hidden" name="@kv.Key" value="@kv.Value" />
+            }
+            <input class="md-filter" type="search" name="q" value="@Model.Q"
+                   placeholder="Filter the list…" aria-label="Filter the list" />
+        </form>
+        <span class="md-toolbar-sep"></span>
+        <span class="md-section-label">Open</span>
+        <nav class="win-dock" data-win-dock aria-label="Open windows"></nav>
+    </div>
+    @if (Model.Cat is not null || Model.Q is not null)
+    {
+        <div class="md-chips">
+            @if (Model.Cat is not null)
+            {
+                <span class="filter-chip"><span class="fc-kind">category</span> @Model.CatTitle <a class="filter-chip-x" href="@Model.RemoveCatUrl" aria-label="Remove the category filter">×</a></span>
+            }
+            @if (Model.Q is not null)
+            {
+                <span class="filter-chip"><span class="fc-kind">filter</span> @Model.Q <a class="filter-chip-x" href="@Model.RemoveQUrl" aria-label="Remove the text filter">×</a></span>
+            }
+            @if (Model.Cat is not null && Model.Q is not null)
+            {
+                <a class="md-chips-clear" href="@Model.ClearFiltersUrl">clear</a>
+            }
+        </div>
+    }
+    <div class="md-body">
+        <nav class="md-sidebar" aria-label="Articles and pages">
+            @if (Model.Root.Posts is { Length: > 0 } && Model.ShowSection("articles"))
+            {
+                var visiblePosts = Model.SortedPosts.Where(Model.RowMatches).ToList();
+                if (visiblePosts.Count > 0)
+                {
+                    <div class="md-section-label">Articles</div>
+                    foreach (var post in visiblePosts)
+                    {
+                        RenderRow(post);
+                    }
+                }
+            }
+            @if (Model.Root.Nav is not null)
+            {
+                foreach (var navSection in Model.Root.Nav)
+                {
+                    if (!Model.ShowSection(navSection.Slug)) { continue; }
+                    var rows = navSection.Nav is { Length: > 0 }
+                        ? navSection.Nav.Where(Model.RowMatches).ToList()
+                        : (Model.RowMatches(navSection) ? new List<NavNode> { navSection } : new List<NavNode>());
+                    if (rows.Count == 0) { continue; }
+                    <div class="md-section-label">@navSection.Title</div>
+                    foreach (var row in rows)
+                    {
+                        RenderRow(row);
+                    }
+                }
+            }
+        </nav>
+        <div class="md-detail reader-stage">
+            <div class="reader-col">
+                <a class="md-back" href="/desktop" data-win-back>Articles</a>
+                <main class="win-host">
+                    <div class="reader-empty">
+                        <div class="card">
+                            <h2 class="card-title">Welcome to the desktop</h2>
+                            <p class="card-desc">
+                                Pick an article from the sidebar and it opens as a window, maximized.
+                                Restore it from the title bar to drag, resize and snap it; open several
+                                and switch between them from the taskbar above. Images inside an article
+                                open as child windows; Escape pops one back down. The whole arrangement
+                                lives in the page URL, so it can be bookmarked and shared, and Back
+                                undoes the last thing you did.
+                            </p>
+                            <p class="card-desc">
+                                This view is built with <a href="https://github.com/paulmooreparks/pudl">PUDL</a>,
+                                the Pleasantly Usable Design Language. Every article is still a page of
+                                its own; the ↗ button in a window's title bar takes you there.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="win-layer" data-win-layer data-win-src="/window/{key}">
+                        @foreach (var win in Model.Windows)
+                        {
+                            <partial name="_Window" model="win" />
+                        }
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+</div>

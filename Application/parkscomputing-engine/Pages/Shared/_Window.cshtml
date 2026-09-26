@@ -1,0 +1,42 @@
+@model ParksComputing.Engine.Pages.Models.WindowViewModel
+@{
+    // The button hrefs are placeholders here; pudl-windows.js rewrites each
+    // one to the URL of the state it produces. Without script the window is
+    // only ever present because the server rendered it from the URL, and the
+    // page button still leads to the article's own page.
+    string style = Model.X.HasValue
+        ? $"--win-x:{Model.X:0.###}; --win-y:{Model.Y:0.###}; --win-w:{Model.W:0.###}; --win-h:{Model.H:0.###}"
+        : string.Empty;
+}
+<article class="win @(Model.Active ? "active" : string.Empty)" data-win="@Model.Key"
+         data-win-parent="@Model.Parent"
+         data-win-mode="@(Model.Mode ?? "maximized")"
+         role="dialog" aria-labelledby="win-@Model.Key-title"
+         style="@style" hidden="@Model.Minimized">
+    <header class="win-head">
+        <h2 class="win-title" id="win-@Model.Key-title">@Model.Title</h2>
+        <nav class="win-chrome" aria-label="Window">
+            @if (Model.Parent is null)
+            {
+                <a class="win-btn" data-win-action="page" href="@Model.PageUrl" aria-label="Open as a page" title="Open as a page"></a>
+                <a class="win-btn" data-win-action="minimize" href="/desktop" aria-label="Minimize" title="Minimize"></a>
+                <a class="win-btn" data-win-action="maximize" href="/desktop" aria-label="Maximize" title="Maximize"></a>
+            }
+            <a class="win-btn" data-win-action="close" href="/desktop" aria-label="Close" title="Close"></a>
+        </nav>
+    </header>
+    <div class="win-body">
+        @if (Model.Parent is null)
+        {
+            <div class="post-content">
+                <div class="post-body">
+                    @Html.Raw(Model.BodyHtml)
+                </div>
+            </div>
+        }
+        else
+        {
+            @Html.Raw(Model.BodyHtml)
+        }
+    </div>
+</article>

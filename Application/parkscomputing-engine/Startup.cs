@@ -81,6 +81,7 @@ namespace ParksComputing.Engine {
             });
 
             services.AddSingleton<StaticFileReaderService>();
+            services.AddSingleton<ArticleContentService>();
             services.AddOptions<ParksComputing.Engine.Api.ContentStorageOptions>();
             services.AddSingleton<ParksComputing.Engine.Api.IContentStorage, ParksComputing.Engine.Api.FileContentStorage>();
 
@@ -255,6 +256,16 @@ namespace ParksComputing.Engine {
             }
 
             app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = contentTypeProvider });
+
+            // Serve extensionless files under /content/ (e.g., Linux/macOS binaries) as octet-stream downloads.
+            // The default FileExtensionContentTypeProvider refuses to serve files with no recognized extension,
+            // so we need a dedicated middleware scoped to this path with ServeUnknownFileTypes enabled.
+            app.UseStaticFiles(new StaticFileOptions {
+                RequestPath = "/content",
+                FileProvider = new PhysicalFileProvider(System.IO.Path.Combine(env.WebRootPath, "content")),
+                ServeUnknownFileTypes = true,
+                DefaultContentType = "application/octet-stream"
+            });
 
             // NOTE: Place Swagger BEFORE routing so that any broad/catch-all Razor Page routes do not swallow /swagger/*.js|css.
             app.UseSwagger(c => { c.RouteTemplate = "swagger/{documentName}/swagger.json"; });
