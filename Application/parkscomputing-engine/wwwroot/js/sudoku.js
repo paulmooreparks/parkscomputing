@@ -22,783 +22,677 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-const defaultCell = { value: 0, clue: false, hints: [] };
-const boardSize = 9; // For a 9x9 Sudoku board
-let boardState = Array(boardSize).fill(null).map(() => Array(boardSize).fill(null).map(() => ({ ...defaultCell })));
+/* Sudoku as an applet (the site's applet rule): pcApps.sudoku.init(root,
+   opts) builds the whole game inside root, scopes every lookup and
+   listener to it, and returns an instance with destroy(). Stand-alone
+   (opts.ownUrl) it keeps the game in the page URL, with the browser's
+   back and forward as undo and redo, exactly as before; inside a PUDL
+   window it leaves the URL to the desktop and the share button carries
+   the game's own page URL instead. */
+(function () {
+    'use strict';
 
-let isEditingMode = false;
-let isHintMode = false;
+    window.pcApps = window.pcApps || {};
 
+    var BOARD_SIZE = 9;
 
-document.addEventListener("DOMContentLoaded", function () {
-    const params = getUrlParameters();
-    const difficultyDropdown = document.getElementById("difficultyDropdown");
-    const difficulty = getDifficultyFromUrl(params);
-    difficultyDropdown.value = difficulty;
-
-    if (setBoardStateFromUrl(params)) {
-        populateBoardFromState();
-        checkBoard();
-        updateBoardStateInURL();
-    }
-    else {
-        generateNewBoard(difficulty);
-    }
-
-    let selectedRow = 0, selectedCol = 0;
-    let selectedCell = document.getElementById(`cell-${selectedRow}-${selectedCol}`);
-
-    if (selectedCell !== null) {
-        selectedCell.classList.add('selected');
-    }
-
-    // Event listener for the button
-    document.getElementById("generateBoardButton").addEventListener("click", function() {
-        const selectedDifficulty = difficultyDropdown.value;
-        generateNewBoard(selectedDifficulty);
-    });
-
-    document.getElementById("solveBoard").addEventListener("click", function() {
-        solveBoard();
-        populateBoardFromState();
-        checkBoard();
-        updateBoardStateInURL();
-    });
-
-    // Function to generate a new board based on selected difficulty
-    function generateNewBoard(difficulty) {
-        var solutionCount = 0;
-
-        do {
-            clearGameBoard();
-            fillBoard();
-            removeNumbers(difficulty);
-        } while (!checkUnique());
-
-        populateBoardFromState();
-        checkBoard();
-        updateBoardStateInURL();
-    }
-
-    function getShuffledArray() {
-        let array = Array.from({ length: boardSize }, (_, i) => i + 1);
-
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-
-        return array;
-    }
-
-    function fillBoard() {
-        function backtrack(row, col) {
-            if (row === boardSize) {
-                return true;  // Entire board has been filled
-            }
-
-            if (boardState[row][col].value !== 0) {
-                return (col === boardSize - 1) ? backtrack(row + 1, 0) : backtrack(row, col + 1);
-            }
-
-            const numbers = getShuffledArray();
-
-            for (const num of numbers) {
-                boardState[row][col].clue = false;  // Resetting the clue flag
-
-                if (isValid(boardState, row, col, num)) {
-                    boardState[row][col].value = num;
-                    boardState[row][col].clue = true;  // Marking the number as a clue
-
-                    if ((col === boardSize - 1) ? backtrack(row + 1, 0) : backtrack(row, col + 1)) {
-                        return true;  // Continue if the current number allows for a solution
-                    }
-
-                    boardState[row][col].value = 0;
-                    boardState[row][col].clue = false;  // Resetting the clue flag
-                }
-            }
-
-            return false;  // If no number fits in the current cell, backtrack
-        }
-
-        return backtrack(0, 0);  // Start backtracking from the first cell
-    }
-
-    function checkUnique() {
-        let solutionCount = 0;
-        const tempBoard = boardState.map(row => row.map(cell => Object.assign({}, cell)));
-
-        function backtrack(row, col) {
-            if (row === boardSize) {
-                solutionCount++;
-                return;
-            }
-
-            if (solutionCount > 1) {
-                return;
-            }
-
-            if (tempBoard[row][col].value === 0) {
-                for (let num = 1; num <= boardSize; num++) {
-                    if (isValid(tempBoard, row, col, num)) {
-                        tempBoard[row][col].value = num;
-
-                        if (col === 8) {
-                            backtrack(row + 1, 0);
-                        } else {
-                            backtrack(row, col + 1);
-                        }
-
-                        tempBoard[row][col].value = 0;
-                    }
-                }
-            } else {
-                if (col === 8) {
-                    backtrack(row + 1, 0);
-                } else {
-                    backtrack(row, col + 1);
-                }
+    function buildMarkup(root) {
+        var cells = '';
+        for (var row = 0; row < BOARD_SIZE; row++) {
+            for (var col = 0; col < BOARD_SIZE; col++) {
+                var classes = 'cell';
+                if (col === 0) { classes += ' cell-left'; }
+                if (row === 0) { classes += ' cell-top'; }
+                if (col % 3 === 2) { classes += ' cell-right'; }
+                if (row % 3 === 2) { classes += ' cell-bottom'; }
+                var hints = '';
+                for (var digit = 1; digit <= 9; digit++) { hints += '<div class="hint">' + digit + '</div>'; }
+                cells += '<div class="' + classes + '" data-cell="' + row + '-' + col + '">' +
+                         '<div class="hints">' + hints + '</div><div class="main-number"></div></div>';
             }
         }
 
-        backtrack(0, 0);
+        var numbers = '';
+        for (var n = 1; n <= 9; n++) {
+            numbers += '<button type="button" class="btn number-button" data-num="' + n + '">' + n + '</button>';
+        }
 
-        return solutionCount === 1;
+        root.innerHTML =
+            '<div class="sudoku-top">' +
+              '<h1>Sudoku</h1>' +
+              '<div class="mode-controls">' +
+                '<select class="form-select" data-role="difficulty" aria-label="Select difficulty">' +
+                  '<option value="easy">Easy</option><option value="medium">Medium</option>' +
+                  '<option value="hard">Hard</option><option value="veryhard">Very Hard</option>' +
+                '</select>' +
+                '<button type="button" class="btn btn-primary" data-action="new">New</button>' +
+                '<button type="button" class="btn" data-action="reset">Restart</button>' +
+                '<button type="button" class="btn btn-danger" data-action="clear" hidden>Clear</button>' +
+                '<button type="button" class="btn" data-action="edit">Editor</button>' +
+                '<button type="button" class="btn" data-action="solve">Solve</button>' +
+                '<a data-role="share-link" href="#" hidden>Link to Current Board</a>' +
+              '</div>' +
+            '</div>' +
+            '<div class="sudoku-stage">' +
+              '<div class="sudoku-board" data-role="board">' + cells +
+                '<div class="help-text" data-role="help">' +
+                  '<p><a href="https://en.wikipedia.org/wiki/Sudoku" target="_blank" rel="noopener">Sudoku</a> by Paul Parks</p>' +
+                  '<ul>' +
+                    '<li>Touch any cell or use the arrow keys to select a cell.</li>' +
+                    '<li>To enter a number, touch one of the number buttons or type a number.</li>' +
+                    '<li>To enter a hint, touch the ✏ button or hold the SHIFT key while typing a number.</li>' +
+                    '<li>To clear a cell, touch the ❌ button or press the DELETE key or BACKSPACE key.</li>' +
+                    '<li>To restart the game, touch the "Restart" button.</li>' +
+                    '<li>To generate a new game, select a difficulty from the drop-down, then touch the "New" button.</li>' +
+                    '<li>To create a game of your own, touch the "Editor" button.</li>' +
+                    '<li>To remove this help text, touch the ❓ button or press the ? key.</li>' +
+                  '</ul>' +
+                  '<p data-role="undo-note">Game state is saved in the browser history. Use your browser’s back and forward functions to undo and redo entries.</p>' +
+                  '<p>To share your game with someone, use the ↗ button. All of the clues, hints, and number entries will be preserved.</p>' +
+                  '<p>Licensed under <a href="https://mit-license.org/" target="_blank" rel="noopener">MIT License</a>. Source available on <a href="https://github.com/parkscomputing/sudoku" target="_blank" rel="noopener">GitHub</a>.</p>' +
+                '</div>' +
+              '</div>' +
+              '<div class="number-controls">' + numbers + '</div>' +
+              '<div class="number-controls controls-centered">' +
+                '<button type="button" class="btn" data-action="hintmode" title="Hint entry">✏</button>' +
+                '<button type="button" class="btn" data-action="delete" title="Clear cell">❌</button>' +
+                '<button type="button" class="btn" data-action="help" title="Help">❓</button>' +
+                '<button type="button" class="btn" data-action="share" title="Copy shareable URL" aria-label="Copy shareable URL">↗</button>' +
+              '</div>' +
+            '</div>';
     }
 
-    function solveBoard() {
-        function backtrack(row, col) {
-            if (row === boardSize) {
-                return true;
-            }
+    function init(root, opts) {
+        opts = opts || {};
+        var ownUrl = !!opts.ownUrl;
+        var pageUrl = opts.pageUrl || location.pathname;
 
-            if (boardState[row][col].value === 0) {
-                for (let num = 1; num <= boardSize; num++) {
-                    if (isValid(boardState, row, col, num)) {
-                        boardState[row][col].clue = false;
-                        boardState[row][col].value = num;
+        buildMarkup(root);
+        root.classList.add('pc-sudoku');
+        if (!root.hasAttribute('tabindex')) { root.tabIndex = 0; }
 
-                        if (col === 8) {
-                            if (backtrack(row + 1, 0)) {
-                                return true;
-                            }
-                        } else {
-                            if (backtrack(row, col + 1)) {
-                                return true;
-                            }
-                        }
+        var q = function (sel) { return root.querySelector(sel); };
 
-                        boardState[row][col].value = 0;
-                    }
-                }
-            } else {
-                if (col === 8) {
-                    if (backtrack(row + 1, 0)) {
-                        return true;
-                    }
-                } else {
-                    if (backtrack(row, col + 1)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
+        var boardEl = q('[data-role="board"]');
+        var difficultyDropdown = q('[data-role="difficulty"]');
+        var helpText = q('[data-role="help"]');
+        var shareLink = q('[data-role="share-link"]');
 
-        backtrack(0, 0);
-    }
-
-
-    function isValid(board, row, col, num) {
-        for (let x = 0; x < boardSize; x++) {
-            if (board[row][x].value === num) return false;
-            if (board[x][col].value === num) return false;
-        }
-
-        const startRow = Math.floor(row / 3) * 3;
-        const startCol = Math.floor(col / 3) * 3;
-        for (let i = 0; i < 3; i++) {
-            for (let j = 0; j < 3; j++) {
-                if (board[i + startRow][j + startCol].value === num) return false;
+        var cells = [];
+        for (var r = 0; r < BOARD_SIZE; r++) {
+            cells.push([]);
+            for (var c = 0; c < BOARD_SIZE; c++) {
+                cells[r].push(q('[data-cell="' + r + '-' + c + '"]'));
             }
         }
-        return true;
-    }
+        var numButtons = {};
+        root.querySelectorAll('[data-num]').forEach(function (b) { numButtons[parseInt(b.getAttribute('data-num'), 10)] = b; });
 
-    function removeNumbers(difficulty) {
-        let removalCount;
-
-        switch (difficulty) {
-            case "easy":
-                removalCount = 30;
-                break;
-            case "medium":
-                removalCount = 40;
-                break;
-            case "hard":
-                removalCount = 50;
-                break;
-            case "veryhard":
-                removalCount = 60;
-                break;
-            default:
-                removalCount = 40; // Default to medium
-        }
-
-        let unvisitedCells = [];
-
-        for (let i = 0; i < boardSize; i++) {
-            for (let j = 0; j < boardSize; j++) {
-                unvisitedCells.push([i, j]);
-            }
-        }
-
-        let removals = 0;
-
-        while (removals < removalCount && unvisitedCells.length > 0) {
-            let index = Math.floor(Math.random() * unvisitedCells.length);
-            let [row, col] = unvisitedCells.splice(index, 1)[0];
-
-            // Ensure the cell has not been visited and has a number
-            if (!boardState[row][col].visited && boardState[row][col].value !== 0) {
-                // Preserve the original value
-                let originalValue = boardState[row][col].value;
-
-                // Try to remove the number
-                boardState[row][col].value = 0;
-
-                if (checkUnique()) {
-                    removals++;
-                    boardState[row][col].clue = false;
-                } else {
-                    // Otherwise, revert the removal
-                    boardState[row][col].value = originalValue;
-                }
-            }
-        }
-    }
-
-    const numberButtons = document.querySelectorAll(".number-button");
-
-    numberButtons.forEach((button) => {
-        button.addEventListener("click", function (event) {
-            const numberElement = selectedCell.querySelector(".main-number");
-
-            if (isEditingMode || numberElement.getAttribute('data-editable') !== 'false') {
-                const digit = parseInt(this.innerText, 10);
-                updateNumberCell(digit, selectedCell, isHintMode);
-            }
+        var boardState = Array(BOARD_SIZE).fill(null).map(function () {
+            return Array(BOARD_SIZE).fill(null).map(function () { return { value: 0, clue: false, hints: [] }; });
         });
-    });
 
-    document.getElementById("toggleEditMode").addEventListener("click", function (event) {
-        isEditingMode = !isEditingMode;
-        const resetGame = document.getElementById("resetGame");
-        const clearBoard = document.getElementById("clearBoard");
+        var isEditingMode = false;
+        var isHintMode = false;
+        var helpDisplay = false;
+        var selectedRow = 0, selectedCol = 0;
+        var selectedCell = cells[0][0];
 
-        if (isEditingMode) {
-            this.textContent = "Gameplay";
-            resetGame.style.display = "none";
-            clearBoard.style.display = "inline-block";
-        } else {
-            this.textContent = "Editor";
-            resetGame.style.display = "inline-block";
-            clearBoard.style.display = "none";
+        /* Without its own URL there is no history-based undo, so the help
+           text should not promise one. */
+        if (!ownUrl) { q('[data-role="undo-note"]').hidden = true; }
+
+        /* === Board logic (unchanged from the page-scoped original) ======= */
+
+        function getShuffledArray() {
+            var array = Array.from({ length: BOARD_SIZE }, function (_, i) { return i + 1; });
+            for (var i = array.length - 1; i > 0; i--) {
+                var j = Math.floor(Math.random() * (i + 1));
+                var t = array[i]; array[i] = array[j]; array[j] = t;
+            }
+            return array;
         }
 
-        populateBoardFromState();
-        checkBoard();
-    });
-
-    function toggleHint() {
-        isHintMode = !isHintMode;
-        const button = document.getElementById("toggleEditHintMode")
-
-        if (isHintMode) {
-            button.classList.add('selected');
-        } else {
-            button.classList.remove('selected');
+        function isValid(board, row, col, num) {
+            for (var x = 0; x < BOARD_SIZE; x++) {
+                if (board[row][x].value === num) { return false; }
+                if (board[x][col].value === num) { return false; }
+            }
+            var startRow = Math.floor(row / 3) * 3;
+            var startCol = Math.floor(col / 3) * 3;
+            for (var i = 0; i < 3; i++) {
+                for (var j = 0; j < 3; j++) {
+                    if (board[i + startRow][j + startCol].value === num) { return false; }
+                }
+            }
+            return true;
         }
 
-        selectCell(selectedRow, selectedCol);
-    }
-
-    document.getElementById("toggleEditHintMode").addEventListener("click", function (event) {
-        toggleHint();
-    });
-
-    let helpDisplay = false;
-
-    function toggleHelp() {
-        helpDisplay = !helpDisplay;
-        const helpText = document.getElementById("helpText");
-        const helpButton = document.getElementById("helpButton");
-
-        if (helpDisplay) {
-            helpText.style.display = "flex";
-            helpButton.classList.add("selected");
+        function fillBoard() {
+            function backtrack(row, col) {
+                if (row === BOARD_SIZE) { return true; }
+                if (boardState[row][col].value !== 0) {
+                    return (col === BOARD_SIZE - 1) ? backtrack(row + 1, 0) : backtrack(row, col + 1);
+                }
+                var numbers = getShuffledArray();
+                for (var k = 0; k < numbers.length; k++) {
+                    var num = numbers[k];
+                    boardState[row][col].clue = false;
+                    if (isValid(boardState, row, col, num)) {
+                        boardState[row][col].value = num;
+                        boardState[row][col].clue = true;
+                        if ((col === BOARD_SIZE - 1) ? backtrack(row + 1, 0) : backtrack(row, col + 1)) { return true; }
+                        boardState[row][col].value = 0;
+                        boardState[row][col].clue = false;
+                    }
+                }
+                return false;
+            }
+            return backtrack(0, 0);
         }
-        else {
-            helpText.style.display = "none";
-            helpButton.classList.remove("selected");
+
+        function checkUnique() {
+            var solutionCount = 0;
+            var tempBoard = boardState.map(function (row) { return row.map(function (cell) { return Object.assign({}, cell); }); });
+
+            function backtrack(row, col) {
+                if (row === BOARD_SIZE) { solutionCount++; return; }
+                if (solutionCount > 1) { return; }
+                if (tempBoard[row][col].value === 0) {
+                    for (var num = 1; num <= BOARD_SIZE; num++) {
+                        if (isValid(tempBoard, row, col, num)) {
+                            tempBoard[row][col].value = num;
+                            if (col === 8) { backtrack(row + 1, 0); } else { backtrack(row, col + 1); }
+                            tempBoard[row][col].value = 0;
+                        }
+                    }
+                } else {
+                    if (col === 8) { backtrack(row + 1, 0); } else { backtrack(row, col + 1); }
+                }
+            }
+
+            backtrack(0, 0);
+            return solutionCount === 1;
         }
-    }
 
-    document.getElementById("helpButton").addEventListener("click", function (event) {
-        toggleHelp();
-    });
+        function solveBoard() {
+            function backtrack(row, col) {
+                if (row === BOARD_SIZE) { return true; }
+                if (boardState[row][col].value === 0) {
+                    for (var num = 1; num <= BOARD_SIZE; num++) {
+                        if (isValid(boardState, row, col, num)) {
+                            boardState[row][col].clue = false;
+                            boardState[row][col].value = num;
+                            if (col === 8) { if (backtrack(row + 1, 0)) { return true; } }
+                            else if (backtrack(row, col + 1)) { return true; }
+                            boardState[row][col].value = 0;
+                        }
+                    }
+                } else {
+                    if (col === 8) { if (backtrack(row + 1, 0)) { return true; } }
+                    else if (backtrack(row, col + 1)) { return true; }
+                }
+                return false;
+            }
+            backtrack(0, 0);
+        }
 
-    document.getElementById("resetGame").addEventListener("click", function (event) {
-        for (let row = 0; row < boardSize; row++) {
-            for (let col = 0; col < boardSize; col++) {
-                const cellData = boardState[row][col];
+        function removeNumbers(difficulty) {
+            var removalCount;
+            switch (difficulty) {
+                case 'easy': removalCount = 30; break;
+                case 'medium': removalCount = 40; break;
+                case 'hard': removalCount = 50; break;
+                case 'veryhard': removalCount = 60; break;
+                default: removalCount = 40;
+            }
 
-                if (cellData.clue === false) {
+            var unvisitedCells = [];
+            for (var i = 0; i < BOARD_SIZE; i++) {
+                for (var j = 0; j < BOARD_SIZE; j++) { unvisitedCells.push([i, j]); }
+            }
+
+            var removals = 0;
+            while (removals < removalCount && unvisitedCells.length > 0) {
+                var index = Math.floor(Math.random() * unvisitedCells.length);
+                var rc = unvisitedCells.splice(index, 1)[0];
+                var row = rc[0], col = rc[1];
+                if (boardState[row][col].value !== 0) {
+                    var originalValue = boardState[row][col].value;
+                    boardState[row][col].value = 0;
+                    if (checkUnique()) {
+                        removals++;
+                        boardState[row][col].clue = false;
+                    } else {
+                        boardState[row][col].value = originalValue;
+                    }
+                }
+            }
+        }
+
+        function clearGameBoard() {
+            for (var row = 0; row < BOARD_SIZE; row++) {
+                for (var col = 0; col < BOARD_SIZE; col++) {
+                    var cellData = boardState[row][col];
                     cellData.value = 0;
+                    cellData.clue = false;
                     cellData.hints = [];
                 }
             }
         }
 
-        populateBoardFromState();
-        checkBoard();
-        updateBoardStateInURL();
-    });
+        function isClue(row, col) { return boardState[row][col].clue; }
+        function getDigit(row, col) { return boardState[row][col].value; }
+        function getHints(row, col) { return boardState[row][col].hints; }
 
-    document.getElementById("clearBoard").addEventListener("click", function (event) {
-        clearGameBoard();
+        function updateBoard(row, col, value) {
+            boardState[row][col].value = value;
+            boardState[row][col].clue = isEditingMode && (value !== 0);
+        }
 
-        populateBoardFromState();
-        checkBoard();
-        updateBoardStateInURL();
+        function updateHints(row, col, hints) { boardState[row][col].hints = hints; }
 
-    });
-
-    function clearGameBoard() {
-        for (let row = 0; row < boardSize; row++) {
-            for (let col = 0; col < boardSize; col++) {
-                const cellData = boardState[row][col];
-                cellData.value = 0;
-                cellData.clue = false;
-                cellData.hints = [];
+        function isValidMove(row, col, value) {
+            if (value === 0) { return true; }
+            for (var c2 = 0; c2 < BOARD_SIZE; c2++) {
+                if (c2 !== col && boardState[row][c2].value === value) { return false; }
             }
-        }
-    }
-
-    function selectCell(row, col) {
-        selectedCell.classList.remove('selected');
-        selectedRow = row;
-        selectedCol = col;
-        selectedCell = document.getElementById(`cell-${selectedRow}-${selectedCol}`);
-        selectedCell.classList.add('selected');
-
-        for (var digit = 0; digit < 10; ++digit) {
-            const hintElement = document.getElementById(`num-${digit}`);
-            if (hintElement !== null) hintElement.classList.remove('selected');
-        }
-
-        const cellValue = getDigit(row, col);
-
-        if (isHintMode) {
-            if (cellValue === 0) {
-                let hintsArray = getHints(selectedRow, selectedCol);
-                hintsArray.forEach((digit, index, array) => {
-                    const element = document.getElementById(`num-${digit}`);
-                    if (element !== null) element.classList.add('selected');
-                });
+            for (var r2 = 0; r2 < BOARD_SIZE; r2++) {
+                if (r2 !== row && boardState[r2][col].value === value) { return false; }
             }
-        }
-        else {
-            if (!isClue(row, col)) {
-                const element2 = document.getElementById(`num-${cellValue}`);
-                if (element2 !== null) element2.classList.add('selected');
-            }
-        }
-    }
-
-    function clearCell(row, col) {
-        const numberElement = selectedCell.querySelector(".main-number");
-        const hints = selectedCell.querySelectorAll(".hint");
-        updateBoard(row, col, 0);
-        drawNumber(0, numberElement, hints);
-        checkBoard();
-        selectCell(row, col);
-        updateBoardStateInURL();
-    }
-
-    document.getElementById("deleteEntry").addEventListener("click", function (event) {
-        const numberElement = selectedCell.querySelector(".main-number");
-
-        if (isEditingMode || numberElement.getAttribute('data-editable') !== 'false') {
-            clearCell(selectedRow, selectedCol);
-        }
-    });
-
-    document.addEventListener('keydown', function (event) {
-        console.log(event.code);
-        if (event.altKey) return;
-
-        if (event.key === '?') {
-            toggleHelp();
-            return;
-        }
-
-        if (event.key === 'h' || event.key === 'H') {
-            toggleHint();
-        }
-
-        const isShiftPressed = event.shiftKey;
-        const isHintEntry = isShiftPressed || isHintMode;
-
-        selectedCell.classList.remove('selected');
-        const numberElement = selectedCell.querySelector(".main-number");
-
-        if (isEditingMode || numberElement.getAttribute('data-editable') !== 'false') {
-            if (event.code === 'Delete' || event.code === 'Backspace' || (event.code === 'NumpadDecimal') && !event.getModifierState("NumLock")) {
-                clearCell(selectedRow, selectedCol);
-            }
-            else if (event.code.startsWith('Digit')) {
-                const digit = parseInt(event.code.replace('Digit', ''), 10);
-                updateNumberCell(digit, selectedCell, isHintEntry);
-            }
-            else if (event.code.startsWith('Numpad') && event.getModifierState("NumLock")) {
-                const digit = parseInt(event.code.replace('Numpad', ''), 10);
-
-                if (Number.isInteger(digit) && digit >= 1 && digit <= 9) {
-                    updateNumberCell(digit, selectedCell, isHintEntry);
+            var boxRowStart = Math.floor(row / 3) * 3;
+            var boxColStart = Math.floor(col / 3) * 3;
+            for (var r3 = boxRowStart; r3 < boxRowStart + 3; r3++) {
+                for (var c3 = boxColStart; c3 < boxColStart + 3; c3++) {
+                    if (r3 !== row && c3 !== col && boardState[r3][c3].value === value) { return false; }
                 }
             }
-        }
-
-        /* Yeah, I could probably fix the following code so that the logic isn't duplicated,
-        but that would mean creating four tiny functions. If I ever DO modify the selection
-        logic, I'll make the abstractions then. */
-
-        if (event.code.startsWith('Arrow')) {
-            switch (event.code) {
-                case 'ArrowUp':
-                    selectedRow = (selectedRow - 1 + 9) % 9;
-                    break;
-                case 'ArrowDown':
-                    selectedRow = (selectedRow + 1) % 9;
-                    break;
-                case 'ArrowLeft':
-                    selectedCol = (selectedCol - 1 + 9) % 9;
-                    break;
-                case 'ArrowRight':
-                    selectedCol = (selectedCol + 1) % 9;
-                    break;
-                default:
-                    selectedCell.classList.add('selected');
-                    return;
-            }
-        }
-        else if (event.code.startsWith('Numpad') && !event.getModifierState("NumLock")) {
-            switch (event.code) {
-                case 'Numpad8':
-                    selectedRow = (selectedRow - 1 + 9) % 9;
-                    break;
-                case 'Numpad2':
-                    selectedRow = (selectedRow + 1) % 9;
-                    break;
-                case 'Numpad4':
-                    selectedCol = (selectedCol - 1 + 9) % 9;
-                    break;
-                case 'Numpad6':
-                    selectedCol = (selectedCol + 1) % 9;
-                    break;
-            }
-        }
-
-        selectCell(selectedRow, selectedCol);
-    });
-
-    function updateNumberCell(digit, selectedCell, isHintEntry) {
-        const numberElement = selectedCell.querySelector(".main-number");
-        const hints = selectedCell.querySelectorAll(".hint");
-
-        numberElement.classList.remove('invalid-number');
-        numberElement.classList.remove('game-number');
-
-        if (isHintEntry) {
-            let hintsArray = getHints(selectedRow, selectedCol);
-            const hintIndex = hintsArray.indexOf(digit);
-            const hintElement = selectedCell.querySelector(`.hint:nth-child(${digit})`);
-
-            if (hintIndex === -1) {
-                hintsArray.push(digit);
-                if (hintElement !== null) hintElement.classList.add('active-hint');
-            } else {
-                hintsArray.splice(hintIndex, 1);
-                if (hintElement !== null) hintElement.classList.remove('active-hint');
-            }
-
-            updateHints(selectedRow, selectedCol, hintsArray);
-        } else {
-            updateBoard(selectedRow, selectedCol, digit);
-            drawNumber(digit, numberElement, hints);
-        }
-
-        checkBoard();
-        selectCell(selectedRow, selectedCol);
-
-        updateBoardStateInURL();
-    }
-
-    window.addEventListener('popstate', function (event) {
-        const params = getUrlParameters();
-        setBoardStateFromUrl(params);
-        populateBoardFromState();
-        checkBoard();
-        updateBoardStateInURL();
-    });
-
-    function isClue(row, col) {
-        return boardState[row][col].clue;
-    }
-
-    function getDigit(row, col) {
-        return boardState[row][col].value;
-    }
-
-    function getHints(row, col) {
-        return boardState[row][col].hints;
-    }
-
-    function updateBoard(row, col, value) {
-        boardState[row][col].value = value;
-        boardState[row][col].clue = isEditingMode && (value !== 0);
-    }
-
-    function updateHints(row, col, hints) {
-        boardState[row][col].hints = hints;
-    }
-
-    function populateBoardFromState() {
-        for (let row = 0; row < boardSize; row++) {
-            for (let col = 0; col < boardSize; col++) {
-                const cellData = boardState[row][col];
-                const hintsArray = cellData.hints;
-                const cell = document.getElementById(`cell-${row}-${col}`);
-
-                cell.addEventListener("click", function (event) {
-                    selectCell(row, col);
-                });
-
-                const numberElement = cell.querySelector(".main-number");
-                const hints = cell.querySelectorAll(".hint");
-
-                hints.forEach(function (hint) {
-                    hint.classList.remove('active-hint');
-                });
-
-                drawNumber(cellData.value || 0, numberElement, hints);
-
-                hintsArray.forEach((digit, index, array) => {
-                    const hintElement = cell.querySelector(`.hint:nth-child(${digit})`);
-                    if (hintElement !== null) hintElement.classList.add('active-hint');
-                });
-
-                if (cellData.clue) {
-                    numberElement.className = 'main-number static-number';
-                    numberElement.setAttribute('data-editable', 'false');
-                } else {
-                    numberElement.className = 'main-number game-number';
-                    numberElement.setAttribute('data-editable', 'true');
-                }
-            }
-        }
-    }
-
-    // Share button logic: builds current URL (already contains state) and copies to clipboard
-    const shareBtn = document.getElementById('shareBoardButton');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', () => {
-            try {
-                updateBoardStateInURL(); // ensure URL reflects latest board
-                const url = window.location.href;
-                navigator.clipboard.writeText(url).then(() => {
-                    const originalTitle = shareBtn.title;
-                    shareBtn.title = 'Copied to clipboard';
-                    shareBtn.setAttribute('aria-label','Copied to clipboard');
-                    setTimeout(()=> { shareBtn.title = originalTitle; shareBtn.setAttribute('aria-label', originalTitle); }, 1800);
-                }).catch(()=> {
-                    // Fallback: reveal text link for manual copy
-                    const link = document.getElementById('shareableLink');
-                    if (link) link.classList.remove('hidden-initial');
-                    const originalTitle = shareBtn.title;
-                    shareBtn.title = 'Link displayed below';
-                    shareBtn.setAttribute('aria-label','Link displayed below');
-                    setTimeout(()=> { shareBtn.title = originalTitle; shareBtn.setAttribute('aria-label', originalTitle); }, 2200);
-                });
-            } catch {
-                const link = document.getElementById('shareableLink');
-                if (link) link.classList.remove('hidden-initial');
-            }
-        });
-    }
-
-    function checkBoard() {
-        let isValidBoard = true;
-        let isComplete = true;
-        const board = document.getElementById("sudoku-board");
-        board.classList.remove("winner");
-
-        for (let row = 0; row < boardSize; row++) {
-            for (let col = 0; col < boardSize; col++) {
-                const digit = getDigit(row, col);
-                const cell = document.getElementById(`cell-${row}-${col}`);
-                const numberElement = cell.querySelector(".main-number");
-                numberElement.className = 'main-number game-number';
-
-                if (isClue(row, col)) {
-                    numberElement.className = 'main-number static-number';
-                }
-
-                if (!isValidMove(row, col, digit)) {
-                    numberElement.classList.add('invalid-number');
-                    isValidBoard = false;
-                }
-
-                if (digit === 0) {
-                    isComplete = false;
-                }
-            }
-        }
-
-        if (isComplete && isValidBoard) {
-            board.classList.add("winner");
-        }
-
-        return isValidBoard;
-    }
-
-    // Sample board parameter:
-    // ?board=5C.3C.0P14.0P6.7C.8P6.0P9.0P9.0P-6C.7P.0P4.1C.9C.5C.0P3.0P3.8P78-0P1.9C.8C.3P.4P.0P.5P.6C.0P7-8C.0P.0P.0P9.6C.0P14.0P7.0P2.3C-4C.0P.6P.8C.0P.3C.0P7.0P2.1C-7C.0P.3P.0P9.2C.0P14.8P.0P.6C-0P9.6C.0P9.0P7.0P.0P7.2C.8C.0P-0P.8P3.7P.4C.1C.9C.0P6.0P.5C-0P.0P.0P.0P.8C.0P.0P6.7C.9C
-
-    function updateBoardStateInURL() {
-        let urlBoardString = "";
-        for (let row = 0; row < boardSize; row++) {
-            for (let col = 0; col < boardSize; col++) {
-                const cellData = boardState[row][col];
-                const clueOrPlayer = cellData.clue ? 'C' : 'P';
-                urlBoardString += `${cellData.value}${clueOrPlayer}${cellData.hints.join("")}.`;
-            }
-            urlBoardString = urlBoardString.slice(0, -1);  // Remove trailing delimiter
-            urlBoardString += "-";  // Delimiter between rows
-        }
-
-        urlBoardString = urlBoardString.slice(0, -1);  // Remove trailing delimiter
-
-        const newURL = new URL(window.location);
-        newURL.searchParams.set("difficulty", difficultyDropdown.value);
-        newURL.searchParams.set("board", urlBoardString);
-
-        const linkElement = document.getElementById("shareableLink");
-        linkElement.href = newURL.toString();
-        window.history.pushState("", "", linkElement.href);
-        return linkElement.href;
-    }
-
-
-    function getUrlParameters() {
-        return new URLSearchParams(window.location.search);
-    }
-
-    function setBoardStateFromUrl(params) {
-        const boardStateString = params.get('board');
-
-        if (!boardStateString) {
-            return false;
-        }
-
-        const rows = boardStateString.split('-');
-
-        for (let row = 0; row < rows.length; row++) {
-            const cols = rows[row].split('.');
-
-            for (let col = 0; col < cols.length; col++) {
-                const { value, status, hints } = parseCell(cols[col]);
-
-                boardState[row][col].value = value;
-                boardState[row][col].clue = (status === 'C');
-                boardState[row][col].hints = hints;
-            }
-        }
-
-        return true;
-    }
-
-    function getDifficultyFromUrl(params) {
-        const difficulty = params.get("difficulty");
-        if (!difficulty) {
-            return "medium";
-        }
-
-        return difficulty;
-    }
-
-    function parseCell(cellString) {
-        const value = parseInt(cellString.charAt(0), 10);
-        const status = cellString.charAt(1);
-        const hints = cellString.slice(2).split('').map(Number);
-
-        return { value, status, hints };
-    }
-
-    function isValidMove(row, col, value) {
-        if (value === 0) {
             return true;
         }
 
-        // Check row
-        for (let c = 0; c < boardSize; c++) {
-            if (c !== col && boardState[row][c].value === value) {
-                return false;
+        /* === Rendering ==================================================== */
+
+        function drawNumber(number, numberElement, hints) {
+            numberElement.classList.remove('invalid-number');
+            if (number !== 0) {
+                numberElement.textContent = number;
+                hints.forEach(function (hint) { hint.style.visibility = 'hidden'; });
+            } else {
+                numberElement.textContent = '';
+                numberElement.className = 'main-number';
+                numberElement.setAttribute('data-editable', 'true');
+                hints.forEach(function (hint) { hint.style.visibility = 'visible'; });
             }
         }
 
-        // Check column
-        for (let r = 0; r < boardSize; r++) {
-            if (r !== row && boardState[r][col].value === value) {
-                return false;
-            }
-        }
+        function populateBoardFromState() {
+            for (var row = 0; row < BOARD_SIZE; row++) {
+                for (var col = 0; col < BOARD_SIZE; col++) {
+                    var cellData = boardState[row][col];
+                    var cell = cells[row][col];
+                    var numberElement = cell.querySelector('.main-number');
+                    var hints = cell.querySelectorAll('.hint');
 
-        // Check 3x3 box
-        const boxRowStart = Math.floor(row / 3) * 3;
-        const boxColStart = Math.floor(col / 3) * 3;
-        for (let r = boxRowStart; r < boxRowStart + 3; r++) {
-            for (let c = boxColStart; c < boxColStart + 3; c++) {
-                if (r !== row && c !== col && boardState[r][c].value === value) {
-                    return false;
+                    hints.forEach(function (hint) { hint.classList.remove('active-hint'); });
+                    drawNumber(cellData.value || 0, numberElement, hints);
+
+                    cellData.hints.forEach(function (digit) {
+                        var hintElement = cell.querySelector('.hint:nth-child(' + digit + ')');
+                        if (hintElement !== null) { hintElement.classList.add('active-hint'); }
+                    });
+
+                    if (cellData.clue) {
+                        numberElement.className = 'main-number static-number';
+                        numberElement.setAttribute('data-editable', 'false');
+                    } else {
+                        numberElement.className = 'main-number game-number';
+                        numberElement.setAttribute('data-editable', 'true');
+                    }
                 }
             }
         }
 
-        return true;
-    }
+        function checkBoard() {
+            var isValidBoard = true;
+            var isComplete = true;
+            boardEl.classList.remove('winner');
 
-    function drawNumber(number, numberElement, hints) {
-        numberElement.classList.remove('invalid-number');
+            for (var row = 0; row < BOARD_SIZE; row++) {
+                for (var col = 0; col < BOARD_SIZE; col++) {
+                    var digit = getDigit(row, col);
+                    var numberElement = cells[row][col].querySelector('.main-number');
+                    numberElement.className = 'main-number game-number';
+                    if (isClue(row, col)) { numberElement.className = 'main-number static-number'; }
+                    if (!isValidMove(row, col, digit)) {
+                        numberElement.classList.add('invalid-number');
+                        isValidBoard = false;
+                    }
+                    if (digit === 0) { isComplete = false; }
+                }
+            }
 
-        if (number !== 0) {
-            numberElement.textContent = number;
-
-            hints.forEach(function (hint) {
-                hint.style.visibility = "hidden";
-            });
-        } else {
-            numberElement.textContent = "";
-
-            numberElement.className = 'main-number';
-            numberElement.setAttribute('data-editable', 'true');
-
-            hints.forEach(function (hint) {
-                hint.style.visibility = "visible";
-            });
+            if (isComplete && isValidBoard) { boardEl.classList.add('winner'); }
+            return isValidBoard;
         }
-    }
-});
 
+        function selectCell(row, col) {
+            selectedCell.classList.remove('selected');
+            selectedRow = row;
+            selectedCol = col;
+            selectedCell = cells[row][col];
+            selectedCell.classList.add('selected');
+
+            for (var digit = 1; digit <= 9; digit++) {
+                if (numButtons[digit]) { numButtons[digit].classList.remove('selected'); }
+            }
+
+            var cellValue = getDigit(row, col);
+            if (isHintMode) {
+                if (cellValue === 0) {
+                    getHints(row, col).forEach(function (digit) {
+                        if (numButtons[digit]) { numButtons[digit].classList.add('selected'); }
+                    });
+                }
+            } else if (!isClue(row, col)) {
+                if (numButtons[cellValue]) { numButtons[cellValue].classList.add('selected'); }
+            }
+        }
+
+        /* === Game state in the URL, or in the share link ================== */
+
+        function boardStateString() {
+            var urlBoardString = '';
+            for (var row = 0; row < BOARD_SIZE; row++) {
+                for (var col = 0; col < BOARD_SIZE; col++) {
+                    var cellData = boardState[row][col];
+                    urlBoardString += String(cellData.value) + (cellData.clue ? 'C' : 'P') + cellData.hints.join('') + '.';
+                }
+                urlBoardString = urlBoardString.slice(0, -1) + '-';
+            }
+            return urlBoardString.slice(0, -1);
+        }
+
+        function updateShareState() {
+            var target = ownUrl ? new URL(window.location) : new URL(pageUrl, window.location.origin);
+            target.searchParams.set('difficulty', difficultyDropdown.value);
+            target.searchParams.set('board', boardStateString());
+
+            shareLink.href = target.toString();
+            if (ownUrl) { window.history.pushState('', '', shareLink.href); }
+            return shareLink.href;
+        }
+
+        function parseCell(cellString) {
+            return {
+                value: parseInt(cellString.charAt(0), 10),
+                status: cellString.charAt(1),
+                hints: cellString.slice(2).split('').map(Number)
+            };
+        }
+
+        function setBoardStateFromParams(params) {
+            var boardStateStr = params.get('board');
+            if (!boardStateStr) { return false; }
+
+            var rows = boardStateStr.split('-');
+            for (var row = 0; row < rows.length; row++) {
+                var cols = rows[row].split('.');
+                for (var col = 0; col < cols.length; col++) {
+                    var parsed = parseCell(cols[col]);
+                    boardState[row][col].value = parsed.value;
+                    boardState[row][col].clue = (parsed.status === 'C');
+                    boardState[row][col].hints = parsed.hints;
+                }
+            }
+            return true;
+        }
+
+        /* === Actions ====================================================== */
+
+        function generateNewBoard(difficulty) {
+            do {
+                clearGameBoard();
+                fillBoard();
+                removeNumbers(difficulty);
+            } while (!checkUnique());
+
+            populateBoardFromState();
+            checkBoard();
+            updateShareState();
+        }
+
+        function updateNumberCell(digit, cell, isHintEntry) {
+            var numberElement = cell.querySelector('.main-number');
+            var hints = cell.querySelectorAll('.hint');
+
+            numberElement.classList.remove('invalid-number');
+            numberElement.classList.remove('game-number');
+
+            if (isHintEntry) {
+                var hintsArray = getHints(selectedRow, selectedCol);
+                var hintIndex = hintsArray.indexOf(digit);
+                var hintElement = cell.querySelector('.hint:nth-child(' + digit + ')');
+
+                if (hintIndex === -1) {
+                    hintsArray.push(digit);
+                    if (hintElement !== null) { hintElement.classList.add('active-hint'); }
+                } else {
+                    hintsArray.splice(hintIndex, 1);
+                    if (hintElement !== null) { hintElement.classList.remove('active-hint'); }
+                }
+                updateHints(selectedRow, selectedCol, hintsArray);
+            } else {
+                updateBoard(selectedRow, selectedCol, digit);
+                drawNumber(digit, numberElement, hints);
+            }
+
+            checkBoard();
+            selectCell(selectedRow, selectedCol);
+            updateShareState();
+        }
+
+        function clearCell(row, col) {
+            var numberElement = selectedCell.querySelector('.main-number');
+            var hints = selectedCell.querySelectorAll('.hint');
+            updateBoard(row, col, 0);
+            drawNumber(0, numberElement, hints);
+            checkBoard();
+            selectCell(row, col);
+            updateShareState();
+        }
+
+        function toggleHint() {
+            isHintMode = !isHintMode;
+            q('[data-action="hintmode"]').classList.toggle('selected', isHintMode);
+            selectCell(selectedRow, selectedCol);
+        }
+
+        function toggleHelp() {
+            helpDisplay = !helpDisplay;
+            helpText.classList.toggle('open', helpDisplay);
+            q('[data-action="help"]').classList.toggle('selected', helpDisplay);
+        }
+
+        /* === Wiring ======================================================= */
+
+        for (var br = 0; br < BOARD_SIZE; br++) {
+            for (var bc = 0; bc < BOARD_SIZE; bc++) {
+                (function (row, col) {
+                    cells[row][col].addEventListener('click', function () {
+                        selectCell(row, col);
+                        root.focus({ preventScroll: true });
+                    });
+                })(br, bc);
+            }
+        }
+
+        Object.keys(numButtons).forEach(function (digit) {
+            numButtons[digit].addEventListener('click', function () {
+                var numberElement = selectedCell.querySelector('.main-number');
+                if (isEditingMode || numberElement.getAttribute('data-editable') !== 'false') {
+                    updateNumberCell(parseInt(digit, 10), selectedCell, isHintMode);
+                }
+            });
+        });
+
+        q('[data-action="new"]').addEventListener('click', function () {
+            generateNewBoard(difficultyDropdown.value);
+        });
+
+        q('[data-action="solve"]').addEventListener('click', function () {
+            solveBoard();
+            populateBoardFromState();
+            checkBoard();
+            updateShareState();
+        });
+
+        q('[data-action="edit"]').addEventListener('click', function () {
+            isEditingMode = !isEditingMode;
+            this.textContent = isEditingMode ? 'Gameplay' : 'Editor';
+            q('[data-action="reset"]').hidden = isEditingMode;
+            q('[data-action="clear"]').hidden = !isEditingMode;
+            populateBoardFromState();
+            checkBoard();
+        });
+
+        q('[data-action="reset"]').addEventListener('click', function () {
+            for (var row = 0; row < BOARD_SIZE; row++) {
+                for (var col = 0; col < BOARD_SIZE; col++) {
+                    var cellData = boardState[row][col];
+                    if (cellData.clue === false) {
+                        cellData.value = 0;
+                        cellData.hints = [];
+                    }
+                }
+            }
+            populateBoardFromState();
+            checkBoard();
+            updateShareState();
+        });
+
+        q('[data-action="clear"]').addEventListener('click', function () {
+            clearGameBoard();
+            populateBoardFromState();
+            checkBoard();
+            updateShareState();
+        });
+
+        q('[data-action="hintmode"]').addEventListener('click', toggleHint);
+        q('[data-action="help"]').addEventListener('click', toggleHelp);
+
+        q('[data-action="delete"]').addEventListener('click', function () {
+            var numberElement = selectedCell.querySelector('.main-number');
+            if (isEditingMode || numberElement.getAttribute('data-editable') !== 'false') {
+                clearCell(selectedRow, selectedCol);
+            }
+        });
+
+        q('[data-action="share"]').addEventListener('click', function () {
+            var shareBtn = this;
+            try {
+                var url = updateShareState();
+                navigator.clipboard.writeText(url).then(function () {
+                    var originalTitle = shareBtn.title;
+                    shareBtn.title = 'Copied to clipboard';
+                    shareBtn.setAttribute('aria-label', 'Copied to clipboard');
+                    setTimeout(function () { shareBtn.title = originalTitle; shareBtn.setAttribute('aria-label', originalTitle); }, 1800);
+                }, function () {
+                    shareLink.hidden = false;
+                });
+            } catch (err) {
+                shareLink.hidden = false;
+            }
+        });
+
+        function onKeyDown(event) {
+            if (event.altKey || event.ctrlKey || event.metaKey) { return; }
+            if (event.target.closest('select, input, textarea')) { return; }
+
+            if (event.key === '?') { toggleHelp(); event.preventDefault(); return; }
+            if (event.key === 'h' || event.key === 'H') { toggleHint(); }
+
+            var isHintEntry = event.shiftKey || isHintMode;
+            var numberElement = selectedCell.querySelector('.main-number');
+
+            if (isEditingMode || numberElement.getAttribute('data-editable') !== 'false') {
+                if (event.code === 'Delete' || event.code === 'Backspace' ||
+                    (event.code === 'NumpadDecimal' && !event.getModifierState('NumLock'))) {
+                    clearCell(selectedRow, selectedCol);
+                    event.preventDefault();
+                }
+                else if (event.code.indexOf('Digit') === 0) {
+                    var digit = parseInt(event.code.replace('Digit', ''), 10);
+                    if (digit >= 1 && digit <= 9) { updateNumberCell(digit, selectedCell, isHintEntry); event.preventDefault(); }
+                }
+                else if (event.code.indexOf('Numpad') === 0 && event.getModifierState('NumLock')) {
+                    var npDigit = parseInt(event.code.replace('Numpad', ''), 10);
+                    if (Number.isInteger(npDigit) && npDigit >= 1 && npDigit <= 9) {
+                        updateNumberCell(npDigit, selectedCell, isHintEntry);
+                        event.preventDefault();
+                    }
+                }
+            }
+
+            var moved = true;
+            switch (event.code) {
+                case 'ArrowUp': selectedRow = (selectedRow - 1 + 9) % 9; break;
+                case 'ArrowDown': selectedRow = (selectedRow + 1) % 9; break;
+                case 'ArrowLeft': selectedCol = (selectedCol - 1 + 9) % 9; break;
+                case 'ArrowRight': selectedCol = (selectedCol + 1) % 9; break;
+                default:
+                    moved = false;
+                    if (event.code.indexOf('Numpad') === 0 && !event.getModifierState('NumLock')) {
+                        moved = true;
+                        switch (event.code) {
+                            case 'Numpad8': selectedRow = (selectedRow - 1 + 9) % 9; break;
+                            case 'Numpad2': selectedRow = (selectedRow + 1) % 9; break;
+                            case 'Numpad4': selectedCol = (selectedCol - 1 + 9) % 9; break;
+                            case 'Numpad6': selectedCol = (selectedCol + 1) % 9; break;
+                            default: moved = false;
+                        }
+                    }
+            }
+
+            if (moved) { event.preventDefault(); }
+            selectCell(selectedRow, selectedCol);
+        }
+
+        root.addEventListener('keydown', onKeyDown);
+
+        var onPopState = null;
+        if (ownUrl) {
+            onPopState = function () {
+                setBoardStateFromParams(new URLSearchParams(window.location.search));
+                populateBoardFromState();
+                checkBoard();
+                updateShareState();
+            };
+            window.addEventListener('popstate', onPopState);
+        }
+
+        /* === Start ======================================================== */
+
+        var params = ownUrl ? new URLSearchParams(window.location.search) : new URLSearchParams('');
+        difficultyDropdown.value = params.get('difficulty') || 'medium';
+
+        if (setBoardStateFromParams(params)) {
+            populateBoardFromState();
+            checkBoard();
+            updateShareState();
+        } else {
+            generateNewBoard(difficultyDropdown.value);
+        }
+
+        selectCell(0, 0);
+        root.focus({ preventScroll: true });
+
+        return {
+            destroy: function () {
+                if (onPopState) { window.removeEventListener('popstate', onPopState); }
+                root.removeEventListener('keydown', onKeyDown);
+            }
+        };
+    }
+
+    window.pcApps.sudoku = { init: init };
+})();

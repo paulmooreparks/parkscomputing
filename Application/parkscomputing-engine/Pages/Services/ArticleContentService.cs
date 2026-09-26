@@ -230,10 +230,14 @@ public class ArticleContentService {
         var title = System.Net.WebUtility.HtmlDecode(doc.DocumentNode.SelectSingleNode("//title")?.InnerText.Trim());
         var body = doc.DocumentNode.SelectSingleNode("//body")?.InnerHtml ?? doc.DocumentNode.InnerHtml;
 
-        bool ownAssets =
+        // An applet mount (data-app-src) is inline-safe by contract: the
+        // applet runtime loads its assets and it runs in a window or as a
+        // page equally. Anything else that brings assets needs the frame.
+        bool isApplet = doc.DocumentNode.SelectSingleNode("//*[@data-app-src]") is not null;
+        bool ownAssets = !isApplet && (
             doc.DocumentNode.SelectSingleNode("//script") is not null
             || doc.DocumentNode.SelectSingleNode("//head/link[@rel='stylesheet']") is not null
-            || doc.DocumentNode.SelectSingleNode("//head/style") is not null;
+            || doc.DocumentNode.SelectSingleNode("//head/style") is not null);
 
         return Build(slug, title, body) with { RequiresOwnDocument = ownAssets };
     }

@@ -97,11 +97,17 @@
 
         layer.addEventListener('pudl:window-open', function (e) {
             enhance(e.target);
+            if (window.pcApplets) { window.pcApplets.boot(e.target); }
             if (pendingClose && pendingClose !== e.target) {
                 var close = pendingClose.querySelector('[data-win-action="close"]');
                 pendingClose = null;
                 if (close) { close.click(); }
             }
+        });
+
+        /* A closed window may have carried an applet; let it clean up. */
+        layer.addEventListener('pudl:windows-change', function () {
+            if (window.pcApplets) { window.pcApplets.reap(); }
         });
 
         /* In an image window the plain arrow keys step between images, as

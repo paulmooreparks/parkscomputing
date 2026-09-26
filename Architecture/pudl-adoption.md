@@ -88,6 +88,19 @@ The comment form POSTs and redirects, which would drop window state. A window sh
 
 `wwwroot/css/site.css` stays in the tree as reference until the swap is confirmed in production, but nothing loads it. The page-specific stylesheets (sudoku, conway, barcode, resume, acpp) are untouched.
 
+### D14. Applets: interactive content runs in a window or as a page, unchanged
+
+The applet rule (Paul, 2026-09-26): a converted app runs in a PUDL window or in a full browser page, from one implementation. An applet is a mount element (`data-app`, `data-app-src`, `data-app-css`, `data-app-page`) plus a script registering `pcApps[name].init(root, opts)`, which builds the app inside root, scopes every lookup and listener to it, and returns an instance with `destroy()`. `opts.ownUrl` says whether the applet owns the page URL: stand-alone it keeps state in the URL (sudoku's back-and-forward undo survives unchanged); in a window it leaves the URL to the desktop and its share control carries the applet's own page URL. The runtime (`js/applets.js`) loads assets once, boots mounts on page load, and exposes `boot(scope)` and `reap()` which the desktop calls on window open and close. The engine treats a mount as inline-safe, so applet articles bypass the D13 frame. Sudoku is the pilot; conway and barcode stay on the frame until converted.
+
+## Proposed upstream to PUDL
+
+Found while building this site, in PUDL's own territory rather than ours; each is a candidate for the PUDL repo, and the site adopts the released form when a version ships.
+
+- The applet contract and runtime (D14): what embeddable content promises its host is host-independent, and `applets.js` could ship as `pudl-applets.js` with the contract in the README and a sample-page demo.
+- A token for the active window title bar. The bar derives straight from `--accent`, so a theme with a bright dark-mode accent (needed for link contrast) gets a garish filled bar and has no token to tune it. This site overrides the component's rule in `pudl-site.css` for the dark theme (accent-tinted raised gradient, normal text, accent underline), which trespasses on component CSS exactly because no token exists; the override carries a comment and comes out when PUDL provides the knob or adopts the quieter treatment.
+- `[hidden]` loses to component display rules: `.btn { display:inline-flex }` overrides the attribute, which every PUDL project will trip over. pudl.css could carry `[hidden] { display: none !important; }`.
+- A latched-toggle treatment for buttons (a pressed-in `.btn` state for modes like sudoku's hint entry), which the language currently has only inside `.seg`.
+
 ## Known gaps and follow-ups
 
 - Promoting `/desktop` to the home page (D4 follow-up).

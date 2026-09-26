@@ -22,379 +22,145 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-.number-controls {
-    display: grid;
-    grid-template-columns: repeat(9, 1fr);
-    grid-template-rows: 1fr;
-    width: min(90vw,60vh);
-    max-width: 60vh;
-    gap: .2em;
-    margin: auto;
-    margin-top: .5em;
-    margin-bottom: .5em;
-    box-sizing: border-box;
-    /* add transparent side borders to visually match board outer border width */
-    border-left: 3px solid transparent;
-    border-right: 3px solid transparent;
+/* Sudoku as a PUDL applet. Every rule is scoped under .pc-sudoku, colors
+   come from PUDL's tokens so both themes and any site palette apply, and
+   sizes are container-relative so the same board fits a PUDL window or a
+   full page. The controls are PUDL buttons and take no styling here
+   beyond layout. */
+
+.pc-sudoku {
+  container-type: inline-size;
+  display: flex; flex-direction: column; align-items: center;
+  outline: none;
 }
 
-/* Bottom action row: 3 icons + right-aligned Share button occupying remaining columns */
-.number-controls-bottom {
-    grid-template-columns: repeat(3, minmax(0,1fr)) repeat(6, minmax(0,1fr));
-    position: relative;
-}
-.number-controls-bottom .share-board-button {
-    grid-column: 9 / 10; /* last column */
-    justify-self: stretch;
-}
-@media (min-width: 420px) {
-    .number-controls-bottom { grid-template-columns: repeat(9, 1fr); }
-}
+/* The hidden attribute must win over component display rules (.btn). */
+.pc-sudoku [hidden] { display: none !important; }
 
-.hidden-initial { display:none; }
+.pc-sudoku .sudoku-top {
+  width: min(92cqi, 64vh);
+  display: flex; flex-direction: column; align-items: center;
+  margin: 0 auto .25em;
+}
+.pc-sudoku .sudoku-top h1 { margin: .15em 0 .3em; text-align: center; }
+.pc-sudoku .mode-controls {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+  gap: .35em; width: 100%;
+}
+.pc-sudoku .mode-controls .form-select { width: auto; }
 
-/* Center the bottom control row relative to board width */
-.controls-centered {
-    --control-size: clamp(60px, 10vmin, 88px); /* larger (about 2x prior) square buttons */
-    max-width: 60vh; /* align with board max */
-    width: min(90vw,60vh); /* container spans but matches board width */
-    margin-left: auto;
-    margin-right: auto;
-    display: flex;
-    justify-content: center;
-    gap: .25em;
+.pc-sudoku .sudoku-stage {
+  width: min(92cqi, 64vh);
+  margin: 0 auto;
+  display: flex; flex-direction: column; align-items: center;
 }
 
-.controls-centered > button.cell {
-    width: var(--control-size);
-    height: var(--control-size);
-    padding: 0; /* consistent square */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
+/* === The board =========================================================== */
+.pc-sudoku .sudoku-board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  background: var(--surface);
 }
 
-.number-button {
-    font-size: calc(1vw + 1vh + 1vmin);
-    width: 100%;
-    /* Make button occupy full grid cell and be square */
-    aspect-ratio: 1 / 1;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.pc-sudoku .cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  box-sizing: border-box;
+  display: flex; justify-content: center; align-items: center;
+  cursor: pointer;
+}
+.pc-sudoku .cell-right { border-right: 3px solid var(--text); }
+.pc-sudoku .cell-left { border-left: 3px solid var(--text); }
+.pc-sudoku .cell-top { border-top: 3px solid var(--text); }
+.pc-sudoku .cell-bottom { border-bottom: 3px solid var(--text); }
+
+.pc-sudoku .main-number {
+  position: absolute; inset: 0;
+  display: flex; justify-content: center; align-items: center;
+  font-size: 6cqi;
+  font-variant-numeric: tabular-nums;
+}
+.pc-sudoku .static-number { color: var(--text); font-weight: 700; }
+.pc-sudoku .game-number { color: var(--accent); }
+.pc-sudoku .invalid-number { color: var(--danger) !important; }
+
+.pc-sudoku .hints {
+  position: absolute; inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  color: var(--text-muted);
+}
+.pc-sudoku .hint {
+  display: flex; justify-content: center; align-items: center;
+  font-size: 2cqi; font-weight: 700; line-height: 1;
+  opacity: .4;
+  font-variant-numeric: tabular-nums;
+}
+.pc-sudoku .hints .active-hint { opacity: 1; color: var(--accent); }
+
+.pc-sudoku .cell.selected { box-shadow: inset 0 0 0 2px var(--accent); }
+.pc-sudoku .sudoku-board.winner {
+  box-shadow: inset 0 0 0 6px var(--pr);
+  background: color-mix(in srgb, var(--pr) 18%, var(--surface));
 }
 
-#toggleEditHintMode {
-    font-size: calc(1vw + 1vh + 1vmin);
+/* === Help panel: an elevated PUDL surface over the board ================= */
+.pc-sudoku .help-text {
+  position: absolute; inset: 0;
+  display: none;
+  flex-direction: column; justify-content: center;
+  background: var(--dialog-bg, var(--surface));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card), 0 12px 32px rgb(0 0 0 / 0.28);
+  padding: .55em .8em;
+  font-size: clamp(.7rem, 2.3cqi, .95rem);
+  line-height: 1.3;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  z-index: 2;
+}
+.pc-sudoku .help-text.open { display: flex; }
+.pc-sudoku .help-text p, .pc-sudoku .help-text li { margin: .35em 0; }
+.pc-sudoku .help-text ul { margin: .4em 0 .3em 1em; padding: 0; }
+
+/* === Number pad and action row =========================================== */
+.pc-sudoku .number-controls {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: .25em;
+  width: 100%;
+  margin: .5em 0 0;
+}
+.pc-sudoku .number-button {
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  font-size: 4cqi;
+  font-variant-numeric: tabular-nums;
+}
+.pc-sudoku .controls-centered {
+  display: flex; justify-content: center;
+  grid-template-columns: none;
+  gap: .3em;
+  margin-bottom: .5em;
+}
+.pc-sudoku .controls-centered .btn {
+  width: clamp(48px, 9cqi, 72px);
+  height: clamp(48px, 9cqi, 72px);
+  padding: 0;
+  font-size: clamp(18px, 4cqi, 28px);
 }
 
-#deleteEntry {
-    font-size: calc(1vw + 1vh + 1vmin);
+/* A latched toggle (hint mode, help, the matching number) reads as
+   pressed in, PUDL's active treatment. */
+.pc-sudoku .btn.selected {
+  background: var(--raise-active-bg);
+  box-shadow: var(--raise-active-shadow);
+  color: var(--accent);
 }
-
-#helpButton {
-    font-size: calc(1vw + 1vh + 1vmin);
-}
-
-#shareBoardButton {
-    font-size: calc(1vw + 1vh + 1vmin);
-}
-
-.sudoku-board {
-    position: relative;
-    font-family: Arial, Helvetica, sans-serif;
-    display: grid;
-    grid-template-columns: repeat(9, 1fr);
-    grid-template-rows: repeat(9, 1fr);
-    aspect-ratio: 1/1;
-    width: min(90vw,60vh);
-    max-width: 60vh;
-    gap: 0;
-    margin: .1em auto 0 auto; /* slight top margin reduction */
-    box-sizing: border-box;
-}
-
-/* Wrapper to ensure perfect centering of board + pads */
-.sudoku-stage { width:min(90vw,60vh); max-width:60vh; margin:0 auto; display:flex; flex-direction:column; align-items:center; }
-
-#helpText {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    max-width: 60vh;
-    flex-direction: column;
-    background: antiquewhite;
-    display: none; /* Display will be toggled dynamically */
-    align-items: center;
-    justify-content: center;
-    border: 3px solid black;
-    margin: 0;
-    padding: .55em .65em .65em .65em;
-    font-size: clamp(.7rem, calc(.55vw + .55vh), .95rem); /* a bit smaller to fit */
-    line-height: 1.25;
-    overflow-y: auto; /* allow scrolling if still overflows */
-    overscroll-behavior: contain;
-    box-sizing: border-box;
-}
-
-/* Light mode refinements for help text readability */
-#helpText p, #helpText li { margin:.35em 0; }
-#helpText ul { margin:.4em 0 .3em 1em; padding:0; }
-#helpText li { padding-left:.1em; }
-#helpText a { color:#0d47a1; }
-#helpText a:visited { color:#5a2d82; }
-
-/* Dark mode palette for help panel */
-@media (prefers-color-scheme: dark) {
-    #helpText {
-        background: #1f2a33; /* deep slate */
-        border-color: #44515c;
-        color: #d8e2ea;
-        box-shadow: 0 2px 6px rgba(0,0,0,.6), 0 0 0 1px #2d3942 inset;
-    }
-    #helpText p, #helpText li { color:#c7d2da; }
-    #helpText a { color:#63b3ff; }
-    #helpText a:visited { color:#b095ff; }
-    #helpText a:hover { text-decoration: underline; }
-}
-
-.cell {
-    position: relative;
-    aspect-ratio: 1 / 1;
-    border-right: 1px solid gray;
-    border-bottom: 1px solid gray;
-    box-sizing: border-box;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-}
-
-.cell-right {
-    border-right: 3px solid black;
-}
-
-.cell-top {
-    border-top: 3px solid black;
-}
-
-.cell-bottom {
-    border-bottom: 3px solid black;
-}
-
-.cell-left {
-    border-left: 3px solid black;
-}
-
-.main-number {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    font-size: calc(1.5vw + 1.5vh + 1vmin);
-}
-
-.hint, .main-number {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    margin: 0;
-    padding: 0;
-}
-
-.hints { position:absolute; inset:0; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); color:#d6c9b5; }
-.hint { width:100%; height:100%; font-family:Arial, Helvetica, sans-serif; font-size:calc(.5vw + .5vh); font-weight:bold; line-height:1; opacity:.55; }
-.hints .active-hint { opacity:1; color:#0d47a1; }
-@media (prefers-color-scheme: dark) {
-        .hints { color:#4b5862; }
-    .hints .active-hint { color:#63b3ff; }
-}
-
-.selected {
-    box-shadow: inset 0 0 0 2px blue;
-}
-
-.winner {
-    box-shadow: inset 0 0 0 calc(.4vw + .4vh) green;
-    background: lightgreen;
-}
-
-/* active hint color now handled above for contrast */
-
-.static-number {
-    color: black;
-    font-weight: bold;
-}
-
-.game-number {
-    color: blue;
-}
-
-/* Dark mode color adaptation for preset & solved numbers */
-@media (prefers-color-scheme: dark) {
-    .static-number { color: #e6edf3; }
-    .game-number { color: #63b3ff; }
-}
-
-/* Dark mode grid line contrast adjustments */
-@media (prefers-color-scheme: dark) {
-    /* subtle inner cell lines */
-    .cell { border-right: 1px solid #2d353c; border-bottom: 1px solid #2d353c; }
-    /* heavier 3x3 boundaries */
-    .cell-right { border-right: 3px solid #7a8894; }
-    .cell-left { border-left: 3px solid #7a8894; }
-    .cell-top { border-top: 3px solid #7a8894; }
-    .cell-bottom { border-bottom: 3px solid #7a8894; }
-}
-
-/* Light mode grid line adjustments (distinct from dark mode) */
-@media (prefers-color-scheme: light) {
-    /* darker overall grid for readability */
-    .cell { border-right: 1px solid #222; border-bottom: 1px solid #222; }
-    /* strong 3x3 boundaries */
-    .cell-right { border-right: 3px solid #111; }
-    .cell-left { border-left: 3px solid #111; }
-    .cell-top { border-top: 3px solid #111; }
-    .cell-bottom { border-bottom: 3px solid #111; }
-    /* darker main numbers */
-    .static-number { color: #111; }
-    .game-number { color: #0d2f7a; }
-    /* lighter, more subtle inactive hints */
-    .hints { color: #e9e2d8; }
-    .hint { opacity: .35; }
-}
-
-.invalid-number {
-    color: red !important;
-}
-
-.mode-controls {
-    margin-top: .5em;
-    margin-bottom: .5em;
-    width: 100%;
-}
-
-#clearBoard {
-    display: none;
-}
-
-@media (max-width: 480px) {
-    .hint {
-        font-size: calc(.6vw + .6vh);
-    }
-
-    #helpText {
-        font-size: calc(.5vw + .5vh);
-    }
-}
-
-/* Resetting default padding and margin */
-button {
-    margin: 0;
-    padding: 0;
-    border: none;
-    font-family: inherit; /* ensure the font is consistent */
-    font-size: 100%; /* ensure the font size is consistent */
-    line-height: 1.15; /* adjust as necessary for your design */
-    text-align: center; /* center the text horizontally */
-    display: inline-block;
-    color: #333; /* or whatever color you prefer */
-    cursor: pointer;
-    vertical-align: middle; /* center the text vertically */
-    padding: 8px 12px; /* adjust as necessary for your design */
-}
-
-/* Light mode default buttons (slightly refined neutral) */
-button, .number-button {
-    background: #e4e7eb;
-    color: #1e2930;
-    border-radius: 4px;
-    border: 1px solid #c9d1d9;
-    transition: background .15s ease, color .15s ease, box-shadow .15s ease;
-}
-button:hover, .number-button:hover { background:#d5dae0; }
-button:active, .number-button:active { background:#c7ccd2; box-shadow: inset 0 0 0 2px rgba(0,0,0,.15); }
-button:focus-visible, .number-button:focus-visible { outline:2px solid #0d47a1; outline-offset:2px; }
-
-/* Number pad specific visual weight */
-.number-button { font-weight:600; }
-
-/* Dark mode vivid accessible buttons */
-@media (prefers-color-scheme: dark) {
-    button, .number-button {
-        background: linear-gradient(145deg,#324554,#2a3742); /* subtle depth */
-        color: #f1f5f9;
-        border: 1px solid #485b66;
-        border-radius: 4px;
-        box-shadow: 0 1px 2px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.04) inset;
-    }
-    button:hover, .number-button:hover {
-        background: linear-gradient(145deg,#3b5264,#31414c);
-        border-color: #547181;
-    }
-    button:active, .number-button:active {
-        background: #26333d;
-        box-shadow: inset 0 0 0 2px #0d62a1, 0 0 0 1px rgba(255,255,255,.06) inset;
-        border-color: #0d62a1;
-    }
-    button:focus-visible, .number-button:focus-visible {
-        outline: 2px solid #2fa8ff;
-        outline-offset: 2px;
-    }
-    /* Muted/disabled state example (if applied dynamically later) */
-    button:disabled, .number-button:disabled {
-        background: #1f272e;
-        color: #5b6a74;
-        border-color: #33424c;
-        box-shadow: none;
-        cursor: not-allowed;
-    }
-}
-
-/* Distinguish mode toggle / destructive / help buttons if needed */
-#toggleEditMode { font-weight:600; }
-#solveBoard { font-weight:600; }
-#resetGame { color:#b91c1c; font-weight:600; }
-@media (prefers-color-scheme: dark) {
-    #resetGame { color:#ff6b6b; }
-    #resetGame:hover { color:#ffa4a4; }
-}
-
-/* Bottom number pad container spacing refinement */
-.number-controls { margin-top:.45em; margin-bottom:.4em; }
-
-/* Top title + mode controls alignment */
-.sudoku-top { max-width:60vh; width:min(90vw,60vh); margin:0 auto .25em auto; display:flex; flex-direction:column; align-items:center; }
-.sudoku-top h1 { margin:.15em 0 .25em 0; text-align:center; }
-
-/* Horizontal layout for mode controls with wrapping */
-.sudoku-top .mode-controls { display:flex; flex-wrap:wrap; justify-content:center; gap:.35em; width:100%; margin:0; }
-
-/* Uniform height for select and buttons */
-.sudoku-top select#difficultyDropdown { height:2.4em; line-height:2.4em; padding:0 .75em; font-size:1rem; border:1px solid #c9d1d9; border-radius:4px; background:#fff; box-sizing:border-box; }
-@media (prefers-color-scheme: dark) { .sudoku-top select#difficultyDropdown { background:#2a3742; color:#f1f5f9; border-color:#485b66; } }
-
-/* Match button height */
-.sudoku-top .mode-controls button { height:2.4em; padding:0 1em; font-size:1rem; display:inline-flex; align-items:center; justify-content:center; }
-
-/* Ensure consistent sizing on very small screens */
-@media (max-width:420px){
-    .sudoku-top select#difficultyDropdown, .sudoku-top .mode-controls button { height:2.6em; line-height:2.6em; }
-}
-
-/* Prevent early wrap of Solve button on ~390-410px width devices by reducing padding */
-@media (max-width:430px){
-    .sudoku-top .mode-controls button { padding:0 .65em; }
-    .sudoku-top select#difficultyDropdown { padding:0 .55em; }
-}
-@media (max-width:380px){
-    .sudoku-top .mode-controls button { padding:0 .55em; font-size:.95rem; }
-    .sudoku-top select#difficultyDropdown { padding:0 .45em; font-size:.95rem; }
-}
-
