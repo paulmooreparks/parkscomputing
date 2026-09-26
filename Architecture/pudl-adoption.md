@@ -94,7 +94,7 @@ The applet rule (Paul, 2026-09-26): a converted app runs in a PUDL window or in 
 
 ## Proposed upstream to PUDL
 
-Found while building this site, in PUDL's own territory rather than ours; each is a candidate for the PUDL repo, and the site adopts the released form when a version ships.
+Found while building this site, in PUDL's own territory rather than ours; each is a candidate for the PUDL repo, and the site adopts the released form when a version ships. Status 2026-09-26: the PUDL agent is staging several of these, plus fixes for issues it found on the site, into PUDL 0.9.0 and 0.10.0. When 0.10.0 tags, this site upgrades its pinned copy in one pass: replace `wwwroot/pudl/` from the tag, remove whatever site-side stand-ins the release covers (the dark active-title-bar override in pudl-site.css, the `[hidden]` guard in sudoku.css, and `js/applets.js` if a `pudl-applets.js` ships), and adjust the applet mounts to the released contract if its attribute names differ.
 
 - The applet contract and runtime (D14): what embeddable content promises its host is host-independent, and `applets.js` could ship as `pudl-applets.js` with the contract in the README and a sample-page demo.
 - A token for the active window title bar. The bar derives straight from `--accent`, so a theme with a bright dark-mode accent (needed for link contrast) gets a garish filled bar and has no token to tune it. This site overrides the component's rule in `pudl-site.css` for the dark theme (accent-tinted raised gradient, normal text, accent underline), which trespasses on component CSS exactly because no token exists; the override carries a comment and comes out when PUDL provides the knob or adopts the quieter treatment.
