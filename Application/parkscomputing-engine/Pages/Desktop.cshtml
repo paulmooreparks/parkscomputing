@@ -1,4 +1,4 @@
-@page "/desktop"
+@page "/"
 @using ParksComputing.Engine.Pages.Services
 @model ParksComputing.Engine.Pages.DesktopModel
 @{
@@ -83,7 +83,7 @@
 
 <div class="md-layout" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
     <div class="md-toolbar">
-        <form method="get" action="/desktop" class="desktop-filter-form" role="search">
+        <form method="get" action="/" class="desktop-filter-form" role="search">
             @foreach (var kv in Model.FilterFormParams)
             {
                 <input type="hidden" name="@kv.Key" value="@kv.Value" />
@@ -145,7 +145,7 @@
         </nav>
         <div class="md-detail reader-stage">
             <div class="reader-col">
-                <a class="md-back" href="/desktop" data-win-back>Articles</a>
+                <a class="md-back" href="/" data-win-back>Articles</a>
                 <main class="win-host">
                     <div class="reader-empty">
                         <div class="card">

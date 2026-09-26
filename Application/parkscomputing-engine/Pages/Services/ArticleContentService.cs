@@ -90,7 +90,7 @@ public class ArticleContentService {
         string Link(int target, string dir, string glyph, string label) {
             var key = $"{parentSlug}-img-{target}";
             return $"<a class=\"icon-btn\" data-win-open=\"{key}\" data-img-nav=\"{dir}\" " +
-                   $"href=\"/desktop?open={parentSlug},{key}&amp;top={key}\" aria-label=\"{label}\">{glyph}</a>";
+                   $"href=\"?open={parentSlug},{key}&amp;top={key}\" aria-label=\"{label}\">{glyph}</a>";
         }
 
         return "<nav class=\"win-img-nav\" aria-label=\"Images in this article\">" +

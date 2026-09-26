@@ -28,9 +28,9 @@ Decision: option 1 for now. The dialog shell is rendered by the server in the la
 
 Option 2 shipped in desktop mode the same day. Paul proposed parented child windows for PUDL (2026-09-26): a child window opens maximized over its parent, closes on Esc or its close control, shows as a tree node under the parent article in the sidebar rather than as its own taskbar tab, and disappears from the tree when closed. PUDL v0.7.0 released exactly that, and the site adopts it: in desktop mode, each eligible article image is wrapped as a `data-win-open` link whose key is `{slug}-img-{n}`, and `/window/{slug}-img-{n}` serves a close-only child window carrying `data-win-parent`. An image already wrapped in a WordPress-style full-size link keeps that link as the opener (and as the no-script fallback). The dialog remains the classic-view lightbox. Source listings as child windows are open for a later pass, since they need content-level links.
 
-### D4. Desktop mode lives at `/desktop` for the demo, then becomes the wide-screen home experience
+### D4. The desktop is the site's home page
 
-The demo ships desktop mode as its own page so it can be evaluated without touching the production home page. Promotion to default (the home page at wide widths) is a follow-up decision after Paul reviews the demo. Article pages at their own URLs remain canonical regardless, for SEO, RSS, deep links, and the fallback.
+Resolved 2026-09-26 after Paul reviewed the demo: the desktop serves at `/`, the classic home page moved to `/home`, and `/desktop` permanently redirects to `/` with its query string kept so shared window URLs survive. The view pills switch between `/` and `/home`, and sitenav's Home entry points at `/home` so the classic view stays self-contained. Narrow screens need no separate mode: the master-detail layout shows the list one pane at a time and a maximized window is effectively a full-screen page, which is the phone behavior D7 planned. Article pages at their own URLs remain canonical for SEO, RSS, and deep links.
 
 ### D5. Window keys are content slugs
 

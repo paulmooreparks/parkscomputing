@@ -2,7 +2,7 @@
 {
     slug "home"
     title "Home"
-    url "/"
+    url "/home"
     description "Parks Computing Site Home"
     nav [
         {

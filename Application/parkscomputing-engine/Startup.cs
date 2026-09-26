@@ -298,6 +298,15 @@ namespace ParksComputing.Engine {
         }
 
         public void ConfigureRedirects(IApplicationBuilder app, IWebHostEnvironment env) {
+            // The desktop moved from /desktop to the site root; old links follow.
+            app.Use(async (ctx, next) => {
+                if (ctx.Request.Path.Equals("/desktop", StringComparison.OrdinalIgnoreCase)) {
+                    ctx.Response.Redirect("/" + ctx.Request.QueryString, permanent: true);
+                    return;
+                }
+
+                await next();
+            });
         }
 
         private string WordPressHandler(int year, int month, string slug) {

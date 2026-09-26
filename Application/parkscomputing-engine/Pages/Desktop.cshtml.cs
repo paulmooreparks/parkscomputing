@@ -174,7 +174,7 @@ public class DesktopModel : PageModel {
         }
         if (cat is not null) { parts.Add("cat=" + Uri.EscapeDataString(cat)); }
         if (q is not null) { parts.Add("q=" + Uri.EscapeDataString(q)); }
-        return "/desktop" + (parts.Count > 0 ? "?" + string.Join("&", parts) : string.Empty);
+        return parts.Count > 0 ? "/?" + string.Join("&", parts) : "/";
     }
 
     public string CategoryUrl(string? cat) => BuildUrl(cat, Q);
@@ -194,7 +194,7 @@ public class DesktopModel : PageModel {
         parts.Add("top=" + key);
         var mins = Windows.Where(w => w.Minimized && w.Parent is null && w.Key != key).Select(w => w.Key).ToList();
         if (mins.Count > 0) { parts.Add("min=" + string.Join(",", mins)); }
-        return "/desktop?" + string.Join("&", parts);
+        return "/?" + string.Join("&", parts);
     }
     public string RemoveCatUrl => BuildUrl(null, Q);
     public string RemoveQUrl => BuildUrl(Cat, null);
