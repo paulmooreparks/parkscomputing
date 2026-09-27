@@ -118,7 +118,7 @@ PUDL 0.11.0 and 0.12.0 shipped all four window-workspace proposals, and the site
 
 ### D21. PUDL 0.13.0 absorbed the empty-structure round
 
-All three proposals from `pudl-proposal-empty-structure.md` shipped as 0.13.0 and the site upgraded the same day: the head's pre-paint System snippet is gone (the settings dialog calls `pudlSetTheme()` and follows `pudl:theme-change`, which also syncs the dialog across tabs), and the dock and chips overrides in pudl-site.css are deleted, since an empty dock now keeps its layout place and an empty chips row hides by having no chips rather than by `:empty`. The Forget action now lands the theme on System, the device deciding. Open decision with Paul: whether PUDL's unsaved-reader default should become System rather than dark.
+All three proposals from `pudl-proposal-empty-structure.md` shipped as 0.13.0 and the site upgraded the same day: the head's pre-paint System snippet is gone (the settings dialog calls `pudlSetTheme()` and follows `pudl:theme-change`, which also syncs the dialog across tabs), and the dock and chips overrides in pudl-site.css are deleted, since an empty dock now keeps its layout place and an empty chips row hides by having no chips rather than by `:empty`. The Forget action now lands the theme on System, the device deciding. Paul ratified the follow-up decision (2026-09-28): PUDL's unsaved-reader default becomes System rather than dark; the proposal file records it for the PUDL agent, and this site picks it up with the next pinned copy.
 
 ### D17. Tags
 

@@ -19,6 +19,8 @@ From parkscomputing.com, 2026-09-28, following the window-workspace round that 0
 
 **Behavior.** The site stores `system` under PUDL's own `pudl-theme` key and applies it pre-paint with a three-line script placed right after `pudl-theme.js`, resolving it against `prefers-color-scheme`; a `change` listener keeps it live. Native support would be: `pudl-theme.js` treats a saved `system` (or, if you prefer, the absence of a saved value) as follow-the-OS, pre-paint, and `pudlToggleTheme` stays as it is. The default for an unsaved reader, dark today, is a separate decision this proposal does not touch.
 
+**Update, after 0.13.0 shipped this proposal.** Paul ratified the deferred default (2026-09-28): an unsaved reader starts on System, so a first-time visitor gets the look their device asks for. Saved choices are unaffected. This is a one-line change to `DEFAULT` in pudl-theme.js plus the README sentence saying the page starts dark; parkscomputing.com needs no change and picks it up with the next pinned copy.
+
 **Why PUDL.** The storage key and the pre-paint moment belong to pudl-theme; a site extending them is reaching into PUDL's mechanism, politely but still.
 
 ## 3. A regions note for the README
