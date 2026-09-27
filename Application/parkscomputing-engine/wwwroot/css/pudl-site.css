@@ -25,6 +25,15 @@
 
 
 /* === Page shell =========================================================== */
+/* Classic pages fill the viewport with the main area elastic, so the
+   footer hugs the bottom even when the content is short. */
+body:not(.desktop) {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+body:not(.desktop) .site-main { flex: 1; width: 100%; }
+
 .site-main {
   max-width: 1140px;
   margin: 0 auto;
