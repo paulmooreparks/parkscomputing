@@ -5,33 +5,46 @@
 
     @if (Model.Nav != null)
     {
-        var lastDropdownIndex = System.Array.FindLastIndex(Model.Nav, n => n?.Nav != null && n.Nav.Length > 0);
-        for (int i = 0; i < Model.Nav.Length; i++)
+        var sections = Model.Nav.Where(n => n?.Nav is { Length: > 0 }).ToArray();
+        var leaves = Model.Nav.Where(n => n is not null && (n.Nav is null || n.Nav.Length == 0)).ToArray();
+        var lastDropdownIndex = sections.Length - 1;
+
+        for (int i = 0; i < sections.Length; i++)
         {
-            var link = Model.Nav[i];
+            var link = sections[i];
             var linkTip = link?.Description ?? link?.Excerpt ?? link?.Title ?? string.Empty;
-            if (link?.Nav != null && link.Nav.Length > 0)
-            {
-                // The final dropdown opens leftward so it cannot overflow the viewport.
-                var dropClasses = (i == lastDropdownIndex) ? "nav-drop nav-drop-end" : "nav-drop";
-                <details class='@dropClasses'>
-                    <summary class="section-tab" title='@linkTip'>@link.Title</summary>
-                    <div class="nav-menu">
-                        @foreach (var sublink in link.Nav)
+            // The final dropdown opens leftward so it cannot overflow the viewport.
+            var dropClasses = (i == lastDropdownIndex) ? "nav-drop nav-drop-end" : "nav-drop";
+            <details class='@dropClasses'>
+                <summary class="section-tab" title='@linkTip'>@link!.Title</summary>
+                <div class="nav-menu">
+                    @foreach (var sublink in link.Nav!)
+                    {
+                        if (sublink != null)
                         {
-                            if (sublink != null)
-                            {
-                                <a href='@sublink.Url' title='@(sublink.Description ?? sublink.Excerpt ?? sublink.Title)'
-                                   @if (!string.IsNullOrEmpty(sublink.Target)) {<text>target='@sublink.Target'</text>}>@sublink.Title</a>
-                            }
+                            <a href='@sublink.Url' title='@(sublink.Description ?? sublink.Excerpt ?? sublink.Title)'
+                               @if (!string.IsNullOrEmpty(sublink.Target)) {<text>target='@sublink.Target'</text>}>@sublink.Title</a>
                         }
-                    </div>
-                </details>
-            }
-            else
-            {
-                <a class="section-tab" href='@link?.Url' title='@linkTip'>@link?.Title</a>
-            }
+                    }
+                </div>
+            </details>
+        }
+
+        @* Bare links (no children) are not sections: they live in their own
+           area on the right, behind a partial-height separator, matching
+           the window view's bar. *@
+        if (leaves.Length > 0)
+        {
+            <span class="bar-spacer"></span>
+            <span class="bar-sep" aria-hidden="true"></span>
+            <div class="bar-links">
+                @foreach (var leaf in leaves)
+                {
+                    var leafTip = leaf!.Description ?? leaf.Excerpt ?? leaf.Title ?? string.Empty;
+                    <a class="section-tab" href='@leaf.Url' title='@leafTip'
+                       @if (!string.IsNullOrEmpty(leaf.Target)) {<text>target='@leaf.Target'</text>}>@leaf.Title</a>
+                }
+            </div>
         }
     }
 }

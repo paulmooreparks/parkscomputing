@@ -53,7 +53,7 @@ body.desktop .site-header { position: static; flex: none; }
 .nav-drop > summary::-webkit-details-marker { display: none; }
 .nav-drop > summary::after {
   content: " \25BE";
-  font-size: 10px;
+  font-size: .85em;
   color: var(--text-muted);
 }
 .nav-menu {
