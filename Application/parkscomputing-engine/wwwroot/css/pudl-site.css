@@ -40,7 +40,36 @@ body.desktop .site-header { position: static; flex: none; }
   display: flex; flex-wrap: wrap; align-items: stretch;
   padding: 0 16px;
   background: var(--surface-alt);
-  border-bottom: 1px solid var(--border);
+  /* The baseline is part of the background, matching PUDL 0.13.1's strip,
+     so the active tab paints over it from inside the bar. */
+  box-shadow: inset 0 -1px var(--border);
+}
+
+/* === The view switcher ====================================================
+   One segmented control, centered in the topbar, switching between the
+   window and classic views. Its options are links (each view is a URL),
+   so PUDL's button-scoped seg rules are mirrored here for anchors; a seg
+   that navigates is a candidate for PUDL itself. */
+.topbar { position: relative; }
+.view-seg {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+}
+.view-seg a {
+  display: inline-flex; align-items: center;
+  padding: 4px 12px; border-radius: 4px;
+  font: 600 13px var(--font);
+  color: var(--text-muted); text-decoration: none;
+}
+.view-seg a:hover { color: var(--text); }
+.view-seg a.active {
+  color: var(--text);
+  background: var(--raise-grad);
+  border: 1px solid var(--raise-border);
+  box-shadow: var(--raise-shadow);
+}
+@media (max-width: 560px) {
+  .view-seg { position: static; transform: none; margin-left: auto; margin-right: 8px; }
 }
 
 /* The classic nav is the same category tab strip as the window view;

@@ -69,16 +69,14 @@
         @Html.RenderStaticFile("/content/header-section.html", FileReaderService)
         <div class="topbar">
             <a class="brand" href="/"><img src="~/favicon-32x32.png" alt="" /> Parks Computing</a>
+            @* The view switcher: one segmented control, centered. Each side
+               is a link, because each view is a URL; ?view=window bypasses
+               a classic default-view choice. *@
+            <nav class="seg view-seg" aria-label="View">
+                <a class="@(isDesktop ? "active" : null)" href="/?view=window" @(isDesktop ? Html.Raw("aria-current=\"true\"") : null)>Window</a>
+                <a class="@(isDesktop ? null : "active")" href="/home" @(isDesktop ? null : Html.Raw("aria-current=\"true\""))>Classic</a>
+            </nav>
             <div class="topbar-chrome">
-                @if (isDesktop)
-                {
-                    <a class="topbar-pill" href="/home">Classic view</a>
-                }
-                else
-                {
-                    @* ?view=window bypasses a classic default-view choice. *@
-                    <a class="topbar-pill" href="/?view=window">Window view</a>
-                }
                 <button class="theme-toggle" type="button" title="Settings" aria-label="Settings"
                         data-settings-open aria-haspopup="dialog">⚙</button>
             </div>
