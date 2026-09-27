@@ -430,7 +430,16 @@ SOFTWARE.
             target.searchParams.set('board', boardStateString());
 
             shareLink.href = target.toString();
-            if (ownUrl) { window.history.pushState('', '', shareLink.href); }
+            if (ownUrl) {
+                window.history.pushState('', '', shareLink.href);
+            } else {
+                /* In a window there is no URL to keep the game in, so it
+                   keeps itself in browser storage instead: per-reader
+                   continuity of the same class as the window arrangement,
+                   wiped by the settings dialog's Forget. The share link
+                   stays the canonical, addressable form. */
+                try { localStorage.setItem('pc-sudoku', difficultyDropdown.value + '|' + boardStateString()); } catch (err) { }
+            }
             return shareLink.href;
         }
 
@@ -642,6 +651,17 @@ SOFTWARE.
         /* === Start ======================================================== */
 
         var params = ownUrl ? new URLSearchParams(window.location.search) : new URLSearchParams('');
+        if (!ownUrl) {
+            /* A window resumes the stored game, if any. */
+            try {
+                var saved = localStorage.getItem('pc-sudoku');
+                var sep = saved ? saved.indexOf('|') : -1;
+                if (sep > 0) {
+                    params.set('difficulty', saved.slice(0, sep));
+                    params.set('board', saved.slice(sep + 1));
+                }
+            } catch (err) { }
+        }
         difficultyDropdown.value = params.get('difficulty') || 'medium';
 
         if (setBoardStateFromParams(params)) {

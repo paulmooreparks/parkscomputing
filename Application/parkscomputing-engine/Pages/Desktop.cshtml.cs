@@ -192,9 +192,10 @@ public class DesktopModel : PageModel {
                 FrameUrl = external?.FrameUrl,
                 Parent = parent,
                 OwnDocument = article.RequiresOwnDocument,
-                Tags = node?.Tags ?? Array.Empty<string>(),
-                Created = node?.Date,
-                Updated = node?.Updated,
+                // An applet's window is the app itself: no tag row, no dates.
+                Tags = article.IsApplet ? Array.Empty<string>() : node?.Tags ?? Array.Empty<string>(),
+                Created = article.IsApplet ? null : node?.Date,
+                Updated = article.IsApplet ? null : node?.Updated,
                 Mode = placement?.Mode ?? "floating",
                 X = placement?.X, Y = placement?.Y, W = placement?.W, H = placement?.H,
                 Minimized = minimized,

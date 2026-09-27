@@ -16,7 +16,7 @@ namespace ParksComputing.Engine.Pages.Services;
 /// because scripts in fetched window markup do not run and head assets
 /// never arrive. FrameUrl marks an external destination whose window is a
 /// frame straight onto that URL.</summary>
-public record ArticleWindowContent(string Slug, string Title, string BodyHtml, bool HasCode, bool HasMermaid, bool RequiresOwnDocument = false, string? FrameUrl = null);
+public record ArticleWindowContent(string Slug, string Title, string BodyHtml, bool HasCode, bool HasMermaid, bool RequiresOwnDocument = false, string? FrameUrl = null, bool IsApplet = false);
 
 public record ArticleImage(string Src, string? Caption);
 
@@ -398,7 +398,7 @@ public class ArticleContentService {
             || doc.DocumentNode.SelectSingleNode("//head/link[@rel='stylesheet']") is not null
             || doc.DocumentNode.SelectSingleNode("//head/style") is not null);
 
-        return Build(slug, title, body) with { RequiresOwnDocument = ownAssets };
+        return Build(slug, title, body) with { RequiresOwnDocument = ownAssets, IsApplet = isApplet };
     }
 
     private static ArticleWindowContent Build(string slug, string? title, string bodyHtml) {

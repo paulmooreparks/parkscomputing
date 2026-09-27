@@ -137,7 +137,7 @@
             if (view) { setView(view.getAttribute('data-view-choice')); }
             if (e.target.closest('[data-settings-close]')) { dialog.close(); }
             if (e.target.closest('[data-settings-forget]')) {
-                ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w'].forEach(function (key) {
+                ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku'].forEach(function (key) {
                     try { localStorage.removeItem(key); } catch (err) { }
                 });
                 document.cookie = 'pc-list=; path=/; max-age=0; SameSite=Lax';

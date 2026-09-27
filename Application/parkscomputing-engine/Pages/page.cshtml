@@ -51,9 +51,11 @@
 
 @{
     bool hasInnerH1 = Model.PageContent?.IndexOf("<h1", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    // An applet page is the app itself: no tag row, no dates.
+    bool isApplet = Model.PageContent?.IndexOf("data-applet", System.StringComparison.OrdinalIgnoreCase) >= 0;
 }
 @{
-    var pageTags = Model.NavService.GetNavNode(ViewData["PageId"]?.ToString() ?? string.Empty)?.Tags;
+    var pageTags = isApplet ? null : Model.NavService.GetNavNode(ViewData["PageId"]?.ToString() ?? string.Empty)?.Tags;
 }
 @if (pageTags is { Length: > 0 })
 {
@@ -73,13 +75,16 @@
         {
             <h1 class="post-title">@Html.Raw(Model.Title)</h1>
         }
-        <div class="post-meta">
-            <time datetime="@Model.CreatedGmt">@Model.Created</time>
-            @if (Model.CreatedGmt != Model.ModifiedGmt)
-            {
-                <span class="updated-on">&nbsp;· Updated <time datetime="@Model.ModifiedGmt">@Model.Modified</time></span>
-            }
-        </div>
+        @if (!isApplet)
+        {
+            <div class="post-meta">
+                <time datetime="@Model.CreatedGmt">@Model.Created</time>
+                @if (Model.CreatedGmt != Model.ModifiedGmt)
+                {
+                    <span class="updated-on">&nbsp;· Updated <time datetime="@Model.ModifiedGmt">@Model.Modified</time></span>
+                }
+            </div>
+        }
 
         @{
             bool hasAudio = ViewData["HasAudio"] as bool? ?? false;

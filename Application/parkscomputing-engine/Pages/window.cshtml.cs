@@ -69,6 +69,7 @@ public class WindowModel : PageModel {
         var article = _content.Load(key);
         if (article is null) { return NotFound(); }
 
+        // An applet's window is the app itself: no tag row, no dates.
         var node = _navService.GetNavNode(article.Slug);
         Window = new WindowViewModel {
             Key = article.Slug,
@@ -76,9 +77,9 @@ public class WindowModel : PageModel {
             BodyHtml = article.BodyHtml,
             PageUrl = $"/page/{article.Slug}",
             OwnDocument = article.RequiresOwnDocument,
-            Tags = node?.Tags ?? Array.Empty<string>(),
-            Created = node?.Date,
-            Updated = node?.Updated
+            Tags = article.IsApplet ? Array.Empty<string>() : node?.Tags ?? Array.Empty<string>(),
+            Created = article.IsApplet ? null : node?.Date,
+            Updated = article.IsApplet ? null : node?.Updated
         };
         return Page();
     }

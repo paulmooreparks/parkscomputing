@@ -31,15 +31,20 @@ SOFTWARE.
     <meta name="comments-enabled" content="false" />
     <meta name="comments-allowed" content="false" />
     <meta name="description" content="A Sudoku Game and Editor in HTML and JavaScript" />
+    <!-- The game's own manifest: installing this page from the browser's
+         menu makes Sudoku a standalone web app opening on the bare form. -->
+    <link rel="manifest" href="/sudoku.webmanifest" />
 </head>
 
 <body>
     <!-- The game is a PUDL applet (pudl-applets.js): it builds itself
          inside this mount and runs the same way in a PUDL window or as
          this page. -->
+    <!-- Bump ?v= when the script or stylesheet changes: pudl-applets loads
+         these literal URLs, so without it a browser can hold a stale copy. -->
     <div class="pc-sudoku" data-applet="sudoku"
-         data-applet-src="/js/sudoku.js"
-         data-applet-css="/css/sudoku.css"
+         data-applet-src="/js/sudoku.js?v=2"
+         data-applet-css="/css/sudoku.css?v=2"
          data-applet-page="/page/sudoku"
          tabindex="0" role="application" aria-label="Sudoku game">
         <noscript>
