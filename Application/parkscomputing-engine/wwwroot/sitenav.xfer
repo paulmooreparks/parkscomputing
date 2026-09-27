@@ -35,6 +35,7 @@
                     title "XferLang"
                     url "https://xferlang.org/"
                     description "The Official XferLang Site"
+                    frame ~true
                 }
                 {
                     slug "a2c"
@@ -72,6 +73,7 @@
                     title "Padma Jairam -- Counselling Psychologist"
                     url "https://padmajairam.com/"
                     description "My wife's counselling psychology practice"
+                    frame ~true
                 }
                 {
                     slug "github"

@@ -34,6 +34,37 @@
         .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncHighlightTheme);
 
+    /* A page framed inside a desktop window (the ?frame rendering) hands
+       its internal article links up to the desktop, so following one opens
+       a window beside the current one instead of navigating the frame into
+       a site-within-a-window. Same origin, so the parent is reachable; a
+       foreign or scriptless parent leaves links alone. */
+    (function () {
+        if (window.self === window.top) { return; }
+        var host;
+        try { host = window.top.pudlWindows; } catch (err) { return; }
+        if (!host) { return; }
+
+        function articleSlugOf(a) {
+            if (a.origin !== location.origin) { return null; }
+            if (a.hash && a.pathname === location.pathname) { return null; }
+            var segments = a.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+            if (segments.length === 0) { return null; }
+            var candidate = segments[segments.length - 1];
+            return /^[A-Za-z0-9_-]+$/.test(candidate) ? candidate : null;
+        }
+
+        document.addEventListener('click', function (e) {
+            if (e.button !== 0 || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) { return; }
+            var a = e.target.closest && e.target.closest('a[href]');
+            if (!a || a.target) { return; }
+            var slug = articleSlugOf(a);
+            if (!slug) { return; }
+            e.preventDefault();
+            host.open(slug, a);
+        });
+    })();
+
     /* Only one nav dropdown stays open at a time, and a click elsewhere
        closes it. The menus are native <details>, so they work without this. */
     document.addEventListener('click', function (e) {

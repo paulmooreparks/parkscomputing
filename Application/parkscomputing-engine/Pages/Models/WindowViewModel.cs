@@ -22,6 +22,10 @@ public class WindowViewModel {
     /// the window then hosts the article's page in a frame.</summary>
     public bool OwnDocument { get; init; }
 
+    /// <summary>An external URL the window frames directly (a sitenav node
+    /// marked frame ~true); null otherwise.</summary>
+    public string? FrameUrl { get; init; }
+
     /// <summary>The tags the article is categorized under, for the tag row
     /// at the top of the window.</summary>
     public string[] Tags { get; init; } = Array.Empty<string>();

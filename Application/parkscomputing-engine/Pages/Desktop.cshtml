@@ -46,8 +46,12 @@
         }
         else
         {
+            @* An external marked frame ~true opens as a framed window; the
+               href stays the destination for no-script and classic. *@
+            var extKey = node.Frame ? ParksComputing.Engine.Pages.Services.ArticleContentService.ExternalKey(node) : null;
             <div class="md-row">
-                <a class="md-item" href="@node.Url" target="_blank" rel="noopener" title="@node.Description">
+                <a class="md-item" href="@node.Url" target="_blank" rel="noopener" title="@node.Description"
+                   @(extKey is null ? null : Html.Raw($"data-win-open=\"{extKey}\""))>
                     @node.Title <span class="md-meta">@(node.Description ?? node.Url)</span>
                 </a>
             </div>
@@ -80,7 +84,9 @@
             }
             else
             {
-                <a class="section-tab" href="@leaf.Url" target="_blank" rel="noopener" title="@leaf.Description">@leaf.Title</a>
+                var extKey = leaf.Frame ? ParksComputing.Engine.Pages.Services.ArticleContentService.ExternalKey(leaf) : null;
+                <a class="section-tab" href="@leaf.Url" target="_blank" rel="noopener" title="@leaf.Description"
+                   @(extKey is null ? null : Html.Raw($"data-win-open=\"{extKey}\""))>@leaf.Title</a>
             }
         }
     </div>
@@ -100,6 +106,9 @@
         <span class="md-toolbar-sep"></span>
         <span class="md-section-label">Open</span>
         <nav class="win-dock" data-win-dock aria-label="Open windows"></nav>
+        <span class="md-toolbar-spacer"></span>
+        @* A per-reader preference, kept in the browser's own storage. *@
+        <label class="check maximize-pref"><input type="checkbox" data-pref="maximize-new"> Maximize new windows</label>
     </div>
     @if (Model.Cat is not null || Model.Q is not null)
     {

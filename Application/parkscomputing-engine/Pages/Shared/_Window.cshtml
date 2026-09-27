@@ -12,9 +12,9 @@
    attribute is emitted only for a child window. *@
 <article class="win @(Model.Active ? "active" : string.Empty)" data-win="@Model.Key"
          @(Model.Parent is null ? null : Html.Raw($"data-win-parent=\"{Model.Parent}\""))
-         data-win-mode="@(Model.Mode ?? "maximized")"
+         data-win-mode="@(Model.Mode ?? "floating")"
          role="dialog" aria-labelledby="win-@Model.Key-title"
-         style="@style" hidden="@Model.Minimized">
+         style="@style" @(Model.Minimized ? Html.Raw("hidden") : null)>
     <header class="win-head">
         <h2 class="win-title" id="win-@Model.Key-title">@Model.Title</h2>
         <nav class="win-chrome" aria-label="Window">
@@ -22,7 +22,11 @@
             {
                 if (!string.IsNullOrEmpty(Model.PageUrl))
                 {
-                    <a class="win-btn" data-win-action="page" href="@Model.PageUrl" aria-label="Open as a page" title="Open as a page"></a>
+                    @* An external destination's page opens in a new tab, so
+                       the desktop is not navigated away. *@
+                    <a class="win-btn" data-win-action="page" href="@Model.PageUrl"
+                       target="@(Model.FrameUrl is null ? null : "_blank")" rel="@(Model.FrameUrl is null ? null : "noopener")"
+                       aria-label="Open as a page" title="Open as a page"></a>
                 }
                 <a class="win-btn" data-win-action="minimize" href="?" aria-label="Minimize" title="Minimize"></a>
             }
@@ -33,7 +37,13 @@
         </nav>
     </header>
     <div class="win-body">
-        @if (Model.OwnDocument)
+        @if (Model.FrameUrl is not null)
+        {
+            @* A framed external destination: the site asserted it permits
+               framing with frame ~true in sitenav. *@
+            <iframe class="win-app-frame" src="@Model.FrameUrl" title="@Model.Title"></iframe>
+        }
+        else if (Model.OwnDocument)
         {
             @* Content with its own scripts or styles gets its page in a
                frame, where they run with a full document lifecycle. *@

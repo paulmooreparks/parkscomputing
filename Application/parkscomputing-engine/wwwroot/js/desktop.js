@@ -205,6 +205,60 @@
         });
     }
 
+    /* === Per-reader preferences and continuity ============================
+       Both live in the browser's own storage, functional state of the same
+       class as PUDL's remembered theme: the maximize preference because
+       the reader set it, and the last window arrangement so a bare visit
+       to the desktop resumes where they left off. The URL stays the
+       authority: restoring just writes the saved parameters into it before
+       pudl-windows reads it. */
+    function prefMaximize() {
+        try { return localStorage.getItem('pc-maximize-new') === '1'; } catch (err) { return false; }
+    }
+
+    function initPrefs(layer) {
+        var box = document.querySelector('[data-pref="maximize-new"]');
+        if (box) {
+            box.checked = prefMaximize();
+            box.addEventListener('change', function () {
+                try { localStorage.setItem('pc-maximize-new', box.checked ? '1' : '0'); } catch (err) { }
+            });
+        }
+
+        /* New windows with no opener and no URL placement follow the
+           preference. Registered after opener inheritance, which wins. */
+        layer.addEventListener('pudl:window-place', function (e) {
+            if (e.detail.placement || !prefMaximize()) { return; }
+            e.detail.placement = { mode: 'maximized', x: 0.06, y: 0.05, w: 0.55, h: 0.75 };
+        });
+
+        layer.addEventListener('pudl:windows-change', function () {
+            var parts = [];
+            new URLSearchParams(location.search).forEach(function (value, key) {
+                if (isWinParam(key)) { parts.push(key + '=' + encodeURIComponent(value)); }
+            });
+            try {
+                if (parts.length) { localStorage.setItem('pc-windows', parts.join('&')); }
+                else { localStorage.removeItem('pc-windows'); }
+            } catch (err) { }
+        });
+    }
+
+    /* Runs before pudl-windows initializes (this script is not deferred),
+       so a bare desktop URL picks up the saved arrangement in time. */
+    function restoreWindows() {
+        if (!document.querySelector('[data-win-layer]')) { return; }
+        var q = new URLSearchParams(location.search);
+        var hasWinParams = false;
+        q.forEach(function (v, k) { if (isWinParam(k)) { hasWinParams = true; } });
+        if (hasWinParams) { return; }
+        var saved;
+        try { saved = localStorage.getItem('pc-windows'); } catch (err) { return; }
+        if (!saved) { return; }
+        var sep = location.search ? '&' : '?';
+        history.replaceState(history.state, '', location.pathname + location.search + sep + saved);
+    }
+
     function init() {
         initFilter();
 
@@ -216,6 +270,7 @@
         });
 
         initOpenerInheritance(layer);
+        initPrefs(layer);
 
         /* In an image window the plain arrow keys step between images, as
            they do in the classic lightbox. Captured before pudl-windows'
@@ -261,6 +316,7 @@
         syncNavState();
     }
 
+    restoreWindows();
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); }
     else { init(); }
 })();

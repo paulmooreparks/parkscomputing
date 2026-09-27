@@ -14,8 +14,9 @@ namespace ParksComputing.Engine.Pages.Services;
 /// or stylesheets (an interactive app, or a page with bespoke CSS): its
 /// window hosts the article's page in a frame instead of inlining the body,
 /// because scripts in fetched window markup do not run and head assets
-/// never arrive.</summary>
-public record ArticleWindowContent(string Slug, string Title, string BodyHtml, bool HasCode, bool HasMermaid, bool RequiresOwnDocument = false);
+/// never arrive. FrameUrl marks an external destination whose window is a
+/// frame straight onto that URL.</summary>
+public record ArticleWindowContent(string Slug, string Title, string BodyHtml, bool HasCode, bool HasMermaid, bool RequiresOwnDocument = false, string? FrameUrl = null);
 
 public record ArticleImage(string Src, string? Caption);
 
@@ -39,11 +40,39 @@ public class ArticleContentService {
         _environment = environment;
     }
 
-    /// <summary>An article, with its images wrapped as child-window openers.</summary>
+    /// <summary>An article prepared for a window: images wrapped as
+    /// child-window openers, and internal links as window openers.</summary>
     public ArticleWindowContent? Load(string? slug) {
         var raw = LoadRaw(slug);
         if (raw is null) { return null; }
-        return raw with { BodyHtml = WrapImages(raw.Slug, raw.BodyHtml) };
+        return raw with { BodyHtml = PrepareWindowBody(raw.Slug, raw.BodyHtml) };
+    }
+
+    private static readonly Regex ExternalKeyPattern = new(@"^ext-(?<slug>[a-z0-9-]+)$", RegexOptions.Compiled);
+
+    /// <summary>The window key for a framed external destination.</summary>
+    public static string ExternalKey(NavNode node) => "ext-" + TagSlug(node.Slug ?? string.Empty);
+
+    /// <summary>
+    /// A framed external destination's window ("ext-{slug}" keys): a frame
+    /// straight onto the URL of a sitenav node marked frame ~true. Null
+    /// when the key is not an ext key or nothing frameable matches.
+    /// </summary>
+    public ArticleWindowContent? LoadExternal(string? key, NavNode root) {
+        var m = ExternalKeyPattern.Match(key ?? string.Empty);
+        if (!m.Success) { return null; }
+        var slug = m.Groups["slug"].Value;
+
+        foreach (var section in root.Nav ?? Array.Empty<NavNode>()) {
+            foreach (var node in section.Nav ?? new[] { section }) {
+                if (node.External && node.Frame && !string.IsNullOrEmpty(node.Url)
+                    && TagSlug(node.Slug ?? string.Empty) == slug) {
+                    return new ArticleWindowContent(key!, node.Title ?? node.Slug!, string.Empty,
+                        HasCode: false, HasMermaid: false, FrameUrl: node.Url);
+                }
+            }
+        }
+        return null;
     }
 
     public bool TryParseChildKey(string? key, out string parentSlug, out int imageIndex) {
@@ -207,15 +236,68 @@ public class ArticleContentService {
             .ToList();
     }
 
+    private string PrepareWindowBody(string slug, string bodyHtml) {
+        var doc = new HtmlDocument();
+        doc.LoadHtml(bodyHtml);
+        WrapImages(slug, doc);
+        WrapInternalLinks(doc);
+        return doc.DocumentNode.InnerHtml;
+    }
+
+    /// <summary>
+    /// Marks each content link that resolves to a known article as a window
+    /// opener, so following it inside a window opens a window (inheriting
+    /// the opener's state) instead of navigating the desktop away. The href
+    /// is untouched, so classic pages and no-script browsers see no change.
+    /// </summary>
+    private void WrapInternalLinks(HtmlDocument doc) {
+        var anchors = doc.DocumentNode.SelectNodes("//a[@href]");
+        if (anchors is null) { return; }
+        foreach (var anchor in anchors) {
+            if (anchor.GetAttributeValue("data-win-open", null) is not null) { continue; }
+            if (anchor.GetAttributeValue("data-win-replace", null) is not null) { continue; }
+            var slug = InternalSlugOf(anchor.GetAttributeValue("href", string.Empty));
+            if (slug is null || !ContentExists(slug)) { continue; }
+            anchor.SetAttributeValue("data-win-open", slug);
+        }
+    }
+
+    /// <summary>The article slug an href resolves to, or null when the href
+    /// leaves the site or names nothing slug-shaped.</summary>
+    private static string? InternalSlugOf(string href) {
+        if (string.IsNullOrWhiteSpace(href) || href.StartsWith("#")) { return null; }
+        string path;
+        // A rooted path parses as an absolute file: URI on .NET, so only an
+        // explicit http(s) prefix takes the absolute branch.
+        if (href.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || href.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) {
+            if (!Uri.TryCreate(href, UriKind.Absolute, out var abs)) { return null; }
+            var host = abs.Host.ToLowerInvariant();
+            if (host != "parkscomputing.com" && host != "www.parkscomputing.com") { return null; }
+            path = abs.AbsolutePath;
+        } else {
+            if (href.Contains(':')) { return null; }   // mailto:, tel:, and kin
+            path = href.Split('#')[0].Split('?')[0];
+        }
+        var segments = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0) { return null; }
+        var candidate = segments[^1];
+        return SlugPattern.IsMatch(candidate) ? candidate : null;
+    }
+
+    private bool ContentExists(string slug) {
+        var baseDir = Path.Combine(_environment.WebRootPath, "content");
+        return File.Exists(Path.Combine(baseDir, slug + ".md"))
+            || File.Exists(Path.Combine(baseDir, slug + ".html"));
+    }
+
     /// <summary>
     /// Wraps each eligible image in a link that opens it as a child window.
     /// Without script the link opens the image itself.
     /// </summary>
-    private static string WrapImages(string slug, string bodyHtml) {
-        var doc = new HtmlDocument();
-        doc.LoadHtml(bodyHtml);
+    private static void WrapImages(string slug, HtmlDocument doc) {
         var images = doc.DocumentNode.SelectNodes("//img");
-        if (images is null) { return bodyHtml; }
+        if (images is null) { return; }
 
         int n = 0;
         foreach (var img in images) {
@@ -238,7 +320,6 @@ public class ArticleContentService {
             var cls = anchor.GetAttributeValue("class", string.Empty);
             anchor.SetAttributeValue("class", string.IsNullOrEmpty(cls) ? "win-img-link" : cls + " win-img-link");
         }
-        return doc.DocumentNode.InnerHtml;
     }
 
     private static ArticleWindowContent LoadMarkdown(string path, string slug) {

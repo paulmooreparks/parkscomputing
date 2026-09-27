@@ -106,8 +106,9 @@ public class DesktopModel : PageModel {
         foreach (var key in open) {
             string parentSlug = string.Empty;
             var tagList = _content.LoadTagList(key, Root);
-            var child = tagList is null ? _content.LoadChild(key, out parentSlug) : null;
-            var article = tagList ?? child ?? _content.Load(key);
+            var external = tagList is null ? _content.LoadExternal(key, Root) : null;
+            var child = tagList is null && external is null ? _content.LoadChild(key, out parentSlug) : null;
+            var article = tagList ?? external ?? child ?? _content.Load(key);
             if (article is null) { continue; }
             var parent = child is null ? null : parentSlug;
 
@@ -116,20 +117,22 @@ public class DesktopModel : PageModel {
             // A child hides with its parent and is never minimised on its own.
             bool minimized = min.Contains(parent ?? key);
 
-            var node = tagList is null && child is null ? _navService.GetNavNode(key) : null;
+            var node = tagList is null && external is null && child is null ? _navService.GetNavNode(key) : null;
 
             var vm = new WindowViewModel {
                 Key = key,
                 Title = article.Title,
                 BodyHtml = article.BodyHtml,
-                // A tag list has no page of its own.
-                PageUrl = tagList is null ? $"/page/{parent ?? key}" : string.Empty,
+                // A tag list has no page of its own; an external's page is
+                // the destination itself.
+                PageUrl = external?.FrameUrl ?? (tagList is null ? $"/page/{parent ?? key}" : string.Empty),
+                FrameUrl = external?.FrameUrl,
                 Parent = parent,
                 OwnDocument = article.RequiresOwnDocument,
                 Tags = node?.Tags ?? Array.Empty<string>(),
                 Created = node?.Date,
                 Updated = node?.Updated,
-                Mode = placement?.Mode ?? "maximized",
+                Mode = placement?.Mode ?? "floating",
                 X = placement?.X, Y = placement?.Y, W = placement?.W, H = placement?.H,
                 Minimized = minimized,
                 Active = key == top

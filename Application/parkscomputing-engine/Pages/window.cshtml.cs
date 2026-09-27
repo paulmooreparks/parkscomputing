@@ -39,6 +39,19 @@ public class WindowModel : PageModel {
             return Page();
         }
 
+        // An ext key serves a framed external destination.
+        var external = _content.LoadExternal(key, _navService.GetRoot());
+        if (external is not null) {
+            Window = new WindowViewModel {
+                Key = external.Slug,
+                Title = external.Title,
+                BodyHtml = string.Empty,
+                PageUrl = external.FrameUrl!,
+                FrameUrl = external.FrameUrl
+            };
+            return Page();
+        }
+
         // A child key ("{slug}-img-{n}") serves one of the article's images
         // as a child window; anything else is an article window.
         var child = _content.LoadChild(key, out var parentSlug);

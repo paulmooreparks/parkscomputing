@@ -51,6 +51,13 @@ public class NavNode {
     [XferProperty("tags")]
     public string[]? Tags { get; set; }
 
+    // True when an external destination permits framing and should open as
+    // a window in the window view. Only the author can assert this, since
+    // most large sites refuse framing and a refused frame is not reliably
+    // detectable from script.
+    [XferProperty("frame")]
+    public bool Frame { get; set; }
+
     [XferProperty("nav")]
     public NavNode[]? Nav { get; set; }
 
