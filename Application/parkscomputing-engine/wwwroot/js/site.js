@@ -46,8 +46,6 @@
         if (!host) { return; }
 
         function articleSlugOf(a) {
-            if (a.origin !== location.origin) { return null; }
-            if (a.hash && a.pathname === location.pathname) { return null; }
             var segments = a.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
             if (segments.length === 0) { return null; }
             var candidate = segments[segments.length - 1];
@@ -58,6 +56,22 @@
             if (e.button !== 0 || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) { return; }
             var a = e.target.closest && e.target.closest('a[href]');
             if (!a || a.target) { return; }
+            if (a.origin !== location.origin) { return; }
+
+            /* A link back into this same document belongs to the app (a
+               preset, a shared state, a fragment). It keeps the bare frame
+               rendering, which a plain navigation would lose. */
+            if (a.pathname === location.pathname) {
+                if (!a.search) { return; }             // a fragment is the app's own
+                var u = new URL(a.href);
+                if (!u.searchParams.has('frame')) {
+                    e.preventDefault();
+                    u.searchParams.set('frame', '');
+                    location.href = u.pathname + '?' + u.searchParams.toString() + u.hash;
+                }
+                return;
+            }
+
             var slug = articleSlugOf(a);
             if (!slug) { return; }
             e.preventDefault();
@@ -101,8 +115,30 @@
             }
         });
 
+        /* The default view lives in a cookie because the server acts on it:
+           a bare / redirects to the classic home when it says classic. It
+           is a functional preference like the rest. */
+        function viewChoice() {
+            var m = document.cookie.match(/(?:^|;\s*)pc-view=([^;]*)/);
+            return m && m[1] === 'classic' ? 'classic' : 'window';
+        }
+
+        function markView() {
+            backdrop.querySelectorAll('[data-view-choice]').forEach(function (b) {
+                b.classList.toggle('active', b.getAttribute('data-view-choice') === viewChoice());
+            });
+        }
+
+        function setView(mode) {
+            document.cookie = mode === 'classic'
+                ? 'pc-view=classic; path=/; max-age=31536000; SameSite=Lax'
+                : 'pc-view=; path=/; max-age=0; SameSite=Lax';
+            markView();
+        }
+
         function open() {
             markTheme();
+            markView();
             backdrop.hidden = false;
             var first = backdrop.querySelector('.active, input, button');
             if (first) { first.focus(); }
@@ -118,11 +154,15 @@
             if (e.target === backdrop) { close(); }
             var choice = e.target.closest('[data-theme-choice]');
             if (choice) { setTheme(choice.getAttribute('data-theme-choice')); }
+            var view = e.target.closest('[data-view-choice]');
+            if (view) { setView(view.getAttribute('data-view-choice')); }
             if (e.target.closest('[data-settings-close]')) { close(); }
             if (e.target.closest('[data-settings-forget]')) {
                 ['pudl-theme', 'pc-maximize-new', 'pc-resume-windows', 'pc-windows'].forEach(function (key) {
                     try { localStorage.removeItem(key); } catch (err) { }
                 });
+                document.cookie = 'pc-list=; path=/; max-age=0; SameSite=Lax';
+                setView('window');
                 document.documentElement.setAttribute('data-theme', 'dark');
                 backdrop.querySelectorAll('[data-pref]').forEach(function (box) {
                     box.checked = box.getAttribute('data-pref-default') === '1';

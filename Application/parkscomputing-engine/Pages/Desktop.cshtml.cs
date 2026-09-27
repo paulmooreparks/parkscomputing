@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 using ParksComputing.Engine.Pages.Models;
@@ -65,7 +66,37 @@ public class DesktopModel : PageModel {
         (Root.Posts ?? Array.Empty<NavNode>())
             .OrderByDescending(p => NavService.EffectiveDate(p) ?? DateTime.MinValue);
 
-    public void OnGet() {
+    public IActionResult OnGet() {
+        // Preference redirects act only on top-level navigations (Fetch
+        // Metadata); a region fetch must receive exactly what its address
+        // names, or a mid-swap redirect would fight the reader's action.
+        bool topLevel = !Request.Headers.TryGetValue("Sec-Fetch-Mode", out var fetchMode)
+                        || fetchMode == "navigate";
+        bool hasWindowState = Request.Query.Keys.Any(k => k == "open" || k == "top" || k == "min" || k.StartsWith("p."));
+        bool bareArrival = topLevel && !hasWindowState;
+
+        // The default-view preference: a reader who chose the classic view
+        // lands there from a bare /; ?view=window (the classic pages' pill)
+        // bypasses only this.
+        if (bareArrival && !Request.Query.ContainsKey("view") && Request.Cookies["pc-view"] == "classic") {
+            return Redirect("/home");
+        }
+
+        // The remembered list state: a bare arrival resumes the saved
+        // category and filter, by redirect so the URL still names what
+        // shows. Only cat and q are honored from the cookie.
+        if (bareArrival && !Request.Query.ContainsKey("cat") && !Request.Query.ContainsKey("q")) {
+            var savedList = System.Net.WebUtility.UrlDecode(Request.Cookies["pc-list"] ?? string.Empty);
+            var parts = savedList.Split('&', StringSplitOptions.RemoveEmptyEntries)
+                .Select(p => p.Split('=', 2))
+                .Where(kv => kv.Length == 2 && kv[0] is "cat" or "q" && !string.IsNullOrEmpty(kv[1]))
+                .Select(kv => $"{kv[0]}={Uri.EscapeDataString(Uri.UnescapeDataString(kv[1]))}")
+                .ToList();
+            if (parts.Count > 0) {
+                return Redirect("/?" + string.Join("&", parts));
+            }
+        }
+
         Root = _navService.GetRoot();
 
         if (Root.Posts is { Length: > 0 }) { Categories.Add(("articles", "Articles")); }
@@ -156,6 +187,8 @@ public class DesktopModel : PageModel {
                 Windows.Add(active);
             }
         }
+
+        return Page();
     }
 
     public bool ShowSection(string? slug) => Cat is null || Cat == slug;
@@ -171,7 +204,8 @@ public class DesktopModel : PageModel {
     private string BuildUrl(string? cat, string? q) {
         var parts = new List<string>();
         foreach (var kv in Request.Query) {
-            if (kv.Key is "cat" or "q") { continue; }
+            // "view" is consumed on arrival (the default-view escape hatch).
+            if (kv.Key is "cat" or "q" or "view") { continue; }
             foreach (var value in kv.Value) {
                 parts.Add($"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(value ?? string.Empty)}");
             }
@@ -188,7 +222,7 @@ public class DesktopModel : PageModel {
     public string OpenWindowUrl(string key) {
         var parts = new List<string>();
         foreach (var kv in Request.Query) {
-            if (kv.Key is "open" or "top" or "min") { continue; }
+            if (kv.Key is "open" or "top" or "min" or "view") { continue; }
             foreach (var value in kv.Value) {
                 parts.Add($"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(value ?? string.Empty)}");
             }
@@ -209,7 +243,7 @@ public class DesktopModel : PageModel {
     /// window arrangement.</summary>
     public IEnumerable<KeyValuePair<string, string>> FilterFormParams =>
         Request.Query
-            .Where(kv => kv.Key != "q")
+            .Where(kv => kv.Key != "q" && kv.Key != "view")
             .SelectMany(kv => kv.Value, (kv, v) => new KeyValuePair<string, string>(kv.Key, v ?? string.Empty));
 
     private static (string Mode, double X, double Y, double W, double H)? ParsePlacement(string? value) {

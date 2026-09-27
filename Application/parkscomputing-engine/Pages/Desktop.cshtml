@@ -59,7 +59,7 @@
     }
 }
 
-<nav class="app-section-bar" aria-label="Categories">
+<nav class="app-section-bar" data-region="sections" aria-label="Categories">
     <a class="section-tab @(Model.Cat is null ? "active" : null)" href="@Model.CategoryUrl(null)">All</a>
     @foreach (var (slug, title) in Model.Categories)
     {
@@ -94,22 +94,24 @@
 
 <div class="md-layout" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
     <div class="md-toolbar md-site-tools">
-        <form method="get" action="/" class="desktop-filter-form" role="search">
+        <form class="md-filter-group" data-region="filter" method="get" action="/" role="search">
             @foreach (var kv in Model.FilterFormParams)
             {
                 <input type="hidden" name="@kv.Key" value="@kv.Value" />
             }
             <input class="md-filter" type="search" name="q" value="@Model.Q"
                    placeholder="Filter the list…" aria-label="Filter the list" />
-            <button class="icon-btn filter-go" type="submit" aria-label="Apply filter" title="Apply filter"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="4.2"/><line x1="10.2" y1="10.2" x2="14" y2="14"/></svg></button>
+            <button class="icon-btn md-filter-go" type="submit" aria-label="Apply the filter" title="Apply the filter"></button>
         </form>
         <span class="md-toolbar-sep"></span>
         <span class="md-section-label">Open</span>
         <nav class="win-dock" data-win-dock aria-label="Open windows"></nav>
     </div>
-    @if (Model.Cat is not null || Model.Q is not null)
-    {
-        <div class="md-chips">
+    @* Always present, so region swaps always find their counterpart;
+       PUDL hides an empty chips row. *@
+    <div class="md-chips" data-region="chips">
+        @if (Model.Cat is not null || Model.Q is not null)
+        {
             @if (Model.Cat is not null)
             {
                 <span class="filter-chip"><span class="fc-kind">category</span> @Model.CatTitle <a class="filter-chip-x" href="@Model.RemoveCatUrl" aria-label="Remove the category filter">×</a></span>
@@ -122,10 +124,10 @@
             {
                 <a class="md-chips-clear" href="@Model.ClearFiltersUrl">clear</a>
             }
-        </div>
-    }
+        }
+    </div>
     <div class="md-body">
-        <nav class="md-sidebar" aria-label="Articles and pages">
+        <nav class="md-sidebar" data-region="list" aria-label="Articles and pages">
             @if (Model.Root.Posts is { Length: > 0 } && Model.ShowSection("articles"))
             {
                 var visiblePosts = Model.SortedPosts.Where(Model.RowMatches).ToList();

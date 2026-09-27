@@ -79,7 +79,8 @@
                 }
                 else
                 {
-                    <a class="topbar-pill" href="/">Window view</a>
+                    @* ?view=window bypasses a classic default-view choice. *@
+                    <a class="topbar-pill" href="/?view=window">Window view</a>
                 }
                 <button class="theme-toggle" type="button" title="Settings" aria-label="Settings"
                         data-settings-open aria-haspopup="dialog">⚙</button>
@@ -152,6 +153,13 @@
                         <button type="button" data-theme-choice="system">System</button>
                     </div>
                 </div>
+                <div class="form-group">
+                    <span class="form-label" id="view-label">Default view</span>
+                    <div class="seg" role="group" aria-labelledby="view-label">
+                        <button type="button" data-view-choice="window">Window</button>
+                        <button type="button" data-view-choice="classic">Classic</button>
+                    </div>
+                </div>
                 @if (isDesktop)
                 {
                     <div class="form-group">
@@ -176,6 +184,7 @@
     {
         <script src="~/js/desktop.js" asp-append-version="true"></script>
         <script src="~/pudl/pudl-windows.js" defer></script>
+        <script src="~/pudl/pudl-regions.js" defer></script>
     }
     <script src="~/pudl/pudl-applets.js" defer></script>
     @RenderSection("BodyScripts", required: false)
