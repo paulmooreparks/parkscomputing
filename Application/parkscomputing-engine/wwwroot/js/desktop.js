@@ -143,6 +143,28 @@
 
         initPrefs(layer);
 
+        /* Close-all: with script, each top-level window closes in place
+           (children go with their parents); the link's own href is the
+           windowless state for a browser without script. */
+        var closeAll = document.querySelector('[data-close-all]');
+        if (closeAll) {
+            closeAll.addEventListener('click', function (e) {
+                if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) { return; }
+                e.preventDefault();
+                if (!window.pudlWindows) { return; }
+                window.pudlWindows.state().open.forEach(function (key) {
+                    var el = layer.querySelector('.win[data-win="' + key + '"]');
+                    if (el && !el.hasAttribute('data-win-parent')) { window.pudlWindows.close(key); }
+                });
+            });
+            document.addEventListener('pudl:windows-change', function () {
+                var none = !window.pudlWindows || window.pudlWindows.state().open.length === 0;
+                closeAll.classList.toggle('is-disabled', none);
+                if (none) { closeAll.setAttribute('aria-disabled', 'true'); closeAll.tabIndex = -1; }
+                else { closeAll.removeAttribute('aria-disabled'); closeAll.tabIndex = 0; }
+            });
+        }
+
         /* In an image window the plain arrow keys step between images, as
            they do in the classic lightbox. Captured before pudl-windows'
            own keyboard handling, which keeps Shift+arrows for resizing;

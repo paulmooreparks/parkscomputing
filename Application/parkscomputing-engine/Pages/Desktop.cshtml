@@ -102,10 +102,23 @@
             <input class="md-filter" type="search" name="q" value="@Model.Q"
                    placeholder="Filter the list…" aria-label="Filter the list" />
             <button class="icon-btn md-filter-go" type="submit" aria-label="Apply the filter" title="Apply the filter"></button>
+            @* Clears category and filter, windows kept. Inside the region,
+               so the server re-renders its state on every swap. *@
+            <a class="icon-btn filter-clear @(Model.Cat is null && Model.Q is null ? "is-disabled" : null)"
+               href="@Model.ClearFiltersUrl"
+               @(Model.Cat is null && Model.Q is null ? Html.Raw("aria-disabled=\"true\" tabindex=\"-1\"") : null)
+               aria-label="Clear all filters" title="Clear all filters"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5.5"/><line x1="4.2" y1="11.8" x2="11.8" y2="4.2"/></svg></a>
         </form>
         <span class="md-toolbar-sep"></span>
         <span class="md-section-label">Open</span>
         <nav class="win-dock" data-win-dock aria-label="Open windows"></nav>
+        <span class="md-toolbar-sep"></span>
+        @* Close every window. A real link to the windowless state for
+           no-script; desktop.js intercepts to close in place. *@
+        <a class="icon-btn close-all @(Model.Windows.Count == 0 ? "is-disabled" : null)"
+           data-close-all href="@Model.ListOnlyUrl"
+           @(Model.Windows.Count == 0 ? Html.Raw("aria-disabled=\"true\" tabindex=\"-1\"") : null)
+           aria-label="Close all windows" title="Close all windows"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="4.5" width="9" height="9" rx="1.5"/><path d="M5.5 4V3a1.5 1.5 0 0 1 1.5-1.5h6A1.5 1.5 0 0 1 14.5 3v6A1.5 1.5 0 0 1 13 10.5h-1"/><line x1="4" y1="7" x2="8" y2="11"/><line x1="8" y1="7" x2="4" y2="11"/></svg></a>
     </div>
     @* Always present, so region swaps always find their counterpart;
        PUDL hides an empty chips row. *@
@@ -162,22 +175,13 @@
                 <a class="md-back" href="/" data-win-back>Articles</a>
                 <main class="win-host">
                     <div class="reader-empty">
-                        <div class="card">
-                            <h2 class="card-title">Welcome to the desktop</h2>
-                            <p class="card-desc">
-                                Pick an article from the sidebar and it opens as a window, maximized.
-                                Restore it from the title bar to drag, resize and snap it; open several
-                                and switch between them from the taskbar above. Images inside an article
-                                open as child windows; Escape pops one back down. The whole arrangement
-                                lives in the page URL, so it can be bookmarked and shared, and Back
-                                undoes the last thing you did.
-                            </p>
-                            <p class="card-desc">
-                                This view is built with <a href="https://github.com/paulmooreparks/pudl">PUDL</a>,
-                                the Pleasantly Usable Design Language. Every article is still a page of
-                                its own; the ↗ button in a window's title bar takes you there.
-                            </p>
-                        </div>
+                        @if (Model.WelcomeHtml is not null)
+                        {
+                            @* Copy lives at content/desktop-welcome.md. *@
+                            <div class="card welcome-card">
+                                @Html.Raw(Model.WelcomeHtml)
+                            </div>
+                        }
                     </div>
                     <div class="win-layer" data-win-layer data-win-src="/window/{key}">
                         @foreach (var win in Model.Windows)

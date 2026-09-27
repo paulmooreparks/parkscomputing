@@ -61,6 +61,20 @@ public class DesktopModel : PageModel {
 
     public string? CatTitle => Categories.FirstOrDefault(c => c.Slug == Cat).Title;
 
+    /// <summary>The welcome card's copy, editable at content/desktop-welcome.md.</summary>
+    public string? WelcomeHtml { get; private set; }
+
+    /// <summary>The desktop with the current list state and no windows:
+    /// the close-all control's no-script destination.</summary>
+    public string ListOnlyUrl {
+        get {
+            var parts = new List<string>();
+            if (Cat is not null) { parts.Add("cat=" + Uri.EscapeDataString(Cat)); }
+            if (Q is not null) { parts.Add("q=" + Uri.EscapeDataString(Q)); }
+            return parts.Count > 0 ? "/?" + string.Join("&", parts) : "/";
+        }
+    }
+
     /// <summary>Posts newest first by effective date (Paul, 2026-09-26).</summary>
     public IEnumerable<NavNode> SortedPosts =>
         (Root.Posts ?? Array.Empty<NavNode>())
@@ -98,6 +112,7 @@ public class DesktopModel : PageModel {
         }
 
         Root = _navService.GetRoot();
+        WelcomeHtml = _content.RenderFragment("desktop-welcome");
 
         if (Root.Posts is { Length: > 0 }) { Categories.Add(("articles", "Articles")); }
         foreach (var section in Root.Nav ?? Array.Empty<NavNode>()) {

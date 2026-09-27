@@ -289,6 +289,14 @@ body.desktop .app-section-bar { flex: none; }
   height: 100%; overflow-y: auto; padding: 32px;
 }
 .reader-empty .card { max-width: 560px; margin: 10vh auto 0; }
+.welcome-card h1 { margin: 0 0 8px; font-size: 16px; font-weight: 700; }
+.welcome-card p { margin: 0 0 14px; font-size: 13px; color: var(--text-muted); }
+.welcome-card p:last-child { margin-bottom: 0; }
+
+/* The close-all and clear-filters controls, and any disabled icon button. */
+.close-all svg, .filter-clear svg { width: 15px; height: 15px; }
+.md-filter-group .filter-clear { margin-left: 6px; }
+.icon-btn.is-disabled { opacity: .45; pointer-events: none; cursor: not-allowed; }
 
 /* Windowed article prose keeps the page's reading measure. */
 .win-body .post-content { margin-bottom: 1.5rem; padding-top: 0; }
