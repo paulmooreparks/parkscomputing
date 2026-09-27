@@ -116,6 +116,8 @@ public class DesktopModel : PageModel {
             // A child hides with its parent and is never minimised on its own.
             bool minimized = min.Contains(parent ?? key);
 
+            var node = tagList is null && child is null ? _navService.GetNavNode(key) : null;
+
             var vm = new WindowViewModel {
                 Key = key,
                 Title = article.Title,
@@ -124,7 +126,9 @@ public class DesktopModel : PageModel {
                 PageUrl = tagList is null ? $"/page/{parent ?? key}" : string.Empty,
                 Parent = parent,
                 OwnDocument = article.RequiresOwnDocument,
-                Tags = (tagList is null && child is null ? _navService.GetNavNode(key)?.Tags : null) ?? Array.Empty<string>(),
+                Tags = node?.Tags ?? Array.Empty<string>(),
+                Created = node?.Date,
+                Updated = node?.Updated,
                 Mode = placement?.Mode ?? "maximized",
                 X = placement?.X, Y = placement?.Y, W = placement?.W, H = placement?.H,
                 Minimized = minimized,

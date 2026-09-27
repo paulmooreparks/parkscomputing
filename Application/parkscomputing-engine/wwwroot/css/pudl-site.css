@@ -21,6 +21,12 @@
   --on-accent: #0d1117;
 }
 
+/* The topbar stays dark in both themes, so links on it hover with the
+   dark theme's hover color in both; the light page's near-black hover
+   vanishes against the dark bar. */
+:root { --tb-link-hover: #7bd3ff; }
+.topbar .brand:hover { color: var(--tb-link-hover); }
+
 /* === Page shell =========================================================== */
 .site-main {
   max-width: 1140px;
@@ -326,7 +332,20 @@ body.desktop .app-section-bar { flex: none; }
   background: var(--border);
   margin: 0 6px;
 }
+/* The link area holds links, not tabs, so they follow the underline rule. */
 .bar-links { display: flex; align-items: stretch; }
+.bar-links .section-tab {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  border-bottom: 0; margin-bottom: 0;
+}
+.bar-links .section-tab:hover {
+  color: var(--accent-hover);
+  text-decoration-thickness: 2px;
+  background: none; box-shadow: none;
+}
 
 /* === Tag rows and the tag window ========================================== */
 /* The tag row at the very top of a page or window: flat chips, each
@@ -337,8 +356,17 @@ body.desktop .app-section-bar { flex: none; }
   padding: 10px 0 0;
 }
 .win-body > .page-tags { padding: 0 0 4px; }
-a.chip { text-decoration: none; }
-a.chip:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+/* A tag in the row is a link and looks like one (chips are display-only
+   metadata in PUDL's grammar, so they are not used for navigation). */
+.tag-link {
+  font-size: 12px; font-weight: 600;
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.tag-link::before { content: "#"; opacity: .55; margin-right: 1px; }
+.tag-link:hover { color: var(--accent-hover); text-decoration-thickness: 2px; }
 
 .tag-window { max-width: 68ch; margin: 0 auto; }
 .tag-window .card-desc { margin-bottom: 10px; }

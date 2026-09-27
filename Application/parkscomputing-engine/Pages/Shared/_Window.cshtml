@@ -25,8 +25,10 @@
                     <a class="win-btn" data-win-action="page" href="@Model.PageUrl" aria-label="Open as a page" title="Open as a page"></a>
                 }
                 <a class="win-btn" data-win-action="minimize" href="?" aria-label="Minimize" title="Minimize"></a>
-                <a class="win-btn" data-win-action="maximize" href="?" aria-label="Maximize" title="Maximize"></a>
             }
+            @* A child keeps maximize and restore (it floats when its opener
+               did) but never minimize, since it has no dock tab. *@
+            <a class="win-btn" data-win-action="maximize" href="?" aria-label="Maximize" title="Maximize"></a>
             <a class="win-btn" data-win-action="close" href="?" aria-label="Close" title="Close"></a>
         </nav>
     </header>
@@ -46,11 +48,22 @@
                     @foreach (var tag in Model.Tags)
                     {
                         var tagKey = ParksComputing.Engine.Pages.Services.ArticleContentService.TagKey(tag);
-                        <a class="chip" href="/?open=@tagKey&top=@tagKey" data-win-open="@tagKey">@tag</a>
+                        <a class="tag-link" href="/?open=@tagKey&top=@tagKey" data-win-open="@tagKey">@tag</a>
                     }
                 </nav>
             }
             <div class="post-content">
+                @if (Model.Created is not null || Model.Updated is not null)
+                {
+                    var created = Model.Created ?? Model.Updated;
+                    <div class="post-meta">
+                        <time datetime="@created?.ToString("yyyy-MM-dd")">@created?.ToLongDateString()</time>
+                        @if (Model.Updated is not null && Model.Updated != created)
+                        {
+                            <span class="updated-on">&nbsp;· Updated <time datetime="@Model.Updated?.ToString("yyyy-MM-dd")">@Model.Updated?.ToLongDateString()</time></span>
+                        }
+                    </div>
+                }
                 <div class="post-body">
                     @Html.Raw(Model.BodyHtml)
                 </div>

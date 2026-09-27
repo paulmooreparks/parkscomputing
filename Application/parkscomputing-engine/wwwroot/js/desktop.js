@@ -217,6 +217,24 @@
 
         initOpenerInheritance(layer);
 
+        /* In an image window the plain arrow keys step between images, as
+           they do in the classic lightbox. Captured before pudl-windows'
+           own keyboard handling, which keeps Shift+arrows for resizing;
+           windows without image nav keep arrow-key movement. */
+        layer.addEventListener('keydown', function (e) {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') { return; }
+            if (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) { return; }
+            if (e.target.closest && e.target.closest('input, textarea, select')) { return; }
+            var win = e.target.closest && e.target.closest('.win');
+            if (!win) { return; }
+            var nav = win.querySelector('.win-img-nav');
+            if (!nav) { return; }
+            e.preventDefault();
+            e.stopPropagation();
+            var link = nav.querySelector('[data-img-nav="' + (e.key === 'ArrowLeft' ? 'prev' : 'next') + '"]');
+            if (link) { link.click(); }
+        }, true);
+
         document.addEventListener('click', onNavClick);
 
         /* Accepting the filter (Enter, or its button) is the same soft

@@ -63,7 +63,7 @@
         @foreach (var tag in pageTags)
         {
             var tagKey = ParksComputing.Engine.Pages.Services.ArticleContentService.TagKey(tag);
-            <a class="chip" href="/?open=@tagKey&top=@tagKey">@tag</a>
+            <a class="tag-link" href="/?open=@tagKey&top=@tagKey">@tag</a>
         }
     </nav>
 }

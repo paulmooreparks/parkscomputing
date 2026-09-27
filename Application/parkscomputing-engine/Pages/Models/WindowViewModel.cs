@@ -26,6 +26,11 @@ public class WindowViewModel {
     /// at the top of the window.</summary>
     public string[] Tags { get; init; } = Array.Empty<string>();
 
+    /// <summary>The article's creation and revision dates, for the date
+    /// line the window shows like the article's own page does.</summary>
+    public DateTime? Created { get; init; }
+    public DateTime? Updated { get; init; }
+
     public string? Mode { get; init; }
     public double? X { get; init; }
     public double? Y { get; init; }

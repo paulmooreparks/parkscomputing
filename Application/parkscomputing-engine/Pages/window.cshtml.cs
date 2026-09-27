@@ -56,13 +56,16 @@ public class WindowModel : PageModel {
         var article = _content.Load(key);
         if (article is null) { return NotFound(); }
 
+        var node = _navService.GetNavNode(article.Slug);
         Window = new WindowViewModel {
             Key = article.Slug,
             Title = article.Title,
             BodyHtml = article.BodyHtml,
             PageUrl = $"/page/{article.Slug}",
             OwnDocument = article.RequiresOwnDocument,
-            Tags = _navService.GetNavNode(article.Slug)?.Tags ?? Array.Empty<string>()
+            Tags = node?.Tags ?? Array.Empty<string>(),
+            Created = node?.Date,
+            Updated = node?.Updated
         };
         return Page();
     }
