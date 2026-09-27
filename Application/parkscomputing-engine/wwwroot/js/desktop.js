@@ -218,6 +218,22 @@
         initOpenerInheritance(layer);
 
         document.addEventListener('click', onNavClick);
+
+        /* Accepting the filter (Enter, or its button) is the same soft
+           navigation as a tab click; the form still works without script. */
+        document.addEventListener('submit', function (e) {
+            var form = e.target.closest && e.target.closest('.desktop-filter-form');
+            if (!form) { return; }
+            e.preventDefault();
+            var url = new URL(form.getAttribute('action') || '/', location.href);
+            new FormData(form).forEach(function (value, key) {
+                if (key === 'q' && !String(value).trim()) { return; }
+                url.searchParams.append(key, value);
+            });
+            softNavigate(url.pathname + url.search, true).catch(function () {
+                location.href = url.href;
+            });
+        });
         layer.addEventListener('pudl:windows-change', syncNavState);
         window.addEventListener('popstate', function () {
             /* pudl-windows brings the windows in line; the list chrome

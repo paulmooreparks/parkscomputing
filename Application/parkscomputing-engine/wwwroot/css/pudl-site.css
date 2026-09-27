@@ -266,7 +266,9 @@ body.desktop .site-header { position: static; flex: none; }
 body.desktop .md-toolbar .md-section-label { padding: 0; }
 body.desktop .md-sidebar { width: 300px; }
 body.desktop .app-section-bar { flex: none; }
-.desktop-filter-form { display: inline-flex; }
+.desktop-filter-form { display: inline-flex; align-items: center; gap: 6px; }
+.filter-go { flex: none; }
+.filter-go svg { width: 14px; height: 14px; }
 .reader-stage { padding: 0; overflow: hidden; }
 .reader-col { display: flex; flex-direction: column; height: 100%; }
 .reader-col .md-back { margin: 12px 16px 4px; align-self: flex-start; }
