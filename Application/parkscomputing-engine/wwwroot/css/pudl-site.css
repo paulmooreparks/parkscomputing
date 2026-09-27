@@ -23,6 +23,12 @@
 
 /* Topbar link hover comes from PUDL's own --tb-link-hover since 0.11.0. */
 
+/* Every page here puts the notebook strip directly under the topbar, and
+   the strip's recessed tone already draws that boundary; the topbar's own
+   hairline on top of it reads as a scratch across the junction. Candidate
+   for PUDL: adjacent chrome bands that differ in tone need no drawn line. */
+.topbar { border-bottom-color: transparent; }
+
 /* === Page shell =========================================================== */
 .site-main {
   max-width: 1140px;
