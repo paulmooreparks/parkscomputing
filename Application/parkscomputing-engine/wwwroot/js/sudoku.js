@@ -46,7 +46,9 @@ SOFTWARE.
         pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3l4 4L8 20l-5 1 1-5z"/></svg>',
         erase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
         help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9a3 3 0 1 1 4.6 2.5c-1 .7-1.6 1.3-1.6 2.5"/><circle cx="12" cy="18" r="0.5" fill="currentColor"/></svg>',
-        share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11M8 6l4-3 4 3"/><path d="M5 12v8h14v-8"/></svg>'
+        share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11M8 6l4-3 4 3"/><path d="M5 12v8h14v-8"/></svg>',
+        undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5 4 9l4 4"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
+        redo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 5 4 4-4 4"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg>'
     };
 
     function buildMarkup(root) {
@@ -94,6 +96,8 @@ SOFTWARE.
               '<div class="sudoku-pad">' +
                 '<div class="pad-digits">' + numbers + '</div>' +
                 '<div class="pad-actions">' +
+                  '<button type="button" class="btn" data-action="undo" title="Undo" aria-label="Undo" disabled>' + GLYPHS.undo + '</button>' +
+                  '<button type="button" class="btn" data-action="redo" title="Redo" aria-label="Redo" disabled>' + GLYPHS.redo + '</button>' +
                   '<button type="button" class="btn" data-action="hintmode" aria-pressed="false" title="Pencil marks" aria-label="Pencil marks">' + GLYPHS.pencil + '</button>' +
                   '<button type="button" class="btn" data-action="delete" title="Clear cell" aria-label="Clear cell">' + GLYPHS.erase + '</button>' +
                   '<button type="button" class="btn" data-action="help" title="Help" aria-label="Help">' + GLYPHS.help + '</button>' +
@@ -111,6 +115,7 @@ SOFTWARE.
                   '<li>Clear a cell with the erase button, <b>Delete</b> or <b>Backspace</b>.</li>' +
                   '<li><b>Restart</b> clears your entries and keeps the clues; <b>New</b> deals a fresh board at the chosen difficulty.</li>' +
                   '<li>Switch to <b>Edit</b> to compose a board of your own; your numbers become its clues.</li>' +
+                  '<li>The undo and redo buttons step through your moves, <b>Ctrl+Z</b> and <b>Ctrl+Y</b> included; New, Restart, Clear and Solve are undoable steps like any other.</li>' +
                   '<li>The share button copies a link that reproduces the whole board, clues, entries and pencil marks alike.</li>' +
                   '<li>This help answers to the <b>?</b> key.</li>' +
                 '</ul>' +
@@ -164,6 +169,14 @@ SOFTWARE.
         var isEditingMode = false;
         var isHintMode = false;
         var selectedRow = 0, selectedCol = 0;
+
+        /* The undo history: a bounded stack of board snapshots (the same
+           serialization the share URL uses) and a cursor into it. In the
+           URL-owning habitats the browser's Back and Forward still walk
+           the same states through history; the buttons work everywhere. */
+        var UNDO_MAX = 200;
+        var undoStack = [];
+        var undoIndex = -1;
 
         /* Without its own URL there is no history-based undo, so the help
            text should not promise one. */
@@ -402,6 +415,8 @@ SOFTWARE.
             q('[data-action="reset"]').disabled = isEditingMode;
             q('[data-action="clear"]').disabled = !isEditingMode;
             q('[data-action="hintmode"]').setAttribute('aria-pressed', String(isHintMode));
+            q('[data-action="undo"]').disabled = undoIndex <= 0;
+            q('[data-action="redo"]').disabled = undoIndex >= undoStack.length - 1;
         }
 
         function selectCell(row, col) {
@@ -436,12 +451,40 @@ SOFTWARE.
                 /* In a window there is no URL to keep the game in, so it
                    keeps itself in browser storage instead: per-reader
                    continuity of the same class as the window arrangement,
-                   wiped by the settings dialog's Forget. The share link
-                   stays the canonical, addressable form. */
-                try { localStorage.setItem('pc-sudoku', difficultyDropdown.value + '|' + boardStateString()); } catch (err) { }
+                   wiped by the settings dialog's Forget. The whole undo
+                   history rides along, so a reopened window can still step
+                   back. The share link stays the canonical form. */
+                try {
+                    localStorage.setItem('pc-sudoku', JSON.stringify({
+                        d: difficultyDropdown.value, i: undoIndex, s: undoStack
+                    }));
+                } catch (err) { }
             }
             return shareLink.href;
         }
+
+        /* Every state change lands here: the snapshot joins the undo
+           history (dropping any redo tail), then the world redraws. */
+        function commit() {
+            var snapshot = boardStateString();
+            if (undoStack[undoIndex] !== snapshot) {
+                undoStack.length = undoIndex + 1;
+                undoStack.push(snapshot);
+                if (undoStack.length > UNDO_MAX) { undoStack.shift(); }
+                undoIndex = undoStack.length - 1;
+            }
+            render();
+            updateShareState();
+        }
+
+        function applyUndoCursor() {
+            applyBoardString(undoStack[undoIndex]);
+            render();
+            updateShareState();
+        }
+
+        function undo() { if (undoIndex > 0) { undoIndex--; applyUndoCursor(); } }
+        function redo() { if (undoIndex < undoStack.length - 1) { undoIndex++; applyUndoCursor(); } }
 
         function parseCell(cellString) {
             return {
@@ -451,10 +494,7 @@ SOFTWARE.
             };
         }
 
-        function setBoardStateFromParams(params) {
-            var boardStateStr = params.get('board');
-            if (!boardStateStr) { return false; }
-
+        function applyBoardString(boardStateStr) {
             var rows = boardStateStr.split('-');
             for (var row = 0; row < rows.length; row++) {
                 var cols = rows[row].split('.');
@@ -465,6 +505,12 @@ SOFTWARE.
                     boardState[row][col].hints = parsed.hints;
                 }
             }
+        }
+
+        function setBoardStateFromParams(params) {
+            var boardStateStr = params.get('board');
+            if (!boardStateStr) { return false; }
+            applyBoardString(boardStateStr);
             return true;
         }
 
@@ -477,8 +523,24 @@ SOFTWARE.
                 removeNumbers(difficulty);
             } while (!checkUnique());
 
-            render();
-            updateShareState();
+            commit();
+        }
+
+        /* A legal placement settles the digit for its row, column and box,
+           so their pencil marks of that digit are erased. It happens inside
+           the same undo step, so one undo brings the marks back. */
+        function eraseNeighborNotes(digit, row, col) {
+            function drop(r, c) {
+                var hints = boardState[r][c].hints;
+                var at = hints.indexOf(digit);
+                if (at !== -1) { hints.splice(at, 1); }
+            }
+            for (var x = 0; x < BOARD_SIZE; x++) { drop(row, x); drop(x, col); }
+            var boxRow = Math.floor(row / 3) * 3;
+            var boxCol = Math.floor(col / 3) * 3;
+            for (var r = boxRow; r < boxRow + 3; r++) {
+                for (var c = boxCol; c < boxCol + 3; c++) { drop(r, c); }
+            }
         }
 
         function enterNumber(digit, isHintEntry) {
@@ -490,16 +552,17 @@ SOFTWARE.
                 if (hintIndex === -1) { hintsArray.push(digit); } else { hintsArray.splice(hintIndex, 1); }
             } else {
                 updateBoard(selectedRow, selectedCol, digit);
+                if (digit !== 0 && isValidMove(selectedRow, selectedCol, digit)) {
+                    eraseNeighborNotes(digit, selectedRow, selectedCol);
+                }
             }
-            render();
-            updateShareState();
+            commit();
         }
 
         function clearCell() {
             if (!canEdit(selectedRow, selectedCol)) { return; }
             updateBoard(selectedRow, selectedCol, 0);
-            render();
-            updateShareState();
+            commit();
         }
 
         function toggleHint() {
@@ -540,8 +603,7 @@ SOFTWARE.
 
         q('[data-action="solve"]').addEventListener('click', function () {
             solveBoard();
-            render();
-            updateShareState();
+            commit();
         });
 
         q('[data-action="reset"]').addEventListener('click', function () {
@@ -554,15 +616,18 @@ SOFTWARE.
                     }
                 }
             }
-            render();
-            updateShareState();
+            commit();
         });
 
         q('[data-action="clear"]').addEventListener('click', function () {
             clearGameBoard();
-            render();
-            updateShareState();
+            commit();
         });
+
+        /* The button may disable itself mid-click, which would drop focus
+           to the body and take the keyboard with it; the game keeps it. */
+        q('[data-action="undo"]').addEventListener('click', function () { undo(); root.focus({ preventScroll: true }); });
+        q('[data-action="redo"]').addEventListener('click', function () { redo(); root.focus({ preventScroll: true }); });
 
         q('[data-action="hintmode"]').addEventListener('click', toggleHint);
         q('[data-action="help"]').addEventListener('click', toggleHelp);
@@ -587,6 +652,12 @@ SOFTWARE.
         });
 
         function onKeyDown(event) {
+            if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+                var chord = event.key.toLowerCase();
+                if (chord === 'z' && !event.shiftKey) { undo(); event.preventDefault(); }
+                else if (chord === 'y' || (chord === 'z' && event.shiftKey)) { redo(); event.preventDefault(); }
+                return;
+            }
             if (event.altKey || event.ctrlKey || event.metaKey) { return; }
             if (event.target.closest('select, input, textarea')) { return; }
 
@@ -640,10 +711,21 @@ SOFTWARE.
 
         var onPopState = null;
         if (ownUrl) {
+            /* Back and Forward already put the right URL in place, so this
+               only reads it; writing history here would truncate the
+               forward entries and break redo. The restored state joins the
+               undo stack so the buttons stay usable after a Back. */
             onPopState = function () {
-                setBoardStateFromParams(new URLSearchParams(window.location.search));
+                if (!setBoardStateFromParams(new URLSearchParams(window.location.search))) { return; }
+                var snapshot = boardStateString();
+                if (undoStack[undoIndex] !== snapshot) {
+                    undoStack.length = undoIndex + 1;
+                    undoStack.push(snapshot);
+                    if (undoStack.length > UNDO_MAX) { undoStack.shift(); }
+                    undoIndex = undoStack.length - 1;
+                }
                 render();
-                updateShareState();
+                shareLink.href = window.location.href;
             };
             window.addEventListener('popstate', onPopState);
         }
@@ -651,20 +733,32 @@ SOFTWARE.
         /* === Start ======================================================== */
 
         var params = ownUrl ? new URLSearchParams(window.location.search) : new URLSearchParams('');
+        var restoredStack = null;
+        var restoredIndex = -1;
         if (!ownUrl) {
-            /* A window resumes the stored game, if any. */
+            /* A window resumes the stored game, undo history included. The
+               older stored form was "difficulty|board" and still reads. */
             try {
                 var saved = localStorage.getItem('pc-sudoku');
-                var sep = saved ? saved.indexOf('|') : -1;
-                if (sep > 0) {
-                    params.set('difficulty', saved.slice(0, sep));
-                    params.set('board', saved.slice(sep + 1));
+                if (saved && saved.charAt(0) === '{') {
+                    var stored = JSON.parse(saved);
+                    if (stored && Array.isArray(stored.s) && stored.s.length > 0) {
+                        restoredStack = stored.s;
+                        restoredIndex = Math.min(Math.max(stored.i | 0, 0), stored.s.length - 1);
+                        params.set('difficulty', stored.d || 'medium');
+                        params.set('board', stored.s[restoredIndex]);
+                    }
+                } else if (saved && saved.indexOf('|') > 0) {
+                    params.set('difficulty', saved.slice(0, saved.indexOf('|')));
+                    params.set('board', saved.slice(saved.indexOf('|') + 1));
                 }
             } catch (err) { }
         }
         difficultyDropdown.value = params.get('difficulty') || 'medium';
 
         if (setBoardStateFromParams(params)) {
+            undoStack = restoredStack || [boardStateString()];
+            undoIndex = restoredIndex >= 0 ? restoredIndex : undoStack.length - 1;
             render();
             updateShareState();
         } else {
