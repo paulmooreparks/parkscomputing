@@ -24,18 +24,35 @@ SOFTWARE.
 
 /* Sudoku as a PUDL applet: init(root, opts) builds the whole game inside
    root, scopes every lookup and listener to it, and returns an instance
-   with destroy(). Stand-alone (opts.ownsUrl) it keeps the game in the
-   page URL, with the browser's back and forward as undo and redo,
-   exactly as before; inside a PUDL window it leaves the URL to the
-   windows and the share button carries the game's own page URL instead. */
+   with destroy(). It runs in four habitats: a PUDL window, the classic
+   article page, the bare ?frame page, and stand-alone as a web app; the
+   habitat only changes how the game sizes itself. Stand-alone (with
+   opts.ownsUrl) it keeps the game in the page URL, with the browser's
+   back and forward as undo and redo; inside a PUDL window it leaves the
+   URL to the windows and the share button carries the game's own page
+   URL instead.
+
+   Everything visible is drawn by one render() from the game state, so a
+   control can never drift out of step with the board. */
 (function () {
     'use strict';
 
     var BOARD_SIZE = 9;
 
+    /* Chrome glyphs are inline SVG strokes in currentColor, per PUDL
+       0.16.0: nothing here can render as a colour emoji, and every glyph
+       follows the theme. */
+    var GLYPHS = {
+        pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3l4 4L8 20l-5 1 1-5z"/></svg>',
+        erase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+        help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9a3 3 0 1 1 4.6 2.5c-1 .7-1.6 1.3-1.6 2.5"/><circle cx="12" cy="18" r="0.5" fill="currentColor"/></svg>',
+        share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11M8 6l4-3 4 3"/><path d="M5 12v8h14v-8"/></svg>'
+    };
+
     function buildMarkup(root) {
-        var cells = '';
+        var rows = '';
         for (var row = 0; row < BOARD_SIZE; row++) {
+            var rowCells = '';
             for (var col = 0; col < BOARD_SIZE; col++) {
                 var classes = 'cell';
                 if (col === 0) { classes += ' cell-left'; }
@@ -44,59 +61,66 @@ SOFTWARE.
                 if (row % 3 === 2) { classes += ' cell-bottom'; }
                 var hints = '';
                 for (var digit = 1; digit <= 9; digit++) { hints += '<div class="hint">' + digit + '</div>'; }
-                cells += '<div class="' + classes + '" data-cell="' + row + '-' + col + '">' +
-                         '<div class="hints">' + hints + '</div><div class="main-number"></div></div>';
+                rowCells += '<div class="' + classes + '" role="gridcell" aria-selected="false" data-cell="' + row + '-' + col + '">' +
+                            '<div class="hints" aria-hidden="true">' + hints + '</div><div class="main-number"></div></div>';
             }
+            rows += '<div class="board-row" role="row">' + rowCells + '</div>';
         }
 
         var numbers = '';
         for (var n = 1; n <= 9; n++) {
-            numbers += '<button type="button" class="btn number-button" data-num="' + n + '">' + n + '</button>';
+            numbers += '<button type="button" class="btn number-button" data-num="' + n + '" aria-label="Enter ' + n + '">' + n + '</button>';
         }
 
         root.innerHTML =
-            '<div class="sudoku-top">' +
-              '<h1>Sudoku</h1>' +
-              '<div class="mode-controls">' +
-                '<select class="form-select" data-role="difficulty" aria-label="Select difficulty">' +
-                  '<option value="easy">Easy</option><option value="medium">Medium</option>' +
-                  '<option value="hard">Hard</option><option value="veryhard">Very Hard</option>' +
-                '</select>' +
-                '<button type="button" class="btn btn-primary" data-action="new">New</button>' +
-                '<button type="button" class="btn" data-action="reset">Restart</button>' +
-                '<button type="button" class="btn btn-danger" data-action="clear" hidden>Clear</button>' +
-                '<button type="button" class="btn" data-action="edit">Editor</button>' +
-                '<button type="button" class="btn" data-action="solve">Solve</button>' +
-                '<a data-role="share-link" href="#" hidden>Link to Current Board</a>' +
+            '<div class="sudoku-toolbar">' +
+              '<div class="seg sudoku-mode" role="group" aria-label="Mode">' +
+                '<button type="button" data-mode="play" aria-pressed="true">Play</button>' +
+                '<button type="button" data-mode="edit" aria-pressed="false">Edit</button>' +
               '</div>' +
+              '<select class="form-select" data-role="difficulty" aria-label="Difficulty">' +
+                '<option value="easy">Easy</option><option value="medium">Medium</option>' +
+                '<option value="hard">Hard</option><option value="veryhard">Very Hard</option>' +
+              '</select>' +
+              '<button type="button" class="btn btn-primary" data-action="new">New</button>' +
+              '<button type="button" class="btn" data-action="reset">Restart</button>' +
+              '<button type="button" class="btn" data-action="clear" disabled>Clear</button>' +
+              '<button type="button" class="btn" data-action="solve">Solve</button>' +
             '</div>' +
-            '<div class="sudoku-stage">' +
-              '<div class="sudoku-board" data-role="board">' + cells +
-                '<div class="help-text" data-role="help">' +
-                  '<p><a href="https://en.wikipedia.org/wiki/Sudoku" target="_blank" rel="noopener">Sudoku</a> by Paul Parks</p>' +
-                  '<ul>' +
-                    '<li>Touch any cell or use the arrow keys to select a cell.</li>' +
-                    '<li>To enter a number, touch one of the number buttons or type a number.</li>' +
-                    '<li>To enter a hint, touch the ✏ button or hold the SHIFT key while typing a number.</li>' +
-                    '<li>To clear a cell, touch the ❌ button or press the DELETE key or BACKSPACE key.</li>' +
-                    '<li>To restart the game, touch the "Restart" button.</li>' +
-                    '<li>To generate a new game, select a difficulty from the drop-down, then touch the "New" button.</li>' +
-                    '<li>To create a game of your own, touch the "Editor" button.</li>' +
-                    '<li>To remove this help text, touch the ❓ button or press the ? key.</li>' +
-                  '</ul>' +
-                  '<p data-role="undo-note">Game state is saved in the browser history. Use your browser’s back and forward functions to undo and redo entries.</p>' +
-                  '<p>To share your game with someone, use the ↗ button. All of the clues, hints, and number entries will be preserved.</p>' +
-                  '<p>Licensed under <a href="https://mit-license.org/" target="_blank" rel="noopener">MIT License</a>. Source available on <a href="https://github.com/parkscomputing/sudoku" target="_blank" rel="noopener">GitHub</a>.</p>' +
+            '<div class="sudoku-play">' +
+              '<div class="board-box">' +
+                '<div class="sudoku-board" data-role="board" role="grid" aria-label="Sudoku board">' + rows + '</div>' +
+              '</div>' +
+              '<div class="sudoku-pad">' +
+                '<div class="pad-digits">' + numbers + '</div>' +
+                '<div class="pad-actions">' +
+                  '<button type="button" class="btn" data-action="hintmode" aria-pressed="false" title="Pencil marks" aria-label="Pencil marks">' + GLYPHS.pencil + '</button>' +
+                  '<button type="button" class="btn" data-action="delete" title="Clear cell" aria-label="Clear cell">' + GLYPHS.erase + '</button>' +
+                  '<button type="button" class="btn" data-action="help" title="Help" aria-label="Help">' + GLYPHS.help + '</button>' +
+                  '<button type="button" class="btn" data-action="share" title="Copy shareable link" aria-label="Copy shareable link">' + GLYPHS.share + '</button>' +
                 '</div>' +
               '</div>' +
-              '<div class="number-controls">' + numbers + '</div>' +
-              '<div class="number-controls controls-centered">' +
-                '<button type="button" class="btn" data-action="hintmode" aria-pressed="false" title="Hint entry">✏</button>' +
-                '<button type="button" class="btn" data-action="delete" title="Clear cell">❌</button>' +
-                '<button type="button" class="btn" data-action="help" aria-pressed="false" title="Help">❓</button>' +
-                '<button type="button" class="btn" data-action="share" title="Copy shareable URL" aria-label="Copy shareable URL">↗</button>' +
+            '</div>' +
+            '<a class="sudoku-share-link" data-role="share-link" href="#" hidden>Link to this board</a>' +
+            '<dialog class="dialog sudoku-help">' +
+              '<h3 class="dialog-title">How to play</h3>' +
+              '<div class="dialog-body">' +
+                '<ul>' +
+                  '<li>Click a cell, or move with the arrow keys, then type a number or press one of the number buttons.</li>' +
+                  '<li>For pencil marks, press the pencil button (or the <b>H</b> key) to latch pencil entry, or hold <b>Shift</b> while typing a number.</li>' +
+                  '<li>Clear a cell with the erase button, <b>Delete</b> or <b>Backspace</b>.</li>' +
+                  '<li><b>Restart</b> clears your entries and keeps the clues; <b>New</b> deals a fresh board at the chosen difficulty.</li>' +
+                  '<li>Switch to <b>Edit</b> to compose a board of your own; your numbers become its clues.</li>' +
+                  '<li>The share button copies a link that reproduces the whole board, clues, entries and pencil marks alike.</li>' +
+                  '<li>This help answers to the <b>?</b> key.</li>' +
+                '</ul>' +
+                '<p class="sudoku-fine" data-role="undo-note">The game lives in the page address, so your browser&#8217;s Back and Forward are undo and redo.</p>' +
+                '<p class="sudoku-fine">Sudoku by Paul Parks. Licensed under the <a href="https://mit-license.org/" target="_blank" rel="noopener">MIT License</a>; source on <a href="https://github.com/parkscomputing/sudoku" target="_blank" rel="noopener">GitHub</a>.</p>' +
               '</div>' +
-            '</div>';
+              '<div class="dialog-actions">' +
+                '<button type="button" class="btn btn-primary" data-action="help-close">Close</button>' +
+              '</div>' +
+            '</dialog>';
     }
 
     function init(root, opts) {
@@ -106,14 +130,22 @@ SOFTWARE.
 
         buildMarkup(root);
         root.classList.add('pc-sudoku');
+
+        /* The habitat decides the sizing strategy: a PUDL window and the
+           bare page fill the box they are given; the classic article lets
+           the page flow and caps the board against the viewport. */
+        var inWindow = !!root.closest('.win');
+        var isBarePage = ownUrl && new URLSearchParams(location.search).has('frame');
+        root.classList.add(inWindow ? 'pc-sudoku-fit' : isBarePage ? 'pc-sudoku-app' : 'pc-sudoku-flow');
+
         if (!root.hasAttribute('tabindex')) { root.tabIndex = 0; }
 
         var q = function (sel) { return root.querySelector(sel); };
 
         var boardEl = q('[data-role="board"]');
         var difficultyDropdown = q('[data-role="difficulty"]');
-        var helpText = q('[data-role="help"]');
         var shareLink = q('[data-role="share-link"]');
+        var helpDialog = q('.sudoku-help');
 
         var cells = [];
         for (var r = 0; r < BOARD_SIZE; r++) {
@@ -131,15 +163,13 @@ SOFTWARE.
 
         var isEditingMode = false;
         var isHintMode = false;
-        var helpDisplay = false;
         var selectedRow = 0, selectedCol = 0;
-        var selectedCell = cells[0][0];
 
         /* Without its own URL there is no history-based undo, so the help
            text should not promise one. */
         if (!ownUrl) { q('[data-role="undo-note"]').hidden = true; }
 
-        /* === Board logic (unchanged from the page-scoped original) ======= */
+        /* === Board logic ================================================== */
 
         function getShuffledArray() {
             var array = Array.from({ length: BOARD_SIZE }, function (_, i) { return i + 1; });
@@ -287,8 +317,6 @@ SOFTWARE.
             boardState[row][col].clue = isEditingMode && (value !== 0);
         }
 
-        function updateHints(row, col, hints) { boardState[row][col].hints = hints; }
-
         function isValidMove(row, col, value) {
             if (value === 0) { return true; }
             for (var c2 = 0; c2 < BOARD_SIZE; c2++) {
@@ -307,92 +335,79 @@ SOFTWARE.
             return true;
         }
 
-        /* === Rendering ==================================================== */
+        function canEdit(row, col) { return isEditingMode || !isClue(row, col); }
 
-        function drawNumber(number, numberElement, hints) {
-            numberElement.classList.remove('invalid-number');
-            if (number !== 0) {
-                numberElement.textContent = number;
-                hints.forEach(function (hint) { hint.style.visibility = 'hidden'; });
-            } else {
-                numberElement.textContent = '';
-                numberElement.className = 'main-number';
-                numberElement.setAttribute('data-editable', 'true');
-                hints.forEach(function (hint) { hint.style.visibility = 'visible'; });
-            }
+        /* === Rendering ====================================================
+           One pass draws everything from the state: the cells, the number
+           pad, the toolbar. Nothing else touches classes, so nothing can
+           fall out of step with the board. */
+
+        function cellLabel(row, col) {
+            var cellData = boardState[row][col];
+            var what = cellData.value
+                ? (cellData.clue ? 'clue ' : '') + cellData.value
+                : (cellData.hints.length ? 'pencil marks ' + cellData.hints.join(', ') : 'empty');
+            return 'Row ' + (row + 1) + ', column ' + (col + 1) + ', ' + what;
         }
 
-        function populateBoardFromState() {
+        function render() {
+            var isComplete = true;
+            var isValidBoard = true;
+
             for (var row = 0; row < BOARD_SIZE; row++) {
                 for (var col = 0; col < BOARD_SIZE; col++) {
                     var cellData = boardState[row][col];
                     var cell = cells[row][col];
                     var numberElement = cell.querySelector('.main-number');
-                    var hints = cell.querySelectorAll('.hint');
+                    var hintEls = cell.querySelectorAll('.hint');
 
-                    hints.forEach(function (hint) { hint.classList.remove('active-hint'); });
-                    drawNumber(cellData.value || 0, numberElement, hints);
+                    var invalid = !isValidMove(row, col, cellData.value);
+                    if (invalid) { isValidBoard = false; }
+                    if (cellData.value === 0) { isComplete = false; }
 
-                    cellData.hints.forEach(function (digit) {
-                        var hintElement = cell.querySelector('.hint:nth-child(' + digit + ')');
-                        if (hintElement !== null) { hintElement.classList.add('active-hint'); }
-                    });
+                    numberElement.textContent = cellData.value || '';
+                    numberElement.className = 'main-number'
+                        + (cellData.clue ? ' static-number' : ' game-number')
+                        + (invalid ? ' invalid-number' : '');
 
-                    if (cellData.clue) {
-                        numberElement.className = 'main-number static-number';
-                        numberElement.setAttribute('data-editable', 'false');
-                    } else {
-                        numberElement.className = 'main-number game-number';
-                        numberElement.setAttribute('data-editable', 'true');
+                    for (var d = 1; d <= 9; d++) {
+                        var hintEl = hintEls[d - 1];
+                        var on = cellData.value === 0 && cellData.hints.indexOf(d) !== -1;
+                        hintEl.classList.toggle('active-hint', on);
                     }
-                }
-            }
-        }
 
-        function checkBoard() {
-            var isValidBoard = true;
-            var isComplete = true;
-            boardEl.classList.remove('winner');
-
-            for (var row = 0; row < BOARD_SIZE; row++) {
-                for (var col = 0; col < BOARD_SIZE; col++) {
-                    var digit = getDigit(row, col);
-                    var numberElement = cells[row][col].querySelector('.main-number');
-                    numberElement.className = 'main-number game-number';
-                    if (isClue(row, col)) { numberElement.className = 'main-number static-number'; }
-                    if (!isValidMove(row, col, digit)) {
-                        numberElement.classList.add('invalid-number');
-                        isValidBoard = false;
-                    }
-                    if (digit === 0) { isComplete = false; }
+                    var selected = row === selectedRow && col === selectedCol;
+                    cell.classList.toggle('selected', selected);
+                    cell.setAttribute('aria-selected', String(selected));
+                    cell.setAttribute('aria-label', cellLabel(row, col));
                 }
             }
 
-            if (isComplete && isValidBoard) { boardEl.classList.add('winner'); }
-            return isValidBoard;
+            boardEl.classList.toggle('winner', isComplete && isValidBoard);
+
+            /* The number pad reflects the selected cell: its value, or its
+               pencil marks in pencil mode. Derived fresh every time, so it
+               cannot lose its anchor to the board. */
+            var selValue = getDigit(selectedRow, selectedCol);
+            var selHints = getHints(selectedRow, selectedCol);
+            for (var digit = 1; digit <= 9; digit++) {
+                var lit = isHintMode
+                    ? (selValue === 0 && selHints.indexOf(digit) !== -1)
+                    : (canEdit(selectedRow, selectedCol) && selValue === digit);
+                numButtons[digit].classList.toggle('selected', lit);
+            }
+
+            q('[data-mode="play"]').setAttribute('aria-pressed', String(!isEditingMode));
+            q('[data-mode="edit"]').setAttribute('aria-pressed', String(isEditingMode));
+            q('[data-action="reset"]').disabled = isEditingMode;
+            q('[data-action="clear"]').disabled = !isEditingMode;
+            q('[data-action="hintmode"]').setAttribute('aria-pressed', String(isHintMode));
         }
 
         function selectCell(row, col) {
-            selectedCell.classList.remove('selected');
             selectedRow = row;
             selectedCol = col;
-            selectedCell = cells[row][col];
-            selectedCell.classList.add('selected');
-
-            for (var digit = 1; digit <= 9; digit++) {
-                if (numButtons[digit]) { numButtons[digit].classList.remove('selected'); }
-            }
-
-            var cellValue = getDigit(row, col);
-            if (isHintMode) {
-                if (cellValue === 0) {
-                    getHints(row, col).forEach(function (digit) {
-                        if (numButtons[digit]) { numButtons[digit].classList.add('selected'); }
-                    });
-                }
-            } else if (!isClue(row, col)) {
-                if (numButtons[cellValue]) { numButtons[cellValue].classList.add('selected'); }
-            }
+            render();
         }
 
         /* === Game state in the URL, or in the share link ================== */
@@ -453,83 +468,61 @@ SOFTWARE.
                 removeNumbers(difficulty);
             } while (!checkUnique());
 
-            populateBoardFromState();
-            checkBoard();
+            render();
             updateShareState();
         }
 
-        function updateNumberCell(digit, cell, isHintEntry) {
-            var numberElement = cell.querySelector('.main-number');
-            var hints = cell.querySelectorAll('.hint');
-
-            numberElement.classList.remove('invalid-number');
-            numberElement.classList.remove('game-number');
+        function enterNumber(digit, isHintEntry) {
+            if (!canEdit(selectedRow, selectedCol)) { return; }
 
             if (isHintEntry) {
                 var hintsArray = getHints(selectedRow, selectedCol);
                 var hintIndex = hintsArray.indexOf(digit);
-                var hintElement = cell.querySelector('.hint:nth-child(' + digit + ')');
-
-                if (hintIndex === -1) {
-                    hintsArray.push(digit);
-                    if (hintElement !== null) { hintElement.classList.add('active-hint'); }
-                } else {
-                    hintsArray.splice(hintIndex, 1);
-                    if (hintElement !== null) { hintElement.classList.remove('active-hint'); }
-                }
-                updateHints(selectedRow, selectedCol, hintsArray);
+                if (hintIndex === -1) { hintsArray.push(digit); } else { hintsArray.splice(hintIndex, 1); }
             } else {
                 updateBoard(selectedRow, selectedCol, digit);
-                drawNumber(digit, numberElement, hints);
             }
-
-            checkBoard();
-            selectCell(selectedRow, selectedCol);
+            render();
             updateShareState();
         }
 
-        function clearCell(row, col) {
-            var numberElement = selectedCell.querySelector('.main-number');
-            var hints = selectedCell.querySelectorAll('.hint');
-            updateBoard(row, col, 0);
-            drawNumber(0, numberElement, hints);
-            checkBoard();
-            selectCell(row, col);
+        function clearCell() {
+            if (!canEdit(selectedRow, selectedCol)) { return; }
+            updateBoard(selectedRow, selectedCol, 0);
+            render();
             updateShareState();
         }
 
         function toggleHint() {
             isHintMode = !isHintMode;
-            q('[data-action="hintmode"]').setAttribute('aria-pressed', String(isHintMode));
-            selectCell(selectedRow, selectedCol);
+            render();
         }
 
         function toggleHelp() {
-            helpDisplay = !helpDisplay;
-            helpText.classList.toggle('open', helpDisplay);
-            q('[data-action="help"]').setAttribute('aria-pressed', String(helpDisplay));
+            if (helpDialog.open) { helpDialog.close(); } else { helpDialog.showModal(); }
         }
 
         /* === Wiring ======================================================= */
 
-        for (var br = 0; br < BOARD_SIZE; br++) {
-            for (var bc = 0; bc < BOARD_SIZE; bc++) {
-                (function (row, col) {
-                    cells[row][col].addEventListener('click', function () {
-                        selectCell(row, col);
-                        root.focus({ preventScroll: true });
-                    });
-                })(br, bc);
-            }
-        }
+        boardEl.addEventListener('click', function (e) {
+            var cell = e.target.closest('[data-cell]');
+            if (!cell) { return; }
+            var rc = cell.getAttribute('data-cell').split('-');
+            selectCell(parseInt(rc[0], 10), parseInt(rc[1], 10));
+            root.focus({ preventScroll: true });
+        });
 
         Object.keys(numButtons).forEach(function (digit) {
             numButtons[digit].addEventListener('click', function () {
-                var numberElement = selectedCell.querySelector('.main-number');
-                if (isEditingMode || numberElement.getAttribute('data-editable') !== 'false') {
-                    updateNumberCell(parseInt(digit, 10), selectedCell, isHintMode);
-                }
+                enterNumber(parseInt(digit, 10), isHintMode);
             });
+        });
+
+        q('.sudoku-mode').addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-mode]');
+            if (!btn) { return; }
+            isEditingMode = btn.getAttribute('data-mode') === 'edit';
+            render();
         });
 
         q('[data-action="new"]').addEventListener('click', function () {
@@ -538,18 +531,8 @@ SOFTWARE.
 
         q('[data-action="solve"]').addEventListener('click', function () {
             solveBoard();
-            populateBoardFromState();
-            checkBoard();
+            render();
             updateShareState();
-        });
-
-        q('[data-action="edit"]').addEventListener('click', function () {
-            isEditingMode = !isEditingMode;
-            this.textContent = isEditingMode ? 'Gameplay' : 'Editor';
-            q('[data-action="reset"]').hidden = isEditingMode;
-            q('[data-action="clear"]').hidden = !isEditingMode;
-            populateBoardFromState();
-            checkBoard();
         });
 
         q('[data-action="reset"]').addEventListener('click', function () {
@@ -562,27 +545,20 @@ SOFTWARE.
                     }
                 }
             }
-            populateBoardFromState();
-            checkBoard();
+            render();
             updateShareState();
         });
 
         q('[data-action="clear"]').addEventListener('click', function () {
             clearGameBoard();
-            populateBoardFromState();
-            checkBoard();
+            render();
             updateShareState();
         });
 
         q('[data-action="hintmode"]').addEventListener('click', toggleHint);
         q('[data-action="help"]').addEventListener('click', toggleHelp);
-
-        q('[data-action="delete"]').addEventListener('click', function () {
-            var numberElement = selectedCell.querySelector('.main-number');
-            if (isEditingMode || numberElement.getAttribute('data-editable') !== 'false') {
-                clearCell(selectedRow, selectedCol);
-            }
-        });
+        q('[data-action="help-close"]').addEventListener('click', function () { helpDialog.close(); });
+        q('[data-action="delete"]').addEventListener('click', clearCell);
 
         q('[data-action="share"]').addEventListener('click', function () {
             var shareBtn = this;
@@ -609,24 +585,21 @@ SOFTWARE.
             if (event.key === 'h' || event.key === 'H') { toggleHint(); }
 
             var isHintEntry = event.shiftKey || isHintMode;
-            var numberElement = selectedCell.querySelector('.main-number');
 
-            if (isEditingMode || numberElement.getAttribute('data-editable') !== 'false') {
-                if (event.code === 'Delete' || event.code === 'Backspace' ||
-                    (event.code === 'NumpadDecimal' && !event.getModifierState('NumLock'))) {
-                    clearCell(selectedRow, selectedCol);
+            if (event.code === 'Delete' || event.code === 'Backspace' ||
+                (event.code === 'NumpadDecimal' && !event.getModifierState('NumLock'))) {
+                clearCell();
+                event.preventDefault();
+            }
+            else if (event.code.indexOf('Digit') === 0) {
+                var digit = parseInt(event.code.replace('Digit', ''), 10);
+                if (digit >= 1 && digit <= 9) { enterNumber(digit, isHintEntry); event.preventDefault(); }
+            }
+            else if (event.code.indexOf('Numpad') === 0 && event.getModifierState('NumLock')) {
+                var npDigit = parseInt(event.code.replace('Numpad', ''), 10);
+                if (Number.isInteger(npDigit) && npDigit >= 1 && npDigit <= 9) {
+                    enterNumber(npDigit, isHintEntry);
                     event.preventDefault();
-                }
-                else if (event.code.indexOf('Digit') === 0) {
-                    var digit = parseInt(event.code.replace('Digit', ''), 10);
-                    if (digit >= 1 && digit <= 9) { updateNumberCell(digit, selectedCell, isHintEntry); event.preventDefault(); }
-                }
-                else if (event.code.indexOf('Numpad') === 0 && event.getModifierState('NumLock')) {
-                    var npDigit = parseInt(event.code.replace('Numpad', ''), 10);
-                    if (Number.isInteger(npDigit) && npDigit >= 1 && npDigit <= 9) {
-                        updateNumberCell(npDigit, selectedCell, isHintEntry);
-                        event.preventDefault();
-                    }
                 }
             }
 
@@ -651,7 +624,7 @@ SOFTWARE.
             }
 
             if (moved) { event.preventDefault(); }
-            selectCell(selectedRow, selectedCol);
+            render();
         }
 
         root.addEventListener('keydown', onKeyDown);
@@ -660,8 +633,7 @@ SOFTWARE.
         if (ownUrl) {
             onPopState = function () {
                 setBoardStateFromParams(new URLSearchParams(window.location.search));
-                populateBoardFromState();
-                checkBoard();
+                render();
                 updateShareState();
             };
             window.addEventListener('popstate', onPopState);
@@ -673,18 +645,17 @@ SOFTWARE.
         difficultyDropdown.value = params.get('difficulty') || 'medium';
 
         if (setBoardStateFromParams(params)) {
-            populateBoardFromState();
-            checkBoard();
+            render();
             updateShareState();
         } else {
             generateNewBoard(difficultyDropdown.value);
         }
 
-        selectCell(0, 0);
         root.focus({ preventScroll: true });
 
         return {
             destroy: function () {
+                if (helpDialog.open) { helpDialog.close(); }
                 if (onPopState) { window.removeEventListener('popstate', onPopState); }
                 root.removeEventListener('keydown', onKeyDown);
             }
