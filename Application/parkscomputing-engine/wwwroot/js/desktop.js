@@ -212,23 +212,30 @@
        to the desktop resumes where they left off. The URL stays the
        authority: restoring just writes the saved parameters into it before
        pudl-windows reads it. */
-    function prefMaximize() {
-        try { return localStorage.getItem('pc-maximize-new') === '1'; } catch (err) { return false; }
+    function pref(name, fallback) {
+        try {
+            var v = localStorage.getItem('pc-' + name);
+            return v === null ? fallback : v === '1';
+        } catch (err) { return fallback; }
+    }
+
+    function prefDefault(box) {
+        return box.getAttribute('data-pref-default') === '1';
     }
 
     function initPrefs(layer) {
-        var box = document.querySelector('[data-pref="maximize-new"]');
-        if (box) {
-            box.checked = prefMaximize();
+        document.querySelectorAll('input[data-pref]').forEach(function (box) {
+            var name = box.getAttribute('data-pref');
+            box.checked = pref(name, prefDefault(box));
             box.addEventListener('change', function () {
-                try { localStorage.setItem('pc-maximize-new', box.checked ? '1' : '0'); } catch (err) { }
+                try { localStorage.setItem('pc-' + name, box.checked ? '1' : '0'); } catch (err) { }
             });
-        }
+        });
 
         /* New windows with no opener and no URL placement follow the
            preference. Registered after opener inheritance, which wins. */
         layer.addEventListener('pudl:window-place', function (e) {
-            if (e.detail.placement || !prefMaximize()) { return; }
+            if (e.detail.placement || !pref('maximize-new', false)) { return; }
             e.detail.placement = { mode: 'maximized', x: 0.06, y: 0.05, w: 0.55, h: 0.75 };
         });
 
@@ -248,6 +255,7 @@
        so a bare desktop URL picks up the saved arrangement in time. */
     function restoreWindows() {
         if (!document.querySelector('[data-win-layer]')) { return; }
+        if (!pref('resume-windows', true)) { return; }
         var q = new URLSearchParams(location.search);
         var hasWinParams = false;
         q.forEach(function (v, k) { if (isWinParam(k)) { hasWinParams = true; } });

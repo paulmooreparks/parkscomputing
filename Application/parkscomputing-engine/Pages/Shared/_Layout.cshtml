@@ -24,6 +24,9 @@
     <title>@ViewData["Title"]</title>
 
     <script src="~/pudl/pudl-theme.js"></script>
+    @* Site extension over PUDL's theme key: 'system' follows the OS. Runs
+       pre-paint, right after PUDL's own pre-paint script. *@
+    <script>(function () { try { if (localStorage.getItem('pudl-theme') === 'system') { document.documentElement.setAttribute('data-theme', matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); } } catch (e) { } })();</script>
     <link rel="stylesheet" href="~/pudl/pudl.css" />
     @if (isDesktop)
     {
@@ -78,8 +81,8 @@
                 {
                     <a class="topbar-pill" href="/">Window view</a>
                 }
-                <button class="theme-toggle" type="button" title="Toggle light / dark"
-                        onclick="pudlToggleTheme()">◐</button>
+                <button class="theme-toggle" type="button" title="Settings" aria-label="Settings"
+                        data-settings-open aria-haspopup="dialog">⚙</button>
             </div>
         </div>
         @if (!isDesktop)
@@ -134,6 +137,38 @@
             <button type="button" class="lightbox-btn lightbox-next" aria-label="Next image" hidden>❯</button>
         </div>
     </dialog>
+
+    @* The settings dialog, server-rendered per PUDL and shown by site.js.
+       Everything in it lives only in this browser's own storage. *@
+    <div class="dialog-backdrop" id="settings-dialog" hidden>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+            <h3 class="dialog-title" id="settings-title">Settings</h3>
+            <div class="dialog-body">
+                <div class="form-group">
+                    <span class="form-label" id="theme-label">Theme</span>
+                    <div class="seg" role="group" aria-labelledby="theme-label">
+                        <button type="button" data-theme-choice="light">Light</button>
+                        <button type="button" data-theme-choice="dark">Dark</button>
+                        <button type="button" data-theme-choice="system">System</button>
+                    </div>
+                </div>
+                @if (isDesktop)
+                {
+                    <div class="form-group">
+                        <label class="check"><input type="checkbox" data-pref="maximize-new"> Maximize new windows</label>
+                    </div>
+                    <div class="form-group">
+                        <label class="check"><input type="checkbox" data-pref="resume-windows" data-pref-default="1"> Reopen last session&#8217;s windows</label>
+                    </div>
+                }
+                <p class="settings-note">These choices, and the window arrangement, are kept only in this browser.</p>
+            </div>
+            <div class="dialog-actions">
+                <button class="btn btn-danger" type="button" data-settings-forget>⚠ Forget this browser&#8217;s data</button>
+                <button class="btn btn-primary" type="button" data-settings-close>Close</button>
+            </div>
+        </div>
+    </div>
 
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/lightbox.js" asp-append-version="true"></script>

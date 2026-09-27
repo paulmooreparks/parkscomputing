@@ -270,6 +270,18 @@ body.desktop .site-header { position: static; flex: none; }
    the layout itself (body:has(> .md-layout) fills the viewport); what
    follows is only this site's stage styling. */
 body.desktop .md-toolbar .md-section-label { padding: 0; }
+
+/* The dock is the toolbar's only elastic element: it grows, shrinks and
+   wraps its tabs internally, so the filter on its left holds its place
+   however many windows are open. */
+body.desktop .md-toolbar { flex-wrap: nowrap; }
+body.desktop .md-toolbar .win-dock { flex: 1 1 auto; min-width: 0; }
+@container md (max-width: 640px) {
+  body.desktop .md-toolbar { flex-wrap: wrap; }
+}
+
+/* The settings dialog's fine print. */
+.settings-note { font-size: 12px; color: var(--text-muted); margin: 14px 0 0; }
 body.desktop .md-sidebar { width: 300px; }
 body.desktop .app-section-bar { flex: none; }
 .desktop-filter-form { display: inline-flex; align-items: center; gap: 6px; }

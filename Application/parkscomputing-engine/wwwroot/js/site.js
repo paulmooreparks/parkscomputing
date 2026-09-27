@@ -65,6 +65,76 @@
         });
     })();
 
+    /* === The settings dialog ==============================================
+       Server-rendered per PUDL, shown from the topbar gear. The theme
+       segment writes PUDL's own storage key, extended with 'system' (the
+       head applies it pre-paint); the other settings bind themselves
+       elsewhere by their data-pref attributes. */
+    (function () {
+        var backdrop = document.getElementById('settings-dialog');
+        var opener = document.querySelector('[data-settings-open]');
+        if (!backdrop || !opener) { return; }
+
+        function markTheme() {
+            var saved = null;
+            try { saved = localStorage.getItem('pudl-theme'); } catch (err) { }
+            var mode = saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'dark';
+            backdrop.querySelectorAll('[data-theme-choice]').forEach(function (b) {
+                b.classList.toggle('active', b.getAttribute('data-theme-choice') === mode);
+            });
+        }
+
+        function setTheme(mode) {
+            try { localStorage.setItem('pudl-theme', mode); } catch (err) { }
+            var applied = mode === 'system'
+                ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                : mode;
+            document.documentElement.setAttribute('data-theme', applied);
+            markTheme();
+        }
+
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
+            var saved = null;
+            try { saved = localStorage.getItem('pudl-theme'); } catch (err) { }
+            if (saved === 'system') {
+                document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+            }
+        });
+
+        function open() {
+            markTheme();
+            backdrop.hidden = false;
+            var first = backdrop.querySelector('.active, input, button');
+            if (first) { first.focus(); }
+        }
+
+        function close() {
+            backdrop.hidden = true;
+            opener.focus();
+        }
+
+        opener.addEventListener('click', open);
+        backdrop.addEventListener('click', function (e) {
+            if (e.target === backdrop) { close(); }
+            var choice = e.target.closest('[data-theme-choice]');
+            if (choice) { setTheme(choice.getAttribute('data-theme-choice')); }
+            if (e.target.closest('[data-settings-close]')) { close(); }
+            if (e.target.closest('[data-settings-forget]')) {
+                ['pudl-theme', 'pc-maximize-new', 'pc-resume-windows', 'pc-windows'].forEach(function (key) {
+                    try { localStorage.removeItem(key); } catch (err) { }
+                });
+                document.documentElement.setAttribute('data-theme', 'dark');
+                backdrop.querySelectorAll('[data-pref]').forEach(function (box) {
+                    box.checked = box.getAttribute('data-pref-default') === '1';
+                });
+                markTheme();
+            }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !backdrop.hidden) { close(); }
+        });
+    })();
+
     /* Only one nav dropdown stays open at a time, and a click elsewhere
        closes it. The menus are native <details>, so they work without this. */
     document.addEventListener('click', function (e) {
