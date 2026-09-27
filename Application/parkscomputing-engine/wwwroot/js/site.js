@@ -80,22 +80,24 @@
     })();
 
     /* === The settings dialog ==============================================
-       Server-rendered per PUDL, shown from the topbar gear. The theme
-       segment writes PUDL's own storage key, extended with 'system' (the
-       head applies it pre-paint); the other settings bind themselves
-       elsewhere by their data-pref attributes. */
+       A native <dialog> per PUDL 0.16.0, opened and closed by the gear's
+       and Close button's command attributes (pudl-dialog.js covers browsers
+       without them), which also gives Escape, focus containment and the
+       backdrop for free. The theme segment writes PUDL's own storage key;
+       the other settings bind themselves elsewhere by their data-pref
+       attributes. State on the segments is marked with aria-pressed. */
     (function () {
-        var backdrop = document.getElementById('settings-dialog');
+        var dialog = document.getElementById('settings-dialog');
         var opener = document.querySelector('[data-settings-open]');
-        if (!backdrop || !opener) { return; }
+        if (!dialog) { return; }
 
         /* The theme is pudl-theme's own since 0.13.0: pudlSetTheme writes
            the choice, and pudl:theme-change keeps this dialog's marking in
            step, other tabs included. */
         function markTheme() {
             var mode = window.pudlThemePreference ? window.pudlThemePreference() : 'dark';
-            backdrop.querySelectorAll('[data-theme-choice]').forEach(function (b) {
-                b.classList.toggle('active', b.getAttribute('data-theme-choice') === mode);
+            dialog.querySelectorAll('[data-theme-choice]').forEach(function (b) {
+                b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-choice') === mode));
             });
         }
 
@@ -110,8 +112,8 @@
         }
 
         function markView() {
-            backdrop.querySelectorAll('[data-view-choice]').forEach(function (b) {
-                b.classList.toggle('active', b.getAttribute('data-view-choice') === viewChoice());
+            dialog.querySelectorAll('[data-view-choice]').forEach(function (b) {
+                b.setAttribute('aria-pressed', String(b.getAttribute('data-view-choice') === viewChoice()));
             });
         }
 
@@ -122,27 +124,18 @@
             markView();
         }
 
-        function open() {
-            markTheme();
-            markView();
-            backdrop.hidden = false;
-            var first = backdrop.querySelector('.active, input, button');
-            if (first) { first.focus(); }
-        }
+        /* The command button opens the dialog; this only freshens the
+           marking on the way in. */
+        if (opener) { opener.addEventListener('click', function () { markTheme(); markView(); }); }
 
-        function close() {
-            backdrop.hidden = true;
-            opener.focus();
-        }
-
-        opener.addEventListener('click', open);
-        backdrop.addEventListener('click', function (e) {
-            if (e.target === backdrop) { close(); }
+        dialog.addEventListener('click', function (e) {
+            /* A click on the backdrop reaches the dialog element itself. */
+            if (e.target === dialog) { dialog.close(); }
             var choice = e.target.closest('[data-theme-choice]');
             if (choice && window.pudlSetTheme) { window.pudlSetTheme(choice.getAttribute('data-theme-choice')); }
             var view = e.target.closest('[data-view-choice]');
             if (view) { setView(view.getAttribute('data-view-choice')); }
-            if (e.target.closest('[data-settings-close]')) { close(); }
+            if (e.target.closest('[data-settings-close]')) { dialog.close(); }
             if (e.target.closest('[data-settings-forget]')) {
                 ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w'].forEach(function (key) {
                     try { localStorage.removeItem(key); } catch (err) { }
@@ -151,15 +144,15 @@
                 setView('window');
                 /* Forgetting lands the theme on System: the device decides. */
                 if (window.pudlSetTheme) { window.pudlSetTheme('system'); }
-                backdrop.querySelectorAll('[data-pref]').forEach(function (box) {
+                dialog.querySelectorAll('[data-pref]').forEach(function (box) {
                     box.checked = box.getAttribute('data-pref-default') === '1';
                 });
                 markTheme();
             }
         });
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && !backdrop.hidden) { close(); }
-        });
+
+        markTheme();
+        markView();
     })();
 
     /* The go-to-page palette: '/' summons a small bar above the footer that

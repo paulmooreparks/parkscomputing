@@ -62,10 +62,10 @@
 }
 
 <nav class="app-section-bar" data-region="sections" aria-label="Categories">
-    <a class="section-tab @(Model.SelectedCats.Count == 0 ? "active" : null)" href="@Model.CategoryUrl(null)">All</a>
+    <a class="section-tab" aria-current="@(Model.SelectedCats.Count == 0 ? "true" : null)" href="@Model.CategoryUrl(null)">All</a>
     @foreach (var (slug, title) in Model.Categories)
     {
-        <a class="section-tab @(Model.SelectedCats.Count == 1 && Model.SelectedCats[0] == slug ? "active" : null)"
+        <a class="section-tab" aria-current="@(Model.SelectedCats.Count == 1 && Model.SelectedCats[0] == slug ? "true" : null)"
            href="@Model.CategoryUrl(slug)">@title</a>
     }
     @* Bare sitenav links (no children) are not categories: they live in
@@ -166,15 +166,15 @@
     <div class="md-chips" data-region="chips">
         @foreach (var cat in Model.SelectedCats)
         {
-            <span class="filter-chip"><span class="fc-kind">category</span> @Model.CatTitleOf(cat) <a class="filter-chip-x" href="@Model.RemoveCatUrl(cat)" aria-label="Remove the @Model.CatTitleOf(cat) category filter">×</a></span>
+            <span class="filter-chip"><span class="filter-chip-kind">category</span> @Model.CatTitleOf(cat) <a class="filter-chip-x" href="@Model.RemoveCatUrl(cat)" aria-label="Remove the @Model.CatTitleOf(cat) category filter">×</a></span>
         }
         @foreach (var tag in Model.SelectedTags)
         {
-            <span class="filter-chip"><span class="fc-kind">tag</span> @tag <a class="filter-chip-x" href="@Model.RemoveTagUrl(tag)" aria-label="Remove the @tag tag filter">×</a></span>
+            <span class="filter-chip"><span class="filter-chip-kind">tag</span> @tag <a class="filter-chip-x" href="@Model.RemoveTagUrl(tag)" aria-label="Remove the @tag tag filter">×</a></span>
         }
         @if (Model.Q is not null)
         {
-            <span class="filter-chip"><span class="fc-kind">filter</span> @Model.Q <a class="filter-chip-x" href="@Model.RemoveQUrl" aria-label="Remove the text filter">×</a></span>
+            <span class="filter-chip"><span class="filter-chip-kind">filter</span> @Model.Q <a class="filter-chip-x" href="@Model.RemoveQUrl" aria-label="Remove the text filter">×</a></span>
         }
         @if (Model.ActiveFilterCount > 1)
         {

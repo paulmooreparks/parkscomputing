@@ -73,17 +73,17 @@
                is a link, because each view is a URL; ?view=window bypasses
                a classic default-view choice. *@
             <nav class="seg view-seg" aria-label="View">
-                <a class="@(isDesktop ? "active" : null)" href="/?view=window" @(isDesktop ? Html.Raw("aria-current=\"true\"") : null)>Window</a>
-                <a class="@(isDesktop ? null : "active")" href="/home" @(isDesktop ? null : Html.Raw("aria-current=\"true\""))>Classic</a>
+                <a href="/?view=window" aria-current="@(isDesktop ? "true" : null)">Window</a>
+                <a href="/home" aria-current="@(isDesktop ? null : "true")">Classic</a>
             </nav>
             <div class="topbar-chrome">
                 <button class="theme-toggle" type="button" title="Settings" aria-label="Settings"
-                        data-settings-open aria-haspopup="dialog">⚙</button>
+                        data-settings-open command="show-modal" commandfor="settings-dialog">⚙</button>
             </div>
         </div>
         @if (!isDesktop)
         {
-            <nav class="site-nav" aria-label="Site">
+            <nav class="site-nav app-section-bar" aria-label="Site">
                 @await Component.InvokeAsync("Nav")
             </nav>
         }
@@ -134,10 +134,11 @@
         </div>
     </dialog>
 
-    @* The settings dialog, server-rendered per PUDL and shown by site.js.
-       Everything in it lives only in this browser's own storage. *@
-    <div class="dialog-backdrop" id="settings-dialog" hidden>
-        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    @* The settings dialog: a native <dialog> per PUDL 0.16.0, opened by the
+       gear's command button (pudl-dialog.js supplies command in browsers
+       that lack it). Everything in it lives only in this browser's own
+       storage. *@
+    <dialog class="dialog" id="settings-dialog" aria-labelledby="settings-title">
             <h3 class="dialog-title" id="settings-title">Settings</h3>
             <div class="dialog-body">
                 <div class="form-group">
@@ -168,10 +169,9 @@
             </div>
             <div class="dialog-actions">
                 <button class="btn btn-danger" type="button" data-settings-forget>⚠ Forget this browser&#8217;s data</button>
-                <button class="btn btn-primary" type="button" data-settings-close>Close</button>
+                <button class="btn btn-primary" type="button" command="close" commandfor="settings-dialog" data-settings-close>Close</button>
             </div>
-        </div>
-    </div>
+    </dialog>
 
     @if (!isFrame)
     {
@@ -197,6 +197,7 @@
         <script src="~/pudl/pudl-md.js" defer></script>
     }
     <script src="~/pudl/pudl-applets.js" defer></script>
+    <script src="~/pudl/pudl-dialog.js" defer></script>
     @RenderSection("BodyScripts", required: false)
     @if (isMarkdown)
     {
