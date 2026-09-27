@@ -162,4 +162,70 @@
         });
     })();
 
+    /* The go-to-page palette: '/' summons a small bar above the footer that
+       takes a slug (or a pasted URL of this site) and loads that page, in a
+       window on the desktop and as a navigation in the classic view.
+       Ctrl+Enter (or Shift+Enter) always navigates, for a page that reads
+       badly framed. Without script the form posts to /go, which redirects. */
+    (function () {
+        var bar = document.getElementById('goto-bar');
+        if (!bar) { return; }
+        var input = bar.querySelector('.goto-input');
+        var isDesktop = document.body.classList.contains('desktop');
+
+        function show() { bar.hidden = false; input.value = ''; input.focus(); }
+        function hide() { bar.hidden = true; }
+
+        function editable(el) {
+            return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'
+                || el.tagName === 'SELECT' || el.isContentEditable);
+        }
+
+        /* A slug, a site-relative path, or a full URL of this site all
+           reduce to the slug; anything else is refused quietly. */
+        function slugOf(text) {
+            var s = (text || '').trim();
+            if (/^https?:\/\//i.test(s)) {
+                try {
+                    var u = new URL(s);
+                    if (u.origin !== location.origin) { return null; }
+                    s = u.pathname;
+                } catch (err) { return null; }
+            }
+            s = s.replace(/^\/+/, '').replace(/^page\//, '').replace(/\/+$/, '');
+            return /^[A-Za-z0-9_-]+$/.test(s) ? s : null;
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === '/' && !e.ctrlKey && !e.altKey && !e.metaKey
+                && !editable(document.activeElement)) {
+                e.preventDefault();
+                show();
+            } else if (e.key === 'Escape' && !bar.hidden) {
+                hide();
+            }
+        });
+        document.addEventListener('pointerdown', function (e) {
+            if (!bar.hidden && !bar.contains(e.target)) { hide(); }
+        });
+
+        /* Ctrl+Enter does not submit a form on its own, so the escape hatch
+           is taken from the input directly. */
+        input.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' || !(e.ctrlKey || e.shiftKey)) { return; }
+            e.preventDefault();
+            var slug = slugOf(input.value);
+            if (slug) { hide(); location.assign('/page/' + slug); }
+        });
+
+        bar.addEventListener('submit', function (e) {
+            var slug = slugOf(input.value);
+            if (!slug) { e.preventDefault(); return; }
+            e.preventDefault();
+            hide();
+            if (isDesktop && window.pudlWindows) { window.pudlWindows.open(slug); }
+            else { location.assign('/page/' + slug); }
+        });
+    })();
+
 })();

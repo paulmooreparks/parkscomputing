@@ -173,6 +173,19 @@
         </div>
     </div>
 
+    @if (!isFrame)
+    {
+        @* The go-to-page palette, hidden until site.js shows it on '/'.
+           A plain GET form, so /go answers it even without the script. *@
+        <form class="goto-bar" id="goto-bar" action="/go" method="get" role="search" aria-label="Go to page" hidden>
+            <input class="form-input goto-input" name="slug" type="text" placeholder="go to page" aria-label="Page slug" autocomplete="off" spellcheck="false" />
+            @if (!isDesktop)
+            {
+                <input type="hidden" name="nav" value="1" />
+            }
+        </form>
+    }
+
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/lightbox.js" asp-append-version="true"></script>
     @if (isDesktop)
