@@ -62,8 +62,11 @@ body:has(.pc-sudoku-app) .post-body {
 }
 
 /* The bare page is the game and nothing else: the viewport is the box,
-   nothing scrolls, and the article chrome stays out of the way. */
-body:has(.pc-sudoku-app) { overflow: hidden; height: 100dvh; display: flex; flex-direction: column; }
+   nothing scrolls, and the article chrome stays out of the way. The unit
+   is svh, the smallest viewport, which is always fully on screen; dvh
+   left the pad under Edge for Android's bottom bar, because which chrome
+   counts as "dynamic" is the browser's own business. */
+body:has(.pc-sudoku-app) { overflow: hidden; height: 100svh; display: flex; flex-direction: column; }
 body:has(.pc-sudoku-app) .site-main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; width: 100%; }
 body:has(.pc-sudoku-app) .content-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 0; margin: 0; max-width: none; }
 body:has(.pc-sudoku-app) .post-header,
@@ -103,7 +106,7 @@ body:has(.pc-sudoku-app) .page-tags { display: none; }
 }
 /* The flowing article page has no box to fill, so the viewport caps the
    box instead. */
-.pc-sudoku-flow .board-box { flex: none; height: min(92vw, 64dvh); }
+.pc-sudoku-flow .board-box { flex: none; height: min(92vw, 64svh); }
 
 .pc-sudoku .sudoku-board {
   container-type: size;
