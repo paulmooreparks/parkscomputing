@@ -162,17 +162,4 @@
         });
     })();
 
-    /* Only one nav dropdown stays open at a time, and a click elsewhere
-       closes it. The menus are native <details>, so they work without this. */
-    document.addEventListener('click', function (e) {
-        document.querySelectorAll('.nav-drop[open]').forEach(function (d) {
-            if (!d.contains(e.target)) { d.removeAttribute('open'); }
-        });
-        var opened = e.target.closest('.nav-drop');
-        if (opened) {
-            document.querySelectorAll('.nav-drop[open]').forEach(function (d) {
-                if (d !== opened) { d.removeAttribute('open'); }
-            });
-        }
-    });
 })();

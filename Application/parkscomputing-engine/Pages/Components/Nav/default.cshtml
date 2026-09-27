@@ -1,50 +1,34 @@
 @model ParksComputing.Engine.Pages.Services.NavNode
-@if (Model != null)
+@if (Model?.Nav != null)
 {
-    <a class="section-tab" href='@Model.Url' title='@(Model.Description ?? Model.Title)'>@Model.Title</a>
+    var sections = Model.Nav.Where(n => n?.Nav is { Length: > 0 }).ToArray();
+    var leaves = Model.Nav.Where(n => n is not null && (n.Nav is null || n.Nav.Length == 0)).ToArray();
+    var currentCat = ViewData["NavCat"] as string;
+    var onHome = ViewData["NavHome"] as bool? ?? false;
 
-    @if (Model.Nav != null)
+    @* The same grammar as the window view: category tabs filter the home
+       page's cards, and the brand wordmark is the way home. *@
+    <a class="section-tab @(onHome && currentCat is null ? "active" : null)" href="/home">All</a>
+    <a class="section-tab @(currentCat == "articles" ? "active" : null)" href="/home?cat=articles">Articles</a>
+    @foreach (var link in sections)
     {
-        var sections = Model.Nav.Where(n => n?.Nav is { Length: > 0 }).ToArray();
-        var leaves = Model.Nav.Where(n => n is not null && (n.Nav is null || n.Nav.Length == 0)).ToArray();
-        var lastDropdownIndex = sections.Length - 1;
+        <a class="section-tab @(currentCat == link!.Slug ? "active" : null)"
+           href="/home?cat=@link.Slug" title='@(link.Description ?? link.Title)'>@link.Title</a>
+    }
 
-        for (int i = 0; i < sections.Length; i++)
-        {
-            var link = sections[i];
-            var linkTip = link?.Description ?? link?.Excerpt ?? link?.Title ?? string.Empty;
-            // The final dropdown opens leftward so it cannot overflow the viewport.
-            var dropClasses = (i == lastDropdownIndex) ? "nav-drop nav-drop-end" : "nav-drop";
-            <details class='@dropClasses'>
-                <summary class="section-tab" title='@linkTip'>@link!.Title</summary>
-                <div class="nav-menu">
-                    @foreach (var sublink in link.Nav!)
-                    {
-                        if (sublink != null)
-                        {
-                            <a href='@sublink.Url' title='@(sublink.Description ?? sublink.Excerpt ?? sublink.Title)'
-                               @if (!string.IsNullOrEmpty(sublink.Target)) {<text>target='@sublink.Target'</text>}>@sublink.Title</a>
-                        }
-                    }
-                </div>
-            </details>
-        }
-
-        @* Bare links (no children) are not sections: they live in their own
-           area on the right, behind a partial-height separator, matching
-           the window view's bar. *@
-        if (leaves.Length > 0)
-        {
-            <span class="bar-spacer"></span>
-            <span class="bar-sep" aria-hidden="true"></span>
-            <div class="bar-links">
-                @foreach (var leaf in leaves)
-                {
-                    var leafTip = leaf!.Description ?? leaf.Excerpt ?? leaf.Title ?? string.Empty;
-                    <a class="section-tab" href='@leaf.Url' title='@leafTip'
-                       @if (!string.IsNullOrEmpty(leaf.Target)) {<text>target='@leaf.Target'</text>}>@leaf.Title</a>
-                }
-            </div>
-        }
+    @* Bare links (no children) live in their own area on the right,
+       behind a partial-height separator, matching the window view. *@
+    if (leaves.Length > 0)
+    {
+        <span class="bar-spacer"></span>
+        <span class="bar-sep" aria-hidden="true"></span>
+        <div class="bar-links">
+            @foreach (var leaf in leaves)
+            {
+                var leafTip = leaf!.Description ?? leaf.Excerpt ?? leaf.Title ?? string.Empty;
+                <a class="section-tab" href='@leaf.Url' title='@leafTip'
+                   @if (!string.IsNullOrEmpty(leaf.Target)) {<text>target='@leaf.Target'</text>}>@leaf.Title</a>
+            }
+        </div>
     }
 }

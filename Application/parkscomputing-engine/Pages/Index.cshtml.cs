@@ -28,11 +28,36 @@ namespace ParksComputing.Engine.Pages {
         public NavNode? Root { get; set; }
         public List<string>? NavNodes { get; set; } = new();
 
+        /// <summary>The selected category from ?cat=; the nav tabs filter
+        /// which cards the home page shows. Null means all.</summary>
+        public string? Cat { get; private set; }
+
+        /// <summary>A synthetic root whose Posts are the selected category's
+        /// entries, substituted into the card markers when Cat is set.</summary>
+        public NavNode? CardsRoot { get; private set; }
+
         public IndexModel(AppServices services) : base(services) {
         }
 
         override public Task<IActionResult> OnGetAsync() {
             Root = NavService.GetRoot();
+
+            var cat = HttpContext.Request.Query["cat"].FirstOrDefault();
+            if (cat == "articles" && Root.Posts is { Length: > 0 }) {
+                Cat = cat;
+                CardsRoot = new NavNode { Posts = Root.Posts };
+            }
+            else if (cat is not null) {
+                var section = (Root.Nav ?? Array.Empty<NavNode>())
+                    .FirstOrDefault(n => n.Slug == cat && n.Nav is { Length: > 0 });
+                if (section is not null) {
+                    Cat = cat;
+                    CardsRoot = new NavNode { Posts = section.Nav };
+                }
+            }
+
+            ViewData["NavCat"] = Cat;
+            ViewData["NavHome"] = true;
             return RetrievePage("index");
         }
 

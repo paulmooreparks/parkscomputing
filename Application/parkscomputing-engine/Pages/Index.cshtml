@@ -43,6 +43,12 @@
             {
                 if (ViewData[key] is PostsContentModel model && processedContent.Contains(key))
                 {
+                    // A selected category substitutes its entries for the
+                    // marker's default set, so the tabs filter the cards.
+                    if (Model.CardsRoot is not null)
+                    {
+                        model.NavNode = Model.CardsRoot;
+                    }
                     var partialName = model.Format switch
                     {
                         "links" => "_PostsLinks",

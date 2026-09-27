@@ -42,39 +42,8 @@ body.desktop .site-header { position: static; flex: none; }
   border-bottom: 1px solid var(--border);
 }
 
-/* A section with children is a native details element; its summary looks
-   like every other tab and its menu is a raised card. No script. */
-.nav-drop { position: relative; }
-.nav-drop > summary {
-  list-style: none;
-  cursor: pointer;
-  display: inline-block;
-}
-.nav-drop > summary::-webkit-details-marker { display: none; }
-.nav-drop > summary::after {
-  content: " \25BE";
-  font-size: .85em;
-  color: var(--text-muted);
-}
-.nav-menu {
-  position: absolute; top: 100%; left: 0; z-index: 95;
-  min-width: 220px;
-  margin: 0; padding: 6px;
-  display: flex; flex-direction: column;
-  background: var(--dialog-bg, var(--surface));
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-card), 0 12px 32px rgb(0 0 0 / 0.22);
-}
-.nav-drop.nav-drop-end .nav-menu { left: auto; right: 0; }
-.nav-menu a {
-  padding: 7px 12px;
-  border-radius: 5px;
-  font-size: 13.5px; font-weight: 600;
-  color: var(--text); text-decoration: none;
-  white-space: nowrap;
-}
-.nav-menu a:hover { background: var(--surface-alt); color: var(--text); }
+/* The classic nav is the same category tab strip as the window view;
+   the old details-based dropdowns are gone. */
 
 /* === Footer =============================================================== */
 .site-footer {
@@ -342,7 +311,7 @@ body.desktop .app-section-bar { flex: none; }
 .bar-spacer { flex: 1; }
 .bar-sep {
   align-self: center;
-  width: 1px; height: 55%;
+  width: 1px; height: 16px;   /* fixed: a % of an auto-height bar is zero */
   background: var(--border);
   margin: 0 6px;
 }
