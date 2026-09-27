@@ -1,5 +1,8 @@
+@using System
+@using System.Linq
 @using ParksComputing.Engine.Pages.Services
 @inject StaticFileReaderService FileReaderService
+@inject INavService PaletteNav
 
 @{
     bool mdFlag = ViewData["IsMarkdown"] as bool? ?? false;
@@ -175,15 +178,73 @@
 
     @if (!isFrame)
     {
-        @* The go-to-page palette, hidden until site.js shows it on '/'.
-           A plain GET form, so /go answers it even without the script. *@
-        <form class="goto-bar" id="goto-bar" action="/go" method="get" role="search" aria-label="Go to page" hidden>
-            <input class="form-input goto-input" name="slug" type="text" placeholder="go to page" aria-label="Page slug" autocomplete="off" spellcheck="false" />
-            @if (!isDesktop)
-            {
-                <input type="hidden" name="nav" value="1" />
+        @* The go palette, PUDL 0.17.0: a buttonless menu panel summoned by
+           '/', opening top-centre with focus in its filter. Typing narrows
+           the rows; Enter follows the remaining row, or, with none left,
+           submits the form to /go, which redirects by slug, so unlisted
+           pages stay reachable. *@
+        <nav class="menu-panel go-palette" popover data-menu-key="/" aria-label="Go to page">
+            <form action="/go" method="get" role="search">
+                <input class="md-filter" type="search" name="slug" placeholder="Go to&#8230;" aria-label="Go to page" autocomplete="off" spellcheck="false" />
+                @if (!isDesktop)
+                {
+                    <input type="hidden" name="nav" value="1" />
+                }
+            </form>
+            @{
+                var paletteRoot = PaletteNav.GetRoot();
+                string PaletteHref(string slug) => isDesktop ? $"/?open={slug}&top={slug}" : $"/page/{slug}";
             }
-        </form>
+            @if (paletteRoot.Posts is { Length: > 0 })
+            {
+                <div class="md-section-label">Articles</div>
+                foreach (var post in paletteRoot.Posts
+                    .Where(p => !string.IsNullOrEmpty(p.Slug))
+                    .OrderByDescending(p => NavService.EffectiveDate(p) ?? DateTime.MinValue))
+                {
+                    <div class="md-row"><a class="md-item" href="@PaletteHref(post.Slug!)"
+                        @(isDesktop ? Html.Raw($"data-win-open=\"{post.Slug}\"") : null)>@(post.Title ?? post.Slug)</a></div>
+                }
+            }
+            @foreach (var paletteSection in paletteRoot.Nav ?? Array.Empty<NavNode>())
+            {
+                if (paletteSection.Nav is not { Length: > 0 }) { continue; }
+                <div class="md-section-label">@paletteSection.Title</div>
+                foreach (var item in paletteSection.Nav)
+                {
+                    if (string.IsNullOrEmpty(item.Slug)) { continue; }
+                    if (item.External || (item.Url?.StartsWith("http", StringComparison.OrdinalIgnoreCase) ?? false))
+                    {
+                        <div class="md-row"><a class="md-item" href="@item.Url" target="_blank" rel="noopener">@(item.Title ?? item.Slug)</a></div>
+                    }
+                    else
+                    {
+                        <div class="md-row"><a class="md-item" href="@PaletteHref(item.Slug)"
+                            @(isDesktop ? Html.Raw($"data-win-open=\"{item.Slug}\"") : null)>@(item.Title ?? item.Slug)</a></div>
+                    }
+                }
+            }
+            @{
+                var paletteLeaves = (paletteRoot.Nav ?? Array.Empty<NavNode>())
+                    .Where(n => n.Nav is not { Length: > 0 } && !string.IsNullOrEmpty(n.Slug)).ToList();
+            }
+            @if (paletteLeaves.Count > 0)
+            {
+                <div class="md-section-label">Pages</div>
+                foreach (var leaf in paletteLeaves)
+                {
+                    if (!string.IsNullOrEmpty(leaf.Url) && leaf.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="md-row"><a class="md-item" href="@leaf.Url" target="_blank" rel="noopener">@(leaf.Title ?? leaf.Slug)</a></div>
+                    }
+                    else
+                    {
+                        <div class="md-row"><a class="md-item" href="@PaletteHref(leaf.Slug!)"
+                            @(isDesktop ? Html.Raw($"data-win-open=\"{leaf.Slug}\"") : null)>@(leaf.Title ?? leaf.Slug)</a></div>
+                    }
+                }
+            }
+        </nav>
     }
 
     <script src="~/js/site.js" asp-append-version="true"></script>
@@ -193,9 +254,11 @@
         <script src="~/js/desktop.js" asp-append-version="true"></script>
         <script src="~/pudl/pudl-windows.js" defer></script>
         <script src="~/pudl/pudl-regions.js" defer></script>
-        <script src="~/pudl/pudl-menu.js" defer></script>
         <script src="~/pudl/pudl-md.js" defer></script>
     }
+    @* The menu script loads everywhere since 0.17.0: the go palette is a
+       key-summoned menu panel on every page. *@
+    <script src="~/pudl/pudl-menu.js" defer></script>
     <script src="~/pudl/pudl-applets.js" defer></script>
     <script src="~/pudl/pudl-dialog.js" defer></script>
     @RenderSection("BodyScripts", required: false)
