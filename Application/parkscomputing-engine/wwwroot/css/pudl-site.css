@@ -37,7 +37,9 @@ body:not(.desktop) .site-main { flex: 1; width: 100%; }
 .site-main {
   max-width: 1140px;
   margin: 0 auto;
-  padding: 0 20px;
+  /* Breathing room under the tab bar, so a page's first line does not
+     press against the strip. */
+  padding: 20px 20px 0;
 }
 
 .site-header { position: sticky; top: 0; z-index: 90; }
