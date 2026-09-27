@@ -272,6 +272,9 @@ body.desktop .md-toolbar .md-section-label { padding: 0; }
    however many windows are open. */
 body.desktop .md-toolbar { flex-wrap: nowrap; }
 body.desktop .md-toolbar .win-dock { flex: 1 1 auto; min-width: 0; }
+/* An empty dock stays in the layout as the toolbar's elastic middle, or
+   the close-all control would slide left when the last window closes. */
+body.desktop .md-toolbar .win-dock:empty { display: flex; }
 @container md (max-width: 640px) {
   body.desktop .md-toolbar { flex-wrap: wrap; }
 }
