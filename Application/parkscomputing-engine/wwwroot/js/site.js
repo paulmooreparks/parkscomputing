@@ -144,7 +144,7 @@
             if (view) { setView(view.getAttribute('data-view-choice')); }
             if (e.target.closest('[data-settings-close]')) { close(); }
             if (e.target.closest('[data-settings-forget]')) {
-                ['pc-maximize-new', 'pc-resume-windows', 'pc-windows'].forEach(function (key) {
+                ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w'].forEach(function (key) {
                     try { localStorage.removeItem(key); } catch (err) { }
                 });
                 document.cookie = 'pc-list=; path=/; max-age=0; SameSite=Lax';

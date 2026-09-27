@@ -286,7 +286,9 @@ body.desktop .md-toolbar .win-dock { flex: 1 1 auto; min-width: 0; }
 
 /* The settings dialog's fine print. */
 .settings-note { font-size: 12px; color: var(--text-muted); margin: 14px 0 0; }
-body.desktop .md-sidebar { width: 300px; }
+/* The default width rides the PUDL variable so a dragged width (pudl-md.js
+   sets it inline on the layout) wins over it. */
+body.desktop .md-layout { --md-sidebar-w: 300px; }
 body.desktop .app-section-bar { flex: none; }
 /* The filter's apply button is PUDL's .md-filter-group since 0.11.0. */
 .reader-stage { padding: 0; overflow: hidden; }

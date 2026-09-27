@@ -96,6 +96,20 @@
 </nav>
 
 <div class="md-layout" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
+    @* A stored sidebar width applies before the first paint, per PUDL's
+       0.14.0 pattern; a later script would let the default width flash. *@
+    <script>
+        (function (layout) {
+            try {
+                var w = localStorage.getItem('pc-sidebar-w');
+                if (w) { layout.style.setProperty('--md-sidebar-w', w); }
+                layout.addEventListener('pudl:md-resize', function (e) {
+                    if (e.detail.reset) { localStorage.removeItem('pc-sidebar-w'); }
+                    else { localStorage.setItem('pc-sidebar-w', e.detail.width + 'px'); }
+                });
+            } catch (e) { /* the default width serves */ }
+        })(document.currentScript.parentElement);
+    </script>
     <div class="md-toolbar md-site-tools">
         <form class="md-filter-group" data-region="filter" method="get" action="/" role="search">
             @foreach (var kv in Model.FilterFormParams)
@@ -198,6 +212,7 @@
                 }
             }
         </nav>
+        <div class="md-resize" role="separator" aria-orientation="vertical" aria-label="Resize the list"></div>
         <div class="md-detail reader-stage">
             <div class="reader-col">
                 <a class="md-back" href="/" data-win-back>Articles</a>
