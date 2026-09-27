@@ -20,7 +20,9 @@
         {
             var key = node.Slug!;
             var active = key == Model.TopKey;
-            <div class="md-row @(active ? "active" : null)" id="row-@key">
+            @* data-tags lets the live filter match what the row does not show. *@
+            <div class="md-row @(active ? "active" : null)" id="row-@key"
+                 @(node.Tags is { Length: > 0 } ? Html.Raw($"data-tags=\"{System.Net.WebUtility.HtmlEncode(string.Join(" ", node.Tags).ToLowerInvariant())}\"") : null)>
                 <a class="md-item" href="@(node.Url ?? $"/page/{key}")" data-win-open="@key"
                    title="@node.Description" aria-current="@(active ? "true" : null)">
                     @node.Title

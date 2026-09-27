@@ -211,7 +211,8 @@ public class DesktopModel : PageModel {
     public bool RowMatches(NavNode node) =>
         Q is null
         || (node.Title?.Contains(Q, StringComparison.OrdinalIgnoreCase) ?? false)
-        || (node.Description?.Contains(Q, StringComparison.OrdinalIgnoreCase) ?? false);
+        || (node.Description?.Contains(Q, StringComparison.OrdinalIgnoreCase) ?? false)
+        || (node.Tags?.Any(t => t.Contains(Q, StringComparison.OrdinalIgnoreCase)) ?? false);
 
     /// <summary>A /desktop URL with the given filters and every other current
     /// query parameter kept, so changing a filter never disturbs the window

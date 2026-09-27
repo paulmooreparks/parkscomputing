@@ -55,7 +55,7 @@
                 if (el.classList.contains('md-row-child')) {
                     el.hidden = !!(el.previousElementSibling && el.previousElementSibling.hidden);
                 } else {
-                    var text = (el.textContent || '').toLowerCase();
+                    var text = ((el.textContent || '') + ' ' + (el.getAttribute('data-tags') || '')).toLowerCase();
                     el.hidden = q !== '' && text.indexOf(q) < 0;
                 }
                 if (!el.hidden) { labelHasRow = true; }
