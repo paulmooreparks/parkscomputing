@@ -83,6 +83,50 @@
             enhance(e.target);
         });
 
+        /* The open windows are the client area's state, not the tab's. The
+           server rendered the tab, chip and form hrefs with the window
+           parameters as of page load, but the script keeps the live state
+           in the URL, so those links are refreshed from it on every change;
+           otherwise switching category resurrects the page-load windows. */
+        function syncNavState() {
+            var current = [];
+            new URLSearchParams(location.search).forEach(function (value, key) {
+                if (key === 'open' || key === 'top' || key === 'min' || key.indexOf('p.') === 0) {
+                    current.push([key, value]);
+                }
+            });
+
+            document.querySelectorAll('.app-section-bar a[href], .md-chips a[href]').forEach(function (a) {
+                if (a.hasAttribute('data-win-open')) { return; }   // openers act on live state already
+                var url = new URL(a.getAttribute('href'), location.href);
+                if (url.origin !== location.origin || url.pathname !== location.pathname) { return; }
+                Array.from(url.searchParams.keys()).forEach(function (k) {
+                    if (k === 'open' || k === 'top' || k === 'min' || k.indexOf('p.') === 0) { url.searchParams.delete(k); }
+                });
+                current.forEach(function (kv) { url.searchParams.append(kv[0], kv[1]); });
+                a.setAttribute('href', url.pathname + url.search);
+            });
+
+            var form = document.querySelector('.desktop-filter-form');
+            if (form) {
+                form.querySelectorAll('input[type="hidden"]').forEach(function (input) {
+                    var k = input.name;
+                    if (k === 'open' || k === 'top' || k === 'min' || k.indexOf('p.') === 0) { input.remove(); }
+                });
+                current.forEach(function (kv) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = kv[0];
+                    input.value = kv[1];
+                    form.appendChild(input);
+                });
+            }
+        }
+
+        layer.addEventListener('pudl:windows-change', syncNavState);
+        window.addEventListener('popstate', syncNavState);
+        syncNavState();
+
         /* In an image window the plain arrow keys step between images, as
            they do in the classic lightbox. Captured before pudl-windows'
            own keyboard handling, which keeps Shift+arrows for resizing;

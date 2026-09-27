@@ -46,6 +46,11 @@ public class NavNode {
     // True if url was derived (not explicitly specified in source)
     public bool DerivedUrl { get; set; }
 
+    // Tags this entry is categorized under; merged with the content file's
+    // keywords metadata by NavService enrichment.
+    [XferProperty("tags")]
+    public string[]? Tags { get; set; }
+
     [XferProperty("nav")]
     public NavNode[]? Nav { get; set; }
 

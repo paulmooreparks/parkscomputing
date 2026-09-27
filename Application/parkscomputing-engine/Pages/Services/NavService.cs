@@ -123,7 +123,8 @@ namespace ParksComputing.Engine.Pages.Services {
                              || !post.Date.HasValue
                              || !post.Updated.HasValue
                              || string.IsNullOrWhiteSpace(post.Description)
-                             || string.IsNullOrWhiteSpace(post.Excerpt);
+                             || string.IsNullOrWhiteSpace(post.Excerpt)
+                             || post.Tags is null or { Length: 0 };
                 if (!needs) { continue; }
                 if (string.IsNullOrWhiteSpace(post.Slug)) { continue; }
                 // Attempt Markdown first, then HTML
@@ -142,6 +143,28 @@ namespace ParksComputing.Engine.Pages.Services {
                     navNode.Title = HumanizeSlug(navNode.Slug);
                 }
             }
+        }
+
+        /// <summary>A node's effective date: the latest of its updated and
+        /// created dates; the sort key and displayed date across the site.</summary>
+        public static DateTime? EffectiveDate(NavNode node) {
+            if (node.Updated is null) { return node.Date; }
+            if (node.Date is null) { return node.Updated; }
+            return node.Updated > node.Date ? node.Updated : node.Date;
+        }
+
+        /// <summary>Merges keyword tags from a content file into the node's
+        /// explicit sitenav tags, deduplicating case-insensitively.</summary>
+        private static void MergeTags(NavNode node, string? keywordList) {
+            if (string.IsNullOrWhiteSpace(keywordList)) { return; }
+            var merged = new List<string>(node.Tags ?? Array.Empty<string>());
+            foreach (var raw in keywordList.Split(',', StringSplitOptions.RemoveEmptyEntries)) {
+                var tag = raw.Trim();
+                if (tag.Length > 0 && !merged.Any(t => t.Equals(tag, StringComparison.OrdinalIgnoreCase))) {
+                    merged.Add(tag);
+                }
+            }
+            node.Tags = merged.ToArray();
         }
 
         private static string HumanizeSlug(string slug) {
@@ -188,6 +211,9 @@ namespace ParksComputing.Engine.Pages.Services {
                 case "title":
                 if (string.IsNullOrWhiteSpace(title)) { title = val; }
                 break;
+                            case "keywords":
+                                MergeTags(post, val);
+                                break;
                             case "date":
                                 if (!date.HasValue && DateTime.TryParse(val, out var d)) { date = d; }
                                 break;
@@ -258,6 +284,9 @@ namespace ParksComputing.Engine.Pages.Services {
                     var descMeta = doc.DocumentNode.SelectSingleNode("//meta[translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='description']");
                     if (descMeta?.Attributes["content"] != null) { post.Description = WebUtility.HtmlDecode(descMeta.Attributes["content"].Value.Trim()); }
                 }
+                // TAGS from keywords metadata
+                var kwMeta = doc.DocumentNode.SelectSingleNode("//meta[translate(@name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='keywords']");
+                if (kwMeta?.Attributes["content"] != null) { MergeTags(post, WebUtility.HtmlDecode(kwMeta.Attributes["content"].Value)); }
                 // EXCERPT (first paragraph)
                 if (string.IsNullOrWhiteSpace(post.Excerpt)) {
                     var firstP = doc.DocumentNode.SelectSingleNode("//p");

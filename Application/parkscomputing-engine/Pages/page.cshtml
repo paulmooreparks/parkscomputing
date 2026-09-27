@@ -52,6 +52,21 @@
 @{
     bool hasInnerH1 = Model.PageContent?.IndexOf("<h1", System.StringComparison.OrdinalIgnoreCase) >= 0;
 }
+@{
+    var pageTags = Model.NavService.GetNavNode(ViewData["PageId"]?.ToString() ?? string.Empty)?.Tags;
+}
+@if (pageTags is { Length: > 0 })
+{
+    @* The tag row: each chip opens that tag's article list in the window
+       view, which is where tag browsing lives. *@
+    <nav class="page-tags" aria-label="Tags">
+        @foreach (var tag in pageTags)
+        {
+            var tagKey = ParksComputing.Engine.Pages.Services.ArticleContentService.TagKey(tag);
+            <a class="chip" href="/?open=@tagKey&top=@tagKey">@tag</a>
+        }
+    </nav>
+}
 <article class="post-content">
     <header class="post-header">
         @if (!hasInnerH1)

@@ -6,15 +6,27 @@
     'use strict';
 
     function syncHighlightTheme() {
-        var light = document.getElementById('hljs-light');
-        var dark = document.getElementById('hljs-dark');
-        if (!light || !dark) { return; }
         var theme = document.documentElement.getAttribute('data-theme');
         if (theme !== 'light' && theme !== 'dark') {
             theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
-        light.media = theme === 'dark' ? 'not all' : 'all';
-        dark.media = theme === 'dark' ? 'all' : 'not all';
+
+        var light = document.getElementById('hljs-light');
+        var dark = document.getElementById('hljs-dark');
+        if (light && dark) {
+            light.media = theme === 'dark' ? 'not all' : 'all';
+            dark.media = theme === 'dark' ? 'all' : 'not all';
+        }
+
+        /* A framed page (a window hosting an app page) read its theme when
+           it loaded; a toggle after that reaches it here. Same origin, so
+           the frame's document is ours to set. */
+        document.querySelectorAll('iframe.win-app-frame').forEach(function (frame) {
+            try {
+                var doc = frame.contentDocument;
+                if (doc && doc.documentElement) { doc.documentElement.setAttribute('data-theme', theme); }
+            } catch (err) { /* a foreign frame is none of our business */ }
+        });
     }
 
     syncHighlightTheme();

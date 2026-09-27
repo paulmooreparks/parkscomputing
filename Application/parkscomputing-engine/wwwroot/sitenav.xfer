@@ -95,9 +95,10 @@
     posts [
         </ { slug "xferlang-site-navigation" } />
         </ { slug "my-llm-experience" tags ["programming"] } />
-        { slug "parks-laws-of-debugging" }
+        { slug "parks-laws-of-debugging" tags ["programming"] }
         {
             slug "sudoku"
+            tags ["games" "programming"]
             excerpt <"I didn't like most of the Sudoku apps I found, so I decided to write one as a fun little evening and weekend project. It lets you edit and share games.">
         }
         {
@@ -112,13 +113,13 @@
             excerpt <"This post was inspired by an article on Cal Newport's site that caused me to reflect on my path to my current career.">
         }
         { slug "new-website-design" }
-        { slug "fizzbuzz" }
-        { slug "set-associative-cache-in-c-part-2-interface-design" }
-        { slug "set-associative-cache-in-c-part-1-analysis-initial-design" }
-        { slug "barbecue-and-project-management" }
-        { slug "scheduling-every-minute-revisited" }
-        { slug "conways-game-of-life" }
-        { slug "how-i-plan-my-day" }
+        { slug "fizzbuzz" tags ["programming"] }
+        { slug "set-associative-cache-in-c-part-2-interface-design" tags ["programming" "csharp"] }
+        { slug "set-associative-cache-in-c-part-1-analysis-initial-design" tags ["programming" "csharp"] }
+        { slug "barbecue-and-project-management" tags ["project-management"] }
+        { slug "scheduling-every-minute-revisited" tags ["productivity"] }
+        { slug "conways-game-of-life" tags ["games" "programming"] }
+        { slug "how-i-plan-my-day" tags ["productivity"] }
         { slug "pbrain" }
         { slug "windragsens" }
         { slug "master-foo-and-the-technical-recruiter" }

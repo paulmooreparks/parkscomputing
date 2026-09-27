@@ -1,3 +1,5 @@
+using System;
+
 namespace ParksComputing.Engine.Pages.Models;
 
 /// <summary>
@@ -19,6 +21,10 @@ public class WindowViewModel {
     /// <summary>True for content that brings its own scripts or styles;
     /// the window then hosts the article's page in a frame.</summary>
     public bool OwnDocument { get; init; }
+
+    /// <summary>The tags the article is categorized under, for the tag row
+    /// at the top of the window.</summary>
+    public string[] Tags { get; init; } = Array.Empty<string>();
 
     public string? Mode { get; init; }
     public double? X { get; init; }

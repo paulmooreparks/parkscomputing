@@ -83,6 +83,62 @@ public class ArticleContentService {
         return new ArticleWindowContent(key!, title, body, HasCode: false, HasMermaid: false);
     }
 
+    private static readonly Regex TagKeyPattern = new(@"^tag-(?<slug>[a-z0-9-]+)$", RegexOptions.Compiled);
+
+    /// <summary>A tag's window-key-safe slug: lower case, runs of anything
+    /// but letters and digits collapsed to hyphens.</summary>
+    public static string TagSlug(string tag) =>
+        Regex.Replace(tag.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+
+    /// <summary>The window key that opens a tag's article list.</summary>
+    public static string TagKey(string tag) => "tag-" + TagSlug(tag);
+
+    /// <summary>
+    /// A tag window's content ("tag-{slug}" keys): the articles categorized
+    /// under that tag, newest first, each row opening its article. Null
+    /// when the key is not a tag key or no tag matches.
+    /// </summary>
+    public ArticleWindowContent? LoadTagList(string? key, NavNode root) {
+        var m = TagKeyPattern.Match(key ?? string.Empty);
+        if (!m.Success) { return null; }
+        var slug = m.Groups["slug"].Value;
+
+        var tagged = TaggableNodes(root)
+            .Select(n => (Node: n, Tag: n.Tags!.FirstOrDefault(t => TagSlug(t) == slug)))
+            .Where(x => x.Tag is not null)
+            .GroupBy(x => x.Node.Slug, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .OrderByDescending(x => NavService.EffectiveDate(x.Node) ?? DateTime.MinValue)
+            .ToList();
+        if (tagged.Count == 0) { return null; }
+
+        var tagName = tagged[0].Tag!;
+        var rows = string.Join(string.Empty, tagged.Select(x => {
+            var nodeSlug = System.Net.WebUtility.HtmlEncode(x.Node.Slug!);
+            var title = System.Net.WebUtility.HtmlEncode(x.Node.Title ?? x.Node.Slug!);
+            var date = NavService.EffectiveDate(x.Node)?.ToString("d MMMM yyyy");
+            var meta = date is null ? string.Empty : $"<span class=\"md-meta\">{date}</span>";
+            return $"<div class=\"md-row\"><a class=\"md-item\" href=\"/page/{nodeSlug}\" data-win-open=\"{nodeSlug}\">{title}{meta}</a></div>";
+        }));
+
+        string encodedTag = System.Net.WebUtility.HtmlEncode(tagName);
+        string body =
+            $"<div class=\"tag-window\"><p class=\"card-desc\">Everything tagged <span class=\"chip\">{encodedTag}</span></p>{rows}</div>";
+
+        return new ArticleWindowContent(key!, $"Tag: {tagName}", body, HasCode: false, HasMermaid: false);
+    }
+
+    private static IEnumerable<NavNode> TaggableNodes(NavNode root) {
+        foreach (var post in root.Posts ?? Array.Empty<NavNode>()) {
+            if (post.Tags is { Length: > 0 } && !string.IsNullOrEmpty(post.Slug)) { yield return post; }
+        }
+        foreach (var section in root.Nav ?? Array.Empty<NavNode>()) {
+            foreach (var child in section.Nav ?? new[] { section }) {
+                if (child.Tags is { Length: > 0 } && !string.IsNullOrEmpty(child.Slug) && !child.External) { yield return child; }
+            }
+        }
+    }
+
     /// <summary>
     /// Prev/next controls between an article's image windows. Each is a
     /// data-win-open link, so the script opens the sibling as a child of the

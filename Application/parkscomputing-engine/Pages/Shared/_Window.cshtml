@@ -20,7 +20,10 @@
         <nav class="win-chrome" aria-label="Window">
             @if (Model.Parent is null)
             {
-                <a class="win-btn" data-win-action="page" href="@Model.PageUrl" aria-label="Open as a page" title="Open as a page"></a>
+                if (!string.IsNullOrEmpty(Model.PageUrl))
+                {
+                    <a class="win-btn" data-win-action="page" href="@Model.PageUrl" aria-label="Open as a page" title="Open as a page"></a>
+                }
                 <a class="win-btn" data-win-action="minimize" href="?" aria-label="Minimize" title="Minimize"></a>
                 <a class="win-btn" data-win-action="maximize" href="?" aria-label="Maximize" title="Maximize"></a>
             }
@@ -36,6 +39,17 @@
         }
         else if (Model.Parent is null)
         {
+            @* The tag row: each chip opens that tag's article list. *@
+            if (Model.Tags.Length > 0)
+            {
+                <nav class="page-tags" aria-label="Tags">
+                    @foreach (var tag in Model.Tags)
+                    {
+                        var tagKey = ParksComputing.Engine.Pages.Services.ArticleContentService.TagKey(tag);
+                        <a class="chip" href="/?open=@tagKey&top=@tagKey" data-win-open="@tagKey">@tag</a>
+                    }
+                </nav>
+            }
             <div class="post-content">
                 <div class="post-body">
                     @Html.Raw(Model.BodyHtml)

@@ -1,3 +1,5 @@
+using System;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -14,14 +16,29 @@ namespace ParksComputing.Engine.Pages;
 /// </summary>
 public class WindowModel : PageModel {
     private readonly ArticleContentService _content;
+    private readonly INavService _navService;
 
-    public WindowModel(ArticleContentService content) {
+    public WindowModel(ArticleContentService content, INavService navService) {
         _content = content;
+        _navService = navService;
     }
 
     public WindowViewModel Window { get; private set; } = default!;
 
     public IActionResult OnGet(string key) {
+        // A tag key ("tag-{slug}") serves the tag's article list.
+        var tagList = _content.LoadTagList(key, _navService.GetRoot());
+        if (tagList is not null) {
+            // A tag list has no page of its own, so no page button.
+            Window = new WindowViewModel {
+                Key = tagList.Slug,
+                Title = tagList.Title,
+                BodyHtml = tagList.BodyHtml,
+                PageUrl = string.Empty
+            };
+            return Page();
+        }
+
         // A child key ("{slug}-img-{n}") serves one of the article's images
         // as a child window; anything else is an article window.
         var child = _content.LoadChild(key, out var parentSlug);
@@ -44,7 +61,8 @@ public class WindowModel : PageModel {
             Title = article.Title,
             BodyHtml = article.BodyHtml,
             PageUrl = $"/page/{article.Slug}",
-            OwnDocument = article.RequiresOwnDocument
+            OwnDocument = article.RequiresOwnDocument,
+            Tags = _navService.GetNavNode(article.Slug)?.Tags ?? Array.Empty<string>()
         };
         return Page();
     }

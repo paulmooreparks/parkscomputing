@@ -60,18 +60,10 @@ public class DesktopModel : PageModel {
 
     public string? CatTitle => Categories.FirstOrDefault(c => c.Slug == Cat).Title;
 
-    /// <summary>A post's effective date: the latest of its updated and
-    /// created dates. It is both the sort key and the date the row shows.</summary>
-    public static DateTime? LatestDate(NavNode node) {
-        if (node.Updated is null) { return node.Date; }
-        if (node.Date is null) { return node.Updated; }
-        return node.Updated > node.Date ? node.Updated : node.Date;
-    }
-
     /// <summary>Posts newest first by effective date (Paul, 2026-09-26).</summary>
     public IEnumerable<NavNode> SortedPosts =>
         (Root.Posts ?? Array.Empty<NavNode>())
-            .OrderByDescending(p => LatestDate(p) ?? DateTime.MinValue);
+            .OrderByDescending(p => NavService.EffectiveDate(p) ?? DateTime.MinValue);
 
     public void OnGet() {
         Root = _navService.GetRoot();
@@ -112,8 +104,10 @@ public class DesktopModel : PageModel {
         OpenOrder.AddRange(open);
 
         foreach (var key in open) {
-            var child = _content.LoadChild(key, out var parentSlug);
-            var article = child ?? _content.Load(key);
+            string parentSlug = string.Empty;
+            var tagList = _content.LoadTagList(key, Root);
+            var child = tagList is null ? _content.LoadChild(key, out parentSlug) : null;
+            var article = tagList ?? child ?? _content.Load(key);
             if (article is null) { continue; }
             var parent = child is null ? null : parentSlug;
 
@@ -126,9 +120,11 @@ public class DesktopModel : PageModel {
                 Key = key,
                 Title = article.Title,
                 BodyHtml = article.BodyHtml,
-                PageUrl = $"/page/{parent ?? key}",
+                // A tag list has no page of its own.
+                PageUrl = tagList is null ? $"/page/{parent ?? key}" : string.Empty,
                 Parent = parent,
                 OwnDocument = article.RequiresOwnDocument,
+                Tags = (tagList is null && child is null ? _navService.GetNavNode(key)?.Tags : null) ?? Array.Empty<string>(),
                 Mode = placement?.Mode ?? "maximized",
                 X = placement?.X, Y = placement?.Y, W = placement?.W, H = placement?.H,
                 Minimized = minimized,

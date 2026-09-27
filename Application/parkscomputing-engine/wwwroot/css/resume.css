@@ -4,14 +4,11 @@
     margin-bottom: 1rem;
 }
 
+/* The underline takes the theme's text color, so it follows PUDL's
+   light and dark themes (data-theme) rather than only the OS setting. */
 h2 {
-    border-bottom: solid black;
+    border-bottom: 1px solid var(--text, black);
     text-transform: uppercase;
-}
-
-/* Dark mode: invert underline (use a light line instead of black). */
-@media (prefers-color-scheme: dark) {
-    h2 { border-bottom: 1px solid #e6edf3; }
 }
 
 address {

@@ -313,5 +313,31 @@ body.desktop .app-section-bar { flex: none; }
    default in 0.9.0 (with --win-active-* tokens for tuning), so the
    override that prototyped it here is gone. */
 
-/* The launcher glyph, after PUDL's article-reader sample. */
-.launcher-icon { width: 14px; height: 14px; flex: none; }
+/* === The tab bar's link area ==============================================
+   Category tabs sit on the left; bare sitenav links (frequent or
+   high-profile destinations) sit on the right, behind a partial-height
+   separator, so the two jobs read as different. */
+.bar-spacer { flex: 1; }
+.bar-sep {
+  align-self: center;
+  width: 1px; height: 55%;
+  background: var(--border);
+  margin: 0 6px;
+}
+.bar-links { display: flex; align-items: stretch; }
+
+/* === Tag rows and the tag window ========================================== */
+/* The tag row at the very top of a page or window: flat chips, each
+   opening that tag's article list. */
+.page-tags {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  max-width: 860px; margin: 0 auto;
+  padding: 10px 0 0;
+}
+.win-body > .page-tags { padding: 0 0 4px; }
+a.chip { text-decoration: none; }
+a.chip:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+
+.tag-window { max-width: 68ch; margin: 0 auto; }
+.tag-window .card-desc { margin-bottom: 10px; }
+.tag-window .md-row { border-right: 0; }
