@@ -26,11 +26,13 @@
     <meta name="color-scheme" content="light dark" />
     <title>@ViewData["Title"]</title>
 
-    <script src="~/pudl/pudl-theme.js"></script>
-    <link rel="stylesheet" href="~/pudl/pudl.css" />
+    @* Every PUDL asset is version-stamped: a pinned-dist upgrade must
+       reach every browser at once, or a stale script meets fresh markup. *@
+    <script src="~/pudl/pudl-theme.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/pudl/pudl.css" asp-append-version="true" />
     @if (isDesktop)
     {
-        <link rel="stylesheet" href="~/pudl/pudl-windows.css" />
+        <link rel="stylesheet" href="~/pudl/pudl-windows.css" asp-append-version="true" />
     }
     <link rel="stylesheet" href="~/css/pudl-site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/accessibility.css" />
@@ -190,6 +192,21 @@
                 {
                     <input type="hidden" name="nav" value="1" />
                 }
+                else
+                {
+                    @* The desktop's state rides along, so /go adds the new
+                       window to what is open instead of replacing it. The
+                       fields are server-rendered as of this page load and
+                       desktop.js refreshes them when the form submits. *@
+                    foreach (var stateParam in Context.Request.Query)
+                    {
+                        if (stateParam.Key is "slug" or "nav" or "view") { continue; }
+                        foreach (var stateValue in stateParam.Value)
+                        {
+                            <input type="hidden" data-go-state name="@stateParam.Key" value="@stateValue" />
+                        }
+                    }
+                }
             </form>
             @{
                 var paletteRoot = PaletteNav.GetRoot();
@@ -252,15 +269,15 @@
     @if (isDesktop)
     {
         <script src="~/js/desktop.js" asp-append-version="true"></script>
-        <script src="~/pudl/pudl-windows.js" defer></script>
-        <script src="~/pudl/pudl-regions.js" defer></script>
-        <script src="~/pudl/pudl-md.js" defer></script>
+        <script src="~/pudl/pudl-windows.js" defer asp-append-version="true"></script>
+        <script src="~/pudl/pudl-regions.js" defer asp-append-version="true"></script>
+        <script src="~/pudl/pudl-md.js" defer asp-append-version="true"></script>
     }
     @* The menu script loads everywhere since 0.17.0: the go palette is a
        key-summoned menu panel on every page. *@
-    <script src="~/pudl/pudl-menu.js" defer></script>
-    <script src="~/pudl/pudl-applets.js" defer></script>
-    <script src="~/pudl/pudl-dialog.js" defer></script>
+    <script src="~/pudl/pudl-menu.js" defer asp-append-version="true"></script>
+    <script src="~/pudl/pudl-applets.js" defer asp-append-version="true"></script>
+    <script src="~/pudl/pudl-dialog.js" defer asp-append-version="true"></script>
     @RenderSection("BodyScripts", required: false)
     @if (isMarkdown)
     {

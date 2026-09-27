@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 using Microsoft.AspNetCore.Mvc;
@@ -36,8 +38,24 @@ public class GoModel : PageModel {
 
         if (!SlugPattern.IsMatch(s)) { return Redirect("/"); }
 
-        return nav == "1"
-            ? Redirect($"/page/{s}")
-            : Redirect($"/?open={s}&top={s}");
+        if (nav == "1") { return Redirect($"/page/{s}"); }
+
+        // The palette's form carries the desktop's state, so the new window
+        // joins what is open instead of replacing it; every other parameter
+        // (placements, minimized windows, filters) passes through.
+        var parts = new List<string>();
+        foreach (var kv in Request.Query) {
+            if (kv.Key is "slug" or "nav" or "view" or "open" or "top") { continue; }
+            foreach (var value in kv.Value) {
+                parts.Add($"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(value ?? string.Empty)}");
+            }
+        }
+        var open = (Request.Query["open"].FirstOrDefault() ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .ToList();
+        if (!open.Contains(s)) { open.Add(s); }
+        parts.Add("open=" + string.Join(",", open));
+        parts.Add("top=" + s);
+        return Redirect("/?" + string.Join("&", parts));
     }
 }

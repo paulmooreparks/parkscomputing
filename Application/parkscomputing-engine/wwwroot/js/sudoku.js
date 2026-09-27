@@ -765,7 +765,11 @@ SOFTWARE.
             generateNewBoard(difficultyDropdown.value);
         }
 
-        root.focus({ preventScroll: true });
+        /* Take the keyboard only where that steals nothing: stand-alone the
+           game is the page, and in a window only when that window is the
+           active one; focusing an inactive window would raise it over
+           whatever the reader put on top. */
+        if (ownUrl || root.closest('.win.active')) { root.focus({ preventScroll: true }); }
 
         return {
             destroy: function () {

@@ -16,6 +16,26 @@
         return key === 'open' || key === 'top' || key === 'min' || key.indexOf('p.') === 0;
     }
 
+    /* The go palette's form carries the desktop's state to /go, so the new
+       window joins what is open. The server rendered the fields as of page
+       load; this freshens them from the live URL at the moment of submit. */
+    (function () {
+        var form = document.querySelector('.go-palette form');
+        if (!form) { return; }
+        form.addEventListener('submit', function () {
+            form.querySelectorAll('input[data-go-state]').forEach(function (field) { field.remove(); });
+            new URLSearchParams(location.search).forEach(function (value, key) {
+                if (key === 'slug' || key === 'nav' || key === 'view') { return; }
+                var field = document.createElement('input');
+                field.type = 'hidden';
+                field.name = key;
+                field.value = value;
+                field.setAttribute('data-go-state', '');
+                form.appendChild(field);
+            });
+        });
+    })();
+
     function enhance(win) {
         if (window.hljs) {
             win.querySelectorAll('pre code:not(.language-mermaid)').forEach(function (block) {
