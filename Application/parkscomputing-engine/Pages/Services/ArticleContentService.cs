@@ -157,6 +157,15 @@ public class ArticleContentService {
         return new ArticleWindowContent(key!, $"Tag: {tagName}", body, HasCode: false, HasMermaid: false);
     }
 
+    /// <summary>Every tag in use, in alphabetical order, for the tag
+    /// filter's checklist.</summary>
+    public static List<string> AllTags(NavNode root) =>
+        TaggableNodes(root)
+            .SelectMany(n => n.Tags!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
     private static IEnumerable<NavNode> TaggableNodes(NavNode root) {
         foreach (var post in root.Posts ?? Array.Empty<NavNode>()) {
             if (post.Tags is { Length: > 0 } && !string.IsNullOrEmpty(post.Slug)) { yield return post; }

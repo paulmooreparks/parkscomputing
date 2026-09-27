@@ -41,9 +41,17 @@ public class DesktopModel : PageModel {
     /// <summary>True while any window shows, which puts the narrow layout on the detail pane.</summary>
     public bool AnyVisible { get; private set; }
 
-    /// <summary>The selected category's slug ("articles" or a top-level nav
-    /// section's slug), from ?cat=. Null means all categories.</summary>
-    public string? Cat { get; private set; }
+    /// <summary>The selected categories from repeated ?cat= parameters
+    /// ("articles" or top-level section slugs). Empty means all. A tab
+    /// selects exactly one; the category menu selects several.</summary>
+    public List<string> SelectedCats { get; } = new();
+
+    /// <summary>The selected tags from repeated ?tag= parameters, matched
+    /// as a union. Empty means no tag filtering.</summary>
+    public List<string> SelectedTags { get; } = new();
+
+    /// <summary>Every tag in use, for the tag menu's checklist.</summary>
+    public List<string> AllTags { get; private set; } = new();
 
     /// <summary>The text filter from ?q=. Null when absent or blank.</summary>
     public string? Q { get; private set; }
@@ -59,7 +67,7 @@ public class DesktopModel : PageModel {
     /// <summary>The open keys in URL order, for building state URLs.</summary>
     public List<string> OpenOrder { get; } = new();
 
-    public string? CatTitle => Categories.FirstOrDefault(c => c.Slug == Cat).Title;
+    public string? CatTitleOf(string slug) => Categories.FirstOrDefault(c => c.Slug == slug).Title ?? slug;
 
     /// <summary>The welcome card's copy, editable at content/desktop-welcome.md.</summary>
     public string? WelcomeHtml { get; private set; }
@@ -68,8 +76,9 @@ public class DesktopModel : PageModel {
     /// the close-all control's no-script destination.</summary>
     public string ListOnlyUrl {
         get {
-            var parts = new List<string>();
-            if (Cat is not null) { parts.Add("cat=" + Uri.EscapeDataString(Cat)); }
+            var parts = SelectedCats.Select(c => "cat=" + Uri.EscapeDataString(c))
+                .Concat(SelectedTags.Select(t => "tag=" + Uri.EscapeDataString(t)))
+                .ToList();
             if (Q is not null) { parts.Add("q=" + Uri.EscapeDataString(Q)); }
             return parts.Count > 0 ? "/?" + string.Join("&", parts) : "/";
         }
@@ -97,13 +106,13 @@ public class DesktopModel : PageModel {
         }
 
         // The remembered list state: a bare arrival resumes the saved
-        // category and filter, by redirect so the URL still names what
-        // shows. Only cat and q are honored from the cookie.
-        if (bareArrival && !Request.Query.ContainsKey("cat") && !Request.Query.ContainsKey("q")) {
+        // categories, tags and filter, by redirect so the URL still names
+        // what shows. Only cat, tag and q are honored from the cookie.
+        if (bareArrival && !Request.Query.ContainsKey("cat") && !Request.Query.ContainsKey("q") && !Request.Query.ContainsKey("tag")) {
             var savedList = System.Net.WebUtility.UrlDecode(Request.Cookies["pc-list"] ?? string.Empty);
             var parts = savedList.Split('&', StringSplitOptions.RemoveEmptyEntries)
                 .Select(p => p.Split('=', 2))
-                .Where(kv => kv.Length == 2 && kv[0] is "cat" or "q" && !string.IsNullOrEmpty(kv[1]))
+                .Where(kv => kv.Length == 2 && kv[0] is "cat" or "q" or "tag" && !string.IsNullOrEmpty(kv[1]))
                 .Select(kv => $"{kv[0]}={Uri.EscapeDataString(Uri.UnescapeDataString(kv[1]))}")
                 .ToList();
             if (parts.Count > 0) {
@@ -125,8 +134,16 @@ public class DesktopModel : PageModel {
             }
         }
 
-        var cat = Request.Query["cat"].FirstOrDefault();
-        Cat = Categories.Any(c => c.Slug == cat) ? cat : null;
+        AllTags = ArticleContentService.AllTags(Root);
+
+        SelectedCats.AddRange(Request.Query["cat"]
+            .Where(c => Categories.Any(k => k.Slug == c))
+            .Distinct()!);
+
+        SelectedTags.AddRange(Request.Query["tag"]
+            .Select(t => AllTags.FirstOrDefault(k => k.Equals(t, StringComparison.OrdinalIgnoreCase)))
+            .Where(t => t is not null)
+            .Distinct()!);
 
         var q = Request.Query["q"].FirstOrDefault()?.Trim();
         Q = string.IsNullOrEmpty(q) ? null : q;
@@ -206,32 +223,42 @@ public class DesktopModel : PageModel {
         return Page();
     }
 
-    public bool ShowSection(string? slug) => Cat is null || Cat == slug;
+    public bool ShowSection(string? slug) => SelectedCats.Count == 0 || (slug is not null && SelectedCats.Contains(slug));
 
-    public bool RowMatches(NavNode node) =>
+    public bool RowMatches(NavNode node) => MatchesQuery(node) && MatchesTags(node);
+
+    private bool MatchesQuery(NavNode node) =>
         Q is null
         || (node.Title?.Contains(Q, StringComparison.OrdinalIgnoreCase) ?? false)
         || (node.Description?.Contains(Q, StringComparison.OrdinalIgnoreCase) ?? false)
         || (node.Tags?.Any(t => t.Contains(Q, StringComparison.OrdinalIgnoreCase)) ?? false);
 
+    private bool MatchesTags(NavNode node) =>
+        SelectedTags.Count == 0
+        || (node.Tags?.Any(t => SelectedTags.Contains(t, StringComparer.OrdinalIgnoreCase)) ?? false);
+
     /// <summary>A /desktop URL with the given filters and every other current
     /// query parameter kept, so changing a filter never disturbs the window
     /// arrangement.</summary>
-    private string BuildUrl(string? cat, string? q) {
+    private string BuildUrl(IEnumerable<string> cats, string? q, IEnumerable<string> tags) {
         var parts = new List<string>();
         foreach (var kv in Request.Query) {
             // "view" is consumed on arrival (the default-view escape hatch).
-            if (kv.Key is "cat" or "q" or "view") { continue; }
+            if (kv.Key is "cat" or "q" or "tag" or "view") { continue; }
             foreach (var value in kv.Value) {
                 parts.Add($"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(value ?? string.Empty)}");
             }
         }
-        if (cat is not null) { parts.Add("cat=" + Uri.EscapeDataString(cat)); }
+        parts.AddRange(cats.Select(c => "cat=" + Uri.EscapeDataString(c)));
+        parts.AddRange(tags.Select(t => "tag=" + Uri.EscapeDataString(t)));
         if (q is not null) { parts.Add("q=" + Uri.EscapeDataString(q)); }
         return parts.Count > 0 ? "/?" + string.Join("&", parts) : "/";
     }
 
-    public string CategoryUrl(string? cat) => BuildUrl(cat, Q);
+    /// <summary>A tab selects exactly this category (null clears them),
+    /// keeping the tags, filter and windows.</summary>
+    public string CategoryUrl(string? cat) =>
+        BuildUrl(cat is null ? Array.Empty<string>() : new[] { cat }, Q, SelectedTags);
 
     /// <summary>The desktop URL with the given window open and on top, and
     /// every other parameter kept: a direct tab's no-script destination.</summary>
@@ -250,9 +277,14 @@ public class DesktopModel : PageModel {
         if (mins.Count > 0) { parts.Add("min=" + string.Join(",", mins)); }
         return "/?" + string.Join("&", parts);
     }
-    public string RemoveCatUrl => BuildUrl(null, Q);
-    public string RemoveQUrl => BuildUrl(Cat, null);
-    public string ClearFiltersUrl => BuildUrl(null, null);
+    public string RemoveCatUrl(string cat) => BuildUrl(SelectedCats.Where(c => c != cat), Q, SelectedTags);
+    public string RemoveTagUrl(string tag) => BuildUrl(SelectedCats, Q, SelectedTags.Where(t => t != tag));
+    public string RemoveQUrl => BuildUrl(SelectedCats, null, SelectedTags);
+    public string ClearFiltersUrl => BuildUrl(Array.Empty<string>(), null, Array.Empty<string>());
+
+    /// <summary>The number of active filters, for the chips row's clear
+    /// link and the clear button's disabled state.</summary>
+    public int ActiveFilterCount => SelectedCats.Count + SelectedTags.Count + (Q is null ? 0 : 1);
 
     /// <summary>The current query parameters, except q, as hidden inputs for
     /// the filter form, so a no-script submit keeps the category and the

@@ -62,10 +62,11 @@
 }
 
 <nav class="app-section-bar" data-region="sections" aria-label="Categories">
-    <a class="section-tab @(Model.Cat is null ? "active" : null)" href="@Model.CategoryUrl(null)">All</a>
+    <a class="section-tab @(Model.SelectedCats.Count == 0 ? "active" : null)" href="@Model.CategoryUrl(null)">All</a>
     @foreach (var (slug, title) in Model.Categories)
     {
-        <a class="section-tab @(Model.Cat == slug ? "active" : null)" href="@Model.CategoryUrl(slug)">@title</a>
+        <a class="section-tab @(Model.SelectedCats.Count == 1 && Model.SelectedCats[0] == slug ? "active" : null)"
+           href="@Model.CategoryUrl(slug)">@title</a>
     }
     @* Bare sitenav links (no children) are not categories: they live in
        their own area on the right, behind a partial-height separator. An
@@ -104,13 +105,37 @@
             <input class="md-filter" type="search" name="q" value="@Model.Q"
                    placeholder="Filter the list…" aria-label="Filter the list" />
             <button class="icon-btn md-filter-go" type="submit" aria-label="Apply the filter" title="Apply the filter"></button>
-            @* Clears category and filter, windows kept. Inside the region,
-               so the server re-renders its state on every swap. *@
-            <a class="icon-btn filter-clear @(Model.Cat is null && Model.Q is null ? "is-disabled" : null)"
+            @* Clears categories, tags and filter, windows kept. Inside the
+               region, so the server re-renders its state on every swap. *@
+            <a class="icon-btn filter-clear @(Model.ActiveFilterCount == 0 ? "is-disabled" : null)"
                href="@Model.ClearFiltersUrl"
-               @(Model.Cat is null && Model.Q is null ? Html.Raw("aria-disabled=\"true\" tabindex=\"-1\"") : null)
+               @(Model.ActiveFilterCount == 0 ? Html.Raw("aria-disabled=\"true\" tabindex=\"-1\"") : null)
                aria-label="Clear all filters" title="Clear all filters"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5.5"/><line x1="4.2" y1="11.8" x2="11.8" y2="4.2"/></svg></a>
         </form>
+        @* Multi-select menus, after the Andoneer board's workstream filter:
+           the popover stays open across checking (light dismiss closes it
+           on an outside click), each change submits the filter form, and
+           desktop.js re-syncs the boxes from the URL after every swap. *@
+        <div class="menu">
+            <button class="btn btn-sm menu-btn" type="button" popovertarget="cat-filter-menu">Categories</button>
+            <nav class="menu-panel" id="cat-filter-menu" popover aria-label="Filter by category" data-filter-menu="cat">
+                @foreach (var (slug, title) in Model.Categories)
+                {
+                    <label class="check menu-check"><input type="checkbox" value="@slug"
+                           @(Model.SelectedCats.Contains(slug) ? Html.Raw("checked") : null)> @title</label>
+                }
+            </nav>
+        </div>
+        <div class="menu">
+            <button class="btn btn-sm menu-btn" type="button" popovertarget="tag-filter-menu">Tags</button>
+            <nav class="menu-panel" id="tag-filter-menu" popover aria-label="Filter by tag" data-filter-menu="tag">
+                @foreach (var tag in Model.AllTags)
+                {
+                    <label class="check menu-check"><input type="checkbox" value="@tag"
+                           @(Model.SelectedTags.Contains(tag) ? Html.Raw("checked") : null)> @tag</label>
+                }
+            </nav>
+        </div>
         <span class="md-toolbar-sep"></span>
         <span class="md-section-label">Open</span>
         <nav class="win-dock" data-win-dock aria-label="Open windows"></nav>
@@ -125,20 +150,21 @@
     @* Always present, so region swaps always find their counterpart;
        PUDL hides an empty chips row. *@
     <div class="md-chips" data-region="chips">
-        @if (Model.Cat is not null || Model.Q is not null)
+        @foreach (var cat in Model.SelectedCats)
         {
-            @if (Model.Cat is not null)
-            {
-                <span class="filter-chip"><span class="fc-kind">category</span> @Model.CatTitle <a class="filter-chip-x" href="@Model.RemoveCatUrl" aria-label="Remove the category filter">×</a></span>
-            }
-            @if (Model.Q is not null)
-            {
-                <span class="filter-chip"><span class="fc-kind">filter</span> @Model.Q <a class="filter-chip-x" href="@Model.RemoveQUrl" aria-label="Remove the text filter">×</a></span>
-            }
-            @if (Model.Cat is not null && Model.Q is not null)
-            {
-                <a class="md-chips-clear" href="@Model.ClearFiltersUrl">clear</a>
-            }
+            <span class="filter-chip"><span class="fc-kind">category</span> @Model.CatTitleOf(cat) <a class="filter-chip-x" href="@Model.RemoveCatUrl(cat)" aria-label="Remove the @Model.CatTitleOf(cat) category filter">×</a></span>
+        }
+        @foreach (var tag in Model.SelectedTags)
+        {
+            <span class="filter-chip"><span class="fc-kind">tag</span> @tag <a class="filter-chip-x" href="@Model.RemoveTagUrl(tag)" aria-label="Remove the @tag tag filter">×</a></span>
+        }
+        @if (Model.Q is not null)
+        {
+            <span class="filter-chip"><span class="fc-kind">filter</span> @Model.Q <a class="filter-chip-x" href="@Model.RemoveQUrl" aria-label="Remove the text filter">×</a></span>
+        }
+        @if (Model.ActiveFilterCount > 1)
+        {
+            <a class="md-chips-clear" href="@Model.ClearFiltersUrl">clear</a>
         }
     </div>
     <div class="md-body">

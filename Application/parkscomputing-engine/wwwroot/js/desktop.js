@@ -107,7 +107,8 @@
         function saveListState() {
             var q = new URLSearchParams(location.search);
             var list = new URLSearchParams();
-            if (q.get('cat')) { list.set('cat', q.get('cat')); }
+            q.getAll('cat').forEach(function (v) { list.append('cat', v); });
+            q.getAll('tag').forEach(function (v) { list.append('tag', v); });
             if (q.get('q')) { list.set('q', q.get('q')); }
             document.cookie = list.toString()
                 ? 'pc-list=' + encodeURIComponent(list.toString()) + '; path=/; max-age=31536000; SameSite=Lax'
@@ -115,6 +116,43 @@
         }
         document.addEventListener('pudl:regions-swap', saveListState);
         saveListState();
+
+        /* The category and tag menus: a checkbox change rewrites the filter
+           form's matching hidden inputs and submits it, which pudl-regions
+           turns into a region swap; the boxes re-sync from the URL after
+           every swap, Back and Forward included, so the panel can stay
+           open across any number of checks. */
+        function syncFilterMenus() {
+            var q = new URLSearchParams(location.search);
+            document.querySelectorAll('[data-filter-menu]').forEach(function (panel) {
+                var name = panel.getAttribute('data-filter-menu');
+                var chosen = q.getAll(name).map(function (v) { return v.toLowerCase(); });
+                panel.querySelectorAll('input[type="checkbox"]').forEach(function (box) {
+                    box.checked = chosen.indexOf(box.value.toLowerCase()) >= 0;
+                });
+            });
+        }
+
+        document.addEventListener('change', function (e) {
+            var panel = e.target.closest && e.target.closest('[data-filter-menu]');
+            if (!panel) { return; }
+            var form = document.querySelector('.md-filter-group');
+            if (!form) { return; }
+            var name = panel.getAttribute('data-filter-menu');
+            form.querySelectorAll('input[type="hidden"][name="' + name + '"]').forEach(function (i) { i.remove(); });
+            panel.querySelectorAll('input[type="checkbox"]:checked').forEach(function (box) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = name;
+                input.value = box.value;
+                form.appendChild(input);
+            });
+            form.requestSubmit();
+        });
+
+        document.addEventListener('pudl:regions-swap', syncFilterMenus);
+        window.addEventListener('popstate', syncFilterMenus);
+        syncFilterMenus();
     }
 
     /* Runs before pudl-windows initializes (this script is not deferred),

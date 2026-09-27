@@ -292,6 +292,16 @@ body.desktop .app-section-bar { flex: none; }
 .welcome-card p { margin: 0 0 14px; font-size: 13px; color: var(--text-muted); }
 .welcome-card p:last-child { margin-bottom: 0; }
 
+/* The category and tag filter menus' checkbox rows. */
+.menu-panel .menu-check {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.menu-panel .menu-check:hover { background: var(--surface-alt); }
+
 /* The close-all and clear-filters controls, and any disabled icon button. */
 .close-all svg, .filter-clear svg { width: 15px; height: 15px; }
 .md-filter-group .filter-clear { margin-left: 6px; }

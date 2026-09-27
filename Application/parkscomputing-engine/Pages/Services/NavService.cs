@@ -133,6 +133,15 @@ namespace ParksComputing.Engine.Pages.Services {
                     if (!post.Updated.HasValue && post.Date.HasValue) { post.Updated = post.Date; }
                 }
             }
+            // Tags are a property of the content, so a nav entry and a post
+            // for the same slug share them, whichever carried them first.
+            foreach (var navNode in Enumerate(root).Skip(1)) {
+                if (navNode.Tags is { Length: > 0 } || string.IsNullOrEmpty(navNode.Slug)) { continue; }
+                var twin = root.Posts?.FirstOrDefault(p =>
+                    string.Equals(p.Slug, navNode.Slug, StringComparison.OrdinalIgnoreCase) && p.Tags is { Length: > 0 });
+                if (twin is not null) { navNode.Tags = twin.Tags; }
+            }
+
             // Also enrich navigation tree nodes (excluding root) so header/menu titles can be inferred
             foreach (var navNode in Enumerate(root).Skip(1)) { // Skip the root itself
                 // Only attempt if title missing (other fields optional for nav nodes) and we have a derived URL
