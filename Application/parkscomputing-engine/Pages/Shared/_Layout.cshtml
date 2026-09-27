@@ -24,9 +24,6 @@
     <title>@ViewData["Title"]</title>
 
     <script src="~/pudl/pudl-theme.js"></script>
-    @* Site extension over PUDL's theme key: 'system' follows the OS. Runs
-       pre-paint, right after PUDL's own pre-paint script. *@
-    <script>(function () { try { if (localStorage.getItem('pudl-theme') === 'system') { document.documentElement.setAttribute('data-theme', matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); } } catch (e) { } })();</script>
     <link rel="stylesheet" href="~/pudl/pudl.css" />
     @if (isDesktop)
     {

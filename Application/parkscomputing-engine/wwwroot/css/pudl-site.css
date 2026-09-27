@@ -272,17 +272,9 @@ body.desktop .md-toolbar .md-section-label { padding: 0; }
    however many windows are open. */
 body.desktop .md-toolbar { flex-wrap: nowrap; }
 body.desktop .md-toolbar .win-dock { flex: 1 1 auto; min-width: 0; }
-/* An empty dock stays in the layout as the toolbar's elastic middle, or
-   the close-all control would slide left when the last window closes. */
-body.desktop .md-toolbar .win-dock:empty { display: flex; }
 @container md (max-width: 640px) {
   body.desktop .md-toolbar { flex-wrap: wrap; }
 }
-
-/* The chips row renders always (its region must exist for swaps), and a
-   server-rendered row carries whitespace, which defeats PUDL's :empty
-   rule; this collapses it whenever it holds no chip. */
-.md-chips:not(:has(.filter-chip)) { display: none; }
 
 /* The settings dialog's fine print. */
 .settings-note { font-size: 12px; color: var(--text-muted); margin: 14px 0 0; }

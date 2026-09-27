@@ -89,31 +89,17 @@
         var opener = document.querySelector('[data-settings-open]');
         if (!backdrop || !opener) { return; }
 
+        /* The theme is pudl-theme's own since 0.13.0: pudlSetTheme writes
+           the choice, and pudl:theme-change keeps this dialog's marking in
+           step, other tabs included. */
         function markTheme() {
-            var saved = null;
-            try { saved = localStorage.getItem('pudl-theme'); } catch (err) { }
-            var mode = saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'dark';
+            var mode = window.pudlThemePreference ? window.pudlThemePreference() : 'dark';
             backdrop.querySelectorAll('[data-theme-choice]').forEach(function (b) {
                 b.classList.toggle('active', b.getAttribute('data-theme-choice') === mode);
             });
         }
 
-        function setTheme(mode) {
-            try { localStorage.setItem('pudl-theme', mode); } catch (err) { }
-            var applied = mode === 'system'
-                ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-                : mode;
-            document.documentElement.setAttribute('data-theme', applied);
-            markTheme();
-        }
-
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
-            var saved = null;
-            try { saved = localStorage.getItem('pudl-theme'); } catch (err) { }
-            if (saved === 'system') {
-                document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-            }
-        });
+        document.addEventListener('pudl:theme-change', markTheme);
 
         /* The default view lives in a cookie because the server acts on it:
            a bare / redirects to the classic home when it says classic. It
@@ -153,17 +139,18 @@
         backdrop.addEventListener('click', function (e) {
             if (e.target === backdrop) { close(); }
             var choice = e.target.closest('[data-theme-choice]');
-            if (choice) { setTheme(choice.getAttribute('data-theme-choice')); }
+            if (choice && window.pudlSetTheme) { window.pudlSetTheme(choice.getAttribute('data-theme-choice')); }
             var view = e.target.closest('[data-view-choice]');
             if (view) { setView(view.getAttribute('data-view-choice')); }
             if (e.target.closest('[data-settings-close]')) { close(); }
             if (e.target.closest('[data-settings-forget]')) {
-                ['pudl-theme', 'pc-maximize-new', 'pc-resume-windows', 'pc-windows'].forEach(function (key) {
+                ['pc-maximize-new', 'pc-resume-windows', 'pc-windows'].forEach(function (key) {
                     try { localStorage.removeItem(key); } catch (err) { }
                 });
                 document.cookie = 'pc-list=; path=/; max-age=0; SameSite=Lax';
                 setView('window');
-                document.documentElement.setAttribute('data-theme', 'dark');
+                /* Forgetting lands the theme on System: the device decides. */
+                if (window.pudlSetTheme) { window.pudlSetTheme('system'); }
                 backdrop.querySelectorAll('[data-pref]').forEach(function (box) {
                     box.checked = box.getAttribute('data-pref-default') === '1';
                 });
