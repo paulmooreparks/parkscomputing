@@ -62,6 +62,18 @@ body.desktop .site-header { position: static; flex: none; }
   position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%);
 }
+/* On the topbar the seg takes the bar's own palette: the track is the
+   topbar chip, and the option not chosen reads in the bar's foreground,
+   which the page's muted colour does not on a light theme. */
+.topbar .view-seg {
+  background: var(--tb-chip);
+  border-color: var(--tb-border);
+  box-shadow: var(--tb-chip-shadow);
+}
+.topbar .view-seg a { color: color-mix(in srgb, var(--tb-fg) 72%, transparent); }
+.topbar .view-seg a:hover { color: var(--tb-link-hover); }
+.topbar .view-seg a[aria-current]:not([aria-current="false"]) { color: var(--text); }
+.topbar .view-seg a[aria-current]:not([aria-current="false"]):hover { color: var(--text); }
 @media (max-width: 560px) {
   .view-seg { position: static; transform: none; margin-left: auto; margin-right: 8px; }
 }
