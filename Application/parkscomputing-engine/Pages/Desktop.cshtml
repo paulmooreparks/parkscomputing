@@ -213,7 +213,9 @@
             }
         </nav>
         <div class="md-resize" role="separator" aria-orientation="vertical" aria-label="Resize the list"></div>
-        <div class="md-detail reader-stage">
+        @* tabindex: the pane is a tab stop so the keyboard can scroll it
+           (PUDL 0.22.1). *@
+        <div class="md-detail reader-stage" tabindex="0">
             <div class="reader-col">
                 <a class="md-back" href="/" data-win-back>Articles</a>
                 <main class="win-host">

@@ -14,10 +14,14 @@
 
      <div data-applet="mixer"><noscript>…</noscript></div>
 
-   ver is added to src and css as ?v=, so a new version is one edit. A mount
-   may still carry data-applet-src, -css and -page, and each one it carries
-   wins over the registry. The order of loading does not matter: a mount
-   that meets an undefined name waits for its define().
+   ver is added to src and css as ?v=, so a new version is one edit. Only
+   define() names an applet's script and stylesheet, because define() is
+   called by the site's own script, whereas a page's markup can come from
+   people other than its authors, and a mount naming a script would let
+   them choose what runs with the page's authority. A mount may carry
+   data-applet-page, a page on this origin that overrides the registry's.
+   The order of loading does not matter: a mount that meets an undefined
+   name waits for its define().
 
    The applet's script registers it:
 
@@ -91,16 +95,29 @@
     return u.href;
   }
 
-  /* Where a mount's files are: each attribute it carries, else the
-     registry's entry, with the registry's version on the registry's URLs. */
+  function sameOrigin(url) {
+    try { return new URL(url, document.baseURI).origin === location.origin; } catch (e) { return false; }
+  }
+
+  /* Where a mount's files are: the registry's entry, with its version on
+     the script and stylesheet. A mount's data-applet-page overrides the
+     registry's page when it is on this origin, since an applet may put its
+     page in a link. */
   function config(root) {
     var name = root.getAttribute('data-applet');
     var d = defs[name] || {};
-    function pick(attr, key) {
-      return root.hasAttribute(attr) ? root.getAttribute(attr) : versioned(d[key], d.ver);
-    }
-    return { name: name, src: pick('data-applet-src', 'src'), css: pick('data-applet-css', 'css'),
-             page: root.getAttribute('data-applet-page') || d.page || null };
+    var page = root.getAttribute('data-applet-page');
+    if (page && !sameOrigin(page)) page = null;
+    return { name: name, src: versioned(d.src, d.ver), css: versioned(d.css, d.ver), page: page || d.page || null };
+  }
+
+  /* Up to 0.22 a mount could name its own script and stylesheet. Those
+     attributes are no longer read, and a mount that still carries them
+     says so once, since it would otherwise wait for a define() in silence. */
+  function warnRetired(root) {
+    if (!root.hasAttribute('data-applet-src') && !root.hasAttribute('data-applet-css')) return;
+    if (window.console) console.warn('pudl-applets: data-applet-src and data-applet-css are no longer read; name the files of "' +
+                                     root.getAttribute('data-applet') + '" with pudlApplets.define()');
   }
 
   function ensureCss(href) {
@@ -144,9 +161,9 @@
   }
 
   /* The applet's definition: at once if it is registered, after its script
-     has loaded if the mount knows the script, or else whenever it is
-     registered, by a define() naming its script or by a script the page
-     loads itself. */
+     has loaded if the registry names it, or else whenever it is
+     registered, by a later define() naming its script or by a script the
+     page loads itself. */
   function definition(name, src) {
     if (registry[name]) return Promise.resolve(registry[name]);
     if (src) return loaded(name, src);
@@ -241,6 +258,7 @@
   function start(root) {
     root.setAttribute('data-applet-state', 'loading');
     var c = config(root);
+    warnRetired(root);
     ensureCss(c.css);
     if (!c.src && !registry[c.name]) (unresolved[c.name] = unresolved[c.name] || []).push(root);
     definition(c.name, c.src).then(function (def) {

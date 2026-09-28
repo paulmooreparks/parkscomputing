@@ -10,7 +10,9 @@
 }
 @* Razor renders data-* attributes even for null values, so the parent
    attribute is emitted only for a child window. *@
-<article class="win @(Model.Active ? "active" : string.Empty)" data-win="@Model.Key"
+@* A section, not an article: ARIA allows role="dialog" on a section
+   (PUDL 0.23.0). *@
+<section class="win @(Model.Active ? "active" : string.Empty)" data-win="@Model.Key"
          @(Model.Parent is null ? null : Html.Raw($"data-win-parent=\"{Model.Parent}\""))
          data-win-mode="@(Model.Mode ?? "floating")"
          role="dialog" aria-labelledby="win-@Model.Key-title"
@@ -84,4 +86,4 @@
             @Html.Raw(Model.BodyHtml)
         }
     </div>
-</article>
+</section>

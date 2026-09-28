@@ -7,6 +7,14 @@
    windows. Opening a window pushes a history entry, and every other change
    replaces the current one.
 
+   A page may have default windows, standing furniture such as a panel of
+   site links, named on the layer with data-win-default="site,help". An
+   address that names no windows opens them where their markup puts them,
+   and the page's plain address stays plain while they are as it opened
+   them. An address with open, even an empty open=, means exactly what it
+   says, so closing the last window writes open= rather than bringing the
+   defaults back.
+
    Events, dispatched so a project can hook in without editing this file:
      pudl:window-place   on the layer, before a window opens with no placement
                          in the URL. A listener may set event.detail.placement
@@ -17,7 +25,12 @@
                          fetched fragment do not run.
      pudl:window-close   on the window element, just before it leaves the
                          page by any route. Use it to tear down what
-                         pudl:window-open set up.
+                         pudl:window-open set up. event.detail.reason says
+                         why: "button" or "key" when the reader closed it,
+                         "script" from pudlWindows.close, "parent" when its
+                         parent closed, "replace" when another window took
+                         its place, and "address" when the address moved on,
+                         by Back, Forward or a link.
      pudl:windows-change on the layer, after every change, with the state in
                          event.detail. Use it to persist placements.
 
@@ -42,6 +55,9 @@
   var pending = {};        // key -> true while its window is loading
   var urlTimer = 0;
   var suppressClick = false;
+  var defaults = [];       // keys of the windows open when the address names none
+  var bare = null;         // the window parameters of the state an address naming none produced
+  var closing = {};        // key -> why its window is about to close, for pudl:window-close
 
   /* === State and URL ===================================================== */
 
@@ -60,11 +76,20 @@
     });
   }
 
-  function clampPlacement(p, layerW, layerH) {
-    var minW = Math.min(1, pxMin('--win-min-w', 320) / (layerW || 1));
-    var minH = Math.min(1, pxMin('--win-min-h', 200) / (layerH || 1));
-    var w = Math.min(1, Math.max(minW, p.w));
-    var h = Math.min(1, Math.max(minH, p.h));
+  /* The smallest a window may be, as fractions of a layer of that size. */
+  function minFractions(layerW, layerH) {
+    return {
+      w: Math.min(1, pxMin('--win-min-w', 320) / (layerW || 1)),
+      h: Math.min(1, pxMin('--win-min-h', 200) / (layerH || 1))
+    };
+  }
+
+  /* min, from minFractions(), may be passed in by a caller that clamps many
+     times over, since finding it reads the layer's computed style. */
+  function clampPlacement(p, layerW, layerH, min) {
+    min = min || minFractions(layerW, layerH);
+    var w = Math.min(1, Math.max(min.w, p.w));
+    var h = Math.min(1, Math.max(min.h, p.h));
     return {
       mode: p.mode, w: w, h: h,
       x: Math.min(1 - w, Math.max(0, p.x)),
@@ -91,8 +116,11 @@
     return p.mode + ':' + [p.x, p.y, p.w, p.h].map(fmt).join(',');
   }
 
+  /* The state an address names, or null when it names no windows at all,
+     which means the page's default windows. An empty open= names none. */
   function readURL() {
     var q = new URLSearchParams(location.search);
+    if (!q.has('open')) return null;
     var st = { open: keyList(q.get('open')), top: null, min: {}, place: {} };
     keyList(q.get('min')).forEach(function (k) {
       if (st.open.indexOf(k) >= 0) st.min[k] = true;
@@ -106,9 +134,33 @@
     return st;
   }
 
+  /* A state's window parameters. Keys, modes and numbers need no escaping,
+     so they are written out by hand and stay readable. */
+  function windowParams(st) {
+    if (!st.open.length) return [];
+    var parts = ['open=' + st.open.join(',')];
+    if (st.top) parts.push('top=' + st.top);
+    var mins = st.open.filter(function (k) { return st.min[k]; });
+    if (mins.length) parts.push('min=' + mins.join(','));
+    st.open.forEach(function (k) {
+      if (st.place[k]) parts.push('p.' + k + '=' + formatPlacement(st.place[k]));
+    });
+    return parts;
+  }
+
+  /* Whether a state is the one an address naming no windows opened. It is
+     known once such an address has been seen, and compared as the window
+     parameters it would write, so a default window the reader has moved,
+     minimised or closed is no longer the default. */
+  function isDefault(st) {
+    return bare !== null && windowParams(st).join('&') === bare;
+  }
+
   /* The URL for a state, keeping every query parameter that is not ours.
-     Keys, modes and numbers need no escaping, so the window parameters are
-     written out by hand and stay readable. */
+     On a page with default windows, the default state is written as no
+     window parameters at all, so the page's plain address stays plain, and
+     a state with no windows open is written as an empty open=, since no
+     parameters would bring the defaults back. */
   function urlFor(st) {
     var q = new URLSearchParams(location.search);
     Array.from(q.keys()).forEach(function (k) {
@@ -117,15 +169,12 @@
     var parts = [];
     var rest = q.toString();
     if (rest) parts.push(rest);
-    if (st.open.length) {
-      parts.push('open=' + st.open.join(','));
-      if (st.top) parts.push('top=' + st.top);
-      var mins = st.open.filter(function (k) { return st.min[k]; });
-      if (mins.length) parts.push('min=' + mins.join(','));
-      st.open.forEach(function (k) {
-        if (st.place[k]) parts.push('p.' + k + '=' + formatPlacement(st.place[k]));
-      });
+    var mine = windowParams(st);
+    if (defaults.length) {
+      if (isDefault(st)) mine = [];
+      else if (!mine.length) mine = ['open='];
     }
+    parts = parts.concat(mine);
     return location.pathname + (parts.length ? '?' + parts.join('&') : '') + location.hash;
   }
 
@@ -251,14 +300,16 @@
 
   function apply(st) {
     /* A window leaving the page says so first, however it was closed, so
-       its content can tear down what it set up. */
+       its content can tear down what it set up, and says why, so a project
+       can tell a reader closing it from the address moving on. */
     Object.keys(wins).forEach(function (k) {
       if (st.open.indexOf(k) >= 0) return;
       var gone = wins[k];
       delete wins[k];
-      gone.dispatchEvent(new CustomEvent('pudl:window-close', { bubbles: true, detail: { key: k } }));
+      gone.dispatchEvent(new CustomEvent('pudl:window-close', { bubbles: true, detail: { key: k, reason: closing[k] || 'address' } }));
       gone.remove();
     });
+    closing = {};
     zOrder = zOrder.filter(function (k) { return st.open.indexOf(k) >= 0; });
     st.open.forEach(function (k) { if (zOrder.indexOf(k) < 0) zOrder.push(k); });
     if (st.top) { zOrder.splice(zOrder.indexOf(st.top), 1); zOrder.push(st.top); }
@@ -367,12 +418,14 @@
   }
 
   /* In a master-detail layout narrow enough to show one pane at a time, the
-     windows are the detail pane: it shows while any window does. A link
-     marked data-win-back minimises them all, which returns to the list. */
+     windows are the detail pane: it shows while any window the reader
+     opened does. A default window is part of the page rather than a record,
+     so it does not turn the pane over by itself. A link marked
+     data-win-back minimises them all, which returns to the list. */
   function syncPane() {
     var md = layer.closest('.md-layout');
     if (md) {
-      var any = state.open.some(function (k) { return !isHidden(state, k); });
+      var any = state.open.some(function (k) { return defaults.indexOf(k) < 0 && !isHidden(state, k); });
       md.setAttribute('data-md-pane', any ? 'detail' : 'list');
     }
     document.querySelectorAll('a[data-win-back]').forEach(function (a) {
@@ -387,7 +440,12 @@
     apply(st);
     var url = urlFor(st);
     if (url !== location.pathname + location.search + location.hash) {
-      history[push ? 'pushState' : 'replaceState'](history.state, '', url);
+      /* Firefox and Safari throw once a page changes its address too often
+         in a short time, which quick clicking between windows can reach.
+         The page is already right, so the address is written again once
+         things are quiet. */
+      try { history[push ? 'pushState' : 'replaceState'](history.state, '', url); }
+      catch (err) { urlTimer = setTimeout(function () { commit(state, false); }, URL_DELAY * 10); }
     }
     layer.dispatchEvent(new CustomEvent('pudl:windows-change', { bubbles: true, detail: copy(st) }));
   }
@@ -409,7 +467,9 @@
 
   /* Finds a window's markup: in a <template> when the source starts with #,
      otherwise fetched from the server, which returns the same markup it
-     renders into the page. */
+     renders into the page. The markup joins the page with the page's own
+     authority, so it must come from the page's own origin as HTML: the
+     fetch refuses another origin, a redirect to one included. */
   function load(key) {
     var src = srcFor(key);
     if (!src) return Promise.reject(new Error('no data-win-src on the layer'));
@@ -418,9 +478,10 @@
       var t = document.getElementById(src.slice(1));
       got = t ? Promise.resolve(t.content.cloneNode(true)) : Promise.reject(new Error('no template ' + src));
     } else {
-      got = fetch(src, { credentials: 'same-origin', headers: { Accept: 'text/html' } })
+      got = fetch(src, { mode: 'same-origin', credentials: 'same-origin', headers: { Accept: 'text/html' } })
         .then(function (r) {
           if (!r.ok) throw new Error(src + ' returned ' + r.status);
+          if ((r.headers.get('content-type') || '').indexOf('text/html') < 0) throw new Error(src + ' is not HTML');
           return r.text();
         })
         .then(function (html) {
@@ -465,6 +526,12 @@
         'Window: {title}. Arrow keys move it, Shift with arrow keys resizes it, Enter maximizes or restores it.')
         .split('{title}').join(titleOf(key)));
     }
+
+    /* A window's body scrolls, and a reader with only a keyboard can
+       scroll it only by focusing something inside it. Content with no link
+       or field has nothing to focus, so the body itself is a tab stop. */
+    var body = el.querySelector('.win-body');
+    if (body && !body.hasAttribute('tabindex')) body.tabIndex = 0;
     return el;
   }
 
@@ -578,6 +645,7 @@
   function replaceWith(oldKey, key, from) {
     if (!wins[oldKey] || oldKey === key) { open(key, from); return; }
     if (wins[key]) {
+      markClosing(oldKey, 'replace');
       commit(closed(raised(state, key), oldKey), true);
       focusWindow(key);
       return;
@@ -600,6 +668,7 @@
         st.open.splice(st.open.indexOf(oldKey) + 1, 0, key);
         st.place[key] = Object.assign({}, st.place[oldKey]);
         delete st.min[key];
+        markClosing(oldKey, 'replace');
         st = closed(st, oldKey);
       }
       st.top = key;
@@ -614,17 +683,28 @@
     });
   }
 
-  function close(key) {
+  /* Notes why a window and its children are about to close, which
+     pudl:window-close reports. */
+  function markClosing(key, reason) {
+    closing[key] = reason;
+    childrenOf(state, key).forEach(function (c) { closing[c] = 'parent'; });
+  }
+
+  /* reason is "button", "key" or "script", for pudl:window-close. */
+  function close(key, reason) {
     var back = openers[key];
     delete openers[key];
+    markClosing(key, reason);
     commit(closed(state, key), false);
     if (back && back.isConnected) back.focus();
     else if (state.top) focusWindow(state.top);
   }
 
-  /* Brings the page in line with a URL, after Back or Forward or at start. */
+  /* Brings the page in line with a URL, after Back or Forward or at start.
+     An address that names no windows opens the page's default windows. */
   function sync(push) {
-    var st = readURL();
+    var named = readURL();
+    var st = named || { open: defaults.slice(), top: null, min: {}, place: {} };
     var missing = st.open.filter(function (k) { return !wins[k]; });
     return Promise.all(missing.map(function (k) {
       return load(k).then(function (el) { adopt(el); announceOpen(el); return null; },
@@ -639,6 +719,7 @@
         st.place[k] = clampPlacement(p, layer.clientWidth, layer.clientHeight);
       });
       if (!st.top) st.top = st.open.filter(function (k) { return !st.min[k]; }).pop() || null;
+      if (!named && defaults.length) bare = windowParams(st).join('&');
       commit(st, push);
     });
   }
@@ -666,54 +747,80 @@
   }
 
   /* One pointer gesture on a window: a drag of the title bar or a resize
-     from an edge. The window follows the pointer directly, and the state is
-     committed once, when the pointer lifts. */
+     from an edge. Pointer events can arrive several times a frame, so each
+     one only notes where the pointer is, and the window follows once a
+     frame. A dragged window moves by transform, which the compositor
+     handles without laying the window out or repainting it; a resized one
+     has to be laid out, but only once a frame. The state is committed
+     once, when the pointer lifts. */
   function gesture(e, key, edge) {
     var el = wins[key];
     var target = e.currentTarget;
     var r = layer.getBoundingClientRect();
+    var min = minFractions(r.width, r.height);
     var start = Object.assign({}, state.place[key]);
     var base = start, baseX = e.clientX, baseY = e.clientY;
-    var cur = start, snap = null, moved = false;
+    var lastX = baseX, lastY = baseY;
+    var cur = start, snap = null, moved = false, frame = 0;
 
     target.setPointerCapture(e.pointerId);
+
+    function begin() {
+      moved = true;
+      layer.classList.add('dragging');
+      if (edge) return;
+      /* Dragging a maximised or snapped window lifts it back to its
+         floating size, under the pointer, at the same point along the
+         title bar. */
+      if (start.mode !== 'floating') {
+        var er = el.getBoundingClientRect();
+        var along = (baseX - er.left) / (er.width || 1);
+        base = {
+          mode: 'floating', w: start.w, h: start.h,
+          x: (baseX - r.left) / r.width - along * start.w,
+          y: (er.top - r.top) / r.height
+        };
+        setPlacement(el, base);
+      }
+      el.classList.add('win-moving');
+    }
+
+    function step() {
+      frame = 0;
+      var dx = (lastX - baseX) / r.width;
+      var dy = (lastY - baseY) / r.height;
+      if (edge) {
+        cur = resizeFrom(base, edge, dx, dy, min);
+        setPlacement(el, cur);
+        return;
+      }
+      cur = clampPlacement({ mode: 'floating', x: base.x + dx, y: base.y + dy, w: base.w, h: base.h }, r.width, r.height, min);
+      el.style.transform = 'translate(' + (cur.x - base.x) * r.width + 'px, ' + (cur.y - base.y) * r.height + 'px)';
+      var s = snapAt(lastX, lastY, r);
+      if (s !== snap) { snap = s; showGhost(s); }
+    }
 
     function move(ev) {
       if (!moved) {
         if (Math.abs(ev.clientX - baseX) + Math.abs(ev.clientY - baseY) < CLICK_PX) return;
-        moved = true;
-        layer.classList.add('dragging');
-        /* Dragging a maximised or snapped window lifts it back to its
-           floating size, under the pointer, at the same point along the
-           title bar. */
-        if (!edge && start.mode !== 'floating') {
-          var er = el.getBoundingClientRect();
-          var along = (baseX - er.left) / (er.width || 1);
-          base = {
-            mode: 'floating', w: start.w, h: start.h,
-            x: (baseX - r.left) / r.width - along * start.w,
-            y: (er.top - r.top) / r.height
-          };
-        }
+        begin();
       }
-      var dx = (ev.clientX - baseX) / r.width;
-      var dy = (ev.clientY - baseY) / r.height;
-      if (edge) {
-        cur = resizeFrom(base, edge, dx, dy, r);
-      } else {
-        cur = clampPlacement({ mode: 'floating', x: base.x + dx, y: base.y + dy, w: base.w, h: base.h }, r.width, r.height);
-        snap = snapAt(ev.clientX, ev.clientY, r);
-        showGhost(snap);
-      }
-      setPlacement(el, cur);
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      if (!frame) frame = requestAnimationFrame(step);
     }
 
     function end(ev) {
       target.removeEventListener('pointermove', move);
       target.removeEventListener('pointerup', end);
       target.removeEventListener('pointercancel', end);
+      /* The pointer may lift before the frame that would have followed its
+         last move, so that move is taken now. */
+      if (frame) { cancelAnimationFrame(frame); step(); }
       layer.classList.remove('dragging');
       showGhost(null);
+      el.classList.remove('win-moving');
+      el.style.transform = '';
       if (!moved) return;
       /* The click that follows a drag must not follow the title link. */
       suppressClick = true;
@@ -732,9 +839,8 @@
     target.addEventListener('pointercancel', end);
   }
 
-  function resizeFrom(p, edge, dx, dy, r) {
-    var minW = Math.min(1, pxMin('--win-min-w', 320) / r.width);
-    var minH = Math.min(1, pxMin('--win-min-h', 200) / r.height);
+  function resizeFrom(p, edge, dx, dy, min) {
+    var minW = min.w, minH = min.h;
     var x = p.x, y = p.y, w = p.w, h = p.h;
     if (edge.indexOf('e') >= 0) w = Math.min(1 - p.x, Math.max(minW, p.w + dx));
     if (edge.indexOf('s') >= 0) h = Math.min(1 - p.y, Math.max(minH, p.h + dy));
@@ -751,8 +857,9 @@
 
   /* === Keyboard ========================================================== */
 
+  /* Keys pressed on the title bar itself; keys on the title link or the
+     buttons inside it are theirs. */
   function onHeadKey(e, key) {
-    if (e.target !== e.currentTarget) return;   // keys on the title link or buttons are theirs
     if (e.key === 'Enter') {
       e.preventDefault();
       commit(maximizeToggled(state, key), false);
@@ -812,7 +919,7 @@
       var wk = btn.closest('.win').getAttribute('data-win');
       if (action === 'minimize') { e.preventDefault(); commit(minimized(state, wk), false); }
       else if (action === 'maximize') { e.preventDefault(); commit(maximizeToggled(state, wk), false); }
-      else if (action === 'close') { e.preventDefault(); close(wk); }
+      else if (action === 'close') { e.preventDefault(); close(wk, 'button'); }
     }
   }
 
@@ -865,13 +972,16 @@
     var t = e.target;
     if (t && t.closest && t.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) return;
     e.preventDefault();
-    close(top);
+    close(top, 'key');
   }
 
   function init() {
     layer = document.querySelector('[data-win-layer]');
     if (!layer) return;
     srcTemplate = layer.getAttribute('data-win-src') || '';
+    /* The layer names the default windows, not the windows themselves,
+       because a default window the address has closed is not in the page. */
+    defaults = keyList(layer.getAttribute('data-win-default'));
 
     ghost = document.createElement('div');
     ghost.className = 'win-ghost';
@@ -892,12 +1002,8 @@
     layer.addEventListener('dblclick', onDoubleClick);
     layer.addEventListener('focusin', onFocusIn);
     layer.addEventListener('keydown', function (e) {
-      var head = e.target.closest && e.target.closest('.win-head');
-      if (head && e.target === head) onHeadKey({
-        target: e.target, currentTarget: head, key: e.key, shiftKey: e.shiftKey,
-        altKey: e.altKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey,
-        preventDefault: function () { e.preventDefault(); }
-      }, head.closest('.win').getAttribute('data-win'));
+      var head = e.target.classList && e.target.classList.contains('win-head') ? e.target : null;
+      if (head && layer.contains(head)) onHeadKey(e, head.closest('.win').getAttribute('data-win'));
     });
     document.addEventListener('keydown', onEscape);
     window.addEventListener('popstate', function () { sync(false); });
@@ -918,7 +1024,7 @@
         focusWindow(key);
       },
       minimize: function (key) { if (wins[key]) commit(minimized(state, key), false); },
-      close: function (key) { if (wins[key]) close(key); },
+      close: function (key) { if (wins[key]) close(key, 'script'); },
       state: function () { return copy(state); }
     };
 
