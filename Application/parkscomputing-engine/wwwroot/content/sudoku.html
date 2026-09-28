@@ -40,12 +40,9 @@ SOFTWARE.
     <!-- The game is a PUDL applet (pudl-applets.js): it builds itself
          inside this mount and runs the same way in a PUDL window or as
          this page. -->
-    <!-- Bump ?v= when the script or stylesheet changes: pudl-applets loads
-         these literal URLs, so without it a browser can hold a stale copy. -->
+    <!-- The applet's files and version come from the site registry
+         (js/applets.js, PUDL 0.20.0); the mount is just the name. -->
     <div class="pc-sudoku" data-applet="sudoku"
-         data-applet-src="/js/sudoku.js?v=5"
-         data-applet-css="/css/sudoku.css?v=5"
-         data-applet-page="/page/sudoku"
          tabindex="0" role="application" aria-label="Sudoku game">
         <noscript>
             <p>This Sudoku game needs JavaScript to run.</p>

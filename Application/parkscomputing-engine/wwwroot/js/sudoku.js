@@ -136,12 +136,12 @@ SOFTWARE.
         buildMarkup(root);
         root.classList.add('pc-sudoku');
 
-        /* The habitat decides the sizing strategy: a PUDL window and the
-           bare page fill the box they are given; the classic article lets
-           the page flow and caps the board against the viewport. */
-        var inWindow = !!root.closest('.win');
-        var isBarePage = ownUrl && new URLSearchParams(location.search).has('frame');
-        root.classList.add(inWindow ? 'pc-sudoku-fit' : isBarePage ? 'pc-sudoku-app' : 'pc-sudoku-flow');
+        /* The host says how to size (opts.fit, PUDL 0.20.0): fill the box a
+           window gives, or flow with the page. The bare ?frame form of the
+           game's own page is the app: it fills the viewport itself. */
+        var fill = opts.fit === 'fill';
+        var isApp = !fill && ownUrl && new URLSearchParams(location.search).has('frame');
+        root.classList.add(fill ? 'pc-sudoku-fit' : isApp ? 'pc-sudoku-app' : 'pc-sudoku-flow');
 
         if (!root.hasAttribute('tabindex')) { root.tabIndex = 0; }
 
@@ -460,7 +460,31 @@ SOFTWARE.
                     }));
                 } catch (err) { }
             }
+            /* The 0.20.0 handshake: any host may hear the state change. */
+            if (opts.changed) { opts.changed(compactState()); }
             return shareLink.href;
+        }
+
+        /* The portable form of the game, for the state handshake: enough
+           to reproduce the board anywhere, small enough for an address. */
+        function compactState() {
+            return difficultyDropdown.value + '|' + boardStateString();
+        }
+
+        function applyCompactState(s) {
+            var sep = typeof s === 'string' ? s.indexOf('|') : -1;
+            if (sep <= 0) { return false; }
+            difficultyDropdown.value = s.slice(0, sep);
+            applyBoardString(s.slice(sep + 1));
+            var snapshot = boardStateString();
+            if (undoStack[undoIndex] !== snapshot) {
+                undoStack.length = undoIndex + 1;
+                undoStack.push(snapshot);
+                if (undoStack.length > UNDO_MAX) { undoStack.shift(); }
+                undoIndex = undoStack.length - 1;
+            }
+            render();
+            return true;
         }
 
         /* Every state change lands here: the snapshot joins the undo
@@ -754,6 +778,15 @@ SOFTWARE.
                 }
             } catch (err) { }
         }
+        /* A host that kept state for us (opts.state, 0.20.0) supplies the
+           game unless the address itself names one. */
+        if (!params.get('board') && typeof opts.state === 'string') {
+            var hostSep = opts.state.indexOf('|');
+            if (hostSep > 0) {
+                params.set('difficulty', opts.state.slice(0, hostSep));
+                params.set('board', opts.state.slice(hostSep + 1));
+            }
+        }
         difficultyDropdown.value = params.get('difficulty') || 'medium';
 
         if (setBoardStateFromParams(params)) {
@@ -772,6 +805,8 @@ SOFTWARE.
         if (ownUrl || root.closest('.win.active')) { root.focus({ preventScroll: true }); }
 
         return {
+            state: compactState,
+            setState: function (s) { applyCompactState(s); },
             destroy: function () {
                 if (helpDialog.open) { helpDialog.close(); }
                 if (onPopState) { window.removeEventListener('popstate', onPopState); }
