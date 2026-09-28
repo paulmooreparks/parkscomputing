@@ -16,34 +16,6 @@
         return key === 'open' || key === 'top' || key === 'min' || key.indexOf('p.') === 0;
     }
 
-    /* === Windowed-applet continuity (PUDL 0.21.0) ==========================
-       The desktop is the host of every windowed applet, so it keeps their
-       continuity: pudl:applet-state hands a starting instance the state
-       kept for it, and pudl:applet-change keeps it again. The keys are
-       per-applet (pc-sudoku), functional storage wiped by the settings
-       dialog's Forget. Applets on their own pages keep their state in the
-       URL and never reach this. */
-    var CONTINUITY = { sudoku: 'pc-sudoku' };
-
-    document.addEventListener('pudl:applet-state', function (e) {
-        var key = CONTINUITY[e.detail && e.detail.name];
-        if (!key || !e.target.closest('.win')) { return; }
-        try {
-            var kept = localStorage.getItem(key);
-            if (kept) { e.detail.state = kept; }
-        } catch (err) { }
-    });
-
-    document.addEventListener('pudl:applet-change', function (e) {
-        var mount = e.target;
-        var key = mount.getAttribute && CONTINUITY[mount.getAttribute('data-applet')];
-        if (!key || !mount.closest('.win')) { return; }
-        try {
-            if (e.detail && e.detail.state != null) { localStorage.setItem(key, e.detail.state); }
-            else { localStorage.removeItem(key); }
-        } catch (err) { }
-    });
-
     /* The go palette's form carries the desktop's state to /go, so the new
        window joins what is open. The server rendered the fields as of page
        load; this freshens them from the live URL at the moment of submit. */

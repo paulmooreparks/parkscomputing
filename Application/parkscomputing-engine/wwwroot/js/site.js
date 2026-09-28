@@ -163,6 +163,39 @@
        runtime hands the link's state to the right running instance and
        falls back to navigation. The site keeps no glue for them. */
 
+    /* === Applet continuity (PUDL 0.21.0) ==================================
+       The site hosts each applet's continuity everywhere the applet has
+       none of its own: pudl:applet-state hands a starting instance the
+       state kept for it, and pudl:applet-change keeps it again. On the
+       applet's own page a board named in the URL still wins (the applet
+       prefers its address at boot), so a shared link opens its own board,
+       and the installed web app, whose launch URL names nothing, resumes
+       the last game. A mount keeping its state in the page's query
+       (data-applet-param) is the URL's business, not this. The keys are
+       per-applet, functional storage wiped by the settings dialog's
+       Forget. */
+    var CONTINUITY = { sudoku: 'pc-sudoku' };
+
+    document.addEventListener('pudl:applet-state', function (e) {
+        var key = CONTINUITY[e.detail && e.detail.name];
+        if (!key || (e.detail && e.detail.param)) { return; }
+        try {
+            var kept = localStorage.getItem(key);
+            if (kept) { e.detail.state = kept; }
+        } catch (err) { }
+    });
+
+    document.addEventListener('pudl:applet-change', function (e) {
+        var mount = e.target;
+        if (!mount.getAttribute) { return; }
+        var key = CONTINUITY[mount.getAttribute('data-applet')];
+        if (!key || mount.hasAttribute('data-applet-param')) { return; }
+        try {
+            if (e.detail && e.detail.state != null) { localStorage.setItem(key, e.detail.state); }
+            else { localStorage.removeItem(key); }
+        } catch (err) { }
+    });
+
     /* A code listing that names its source (code[data-code-src]) is
        filled from that file and highlighted; windows hydrate through
        desktop.js's enhancement pass. */
