@@ -20,3 +20,10 @@ pudlApplets.define('conway', {
     page: '/page/conways-game-of-life',
     ver: '3'
 });
+
+pudlApplets.define('flashcards', {
+    src: '/js/flashcards.js',
+    css: '/css/flashcards.css',
+    page: '/page/flashcards',
+    ver: '2'
+});

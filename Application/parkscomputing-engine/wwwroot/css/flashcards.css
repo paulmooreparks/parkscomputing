@@ -1,0 +1,78 @@
+/* Barcode flash cards as a PUDL applet. Every rule is scoped under
+   .pc-flashcards and the colours are PUDL tokens. The card is a flat
+   surface (it is there to be read), the controls are PUDL buttons, and
+   the answer sits in the card's own space whether hidden or shown, so
+   nothing jumps on reveal. Filling a window, the card takes the box and
+   the barcode image scales into it. */
+
+.pc-flashcards {
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-3);
+  max-width: 800px; margin: 0 auto;
+  outline: none;
+}
+
+.pc-flashcards .flashcard-help {
+  margin: 0; text-align: center;
+  font-size: var(--text-sm); color: var(--text-muted);
+}
+
+.pc-flashcards .flashcard {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+}
+.pc-flashcards .flashcard-face {
+  min-height: 320px;
+  display: flex; align-items: center; justify-content: center;
+  /* The samples are light-background scans; a white well keeps them
+     legible on the dark theme without recolouring them. */
+  background: #ffffff;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+.pc-flashcards .flashcard-face img { max-width: 100%; height: auto; }
+
+.pc-flashcards .flashcard-answer {
+  margin-top: var(--space-3);
+  min-height: 1.8em;
+  text-align: center;
+}
+.pc-flashcards .flashcard-name {
+  font-size: var(--text-lg); font-weight: 700;
+  visibility: hidden;
+}
+.pc-flashcards .flashcard-name.revealed { visibility: visible; }
+
+.pc-flashcards .flashcard-controls {
+  display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center;
+}
+.pc-flashcards .flashcard-count {
+  font-size: var(--text-sm); color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* === Filling a window ==================================================== */
+.pc-flashcards-fill { flex: 1 1 auto; min-height: 0; max-width: none; width: 100%; }
+.pc-flashcards-fill .flashcard {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column;
+}
+.pc-flashcards-fill .flashcard-face { flex: 1 1 auto; min-height: 0; }
+.pc-flashcards-fill .flashcard-face img {
+  max-width: 100%; max-height: 100%; width: auto; height: auto;
+  object-fit: contain;
+}
+
+.win-body:has(.pc-flashcards-fill) { display: flex; flex-direction: column; overflow: auto; }
+.win-body:has(.pc-flashcards-fill) .post-content {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column;
+  max-width: none; margin: 0; padding: 0;
+}
+.win-body:has(.pc-flashcards-fill) .post-body {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column;
+}
