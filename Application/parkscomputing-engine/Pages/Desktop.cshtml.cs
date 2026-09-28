@@ -182,6 +182,12 @@ public class DesktopModel : PageModel {
 
             var node = tagList is null && external is null && child is null ? _navService.GetNavNode(key) : null;
 
+            // A page may prefer a window shape (sitenav win="w,h"); any
+            // placement in the URL wins over it.
+            var shape = placement is null && parent is null
+                ? WindowViewModel.DefaultPlacement(node?.Win)
+                : null;
+
             var vm = new WindowViewModel {
                 Key = key,
                 Title = article.Title,
@@ -197,7 +203,10 @@ public class DesktopModel : PageModel {
                 Created = article.IsApplet ? null : node?.Date,
                 Updated = article.IsApplet ? null : node?.Updated,
                 Mode = placement?.Mode ?? "floating",
-                X = placement?.X, Y = placement?.Y, W = placement?.W, H = placement?.H,
+                X = placement?.X ?? shape?.X,
+                Y = placement?.Y ?? shape?.Y,
+                W = placement?.W ?? shape?.W,
+                H = placement?.H ?? shape?.H,
                 Minimized = minimized,
                 Active = key == top
             };

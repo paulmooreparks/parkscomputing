@@ -55,6 +55,12 @@ public class NavNode {
     // a window in the window view. Only the author can assert this, since
     // most large sites refuse framing and a refused frame is not reliably
     // detectable from script.
+    /// <summary>The page's preferred default window shape, "w,h" as
+    /// fractions of the desktop (e.g. "0.17,0.58" for a portrait app).
+    /// A placement in the URL always wins over it.</summary>
+    [XferProperty("win")]
+    public string? Win { get; set; }
+
     [XferProperty("frame")]
     public bool Frame { get; set; }
 

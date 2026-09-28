@@ -69,8 +69,11 @@ public class WindowModel : PageModel {
         var article = _content.Load(key);
         if (article is null) { return NotFound(); }
 
-        // An applet's window is the app itself: no tag row, no dates.
+        // An applet's window is the app itself: no tag row, no dates. The
+        // page's preferred shape (sitenav win="w,h") rides in the markup
+        // as the window's default, which a script-side open respects.
         var node = _navService.GetNavNode(article.Slug);
+        var shape = WindowViewModel.DefaultPlacement(node?.Win);
         Window = new WindowViewModel {
             Key = article.Slug,
             Title = article.Title,
@@ -79,7 +82,8 @@ public class WindowModel : PageModel {
             OwnDocument = article.RequiresOwnDocument,
             Tags = article.IsApplet ? Array.Empty<string>() : node?.Tags ?? Array.Empty<string>(),
             Created = article.IsApplet ? null : node?.Date,
-            Updated = article.IsApplet ? null : node?.Updated
+            Updated = article.IsApplet ? null : node?.Updated,
+            X = shape?.X, Y = shape?.Y, W = shape?.W, H = shape?.H
         };
         return Page();
     }

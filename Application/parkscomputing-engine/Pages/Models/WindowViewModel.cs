@@ -9,6 +9,20 @@ namespace ParksComputing.Engine.Pages.Models;
 /// supplies the placement.
 /// </summary>
 public class WindowViewModel {
+    /// <summary>Parses a sitenav node's preferred window shape ("w,h" as
+    /// fractions of the desktop) into a default floating placement, or
+    /// null when there is none or it does not parse.</summary>
+    public static (double X, double Y, double W, double H)? DefaultPlacement(string? win) {
+        var parts = (win ?? string.Empty).Split(',', System.StringSplitOptions.TrimEntries);
+        if (parts.Length != 2
+            || !double.TryParse(parts[0], System.Globalization.CultureInfo.InvariantCulture, out var w)
+            || !double.TryParse(parts[1], System.Globalization.CultureInfo.InvariantCulture, out var h)
+            || w <= 0 || w > 1 || h <= 0 || h > 1) {
+            return null;
+        }
+        return (0.06, 0.05, w, h);
+    }
+
     public required string Key { get; init; }
     public required string Title { get; init; }
     public required string BodyHtml { get; init; }

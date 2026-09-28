@@ -21,7 +21,7 @@
             description "Here are some web-based applications I've written."
             nav [
                 { slug "flashcards" title "Barcode Flash Cards" description "The drill alone; the article about it is under Articles" }
-                { slug "sudoku" }
+                { slug "sudoku" win "0.17,0.58" }
                 { slug "conway" title "Conway's Game of Life" description "The game alone; the article about it is under Articles" }
                 </ { slug "barcode-generator" } />
             ]
@@ -101,6 +101,7 @@
         { slug "parks-laws-of-debugging" tags ["programming"] }
         {
             slug "sudoku"
+            win "0.17,0.58"
             tags ["games" "programming"]
             excerpt <"I didn't like most of the Sudoku apps I found, so I decided to write one as a fun little evening and weekend project. It lets you edit and share games.">
         }
