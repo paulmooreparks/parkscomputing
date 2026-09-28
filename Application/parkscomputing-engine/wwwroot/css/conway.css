@@ -1,74 +1,54 @@
+/* Conway's Game of Life as a PUDL applet. Every rule is scoped under
+   .pc-conway, and the board's colours are PUDL tokens, so both themes and
+   any site palette apply; the applet repaints when the theme changes.
+   Flowing (in an article or on its own page) the canvas keeps its true
+   pixel size and the stage scrolls if a huge board outgrows the column.
+   Filling (in a PUDL window) the canvas scales down to fit its box, and
+   the script maps clicks back through the scale. */
 
-#links {
-    margin-top: 4px;
-    margin-bottom: 4px;
+.pc-conway {
+  --conway-dead: var(--surface);
+  --conway-live: var(--accent);
+  --conway-grid: var(--border);
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-3);
 }
 
-#buttons {
-    margin-top: 8px;
-    margin-bottom: 8px;
+.pc-conway .conway-links { display: flex; flex-wrap: wrap; gap: var(--space-4); font-size: var(--text-sm); }
+.pc-conway .conway-buttons { display: flex; gap: var(--space-2); }
+.pc-conway .conway-stats {
+  display: flex; flex-wrap: wrap; gap: var(--space-4);
+  font-size: var(--text-sm); color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-#stats {
-    margin-top: 4px;
-    margin-bottom: 4px;
+.pc-conway .conway-stage { max-width: 100%; overflow: auto; }
+.pc-conway canvas { display: block; background: var(--conway-dead); }
+
+.pc-conway .conway-settings {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
 }
+.pc-conway .conway-settings .form-input { width: 5.5em; }
+.pc-conway .conway-hint { font-size: var(--text-xs); color: var(--text-muted); margin: 4px 0 0; }
 
-#settings {
-    margin-top: 4px;
-    margin-bottom: 4px;
+/* === Filling a window ==================================================== */
+.pc-conway-fill { flex: 1 1 auto; min-height: 0; }
+.pc-conway-fill .conway-stage {
+  flex: 1 1 auto; min-height: 0; width: 100%;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
 }
+.pc-conway-fill canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; }
 
-#boardSize {
-    width: 5em;
+/* The window body hands its box down to the applet, the same chain the
+   sudoku uses. */
+.win-body:has(.pc-conway-fill) { display: flex; flex-direction: column; overflow: hidden; }
+.win-body:has(.pc-conway-fill) .post-content {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column;
+  max-width: none; margin: 0; padding: 0;
 }
-
-#cellSize {
-    width: 5em;
+.win-body:has(.pc-conway-fill) .post-body {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column;
 }
-
-#ticks {
-    width: 5em;
-}
-
-
-/* Light mode defaults */
-:root {
-    --conway-dead: #ffffff;
-    --conway-live: #000000;
-    --conway-grid: #d3d3d3;
-    --conway-bg: #ffffff;
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --conway-dead: #0d1117;      /* page background shade */
-        --conway-live: #2fa8ff;      /* cyan accent for live cells */
-        --conway-grid: #364a59;      /* subtle grid lines */
-        --conway-bg: #1a222a;        /* canvas background */
-    }
-}
-
-body {
-    background: var(--conway-dead);
-}
-
-#grid {
-    border: 1px solid var(--conway-grid);
-    padding: 0;
-    margin: 0;
-    cursor: crosshair;
-}
-
-#start {
-    font-size: x-large;
-}
-
-#stop {
-    font-size: x-large;
-}
-
-#step {
-    font-size: x-large;
-}
-

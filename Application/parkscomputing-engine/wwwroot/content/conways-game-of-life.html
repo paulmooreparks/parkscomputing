@@ -4,13 +4,7 @@
     <title>Conway&#8217;s Game of Life</title>
     <meta name="description" content="An implementation of Conway's Game of Life in pure JavaScript" />
     <meta http-equiv="date" content="2015-11-20T15:05:09" />
-    <meta http-equiv="last-modified" content="2022-12-11T06:18:02" />
-    <link rel='stylesheet' id='conway-css' href='/css/conway.css' type='text/css; charset=UTF-8' media='all' />
-    <link rel="preload" as="style" href="/highlightjs/styles/vs.min.css" media="(prefers-color-scheme: light)">
-    <link rel="preload" as="stylesheet" href="/highlightjs/styles/vs2015.min.css" media="(prefers-color-scheme: dark)">
-    <script src="/highlightjs/highlight.min.js"></script>
-    <script src="/js/htmx.min.js"></script>
-    <script src="/js/conway.js"></script>
+    <meta http-equiv="last-modified" content="2026-09-28T00:00:00" />
 </head>
 <body>
     <h1>Conway&#8217;s Game of Life</h1>
@@ -30,44 +24,29 @@
         configuration that you see at any given time.
     </p>
 
-    <div id="links">
-        <div><a id="currentState" href="#">Link to current board state</a></div>
-        <div><a id="initialState" href="#">Reset the board</a></div>
-    </div>
-
-    <div id="buttons"><button id="start"> Start </button> <button id="stop"> Stop </button> <button id="step"> Step </button></div>
-
-    <div id="stats">
-        <div>Generation: <span id="generationStat"></span></div>
-        <div>Live cells: <span id="liveStat"></span></div>
-        <div>Generation time (ms): <span id="generationRate"></span></div>
-    </div>
-
-    <canvas id="grid" width="321" height="321"></canvas>
-
-    <h2>Settings (Click &#8220;Stop&#8221; to Edit, &#8220;Start&#8221; to Activate)</h2>
-
-    <div id="settings">
-        <div><label for="ticks"><input id="ticks" type="text" /> milliseconds delay between generations.</label></div>
-        <div><label for="boardSize"><input id="boardSize" type="text" /> cells across and down.</label></div>
-        <div><label for="cellSize"><input id="cellSize" type="text" /> pixels across each cell.</label></div>
-        <div><label for="wrap"><input id="wrap" type="checkbox" /> Wrap around edges. </label></div>
-        <div><label for="saveHistory"><input id="saveHistory" type="checkbox" /> Save history (turn off to improve performance; best with single-stepping). </label></div>
+    <!-- The game itself: a PUDL applet whose files and version come from
+         the site registry (js/applets.js). data-applet-fit keeps it
+         flowing with this article even when the article opens in a
+         window; the game alone lives at /page/conway. -->
+    <div data-applet="conway" data-applet-fit="flow" role="application" aria-label="Conway's Game of Life">
+        <noscript>
+            <p>The game needs JavaScript to run.</p>
+        </noscript>
     </div>
 
     <h2>More Patterns</h2>
 
     <p>Here are a few links to some interesting boards:</p>
 
-    <p><a href="?boardSize=200&amp;cellSize=5&amp;wrap=false&amp;init=1,5;2,5;2,6;1,6;11,5;11,6;11,7;12,8;13,9;14,9;12,4;13,3;14,3;16,4;17,5;17,6;17,7;16,8;15,6;18,6;21,5;22,5;22,4;21,4;21,3;22,3;23,2;23,6;25,2;25,1;25,6;25,7;35,3;35,4;36,4;36,3">A Gosper glider gun</a></p>
+    <p><a data-applet-preset="conway" href="?boardSize=200&amp;cellSize=5&amp;wrap=false&amp;init=1,5;2,5;2,6;1,6;11,5;11,6;11,7;12,8;13,9;14,9;12,4;13,3;14,3;16,4;17,5;17,6;17,7;16,8;15,6;18,6;21,5;22,5;22,4;21,4;21,3;22,3;23,2;23,6;25,2;25,1;25,6;25,7;35,3;35,4;36,4;36,3">A Gosper glider gun</a></p>
 
-    <p><a href="?boardSize=50&amp;cellSize=5&amp;speed=0&amp;wrap=false&amp;init=1,5;2,5;2,6;1,6;11,5;11,6;11,7;12,8;13,9;14,9;12,4;13,3;14,3;16,4;17,5;17,6;17,7;16,8;15,6;18,6;21,5;22,5;22,4;21,4;21,3;22,3;23,2;23,6;25,2;25,1;25,6;25,7;35,3;35,4;36,4;36,3;">A Gosper glider gun running at top speed, probably faster than your screen&#8217;s refresh rate.</a></p>
+    <p><a data-applet-preset="conway" href="?boardSize=50&amp;cellSize=5&amp;speed=0&amp;wrap=false&amp;init=1,5;2,5;2,6;1,6;11,5;11,6;11,7;12,8;13,9;14,9;12,4;13,3;14,3;16,4;17,5;17,6;17,7;16,8;15,6;18,6;21,5;22,5;22,4;21,4;21,3;22,3;23,2;23,6;25,2;25,1;25,6;25,7;35,3;35,4;36,4;36,3;">A Gosper glider gun running at top speed, probably faster than your screen&#8217;s refresh rate.</a></p>
 
-    <p><a href="?boardSize=49&cellSize=5&speed=16.666666666666668&init=28,20;28,12;28,13;29,13;28,14;24,16;25,16;26,16;30,16;31,16;32,16;28,18;28,19;">A set of cells that devolves into a funny face.</a></p>
+    <p><a data-applet-preset="conway" href="?boardSize=49&amp;cellSize=5&amp;speed=16.666666666666668&amp;init=28,20;28,12;28,13;29,13;28,14;24,16;25,16;26,16;30,16;31,16;32,16;28,18;28,19;">A set of cells that devolves into a funny face.</a></p>
 
-    <p><a href="?boardSize=10&amp;cellSize=20&amp;speed=16.666666666666668&amp;init=3,1;1,2;3,2;2,3;3,3;8,6;6,7;8,7;7,8;8,8;">A pair of gliders which follow each other endlessly.</a></p>
+    <p><a data-applet-preset="conway" href="?boardSize=10&amp;cellSize=20&amp;speed=16.666666666666668&amp;init=3,1;1,2;3,2;2,3;3,3;8,6;6,7;8,7;7,8;8,8;">A pair of gliders which follow each other endlessly.</a></p>
 
-    <p><a href="?boardSize=176&amp;cellSize=4&amp;init=45,51;47,51;47,50;49,49;49,48;49,47;51,48;51,47;51,46;52,47;">A large board with a long-running pattern</a></p>
+    <p><a data-applet-preset="conway" href="?boardSize=176&amp;cellSize=4&amp;init=45,51;47,51;47,50;49,49;49,48;49,47;51,48;51,47;51,46;52,47;">A large board with a long-running pattern</a></p>
 
     <h2 id="source">The JavaScript Code</h2>
 
@@ -77,27 +56,6 @@
         <a href="/js/conway.js">JavaScript</a> as well.
     </p>
 
-<pre><code id="conway-source" class="language-javascript"></code></pre>
-
-    <script>
-        (function loadAndHighlight(){
-            var el = document.getElementById('conway-source');
-            if (!el) return;
-            fetch('/js/conway.js')
-                .then(r => r.ok ? r.text() : Promise.reject())
-                .then(t => {
-                    el.textContent = t;
-                    // Wait until hljs available then highlight this element only
-                    function apply(){
-                        if (!window.hljs) { return setTimeout(apply, 30); }
-                        try { hljs.highlightElement(el); } catch(_) {}
-                    }
-                    apply();
-                })
-                .catch(()=>{});
-        })();
-    </script>
-
-    <script>hljs.highlightAll();</script>
+    <pre><code class="language-javascript" data-code-src="/js/conway.js"></code></pre>
 </body>
 </html>

@@ -9,3 +9,13 @@ pudlApplets.define('sudoku', {
     page: '/page/sudoku',
     ver: '6'
 });
+
+/* Conway's page is its article, so the links shared since 2015 keep
+   working and the applet may keep its state in that address; the game
+   alone lives at /page/conway. */
+pudlApplets.define('conway', {
+    src: '/js/conway.js',
+    css: '/css/conway.css',
+    page: '/page/conways-game-of-life',
+    ver: '2'
+});

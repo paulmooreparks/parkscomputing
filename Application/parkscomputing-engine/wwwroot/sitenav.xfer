@@ -21,7 +21,7 @@
             description "Here are some web-based applications I've written."
             nav [
                 { slug "sudoku" }
-                { slug "conways-game-of-life" }
+                { slug "conway" title "Conway's Game of Life" description "The game alone; the article about it is under Articles" }
                 </ { slug "barcode-generator" } />
             ]
         }

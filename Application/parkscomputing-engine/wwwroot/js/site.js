@@ -159,4 +159,50 @@
        data-menu-key="/" in the layout, its filter in a GET form that /go
        answers. The site keeps no palette script. */
 
+    /* === Applet host glue =================================================
+       A preset link (a[data-applet-preset="name"]) hands its query to a
+       running instance of that applet as pc:applet-preset on the mount;
+       without script, or with none running, the href navigates and the
+       boot path reads the same query. The nearest window's instance wins
+       when the link sits inside one. */
+    document.addEventListener('click', function (e) {
+        var a = e.target.closest && e.target.closest('a[data-applet-preset]');
+        if (!a) { return; }
+        var scope = a.closest('.win') || document;
+        var mount = scope.querySelector('[data-applet="' + a.getAttribute('data-applet-preset') + '"][data-applet-state="running"]');
+        if (!mount) { return; }
+        e.preventDefault();
+        var href = a.getAttribute('href') || '';
+        var qi = href.indexOf('?');
+        mount.dispatchEvent(new CustomEvent('pc:applet-preset', {
+            detail: { state: qi >= 0 ? href.slice(qi + 1) : '' }
+        }));
+        mount.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+
+    /* A code listing that names its source (code[data-code-src]) is
+       filled from that file and highlighted; windows hydrate through
+       desktop.js's enhancement pass. */
+    function hydrateSource(scope) {
+        (scope || document).querySelectorAll('code[data-code-src]:not([data-code-loaded])').forEach(function (block) {
+            block.setAttribute('data-code-loaded', '');
+            fetch(block.getAttribute('data-code-src'))
+                .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error(r.status)); })
+                .then(function (text) {
+                    block.textContent = text;
+                    (function apply() {
+                        if (!window.hljs) { return setTimeout(apply, 50); }
+                        try { window.hljs.highlightElement(block); } catch (err) { }
+                    })();
+                })
+                .catch(function () { });
+        });
+    }
+    window.pcHydrateSource = hydrateSource;
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { hydrateSource(document); });
+    } else {
+        hydrateSource(document);
+    }
+
 })();

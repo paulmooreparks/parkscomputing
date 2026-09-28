@@ -391,14 +391,18 @@ public class ArticleContentService {
         // An applet mount (data-applet, PUDL 0.10.0) is inline-safe by
         // contract: pudl-applets.js loads its assets and it runs in a window
         // or as a page equally. Anything else that brings assets needs the
-        // frame.
-        bool isApplet = doc.DocumentNode.SelectSingleNode("//*[@data-applet]") is not null;
-        bool ownAssets = !isApplet && (
+        // frame. Whether the page IS the applet (and so drops the article
+        // chrome) is a separate question the page answers itself, with
+        // <meta name="applet-page">; an article that merely embeds an
+        // applet keeps its tags and dates.
+        bool hasMount = doc.DocumentNode.SelectSingleNode("//*[@data-applet]") is not null;
+        bool appletPage = doc.DocumentNode.SelectSingleNode("//head/meta[@name='applet-page']") is not null;
+        bool ownAssets = !hasMount && (
             doc.DocumentNode.SelectSingleNode("//script") is not null
             || doc.DocumentNode.SelectSingleNode("//head/link[@rel='stylesheet']") is not null
             || doc.DocumentNode.SelectSingleNode("//head/style") is not null);
 
-        return Build(slug, title, body) with { RequiresOwnDocument = ownAssets, IsApplet = isApplet };
+        return Build(slug, title, body) with { RequiresOwnDocument = ownAssets, IsApplet = appletPage };
     }
 
     private static ArticleWindowContent Build(string slug, string? title, string bodyHtml) {

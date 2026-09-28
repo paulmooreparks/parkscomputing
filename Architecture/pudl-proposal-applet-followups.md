@@ -1,0 +1,21 @@
+# Follow-ups to PUDL: what the second applet shook out
+
+From parkscomputing.com, 2026-09-28. Conway's Game of Life is now the second applet, converted against 0.20.0, and the conversion is the contract's first real exercise by something that was not its template. Most of it held without a fight: the registry removed every repeated asset URL, `opts.fit` told the game when to scale its canvas into a window and when to flow with an article, the tightened `ownsUrl` did exactly the right thing when the applet's own page was declared to be its historic article (every link shared since 2015 still boots its board), and the regions fix started and stopped embedded instances correctly through swaps. Three things needed site-side glue that the contract could absorb, in what looks like descending order of value.
+
+## 1. Preset links, and through them, reaching an instance
+
+An article about an applet wants links that set it up: "a Gosper glider gun", "a pair of gliders". The right shape fell out cleanly on the site: an anchor whose `href` is the no-script path (the applet's page with the state as its query) and which carries `data-applet-preset="name"`; with script and a running instance nearby, the click is intercepted and the query handed to the instance, and otherwise the link navigates and the boot path reads the same grammar. The site glues this with its own delegated listener and a custom event, because a page script cannot reach an instance: `pudl-applets` holds them privately.
+
+This belongs in the runtime, for two reasons. First, the pattern is generic and the runtime already knows every instance, so `data-applet-preset` clicks could be handled exactly as `data-applet-param`'s popstate is: find the running instance (preferring one in the same window as the link), call `setState()` with the link's query, fall through to navigation when there is none. Second, and larger: it is one face of the general gap that a host cannot reach an instance at all, which is also why the site's windowed Sudoku still keeps its own continuity storage (reported with the 0.20.0 adoption). One mechanism can close both:
+
+**Proposed:** before `init`, the runtime fires a cancelable `pudl:applet-state` event on the mount, `detail.state` writable; whatever a listener puts there arrives as `opts.state`. A window host then answers the event from wherever it keeps continuity, and PUDL still keeps no state. With that plus native `data-applet-preset` handling, no host ever needs the instance itself, which keeps instances private and the contract small.
+
+## 2. The fill pattern for intrinsically sized content
+
+Sudoku's board is elastic, but Conway's is a canvas with true pixel dimensions, and that is the other kind of applet: content with an intrinsic size that a window must scale, not resize. The working pattern: in the fill habitat the canvas gets `max-width: 100%; max-height: 100%; width: auto; height: auto` inside the elastic stage, and the script maps pointer coordinates back through `canvas.width / canvas.clientWidth`. It works, it is short, and nobody will guess the coordinate mapping on the first try; a paragraph in the README's fill-and-flow section beside the measuring-wrapper pattern would save the next canvas applet an afternoon.
+
+## 3. Observed, no change asked
+
+For the record of a real conversion: `define()`'s any-order loading behaved as documented with the registry script after `pudl-applets.js`; `data-applet-fit="flow"` on the article's mount correctly overrode the window default when the article itself opens in a window, which is a case the attribute seems designed for and deserves an example; and the site marks an applet's *own page* versus an article that merely embeds one with its own `<meta name="applet-page">` so its server can drop article chrome from the former, which is site territory but may interest the article-reader sample.
+
+The site's conversion is live: the article at `/page/conways-game-of-life` embeds the running game with presets and keeps its history behaviour, the game alone lives at `/page/conway` for windows and the palette, and the 2015 engine is unchanged apart from three implicit-global leaks that the applet scoping surfaced and closed.

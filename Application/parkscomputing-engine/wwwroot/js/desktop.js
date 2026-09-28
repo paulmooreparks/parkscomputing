@@ -52,6 +52,7 @@
             window.mermaid.initialize({ startOnLoad: false });
             window.mermaid.run({ nodes: win.querySelectorAll('.mermaid') });
         }
+        if (window.pcHydrateSource) { window.pcHydrateSource(win); }
     }
 
     /* === The filter, narrowing live ========================================
