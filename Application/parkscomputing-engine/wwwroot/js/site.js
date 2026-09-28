@@ -159,26 +159,9 @@
        data-menu-key="/" in the layout, its filter in a GET form that /go
        answers. The site keeps no palette script. */
 
-    /* === Applet host glue =================================================
-       A preset link (a[data-applet-preset="name"]) hands its query to a
-       running instance of that applet as pc:applet-preset on the mount;
-       without script, or with none running, the href navigates and the
-       boot path reads the same query. The nearest window's instance wins
-       when the link sits inside one. */
-    document.addEventListener('click', function (e) {
-        var a = e.target.closest && e.target.closest('a[data-applet-preset]');
-        if (!a) { return; }
-        var scope = a.closest('.win') || document;
-        var mount = scope.querySelector('[data-applet="' + a.getAttribute('data-applet-preset') + '"][data-applet-state="running"]');
-        if (!mount) { return; }
-        e.preventDefault();
-        var href = a.getAttribute('href') || '';
-        var qi = href.indexOf('?');
-        mount.dispatchEvent(new CustomEvent('pc:applet-preset', {
-            detail: { state: qi >= 0 ? href.slice(qi + 1) : '' }
-        }));
-        mount.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    });
+    /* Preset links (data-applet-preset) are PUDL's own since 0.21.0: the
+       runtime hands the link's state to the right running instance and
+       falls back to navigation. The site keeps no glue for them. */
 
     /* A code listing that names its source (code[data-code-src]) is
        filled from that file and highlighted; windows hydrate through

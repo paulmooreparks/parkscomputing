@@ -447,28 +447,20 @@ SOFTWARE.
             shareLink.href = target.toString();
             if (ownUrl) {
                 window.history.pushState('', '', shareLink.href);
-            } else {
-                /* In a window there is no URL to keep the game in, so it
-                   keeps itself in browser storage instead: per-reader
-                   continuity of the same class as the window arrangement,
-                   wiped by the settings dialog's Forget. The whole undo
-                   history rides along, so a reopened window can still step
-                   back. The share link stays the canonical form. */
-                try {
-                    localStorage.setItem('pc-sudoku', JSON.stringify({
-                        d: difficultyDropdown.value, i: undoIndex, s: undoStack
-                    }));
-                } catch (err) { }
             }
-            /* The 0.20.0 handshake: any host may hear the state change. */
-            if (opts.changed) { opts.changed(compactState()); }
+            /* The 0.20.0/0.21.0 handshake: the host hears every change and
+               keeps the continuity wherever it likes; in a window that is
+               desktop.js, which keeps it in pc-sudoku. The applet no
+               longer knows where its state lives. */
+            if (opts.changed) { opts.changed(continuityState()); }
             return shareLink.href;
         }
 
-        /* The portable form of the game, for the state handshake: enough
-           to reproduce the board anywhere, small enough for an address. */
-        function compactState() {
-            return difficultyDropdown.value + '|' + boardStateString();
+        /* The applet's state string: the whole game including its undo
+           history, so a host's continuity round-trips it all. setState
+           also accepts the portable forms a link can carry. */
+        function continuityState() {
+            return JSON.stringify({ d: difficultyDropdown.value, i: undoIndex, s: undoStack });
         }
 
         function applyCompactState(s) {
@@ -759,32 +751,23 @@ SOFTWARE.
         var params = ownUrl ? new URLSearchParams(window.location.search) : new URLSearchParams('');
         var restoredStack = null;
         var restoredIndex = -1;
-        if (!ownUrl) {
-            /* A window resumes the stored game, undo history included. The
-               older stored form was "difficulty|board" and still reads. */
-            try {
-                var saved = localStorage.getItem('pc-sudoku');
-                if (saved && saved.charAt(0) === '{') {
-                    var stored = JSON.parse(saved);
-                    if (stored && Array.isArray(stored.s) && stored.s.length > 0) {
-                        restoredStack = stored.s;
-                        restoredIndex = Math.min(Math.max(stored.i | 0, 0), stored.s.length - 1);
-                        params.set('difficulty', stored.d || 'medium');
-                        params.set('board', stored.s[restoredIndex]);
+        /* The state the host kept (opts.state, 0.21.0) supplies the game
+           unless the address itself names one: the full continuity JSON
+           with its undo history, or the older "difficulty|board" form. */
+        if (!params.get('board') && typeof opts.state === 'string' && opts.state) {
+            if (opts.state.charAt(0) === '{') {
+                try {
+                    var kept = JSON.parse(opts.state);
+                    if (kept && Array.isArray(kept.s) && kept.s.length > 0) {
+                        restoredStack = kept.s;
+                        restoredIndex = Math.min(Math.max(kept.i | 0, 0), kept.s.length - 1);
+                        params.set('difficulty', kept.d || 'medium');
+                        params.set('board', kept.s[restoredIndex]);
                     }
-                } else if (saved && saved.indexOf('|') > 0) {
-                    params.set('difficulty', saved.slice(0, saved.indexOf('|')));
-                    params.set('board', saved.slice(saved.indexOf('|') + 1));
-                }
-            } catch (err) { }
-        }
-        /* A host that kept state for us (opts.state, 0.20.0) supplies the
-           game unless the address itself names one. */
-        if (!params.get('board') && typeof opts.state === 'string') {
-            var hostSep = opts.state.indexOf('|');
-            if (hostSep > 0) {
-                params.set('difficulty', opts.state.slice(0, hostSep));
-                params.set('board', opts.state.slice(hostSep + 1));
+                } catch (err) { }
+            } else if (opts.state.indexOf('|') > 0) {
+                params.set('difficulty', opts.state.slice(0, opts.state.indexOf('|')));
+                params.set('board', opts.state.slice(opts.state.indexOf('|') + 1));
             }
         }
         difficultyDropdown.value = params.get('difficulty') || 'medium';
@@ -804,9 +787,36 @@ SOFTWARE.
            whatever the reader put on top. */
         if (ownUrl || root.closest('.win.active')) { root.focus({ preventScroll: true }); }
 
+        /* setState accepts every form the game travels in: the continuity
+           JSON a host kept, the "difficulty|board" pair, or a preset
+           link's query string. */
+        function applyAnyState(s) {
+            if (typeof s !== 'string' || !s) { return; }
+            if (s.charAt(0) === '{') {
+                try {
+                    var kept = JSON.parse(s);
+                    if (kept && Array.isArray(kept.s) && kept.s.length > 0) {
+                        undoStack = kept.s;
+                        undoIndex = Math.min(Math.max(kept.i | 0, 0), kept.s.length - 1);
+                        difficultyDropdown.value = kept.d || 'medium';
+                        applyBoardString(undoStack[undoIndex]);
+                        render();
+                        if (opts.changed) { opts.changed(continuityState()); }
+                    }
+                } catch (err) { }
+                return;
+            }
+            if (s.indexOf('=') >= 0) {
+                var q = new URLSearchParams(s);
+                if (!q.get('board')) { return; }
+                s = (q.get('difficulty') || difficultyDropdown.value) + '|' + q.get('board');
+            }
+            if (applyCompactState(s) && opts.changed) { opts.changed(continuityState()); }
+        }
+
         return {
-            state: compactState,
-            setState: function (s) { applyCompactState(s); },
+            state: continuityState,
+            setState: applyAnyState,
             destroy: function () {
                 if (helpDialog.open) { helpDialog.close(); }
                 if (onPopState) { window.removeEventListener('popstate', onPopState); }

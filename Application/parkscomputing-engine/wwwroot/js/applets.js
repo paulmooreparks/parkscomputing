@@ -7,7 +7,7 @@ pudlApplets.define('sudoku', {
     src: '/js/sudoku.js',
     css: '/css/sudoku.css',
     page: '/page/sudoku',
-    ver: '6'
+    ver: '7'
 });
 
 /* Conway's page is its article, so the links shared since 2015 keep
@@ -17,5 +17,5 @@ pudlApplets.define('conway', {
     src: '/js/conway.js',
     css: '/css/conway.css',
     page: '/page/conways-game-of-life',
-    ver: '2'
+    ver: '3'
 });

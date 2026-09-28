@@ -425,15 +425,6 @@
         el.grid.addEventListener('click', onCanvasClick);
         el.grid.addEventListener('dblclick', onCanvasClick);
 
-        /* A page's preset link, handed over by the host. */
-        var onPreset = function (e) {
-            if (!e.detail || typeof e.detail.state !== 'string') { return; }
-            clearTimeout(intervalID);
-            setControlsRunning(false);
-            applyAndDraw(e.detail.state);
-        };
-        root.addEventListener('pc:applet-preset', onPreset);
-
         function syncSettings() {
             el.ticks.value = speed;
             el.boardSize.value = boardSize;
@@ -485,7 +476,6 @@
                 if (mql.removeEventListener) { mql.removeEventListener('change', onScheme); } else { mql.removeListener(onScheme); }
                 document.removeEventListener('pudl:theme-change', onScheme);
                 if (onPopState) { window.removeEventListener('popstate', onPopState); }
-                root.removeEventListener('pc:applet-preset', onPreset);
             }
         };
     }
