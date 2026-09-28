@@ -7,7 +7,7 @@ pudlApplets.define('sudoku', {
     src: '/js/sudoku.js',
     css: '/css/sudoku.css',
     page: '/page/sudoku',
-    ver: '7'
+    ver: '8'
 });
 
 /* Conway's page is its article, so the links shared since 2015 keep

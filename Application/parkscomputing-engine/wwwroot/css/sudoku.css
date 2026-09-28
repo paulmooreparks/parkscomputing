@@ -80,6 +80,9 @@ body:has(.pc-sudoku-app) .page-tags { display: none; }
   gap: var(--space-2);
 }
 .pc-sudoku .sudoku-toolbar .form-select { width: auto; }
+/* Groups wrap as units: the difficulty stays with New, and the board
+   actions stay together. */
+.pc-sudoku .tool-group { display: flex; gap: var(--space-2); }
 
 /* === The play area: board plus pad ======================================= */
 /* Items stretch, so the board-box takes the play area's full cross size
@@ -163,32 +166,58 @@ body:has(.pc-sudoku-app) .page-tags { display: none; }
   background: color-mix(in srgb, var(--positive) 18%, var(--surface));
 }
 
-/* === The pad: digits and actions ========================================= */
+/* === The pad: a numpad flanked by its actions ============================
+   One arrangement in every habitat: a 3x3 keypad in numpad order with the
+   action buttons in two columns either side (undo, pencil, erase on the
+   left; redo, help, share on the right). On a phone the digits take the
+   width the side columns leave, so they get properly big. */
 .pc-sudoku .sudoku-pad {
   flex: none; align-self: center;
-  display: flex; flex-direction: column; align-items: center;
+  display: grid; grid-template-columns: auto auto auto;
+  align-items: center; justify-content: center;
   gap: var(--space-2);
-  width: min(100%, 480px);
 }
 
 .pc-sudoku .pad-digits {
-  display: grid; grid-template-columns: repeat(9, 1fr);
-  gap: 4px; width: 100%;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
 }
+/* Keyboard-numpad order: 7 8 9 on top, 1 2 3 at the bottom. */
+.pc-sudoku .pad-digits .number-button:nth-child(1) { grid-area: 3 / 1; }
+.pc-sudoku .pad-digits .number-button:nth-child(2) { grid-area: 3 / 2; }
+.pc-sudoku .pad-digits .number-button:nth-child(3) { grid-area: 3 / 3; }
+.pc-sudoku .pad-digits .number-button:nth-child(4) { grid-area: 2 / 1; }
+.pc-sudoku .pad-digits .number-button:nth-child(5) { grid-area: 2 / 2; }
+.pc-sudoku .pad-digits .number-button:nth-child(6) { grid-area: 2 / 3; }
+.pc-sudoku .pad-digits .number-button:nth-child(7) { grid-area: 1 / 1; }
+.pc-sudoku .pad-digits .number-button:nth-child(8) { grid-area: 1 / 2; }
+.pc-sudoku .pad-digits .number-button:nth-child(9) { grid-area: 1 / 3; }
+
 .pc-sudoku .number-button {
   aspect-ratio: 1 / 1; padding: 0; min-width: 0;
-  font-size: clamp(15px, 3.2cqi, 26px);
+  /* Sized by the container's width, but never so tall that the pad
+     starves the board in a short box (cqb reads the height in the fill
+     habitats and falls back to the viewport in flow). */
+  width: clamp(44px, min(calc((100cqi - 148px) / 3), 13cqb), 76px);
+  font-size: clamp(16px, 6cqi, 28px);
   font-variant-numeric: tabular-nums;
 }
-.pc-sudoku .pad-actions {
-  display: grid; grid-template-columns: repeat(6, auto);
-  gap: 4px; justify-content: center;
+
+.pc-sudoku .pad-side {
+  display: grid; grid-template-rows: repeat(3, auto);
+  gap: 6px;
 }
-.pc-sudoku .pad-actions .btn {
-  width: clamp(44px, 7cqi, 60px); height: clamp(44px, 7cqi, 60px);
+.pc-sudoku .pad-side .btn {
+  width: clamp(38px, min(11cqi, 9cqb), 54px); height: clamp(38px, min(11cqi, 9cqb), 54px);
   padding: 0;
 }
-.pc-sudoku .pad-actions svg { width: 55%; height: 55%; }
+.pc-sudoku .pad-side svg { width: 55%; height: 55%; }
+
+/* A window wide enough takes the pad beside the board sooner than a
+   flowing page would, because its height is precious. */
+@container (min-width: 520px) {
+  .pc-sudoku-fit .sudoku-play { flex-direction: row; }
+}
 
 /* A number button lights while its digit matches the selected cell (or
    its pencil marks in pencil mode): a highlight, not a pressed toggle,
@@ -199,27 +228,11 @@ body:has(.pc-sudoku-app) .page-tags { display: none; }
   color: var(--accent);
 }
 
-/* === Wide layout: the keypad moves beside the board ====================== */
+/* === Wide layout: the whole pad moves beside the board =================== */
 @container (min-width: 640px) {
   .pc-sudoku .sudoku-play { flex-direction: row; }
-  .pc-sudoku .sudoku-pad,
-  .pc-sudoku-fit .sudoku-pad { width: auto; }
-  .pc-sudoku .pad-digits {
-    grid-template-columns: repeat(3, 1fr);
-    width: auto; gap: 6px;
-  }
-  /* Keyboard-numpad order: 7 8 9 on top, 1 2 3 at the bottom. */
-  .pc-sudoku .pad-digits .number-button:nth-child(1) { grid-area: 3 / 1; }
-  .pc-sudoku .pad-digits .number-button:nth-child(2) { grid-area: 3 / 2; }
-  .pc-sudoku .pad-digits .number-button:nth-child(3) { grid-area: 3 / 3; }
-  .pc-sudoku .pad-digits .number-button:nth-child(4) { grid-area: 2 / 1; }
-  .pc-sudoku .pad-digits .number-button:nth-child(5) { grid-area: 2 / 2; }
-  .pc-sudoku .pad-digits .number-button:nth-child(6) { grid-area: 2 / 3; }
-  .pc-sudoku .pad-digits .number-button:nth-child(7) { grid-area: 1 / 1; }
-  .pc-sudoku .pad-digits .number-button:nth-child(8) { grid-area: 1 / 2; }
-  .pc-sudoku .pad-digits .number-button:nth-child(9) { grid-area: 1 / 3; }
-  .pc-sudoku .number-button { width: clamp(48px, 7cqi, 72px); }
-  .pc-sudoku .pad-actions { grid-template-columns: repeat(3, 1fr); }
+  .pc-sudoku .number-button { width: clamp(48px, 6cqi, 72px); font-size: clamp(18px, 2.6cqi, 28px); }
+  .pc-sudoku .pad-side .btn { width: clamp(42px, 4cqi, 52px); height: clamp(42px, 4cqi, 52px); }
 }
 
 /* === Odds and ends ======================================================= */

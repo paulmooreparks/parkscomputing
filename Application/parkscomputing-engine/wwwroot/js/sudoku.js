@@ -74,32 +74,41 @@ SOFTWARE.
             numbers += '<button type="button" class="btn number-button" data-num="' + n + '" aria-label="Enter ' + n + '">' + n + '</button>';
         }
 
+        /* The toolbar reads left to right as: what you are doing, dealing a
+           new game (the difficulty feeds New), then acting on the board.
+           Each group wraps as one unit on a narrow layout. */
         root.innerHTML =
             '<div class="sudoku-toolbar">' +
               '<div class="seg sudoku-mode" role="group" aria-label="Mode">' +
                 '<button type="button" data-mode="play" aria-pressed="true">Play</button>' +
                 '<button type="button" data-mode="edit" aria-pressed="false">Edit</button>' +
               '</div>' +
-              '<select class="form-select" data-role="difficulty" aria-label="Difficulty">' +
-                '<option value="easy">Easy</option><option value="medium">Medium</option>' +
-                '<option value="hard">Hard</option><option value="veryhard">Very Hard</option>' +
-              '</select>' +
-              '<button type="button" class="btn btn-primary" data-action="new">New</button>' +
-              '<button type="button" class="btn" data-action="reset">Restart</button>' +
-              '<button type="button" class="btn" data-action="clear" disabled>Clear</button>' +
-              '<button type="button" class="btn" data-action="solve">Solve</button>' +
+              '<span class="tool-group">' +
+                '<select class="form-select" data-role="difficulty" aria-label="Difficulty">' +
+                  '<option value="easy">Easy</option><option value="medium">Medium</option>' +
+                  '<option value="hard">Hard</option><option value="veryhard">Very Hard</option>' +
+                '</select>' +
+                '<button type="button" class="btn btn-primary" data-action="new">New</button>' +
+              '</span>' +
+              '<span class="tool-group">' +
+                '<button type="button" class="btn" data-action="reset">Restart</button>' +
+                '<button type="button" class="btn" data-action="clear" disabled>Clear</button>' +
+                '<button type="button" class="btn" data-action="solve">Solve</button>' +
+              '</span>' +
             '</div>' +
             '<div class="sudoku-play">' +
               '<div class="board-box">' +
                 '<div class="sudoku-board" data-role="board" role="grid" aria-label="Sudoku board">' + rows + '</div>' +
               '</div>' +
               '<div class="sudoku-pad">' +
-                '<div class="pad-digits">' + numbers + '</div>' +
-                '<div class="pad-actions">' +
+                '<div class="pad-side">' +
                   '<button type="button" class="btn" data-action="undo" title="Undo" aria-label="Undo" disabled>' + GLYPHS.undo + '</button>' +
-                  '<button type="button" class="btn" data-action="redo" title="Redo" aria-label="Redo" disabled>' + GLYPHS.redo + '</button>' +
                   '<button type="button" class="btn" data-action="hintmode" aria-pressed="false" title="Pencil marks" aria-label="Pencil marks">' + GLYPHS.pencil + '</button>' +
                   '<button type="button" class="btn" data-action="delete" title="Clear cell" aria-label="Clear cell">' + GLYPHS.erase + '</button>' +
+                '</div>' +
+                '<div class="pad-digits">' + numbers + '</div>' +
+                '<div class="pad-side">' +
+                  '<button type="button" class="btn" data-action="redo" title="Redo" aria-label="Redo" disabled>' + GLYPHS.redo + '</button>' +
                   '<button type="button" class="btn" data-action="help" title="Help" aria-label="Help">' + GLYPHS.help + '</button>' +
                   '<button type="button" class="btn" data-action="share" title="Copy shareable link" aria-label="Copy shareable link">' + GLYPHS.share + '</button>' +
                 '</div>' +
