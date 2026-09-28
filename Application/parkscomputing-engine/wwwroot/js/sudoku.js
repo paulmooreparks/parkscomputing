@@ -102,15 +102,15 @@ SOFTWARE.
               '</div>' +
               '<div class="sudoku-pad">' +
                 '<div class="pad-side">' +
+                  '<button type="button" class="btn" data-action="delete" title="Clear cell" aria-label="Clear cell">' + GLYPHS.erase + '</button>' +
                   '<button type="button" class="btn" data-action="undo" title="Undo" aria-label="Undo" disabled>' + GLYPHS.undo + '</button>' +
                   '<button type="button" class="btn" data-action="hintmode" aria-pressed="false" title="Pencil marks" aria-label="Pencil marks">' + GLYPHS.pencil + '</button>' +
-                  '<button type="button" class="btn" data-action="delete" title="Clear cell" aria-label="Clear cell">' + GLYPHS.erase + '</button>' +
                 '</div>' +
                 '<div class="pad-digits">' + numbers + '</div>' +
                 '<div class="pad-side">' +
+                  '<button type="button" class="btn" data-action="share" title="Copy shareable link" aria-label="Copy shareable link">' + GLYPHS.share + '</button>' +
                   '<button type="button" class="btn" data-action="redo" title="Redo" aria-label="Redo" disabled>' + GLYPHS.redo + '</button>' +
                   '<button type="button" class="btn" data-action="help" title="Help" aria-label="Help">' + GLYPHS.help + '</button>' +
-                  '<button type="button" class="btn" data-action="share" title="Copy shareable link" aria-label="Copy shareable link">' + GLYPHS.share + '</button>' +
                 '</div>' +
               '</div>' +
             '</div>' +

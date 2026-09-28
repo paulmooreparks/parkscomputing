@@ -168,9 +168,9 @@ body:has(.pc-sudoku-app) .page-tags { display: none; }
 
 /* === The pad: a numpad flanked by its actions ============================
    One arrangement in every habitat: a 3x3 keypad in numpad order with the
-   action buttons in two columns either side (undo, pencil, erase on the
-   left; redo, help, share on the right). On a phone the digits take the
-   width the side columns leave, so they get properly big. */
+   action buttons in two columns either side (clear-cell, undo, pencil on
+   the left; share, redo, help on the right). On a phone the digits take
+   the width the side columns leave, so they get properly big. */
 .pc-sudoku .sudoku-pad {
   flex: none; align-self: center;
   display: grid; grid-template-columns: auto auto auto;
