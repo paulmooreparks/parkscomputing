@@ -48,7 +48,7 @@ SOFTWARE.
    wrappers, so those become flex columns with the game as the elastic
    member. In a window the box is the window body; the ancestor rules ride
    with the applet because only a page hosting it needs them. */
-.win-body:has(.pc-sudoku-fit) { display: flex; flex-direction: column; overflow: hidden; }
+.win-body:has(.pc-sudoku-fit) { display: flex; flex-direction: column; overflow: auto; }
 .win-body:has(.pc-sudoku-fit) .post-content,
 body:has(.pc-sudoku-app) .post-content {
   flex: 1 1 auto; min-height: 0;
@@ -208,6 +208,22 @@ body:has(.pc-sudoku-app) .page-tags { display: none; }
   padding: 0;
 }
 .pc-sudoku .pad-side svg { width: 55%; height: 55%; }
+
+/* In a stacked fill window the board comes first: the pad shrinks with
+   the window's height, well below the thumb floors, because a window
+   this small is pointer territory. The divisors keep the board at least
+   as tall as the pad once the toolbar has taken its share. */
+.pc-sudoku-fit .number-button {
+  width: clamp(28px, min(calc((100cqi - 160px) / 3), calc((100cqb - 124px) / 6)), 76px);
+}
+.pc-sudoku-fit .pad-side .btn {
+  width: clamp(24px, min(12cqi, calc((100cqb - 124px) / 8)), 64px);
+  height: clamp(24px, min(12cqi, calc((100cqb - 124px) / 8)), 64px);
+}
+/* The board keeps a floor of the window's height; a window too small
+   for even that scrolls (the win-body chain allows it), which only a
+   degenerate size ever reaches. */
+.pc-sudoku-fit .board-box { min-height: 28cqb; }
 
 /* A window wide enough takes the pad beside the board sooner than a
    flowing page would, because its height is precious. Beside the board
