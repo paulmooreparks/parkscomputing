@@ -1,0 +1,27 @@
+@page
+@model ParksComputing.Engine.Pages.Admin.LinkModel
+@{
+    ViewData["Title"] = "Sign in with your link";
+}
+<h1 class="admin-title">Sign in with your link</h1>
+
+@if (Model.Valid)
+{
+    <section class="card admin-card">
+        <p class="card-desc">This link signs you in once. A session that begins this way can edit, but it can't change how you sign in.</p>
+        <form method="post">
+            <input type="hidden" name="Uid" value="@Model.Uid" />
+            <input type="hidden" name="Token" value="@Model.Token" />
+            <button type="submit" class="btn btn-primary">Sign in</button>
+        </form>
+    </section>
+}
+else
+{
+    <div class="notice danger" role="status">
+        <div class="notice-content">
+            <p class="notice-title">This link has expired or been used</p>
+            <p class="notice-body">Links work once, within 15 minutes. <a href="/admin/signin">Ask for a new one</a>.</p>
+        </div>
+    </div>
+}

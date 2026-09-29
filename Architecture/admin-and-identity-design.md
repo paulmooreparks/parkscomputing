@@ -23,9 +23,19 @@ The engine moves from .NET 8 to .NET 10, the current long-term-support release, 
 
 The early comments attempt left a users table with bcrypt hashes, `/api/auth/token` issuing JWT bearer tokens, `[Authorize]` writes on `/api/content`, and the `SmartSamComments*` projects. The engine already stubs the comments library out and no longer references those projects. All of it is removed: the projects, the token endpoint, the JWT configuration and its 32-byte secret check, the write endpoints, and the old table, once a migration has dropped it. Bearer tokens held in script are the wrong shape for a browser session on a site that serves author scripts. Read-only content endpoints stay if anything reads them; that is checked during the removal.
 
+Done 2026-09-30. The `InitialIdentity` migration drops the old `Users` table. `/api/content` is now read-only, and its hypermedia no longer advertises the update and delete actions it can't perform. The removal also found that its list accepted `includeDrafts=true` from anyone, so drafts were public; it now lists published items only, and a draft's own address answers 404.
+
 ### A3. One identity system, with roles
 
-ASP.NET Core Identity holds every account, in the SQL Server database the site already uses for auth. Accounts carry roles. **Admin** can never be granted by any path a browser can reach. It is assigned from the server side only, by a command run in the container or a seed read from its environment at startup. **Commenter**, in the comments phase, is what signing up gives.
+ASP.NET Core Identity holds every account, in the SQL Server database the site already uses for auth, at schema version 3, which adds passkeys. The data-protection keys live in the same database, so sign-in cookies and emailed links survive a container rebuild. Accounts carry roles. **Admin** can never be granted by any path a browser can reach. **Commenter**, in the comments phase, is what signing up gives.
+
+An admin is made by a command run in the container, and by nothing else; there is no seed:
+
+    docker exec parkscomputing-dev dotnet ParksComputing.Engine.dll admin enroll <email>
+    docker exec parkscomputing-dev dotnet ParksComputing.Engine.dll admin list
+    docker exec parkscomputing-dev dotnet ParksComputing.Engine.dll admin revoke <email>
+
+`enroll` makes the account an admin and prints an enrollment link, good once within fifteen minutes, that registers a passkey and signs in. `revoke` removes the role and ends every session within a minute.
 
 ### A4. Sign-in: passkeys, recovery codes and email
 
@@ -35,7 +45,11 @@ These are the ways an account can sign in, strongest first:
 2. Printed recovery codes, each usable once.
 3. A sign-in link sent by email through Resend, valid for fifteen minutes and usable once.
 
-SMS is not offered, because a SIM swap can hijack it. A session that began with a recovery code or an email link is a **fallback session**. For its first 24 hours it can do everything except change sign-in methods, and every fallback sign-in is emailed to the account's address.
+SMS is not offered, because a SIM swap can hijack it. A session that began with a recovery code or an email link is a **fallback session**. It can do everything except change sign-in methods, and every sign-in of any kind is emailed to the account's address.
+
+The build refined the rule for changing sign-in methods, and it now applies to every session. Adding or removing a passkey, or making new recovery codes, needs a passkey tap within the last five minutes; a passkey sign-in counts as one. A fallback session can therefore change them only after tapping a passkey the account already has. An account's first passkey can only come from a server-issued enrollment link. So can a replacement when every passkey is lost, which makes recovery from total loss need access to the host, not merely to the mailbox. The last passkey can't be removed. The draft's 24-hour window is dropped, since a session lasts at most 12 hours.
+
+An emailed link opens a page with a button, and only the press, a POST, spends it, because mail scanners fetch the links in messages. Asking for a link says the same thing whether or not the address has an account. Five wrong recovery codes lock the account for fifteen minutes.
 
 ### A5. Admin work happens on its own origin
 
@@ -45,7 +59,11 @@ Admin work happens at `edit.parkscomputing.com`, a second hostname routed by the
 - Every admin endpoint, script and page answers only on the edit origin. On the public origin those routes do not exist.
 - The edit origin sends a strict Content-Security-Policy, with no inline script and scripts from its own origin only.
 
+Cloudflare ends TLS, so the site sees each request arrive over plain HTTP from cloudflared. Requests for the edit host can only come through the tunnel, because the site's port is bound to loopback. The site therefore treats them as arriving at the configured origin's scheme, rather than trusting a forwarded header. The configured origin must be HTTPS. Plain HTTP is accepted only for a `localhost` test origin, where the cookies drop `__Host-` and Secure because browsers won't set them over HTTP. Passkey ceremonies are bound to the configured origin: its host is the relying party, and an assertion from any other origin, or from inside a frame, is refused.
+
 ### A6. Cloudflare Access in front of the edit origin, verified by the app
+
+**Deferred (Paul, 2026-09-30).** The edit origin starts with the passkey session as its only lock, and Access is added later without changing anything else. When `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD` are empty, the app does not look for the Access header. When they are set, it requires the header on every edit-origin request. Until the admin features ship, the edit hostname serves nothing admin-related, so the route that already exists in the tunnel exposes nothing. The rest of this section describes the design for when Access goes in.
 
 A Cloudflare Access policy on `edit.parkscomputing.com` admits only Paul's identity, so nobody else reaches the app's sign-in page at all. The app does not rely on that. It verifies the `Cf-Access-Jwt-Assertion` header on every edit-origin request, against the team's published signing keys and the application's audience tag, as Cloudflare documents. It still requires its own passkey session on top.
 
@@ -105,8 +123,8 @@ This is for soon after the mount ships, because the mount is what makes it worth
 
 1. Upgrade the engine to .NET 10. Done 2026-09-30: the SDK and runtime images are 10.0, the framework-bound packages are on 10.0, `Program.cs` uses the generic host in place of the obsolete `WebHost`, and every browser suite passes.
 2. Bind the site's and SQL Server's ports to `127.0.0.1`, which was done 2026-09-30 (the site answers through the tunnel and refuses a direct connection). Add the edit hostname to the tunnel's ingress and put Access in front of it, which is Paul's to do.
-3. Remove the first attempt, and add Identity with passkeys, recovery codes, email links through Resend, and the Admin role seeded from the server.
-4. Add the edit origin's host routing, session cookie, Access verification, CSP and antiforgery, and the sign-in pages and elevated state, all read-only at first.
+3. Remove the first attempt, and add Identity with passkeys, recovery codes, email links through Resend, and the Admin role granted from the server. Done 2026-09-30.
+4. Add the edit origin's host routing, session cookie, CSP and antiforgery, and the sign-in pages and elevated state, read-only at first. Done 2026-09-30, without Access verification, which is deferred (A6). A browser suite drives every sign-in path through virtual passkey authenticators against a test copy with its own database. It covers enrollment, passkey sign-in, adding and removing passkeys, the confirmation rule, recovery codes, emailed links, antiforgery and revocation, 30 checks in all.
 5. Build the mount: the filesystem API, history, audit log, asset-stamp clearing and the sliding scale, then the terminal's and Files' mounted root.
 6. Git in the terminal.
 7. Comments.

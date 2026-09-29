@@ -16,8 +16,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Logging;
@@ -36,9 +34,11 @@ namespace ParksComputing.Engine {
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services) {
+            var editHost = (Configuration.GetSection("Admin").Get<ParksComputing.Engine.Identity.AdminOptions>() ?? new ParksComputing.Engine.Identity.AdminOptions()).EditHost;
             services.Configure<CookiePolicyOptions>(options => {
                 // This lambda determines whether user consent for non-essential cookies is needed for a given request.
-                options.CheckConsentNeeded = context => true;
+                // The edit origin sets only the cookies signing in needs, so it asks no consent.
+                options.CheckConsentNeeded = context => !string.Equals(context.Request.Host.Host, editHost, StringComparison.OrdinalIgnoreCase);
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
@@ -100,63 +100,26 @@ namespace ParksComputing.Engine {
                 throw new InvalidOperationException("Auth:ConnectionString (or AUTH_CONNECTION_STRING env var) is required; SQLite fallback removed.");
             }
 
-            services.AddDbContext<ParksComputing.Engine.Auth.AuthDbContext>(options => {
-                // Use SQL Server for all database connections
-                options.UseSqlServer(configuredConn, sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(5), null));
-            });
+            ConfigureIdentity(services, configuredConn);
 
-            services.AddScoped<ParksComputing.Engine.Auth.ICredentialService, ParksComputing.Engine.Auth.CredentialService>();
-
-            // Basic JWT configuration (symmetric key) - Replace with secure key management
-            // Use same retrieval logic as TokenService to avoid signing/validation key mismatch.
-            var jwtSection = Configuration.GetSection("Jwt");
-            var secret = jwtSection.GetValue<string>("Secret")
-                         ?? Environment.GetEnvironmentVariable("JWT_SECRET");
-
-            if (string.IsNullOrWhiteSpace(secret)) {
-                throw new InvalidOperationException("JWT secret missing. Set Jwt:Secret or JWT_SECRET environment variable (32+ bytes).");
-            }
-
-            var keyBytes = Encoding.UTF8.GetBytes(secret);
-
-            if (keyBytes.Length < 32) {
-                throw new InvalidOperationException($"JWT secret is too short: {keyBytes.Length} bytes. Minimum is 32 bytes (256 bits) for HS256. Configure Jwt:Secret or JWT_SECRET.");
-            }
-
-            services.AddAuthentication(options => {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            }).AddJwtBearer(options => {
-                options.RequireHttpsMetadata = false; // set true in production with HTTPS
-                options.SaveToken = true;
-                options.TokenValidationParameters = new TokenValidationParameters {
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
-                    ClockSkew = TimeSpan.FromMinutes(2)
-                };
-                options.Events = new JwtBearerEvents {
-                    OnChallenge = context => {
-                        // Suppress default WWW-Authenticate header body
-                        context.HandleResponse();
-                        return WriteProblem(context.HttpContext, 401, "Unauthorized", "Authentication required or invalid token");
-                    },
-                    OnForbidden = context => WriteProblem(context.HttpContext, 403, "Forbidden", "Insufficient permissions")
-                };
-            });
-
-            services.AddAuthorization();
-
-            // Simple built-in fixed window limiter (metadata only; custom middleware adds headers/body)
+            // Simple built-in fixed window limiter (metadata only; custom middleware adds headers/body).
+            // Readers are told apart by Cloudflare's CF-Connecting-IP, since every
+            // request arrives through the tunnel from the same local address.
             services.AddRateLimiter(o => {
                 o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx => RateLimitPartition.GetFixedWindowLimiter(
-                    partitionKey: ctx.User?.Identity?.Name ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+                    partitionKey: ctx.User?.Identity?.Name ?? ParksComputing.Engine.Identity.AdminOptions.ClientIp(ctx),
                     factory: _ => new FixedWindowRateLimiterOptions { AutoReplenishment = true, PermitLimit = 600, QueueLimit = 0, Window = TimeSpan.FromMinutes(1) }));
+                // Sign-in and the passkey ceremonies. A stranger gets 30 calls a
+                // minute per address, which is plenty to sign in and too few to
+                // guess at recovery codes; a signed-in admin gets 120 a minute.
+                o.AddPolicy(ParksComputing.Engine.Identity.AdminAuthController.RateLimitPolicy, ctx => {
+                    bool admin = ctx.User.IsInRole(ParksComputing.Engine.Identity.AdminOptions.Role);
+                    return RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: admin ? "admin:" + ctx.User.Identity!.Name : "ip:" + ParksComputing.Engine.Identity.AdminOptions.ClientIp(ctx),
+                        factory: _ => new FixedWindowRateLimiterOptions { AutoReplenishment = true, PermitLimit = admin ? 120 : 30, QueueLimit = 0, Window = TimeSpan.FromMinutes(1) });
+                });
                 o.RejectionStatusCode = 429;
             });
-
-            services.AddSingleton<ParksComputing.Engine.Api.TokenService>();
 
             // Swagger / OpenAPI for discoverability
             services.AddEndpointsApiExplorer();
@@ -167,19 +130,8 @@ namespace ParksComputing.Engine {
                     Description = "RESTful hypermedia API for managing site content (markdown pages/posts)."
                 });
 
-                // JWT bearer auth definition
-                var securityScheme = new OpenApiSecurityScheme {
-                    Name = "Authorization",
-                    Description = "Enter 'Bearer {token}'",
-                    In = ParameterLocation.Header,
-                    Type = SecuritySchemeType.Http,
-                    Scheme = "bearer",
-                    BearerFormat = "JWT",
-                    Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-                };
-
-                c.AddSecurityDefinition("Bearer", securityScheme);
-                // Per-operation requirements are added via SecurityOperationFilter only for [Authorize] endpoints.
+                // The admin API is not part of the public document.
+                c.DocInclusionPredicate((doc, api) => !(api.RelativePath ?? "").StartsWith("api/admin", StringComparison.OrdinalIgnoreCase));
                 // Include XML docs if generated
                 var xml = System.IO.Path.Combine(AppContext.BaseDirectory, "ParksComputing.Engine.xml");
 
@@ -189,7 +141,6 @@ namespace ParksComputing.Engine {
 
                 // Register XferLang Swagger filters so application/xfer appears with examples
                 c.OperationFilter<ParksComputing.Engine.Xfer.XferOperationFilter>();
-                c.OperationFilter<ParksComputing.Engine.Api.SecurityOperationFilter>();
                 // Rate limit headers & 429 response added before examples so examples filter can enrich 429
                 c.OperationFilter<ParksComputing.Engine.Api.RateLimitOperationFilter>();
                 c.OperationFilter<ParksComputing.Engine.Api.ErrorExamplesOperationFilter>();
@@ -200,28 +151,9 @@ namespace ParksComputing.Engine {
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env) {
-            // Apply migrations & seed initial admin if needed
-            using (var scope = app.ApplicationServices.CreateScope()) {
-                var db = scope.ServiceProvider.GetRequiredService<ParksComputing.Engine.Auth.AuthDbContext>();
-                var logger = scope.ServiceProvider.GetRequiredService<ILogger<Startup>>();
-                try {
-                    // If no migrations have ever been added yet, Migrate() will effectively just ensure the database.
-                    // However, when there are truly zero migration metadata tables, querying Users for seeding BEFORE the
-                    // model is applied causes 'no such table'. We defensively EnsureCreated first, then Migrate so that
-                    // once you add explicit migrations later they can still run (EnsureCreated + later migrations is safe
-                    // as long as the schema hasn't diverged yet).
-                    // Apply migrations (idempotent). If zero migrations and SQLite, bootstrap schema with EnsureCreated first.
-                    db.Database.Migrate();
-                }
-                catch (Exception ex) {
-                    logger.LogError(ex, "Auth DB migration error");
-                    throw; // rethrow so startup still fails visibly
-                }
-
-                var seedUser = Configuration.GetValue<string>("Auth:Seed:Username") ?? Environment.GetEnvironmentVariable("SEED_ADMIN_USERNAME");
-                var seedHash = Configuration.GetValue<string>("Auth:Seed:PasswordHash") ?? Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD_HASH");
-                ParksComputing.Engine.Auth.CredentialService.SeedIfEmptyAsync(db, seedUser, seedHash, logger).GetAwaiter().GetResult();
-            }
+            // The accounts database is migrated in Program.Main, before the host
+            // starts. Admins are made from the server only (Identity/AdminCommand.cs),
+            // so nothing is seeded.
 
             if (env.IsDevelopment()) {
                 app.UseDeveloperExceptionPage();
@@ -229,6 +161,9 @@ namespace ParksComputing.Engine {
             else {
                 app.UseExceptionHandler("/Error");
             }
+
+            // Admin work on its own origin, before anything else answers.
+            app.UseMiddleware<ParksComputing.Engine.Identity.EditOriginGate>();
 
             ConfigureRedirects(app, env);
 

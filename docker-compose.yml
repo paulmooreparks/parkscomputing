@@ -27,7 +27,12 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - AUTH_CONNECTION_STRING=Server=sqlserver,1433;Database=ParksComputingAuth;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=true;Encrypt=false;
-      - JWT_SECRET=${JWT_SECRET_PARKSCOMPUTING}
+      # Admin sign-in (Architecture/admin-and-identity-design.md): the edit
+      # origin, and mail through Resend for sign-in links and notices.
+      - Admin__EditOrigin=https://edit.parkscomputing.com
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - EMAIL_REPLY_TO=${EMAIL_REPLY_TO}
     # Loopback only: the public reaches the site through the cloudflared
     # tunnel on this host, so a request can never go around Cloudflare
     # (and around Cloudflare Access on edit.parkscomputing.com).

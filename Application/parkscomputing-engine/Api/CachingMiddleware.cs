@@ -6,7 +6,7 @@ namespace ParksComputing.Engine.Api {
     /// <summary>
     /// Adds consistent Cache-Control (and Vary) headers for cacheable content endpoints.
     /// Currently targets GET/HEAD /api/content* responses with 200 or 304 status codes.
-    /// Auth endpoints (/api/auth/*) are marked no-store.
+    /// Admin endpoints (/api/admin/*) are marked no-store.
     /// </summary>
     public class CachingMiddleware {
         private readonly RequestDelegate _next;
@@ -31,7 +31,7 @@ namespace ParksComputing.Engine.Api {
             var path = context.Request.Path.Value ?? string.Empty;
             var method = context.Request.Method;
             // Auth endpoints should never be cached
-            if (path.StartsWith("/api/auth/", StringComparison.OrdinalIgnoreCase)) {
+            if (path.StartsWith("/api/admin/", StringComparison.OrdinalIgnoreCase)) {
                 if (!context.Response.Headers.ContainsKey("Cache-Control")) {
                     context.Response.Headers["Cache-Control"] = _authCacheControl;
                 }

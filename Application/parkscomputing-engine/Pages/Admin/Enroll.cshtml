@@ -1,0 +1,28 @@
+@page
+@model ParksComputing.Engine.Pages.Admin.EnrollModel
+@{
+    ViewData["Title"] = "Register a passkey";
+}
+<h1 class="admin-title">Register a passkey</h1>
+
+@if (Model.Valid)
+{
+    <section class="card admin-card">
+        <p class="card-desc">This link, issued by the server, registers a passkey for <strong>@Model.Email</strong> and signs you in. It works once.</p>
+        <div class="form-group">
+            <label class="form-label" for="passkey-name">A name for this passkey</label>
+            <input class="form-input" id="passkey-name" maxlength="60" placeholder="Phone, laptop, security key…" data-passkey-name />
+        </div>
+        <button type="button" class="btn btn-primary" data-passkey-enroll data-uid="@Model.Uid" data-token="@Model.Token">Register a passkey</button>
+        <p class="form-error" data-admin-error hidden></p>
+    </section>
+}
+else
+{
+    <div class="notice danger" role="status">
+        <div class="notice-content">
+            <p class="notice-title">This enrollment link has expired or been used</p>
+            <p class="notice-body">Links work once, within 15 minutes. Run <code>admin enroll</code> on the server for a new one.</p>
+        </div>
+    </div>
+}

@@ -11,13 +11,30 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace ParksComputing.Engine {
     public class Program {
-        public static void Main(string[] args) {
-            CreateHostBuilder(args).Build().Run();
+        public static int Main(string[] args) {
+            // Server-side admin commands (Identity/AdminCommand.cs) use the
+            // site's services without starting the web server.
+            if (ParksComputing.Engine.Identity.AdminCommand.Matches(args)) {
+                using var host = CreateHostBuilder(Array.Empty<string>()).Build();
+                return ParksComputing.Engine.Identity.AdminCommand.RunAsync(host.Services, args).GetAwaiter().GetResult();
+            }
+
+            using var app = CreateHostBuilder(args).Build();
+            // The accounts database is brought up to date before the host
+            // starts, since data protection reads its keys from it as soon as
+            // the host starts; on a fresh database the table must exist first.
+            using (var scope = app.Services.CreateScope()) {
+                scope.ServiceProvider.GetRequiredService<ParksComputing.Engine.Identity.SiteIdentityDbContext>().Database.Migrate();
+            }
+            app.Run();
+            return 0;
         }
 
         /* The generic host with the web host inside it, which replaced the

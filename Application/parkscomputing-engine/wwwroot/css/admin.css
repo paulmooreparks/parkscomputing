@@ -1,0 +1,29 @@
+/* The edit origin's pages (Pages/Shared/_AdminLayout.cshtml). PUDL carries
+   them; this is only the layout, and the bar that shows, in the danger
+   colour, that the session has admin rights. */
+
+.admin { min-height: 100svh; background: var(--bg); color: var(--text); }
+
+.admin-bar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-4);
+  padding: 10px var(--space-4);
+  background: var(--tb-bg); color: var(--tb-fg);
+  border-bottom: 3px solid transparent;
+}
+.admin-bar-title { font-weight: 700; margin-inline-end: auto; }
+.admin-elevated .admin-bar { border-bottom-color: var(--danger); }
+.admin-bar-who { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-sm); }
+.admin-bar-who .glyph { color: var(--danger); }
+.admin-bar-signout { margin: 0; }
+
+.admin-main { max-width: 640px; margin: 0 auto; padding: var(--space-5) 16px var(--space-6); }
+.admin-title { margin: 0 0 var(--space-4); font-family: var(--font-display); }
+.admin-card { margin-bottom: var(--space-4); }
+.admin-card > .btn { margin-top: var(--space-2); }
+.admin-card .form-error:not([hidden]) { margin-top: var(--space-3); }
+.admin-fallback { margin-top: var(--space-4); }
+.admin-fallback > summary { cursor: pointer; margin-bottom: var(--space-3); color: var(--accent); }
+.admin-passkeys { width: 100%; margin-bottom: var(--space-4); }
+.admin-add { margin-bottom: 0; }
+.admin-codes { columns: 2; margin: var(--space-3) 0 0; padding-inline-start: 1.5em; font-size: var(--text-md); }
+.mono { font-family: var(--mono); }

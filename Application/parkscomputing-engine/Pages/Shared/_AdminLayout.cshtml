@@ -1,0 +1,44 @@
+@using ParksComputing.Engine.Identity
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Xsrf
+@{
+    // The edit origin's pages (Architecture/admin-and-identity-design.md, A5).
+    // No inline script anywhere, so the origin's Content-Security-Policy can
+    // allow scripts from itself alone. While signed in, the bar says so on
+    // every page, as a root shell's prompt does (A9).
+    bool signedIn = User.IsInRole(AdminOptions.Role);
+    string? method = User.FindFirst(AdminSessions.MethodClaim)?.Value;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="request-verification-token" content="@Xsrf.GetAndStoreTokens(Context).RequestToken" />
+    <title>@ViewData["Title"] · Editing parkscomputing.com</title>
+    <script src="~/pudl/pudl-theme.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/pudl/pudl.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+</head>
+<body class="admin@(signedIn ? " admin-elevated" : null)">
+    <header class="admin-bar">
+        <span class="admin-bar-title">Editing parkscomputing.com</span>
+        @if (signedIn)
+        {
+            <span class="admin-bar-who">
+                <span class="glyph" style="--glyph: var(--glyph-warning)" aria-hidden="true"></span>
+                Admin: @User.Identity?.Name, signed in with @AdminSessions.Describe(method)
+            </span>
+            <form method="post" asp-page="/Admin/SignOut" class="admin-bar-signout">
+                <button type="submit" class="btn btn-sm">Sign out</button>
+            </form>
+        }
+    </header>
+    <main class="admin-main">
+        @RenderBody()
+    </main>
+    <p class="visually-hidden" role="status" aria-live="polite" data-admin-status></p>
+    <script src="~/js/admin.js" asp-append-version="true" defer></script>
+</body>
+</html>

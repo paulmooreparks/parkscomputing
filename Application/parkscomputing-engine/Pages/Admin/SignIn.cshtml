@@ -1,0 +1,53 @@
+@page
+@model ParksComputing.Engine.Pages.Admin.SignInModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+<h1 class="admin-title">Sign in</h1>
+
+@if (Model.Message is not null)
+{
+    <div class="notice @(Model.IsError ? "danger" : "positive")" role="status">
+        <div class="notice-content"><p class="notice-body">@Model.Message</p></div>
+    </div>
+}
+
+<section class="card admin-card">
+    <h2 class="card-title">With a passkey</h2>
+    <p class="card-desc">Use the passkey on this device, your phone or a security key.</p>
+    <button type="button" class="btn btn-primary" data-passkey-signin>Sign in with a passkey</button>
+    <p class="form-error" data-admin-error hidden></p>
+</section>
+
+<details class="admin-fallback">
+    <summary>Can't use a passkey?</summary>
+
+    <section class="card admin-card">
+        <h2 class="card-title">Email me a sign-in link</h2>
+        <form method="post" asp-page-handler="Email">
+            <div class="form-group">
+                <label class="form-label" for="link-email">Email address</label>
+                <input class="form-input" id="link-email" name="Email" type="email" autocomplete="username" required />
+            </div>
+            <button type="submit" class="btn">Send the link</button>
+        </form>
+    </section>
+
+    <section class="card admin-card">
+        <h2 class="card-title">Use a recovery code</h2>
+        <form method="post" asp-page-handler="Recovery">
+            <div class="form-group">
+                <label class="form-label" for="rc-email">Email address</label>
+                <input class="form-input" id="rc-email" name="Email" type="email" autocomplete="username" required />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="rc-code">Recovery code</label>
+                <input class="form-input mono" id="rc-code" name="Code" autocomplete="one-time-code" spellcheck="false" required />
+                <p class="form-help">Each code works once.</p>
+            </div>
+            <button type="submit" class="btn">Sign in</button>
+        </form>
+    </section>
+
+    <p class="form-help">A session that began with a link or a code can edit, but it can't change how you sign in. Lost every passkey? Run <code>admin enroll</code> on the server for a new one.</p>
+</details>
