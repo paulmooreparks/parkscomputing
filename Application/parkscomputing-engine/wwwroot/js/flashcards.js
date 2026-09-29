@@ -131,7 +131,7 @@
             '</div>' +
             '<div class="flashcard-controls">' +
               '<button type="button" class="btn" data-action="prev">&#8592; Prev</button>' +
-              '<button type="button" class="btn" data-action="reveal" aria-pressed="false">Reveal</button>' +
+              '<button type="button" class="btn btn-primary" data-action="reveal" aria-pressed="false">Reveal</button>' +
               '<button type="button" class="btn" data-action="next">Next &#8594;</button>' +
               '<button type="button" class="btn" data-action="shuffle">Shuffle</button>' +
             '</div>' +
