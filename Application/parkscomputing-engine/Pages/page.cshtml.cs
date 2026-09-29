@@ -304,6 +304,10 @@ namespace ParksComputing.Engine.Pages {
             var node = doc.DocumentNode.SelectSingleNode("//body");
             if (node is null) { return Task.FromResult<IActionResult>(NotFound()); }
 
+            // Code blocks in an HTML article get the site's highlighting, as
+            // a Markdown article's do, so the article need not load its own.
+            if (node.InnerHtml.Contains("<pre><code", StringComparison.OrdinalIgnoreCase)) { ViewData["HasCodeBlocks"] = true; }
+
             // Check for audio content - first check meta tag from Markdown front matter
             var hasAudioMeta = doc.DocumentNode.SelectSingleNode("//meta[@name='has-audio']");
             var audioFileMeta = doc.DocumentNode.SelectSingleNode("//meta[@name='audio-file']");

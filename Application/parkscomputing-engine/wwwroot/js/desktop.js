@@ -37,7 +37,7 @@
 
     function enhance(win) {
         if (window.hljs) {
-            win.querySelectorAll('pre code:not(.language-mermaid)').forEach(function (block) {
+            win.querySelectorAll('pre code:not(.language-mermaid):not([data-highlighted])').forEach(function (block) {
                 window.hljs.highlightElement(block);
             });
         }
@@ -198,6 +198,9 @@
         layer.addEventListener('pudl:window-open', function (e) {
             enhance(e.target);
         });
+        /* Windows the server rendered with the page arrive without
+           pudl:window-open, so they are enhanced here. */
+        layer.querySelectorAll(':scope > .win[data-win]').forEach(enhance);
 
         initPrefs(layer);
 
