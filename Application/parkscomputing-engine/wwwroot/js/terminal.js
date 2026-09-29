@@ -97,6 +97,7 @@
                 name: e.name, kind: e.kind, title: e.title || e.name, description: e.description || '',
                 tags: e.tags || [], date: e.date ? new Date(e.date) : null, url: e.url || null, parent: parent
             };
+            if (e.source != null) { n.source = e.source; }
             if (e.children) {
                 n.children = [];
                 e.children.forEach(function (c) { n.children.push(wrap(c, n)); });
@@ -364,9 +365,11 @@
         return textCache[slug];
     }
 
-    /* The text of any file: a home file, a page, or a link's address. */
+    /* The text of any file: a home file, a script, a page, or a link's
+       address. */
     function textOf(r) {
         if (r.home) { return Promise.resolve(readHome(r)); }
+        if (r.kind === 'script') { return Promise.resolve(r.source || ''); }
         if (r.kind === 'link') {
             return Promise.resolve(r.title + '\n' + r.url + '\n' + (r.description ? '\n' + r.description + '\n' : ''));
         }
@@ -473,10 +476,69 @@
 
     function fmtSize(n) { return n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB'; }
 
+    /* === Scripts ===========================================================
+       A script is a text file of terminal commands: the site's in /bin
+       (content/bin on the server), and a reader's own in ~/bin. Both
+       directories are on the PATH after /applets. */
+
+    function userBin() { return home.dir ? childNamed(home.dir, 'bin') : null; }
+
+    function isScript(n) {
+        var r = realOf(n);
+        if (r.children) { return false; }
+        if (r.kind === 'script') { return true; }
+        var ub = userBin();
+        return !!(r.home && ub && r.parent === ub && !r.special);
+    }
+
+    function scriptSource(n) { var r = realOf(n); return r.home ? readHome(r) : (r.source || ''); }
+
+    /* The summary is the first comment line, less a leading "name:". */
+    function scriptSummary(name, src) {
+        var lines = String(src).replace(/\r/g, '').split('\n');
+        for (var i = 0; i < lines.length; i++) {
+            var t = lines[i].trim();
+            if (t.indexOf('#!') === 0 || t[0] !== '#') { continue; }
+            t = t.replace(/^#+\s*/, '');
+            return t.indexOf(name + ':') === 0 ? t.slice(name.length + 1).trim() : t;
+        }
+        return '';
+    }
+
+    /* The comment block at the top of a script, for man. */
+    function scriptHelp(src) {
+        var out = [];
+        var lines = String(src).replace(/\r/g, '').split('\n');
+        for (var i = 0; i < lines.length; i++) {
+            var t = lines[i].trim();
+            if (t.indexOf('#!') === 0) { continue; }
+            if (t[0] !== '#') { if (out.length || t) { break; } continue; }
+            out.push(t.replace(/^#\s?/, ''));
+        }
+        return out.join('\n');
+    }
+
+    /* Substitutes $1 to $9, ${1:-default}, $@ (every argument), $# (how
+       many) and $0 (the script's name). Each value is escaped for the
+       parser, so quotes in it stay literal; unquoted, it splits on spaces
+       as in a shell. */
+    function expand(line, name, args) {
+        function q(s) { return String(s).replace(/(["\\'])/g, '\\$1'); }
+        return line.replace(/\$\{([0-9])(?::-([^}]*))?\}|\$([0-9@#])/g, function (m, n1, def, n2) {
+            var k = n1 != null ? n1 : n2;
+            if (k === '@') { return args.map(q).join(' '); }
+            if (k === '#') { return String(args.length); }
+            if (k === '0') { return q(name); }
+            var v = args[+k - 1];
+            if (v == null || v === '') { v = def != null ? def : ''; }
+            return q(v);
+        });
+    }
+
     function styledName(n) {
         var k = realOf(n).kind;
         if (n.children) { return paint('blue', C.bold + n.name) + '/'; }
-        if (k === 'app') { return paint('green', n.name) + '*'; }
+        if (k === 'app' || isScript(n)) { return paint('green', n.name) + '*'; }
         if (k === 'link') { return paint('cyan', n.name) + '@'; }
         return n.name;
     }
@@ -517,7 +579,13 @@
             Object.keys(COMMANDS).sort().forEach(function (k) {
                 io.out('  ' + paint('green', k.padEnd(11)) + COMMANDS[k].summary + '\n');
             });
-            io.out('\n' + wrap('Anything ls marks with * is an applet and runs by its name, or by its path. Your home directory, ~, holds files you can edit; everything else is read-only. Tab completes, the arrow keys recall earlier commands, "|" pipes one command into another, and "> file" saves a command\'s output in ~.', io.cols - 1) + '\n');
+            [['Site scripts, in /bin', io.fs.resolve('/bin')], ['Your scripts, in ~/bin', userBin()]].forEach(function (sec) {
+                var kids = sec[1] && sec[1].children ? sec[1].children.filter(isScript) : [];
+                if (!kids.length) { return; }
+                io.out('\n' + paint('bold', sec[0]) + '\n');
+                kids.forEach(function (n) { io.out('  ' + paint('green', n.name.padEnd(11)) + scriptSummary(n.name, scriptSource(n)) + '\n'); });
+            });
+            io.out('\n' + wrap('Anything ls marks with * runs by its name, or by its path: the applets, and scripts, which are files of commands. Your home directory, ~, holds files you can edit, and a script you put in ~/bin runs like the site\'s; everything else is read-only. Tab completes, the arrow keys recall earlier commands, "|" pipes one command into another, and "> file" saves a command\'s output in ~.', io.cols - 1) + '\n');
         }
     });
 
@@ -528,7 +596,13 @@
         run: function (args, io) {
             if (!args.length) { io.err('man: which command? Try "help".'); return 1; }
             var c = COMMANDS[args[0]];
-            if (!c) { io.err('man: no entry for ' + args[0]); return 1; }
+            if (!c) {
+                var s = io.findScript(args[0]);
+                if (!s) { io.err('man: no entry for ' + args[0]); return 1; }
+                var h = scriptHelp(scriptSource(s));
+                io.out(paint('bold', s.name) + ' - a script in ' + displayPath(realOf(s).parent) + '\n\n' + wrap(h || 'It has no comments to explain it. "cat ' + displayPath(realOf(s)) + '" shows what it does.', io.cols - 1) + '\n');
+                return;
+            }
             io.out(paint('bold', c.name) + ' - ' + c.summary + '\n\n' + wrap(c.help, io.cols - 1) + '\n');
         }
     });
@@ -550,10 +624,13 @@
                 if (long) {
                     list.forEach(function (c) {
                         var r = realOf(c);
-                        var kind = c.children ? 'dir ' : r.home ? 'file' : r.kind === 'app' ? 'app ' : r.kind === 'link' ? 'link' : 'page';
+                        var kind = c.children ? 'dir ' : isScript(c) ? 'script' : r.home ? 'file' : r.kind === 'app' ? 'app ' : r.kind === 'link' ? 'link' : 'page';
                         var extra = r.home ? (c.children ? '' : fmtSize(readHome(r).length)) : (r.title && r.title !== c.name ? r.title : '');
                         io.out(paint('dim', fmtDate(r.home ? r.mtime : r.date)) + '  ' + kind + '  ' + styledName(c) + (extra ? '  ' + paint('dim', extra) : '') + '\n');
                     });
+                } else if (list.length && !io.interactive) {
+                    /* Into a pipe, one name a line, as ls does in a shell. */
+                    list.forEach(function (c) { io.out(c.name + '\n'); });
                 } else if (list.length) {
                     io.out(columns(list.map(styledName), io.cols) + '\n');
                 }
@@ -1001,15 +1078,55 @@
     });
     alias('nano', 'edit');
 
-    /* A word that names no command may name an applet: a path to one, one
-       in the current directory, or one in /applets, which is the terminal's
-       PATH. It opens, like any page. */
+    /* The PATH: after the commands, a word may name an applet or a script,
+       by its path, in the current directory, or in /applets, /bin or ~/bin,
+       in that order. */
+    function runnable(n) { return n && !n.children && (realOf(n).kind === 'app' || isScript(n)); }
+
+    function findProgram(fs, cwd, word) {
+        if (word.indexOf('/') >= 0) { var p = resolve(fs, cwd, word); return runnable(p) ? p : null; }
+        var places = [cwd, resolve(fs, fs, '/applets'), resolve(fs, fs, '/bin'), userBin()];
+        for (var i = 0; i < places.length; i++) {
+            var n = places[i] ? childNamed(places[i], word) : null;
+            if (runnable(n)) { return n; }
+        }
+        return null;
+    }
+
     function programAt(fs, cwd, word) {
-        var n = word.indexOf('/') >= 0 ? resolve(fs, cwd, word)
-            : (childNamed(cwd, word) || resolve(fs, fs, '/applets/' + word));
-        if (!n || n.children || realOf(n).kind !== 'app') { return null; }
+        var n = findProgram(fs, cwd, word);
+        if (!n) { return null; }
         var r = realOf(n);
+        if (isScript(n)) { return { name: word, run: function (args, io) { return io.runScript(r, args); } }; }
         return COMMANDS[r.name] || { name: word, run: function (args, io) { io.open(r); } };
+    }
+
+    /* JavaScript commands beyond the built-in ones register here, from the
+       files the site lists in window.pcTerminalCommands (js/applets.js).
+       A command is { name, summary, help, complete, run(args, io) }, the
+       same shape as the built-ins, and io is all it can reach. */
+    window.pcTerminal = {
+        register: function (def) {
+            if (!def || !/^[a-z][a-z0-9_-]{0,39}$/.test(def.name || '') || typeof def.run !== 'function') { return false; }
+            command(def.name, Object.assign({ summary: '', help: def.name }, def));
+            return true;
+        },
+        paint: paint,
+        strip: strip,
+        wrap: wrap,
+        columns: columns
+    };
+
+    var extrasReady = null;
+    function loadExtras() {
+        if (!extrasReady) {
+            var list = Array.isArray(window.pcTerminalCommands) ? window.pcTerminalCommands : [];
+            var ver = SELF_SRC && /\?/.test(SELF_SRC) ? SELF_SRC.slice(SELF_SRC.indexOf('?')) : '';
+            extrasReady = Promise.all(list.map(function (src) {
+                return loadScript(src + ver).catch(function () { });
+            }));
+        }
+        return extrasReady;
     }
 
     /* === The applet ======================================================= */
@@ -1116,7 +1233,11 @@
             if (lastTok && typeof lastTok === 'object') { return pathCompletions(partial, false); }
             words = words.filter(function (w) { return typeof w === 'string'; });
             if (!words.length) {
-                return Object.keys(COMMANDS).filter(function (k) { return k.indexOf(partial) === 0; }).map(function (k) { return { word: k, done: true }; });
+                var names = Object.keys(COMMANDS);
+                [resolve(fs, fs, '/bin'), userBin()].forEach(function (d) {
+                    (d && d.children ? d.children : []).forEach(function (n) { if (isScript(n) && names.indexOf(n.name) < 0) { names.push(n.name); } });
+                });
+                return names.filter(function (k) { return k.indexOf(partial) === 0; }).sort().map(function (k) { return { word: k, done: true }; });
             }
             var c = COMMANDS[words[0]];
             var mode = c && c.complete;
@@ -1330,15 +1451,30 @@
             });
         }
 
-        function makeIo(stdin, sink) {
-            var interactive = !sink;
+        /* ctx is set when a script runs a line: its output goes where the
+           script's own output goes, and it knows how deep the scripts are. */
+        function makeIo(stdin, sink, ctx) {
+            var interactive = !sink && (ctx ? ctx.interactive : true);
+            var depth = ctx ? ctx.depth : 0;
             return {
                 cols: term.cols, rows: term.rows, interactive: interactive,
                 stdin: stdin,
                 /* A long command checks this between steps and stops. */
                 interrupted: function () { return interrupted; },
-                out: function (s) { if (interrupted) { return; } if (sink) { sink.push(strip(s)); } else { write(s); } },
+                out: function (s) {
+                    if (interrupted) { return; }
+                    if (sink) { sink.push(strip(s)); } else if (ctx) { ctx.out(s); } else { write(s); }
+                },
                 err: function (s) { write(paint('red', String(s).replace(/\n$/, '')) + '\n'); },
+                /* Reads any file as text, for commands that take files. */
+                read: function (p) {
+                    var n = resolve(fs, cwd, p);
+                    if (!n) { return Promise.reject(new Error(p + ': no such file or directory')); }
+                    if (n.children) { return Promise.reject(new Error(p + ': is a directory')); }
+                    return textOf(realOf(n));
+                },
+                findScript: function (name) { var n = findProgram(fs, cwd, name); return n && isScript(n) ? n : null; },
+                runScript: function (node, args) { return runScript(node, args, this, depth); },
                 fs: {
                     resolve: function (p) { return resolve(fs, cwd, p); },
                     cwd: function () { return cwd; },
@@ -1363,41 +1499,66 @@
             };
         }
 
-        async function execute(text) {
-            homeSync();
+        /* Runs one line. Resolves to its status: 0 for success, and
+           anything else for a failure, which stops a script. */
+        async function execute(text, ctx) {
+            if (!ctx) { homeSync(); }
+            var fail = function (m) { write(paint('red', m) + '\n'); return 2; };
             var parsed = parse(text);
-            if (parsed.error) { write(paint('red', parsed.error) + '\n'); return; }
+            if (parsed.error) { return fail(parsed.error); }
             var stages = parsed.stages.filter(function (s) { return s.length; });
-            if (!stages.length) { return; }
+            if (!stages.length) { return 0; }
             /* A redirection may end only the last stage, and names a file. */
             var redirect = null;
             for (var s = 0; s < stages.length; s++) {
                 var at = -1;
                 stages[s].forEach(function (w, j) { if (typeof w === 'object' && at < 0) { at = j; } });
                 if (at < 0) { continue; }
-                if (s !== stages.length - 1) { write(paint('red', 'a redirection (> or >>) can only end the line') + '\n'); return; }
+                if (s !== stages.length - 1) { return fail('a redirection (> or >>) can only end the line'); }
                 var target = stages[s][at + 1];
-                if (typeof target !== 'string' || stages[s].length !== at + 2) { write(paint('red', 'a redirection needs one file name after it') + '\n'); return; }
+                if (typeof target !== 'string' || stages[s].length !== at + 2) { return fail('a redirection needs one file name after it'); }
                 redirect = { mode: stages[s][at].redirect, path: target };
                 stages[s] = stages[s].slice(0, at);
-                if (!stages[s].length) { write(paint('red', 'nothing to redirect') + '\n'); return; }
+                if (!stages[s].length) { return fail('nothing to redirect'); }
             }
             var cwdPath = pathOf(cwd);
-            var stdin = null;
+            var stdin = ctx ? ctx.stdin : null;
+            var status = 0;
             for (var i = 0; i < stages.length && !interrupted; i++) {
                 var words = stages[i], c = COMMANDS[words[0]] || programAt(fs, cwd, words[0]);
-                if (!c) { write(paint('red', words[0] + ': command not found. Type "help" for the list.') + '\n'); return; }
+                if (!c) { write(paint('red', words[0] + ': command not found. Type "help" for the list.') + '\n'); return 127; }
                 var last = i === stages.length - 1;
                 var sink = last && !redirect ? null : [];
-                await c.run(words.slice(1), makeIo(stdin, sink));
+                status = (await c.run(words.slice(1), makeIo(stdin, sink, ctx))) || 0;
                 if (sink) { stdin = sink.join(''); }
             }
             if (redirect && !interrupted) {
                 var res = await writeFile(fs, cwd, redirect.path, stdin || '', redirect.mode === '>>');
-                if (res.error) { write(paint('red', res.error) + '\n'); }
+                if (res.error) { write(paint('red', res.error) + '\n'); status = 1; }
             }
             /* A command may have removed or moved the current directory. */
             if (!attached(cwd)) { cwd = resolve(fs, fs, cwdPath) || home.dir; announce(); }
+            return interrupted ? 130 : status;
+        }
+
+        /* Runs a script's lines in order, stopping at the first that fails.
+           Its output goes wherever the script's does, so a script can sit
+           in a pipe, and what is piped into it reaches its first line. */
+        var SCRIPT_DEPTH = 8;
+        async function runScript(node, args, io, depth) {
+            if (depth >= SCRIPT_DEPTH) { io.err(node.name + ': scripts call each other too deeply (the limit is ' + SCRIPT_DEPTH + ')'); return 1; }
+            var lines = scriptSource(node).replace(/\r/g, '').split('\n');
+            var first = true, status = 0;
+            for (var i = 0; i < lines.length && !interrupted; i++) {
+                var t = lines[i].trim();
+                if (!t || t[0] === '#') { continue; }
+                status = await execute(expand(t, node.name, args), {
+                    out: io.out, stdin: first ? io.stdin : null, depth: depth + 1, interactive: io.interactive
+                });
+                first = false;
+                if (status) { break; }
+            }
+            return status;
         }
 
         /* Opens a page, an applet or a link the way the current view opens
@@ -1632,7 +1793,7 @@
         function applyTheme() { if (term) { term.options.theme = themeColors(root); } }
         document.addEventListener('pudl:theme-change', applyTheme);
 
-        var boot = Promise.all([loadXterm(), loadTree()]).then(function (results) {
+        var boot = Promise.all([loadXterm(), loadTree(), loadExtras()]).then(function (results) {
             if (destroyed) { return; }
             fs = results[1];
             cwd = resolve(fs, fs, initialCwd);

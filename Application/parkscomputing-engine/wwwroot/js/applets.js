@@ -38,10 +38,14 @@ pudlApplets.define('flashcards', {
     ver: '5'
 });
 
-/* The terminal loads xterm.js from js/vendor beside itself. */
+/* The terminal loads xterm.js from js/vendor beside itself, and the files
+   of extra JavaScript commands listed here, each with the terminal's own
+   version, so a change to one of them bumps the terminal's ver. Scripts
+   (files of commands) need no listing: they live in content/bin. */
+window.pcTerminalCommands = ['/js/terminal-text.js'];
 pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: '/page/terminal',
-    ver: '11'
+    ver: '12'
 });

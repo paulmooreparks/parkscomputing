@@ -1,0 +1,7 @@
+# latest: list the newest articles
+#
+# Usage: latest [count]
+#
+# Shows the newest articles with their dates, five unless you
+# give a count. Try: latest 10
+ls -l /articles | head -n ${1:-5}

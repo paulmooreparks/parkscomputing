@@ -40,15 +40,52 @@ public class TerminalController : ControllerBase {
         _environment = environment;
     }
 
-    /// <summary>One entry in the terminal's filesystem.</summary>
+    /// <summary>One entry in the terminal's filesystem. A script carries its
+    /// source, so the terminal can run it and show its help without another
+    /// request.</summary>
     public record Entry(
         string Name, string Kind, string? Title, string? Description,
-        string[]? Tags, DateTime? Date, string? Url, List<Entry>? Children);
+        string[]? Tags, DateTime? Date, string? Url, List<Entry>? Children,
+        string? Source = null);
+
+    private static readonly Regex ScriptName = new(@"^[a-z0-9][a-z0-9_-]{0,39}$", RegexOptions.Compiled);
+    private const int ScriptMax = 16 * 1024;
 
     [HttpGet("tree")]
     public ActionResult<Entry> Tree() {
         Response.Headers.CacheControl = "public, max-age=60";
-        return MarkApplets(BuildTree(_navService.GetRoot()));
+        var tree = MarkApplets(BuildTree(_navService.GetRoot()));
+        var bin = Scripts();
+        if (bin is not null) { tree.Children!.Add(bin); }
+        return tree;
+    }
+
+    /// <summary>The site's scripts, from content/bin: plain-text files of
+    /// terminal commands, which can do only what the terminal's commands
+    /// can. A file named with a .sh extension drops it; names are lower
+    /// case, and a script over 16 KB is left out.</summary>
+    private Entry? Scripts() {
+        var dir = Path.Combine(_environment.WebRootPath, "content", "bin");
+        if (!Directory.Exists(dir)) { return null; }
+        var scripts = new List<Entry>();
+        foreach (var path in Directory.EnumerateFiles(dir).OrderBy(p => p, StringComparer.Ordinal).Take(200)) {
+            var name = Path.GetFileName(path);
+            if (name.EndsWith(".sh", StringComparison.Ordinal)) { name = name[..^3]; }
+            if (!ScriptName.IsMatch(name) || new FileInfo(path).Length > ScriptMax) { continue; }
+            var source = System.IO.File.ReadAllText(path);
+            scripts.Add(new Entry(name, "script", name, ScriptSummary(name, source), null,
+                System.IO.File.GetLastWriteTimeUtc(path), null, null, source));
+        }
+        return new Entry("bin", "dir", "Scripts", "The site's scripts, run by name", null, null, null, scripts);
+    }
+
+    /// <summary>A script's summary: its first comment line, less a leading
+    /// "name:".</summary>
+    private static string? ScriptSummary(string name, string source) {
+        var first = source.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.StartsWith('#') && !l.StartsWith("#!"));
+        if (first is null) { return null; }
+        var text = first.TrimStart('#').Trim();
+        return text.StartsWith(name + ":", StringComparison.Ordinal) ? text[(name.Length + 1)..].Trim() : text;
     }
 
     /// <summary>A page that is an applet on its own (its HTML carries

@@ -1,0 +1,7 @@
+# search: find the articles that mention a word or phrase
+#
+# Usage: search <word or phrase>
+#
+# Lists every article whose text matches, ignoring case.
+# Try: search Qantas
+grep -ril "$@" /articles

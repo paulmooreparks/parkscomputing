@@ -78,3 +78,17 @@ The file commands are `edit` (alias `nano`), `touch`, `mkdir [-p]`, `rm [-r]`, `
 ## The editor
 
 `edit` opens a nano-style editor on the alternate screen: a title bar with the path and whether it is modified, the text, a message line, and a line of keys. Ctrl+S (or Ctrl+O) saves, Ctrl+X exits and asks about unsaved changes, Ctrl+K cuts the current line (consecutive cuts collect), Ctrl+U pastes them above the cursor, Ctrl+G shows the keys and Ctrl+C the cursor position. Like nano, the buffer always ends in an empty line, so there is somewhere to move to and paste after the last line of text. Long lines scroll sideways rather than wrap, and tabs become spaces. The editor avoids Ctrl+W, Ctrl+T and Ctrl+N, which browsers keep for themselves.
+
+## Scripts
+
+A script is a plain-text file of terminal commands. The site's scripts are files in `content/bin` on the content volume, which appear as `/bin` and are added or changed by saving a file, with no deploy. A reader's own scripts are the files in `~/bin`. `ls` marks both with `*`, and both run by name: after the commands, the terminal looks in the current directory, `/applets`, `/bin` and `~/bin`, in that order, or at a path.
+
+The server reads `content/bin` into the tree: each file up to 16 KB, named in lower case (`[a-z0-9][a-z0-9_-]*`, a `.sh` extension dropped), with its source, so the terminal runs it and shows its help without another request. A script's summary, which `help` lists under "Site scripts" or "Your scripts", is its first comment line less a leading `name:`. `man` prints the comment block at its top, and `cat` its source.
+
+A script runs one line at a time, skipping blank lines and `#` comments, and stops at the first line that fails, as a shell does under `set -e` (so a `grep` that finds nothing stops it). Before a line runs, `$1` to `$9`, `${1:-default}`, `$@` (every argument), `$#` (how many) and `$0` (the script's name) are replaced, each value escaped so that quotes in it stay literal; unquoted, a value splits on spaces as in a shell. Pipes and redirection work as at the prompt. A script's output goes wherever the script's does, so it can sit in a pipe, and what is piped into it reaches its first line. Scripts may run scripts, eight deep at most. There are no conditionals or loops yet.
+
+A script can do only what the terminal's commands can, so it inherits the sandbox and needs no review, and because `?run=` only fills in the prompt, no link can make a reader's browser run one.
+
+## JavaScript commands
+
+A command the scripts cannot build from others is JavaScript: an object `{ name, summary, help, complete, run(args, io) }`, the shape of the built-ins, registered with `window.pcTerminal.register`. The files that register them are listed in `window.pcTerminalCommands` in `js/applets.js`, and the terminal loads each with its own version, so a change to one bumps the terminal's `ver`. These live in the repo rather than the content volume, because JavaScript runs with the page's authority and should be reviewed and versioned. `io.read(path)` gives a command the text of any file. The first such file is `js/terminal-text.js`, with `head`, `tail`, `wc`, `sort` and `uniq`; `ls` prints one name a line into a pipe so they have lines to work on.
