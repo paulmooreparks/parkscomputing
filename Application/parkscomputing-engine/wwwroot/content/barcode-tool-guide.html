@@ -36,6 +36,7 @@
             <tr><td>Code 128</td><td>Internal labels</td><td>Any printable ASCII character</td></tr>
             <tr><td>Code 39</td><td>Older internal labels</td><td>Capital letters, digits, and <code>- . space $ / + %</code></td></tr>
             <tr><td>Codabar (NW-7)</td><td>Membership cards, coupons, libraries</td><td>Digits and <code>- $ : / . +</code>, between start and stop characters A to D</td></tr>
+            <tr><td>QR Code</td><td>Links, receipts, mobile coupons</td><td>Any text, including Unicode</td></tr>
         </tbody>
     </table>
     <p>
@@ -43,6 +44,14 @@
         character, Codabar lets you choose its start and stop characters, and ITF-14 draws its bearer bars unless you
         turn them off. For an EAN-13, the line under the barcode names the country or range of its GS1 prefix, so
         <code>480</code> reads as the Philippines and <code>20</code> to <code>29</code> as in-store codes.
+    </p>
+    <p>
+        A QR Code's option is its error-correction level. L recovers about 7% of a damaged symbol, M about 15%, Q about
+        25% and H about 30%, and each step up makes the symbol larger for the same data. The line under the symbol gives
+        its version (1 to 40), its size in modules and the level. With the structure highlight on, the three finder
+        patterns get a colored frame. The frame sits on light modules only, so the code still scans with it showing.
+        The QR encoding itself comes from Project Nayuki's
+        <a href="https://www.nayuki.io/page/qr-code-generator-library">QR Code generator library</a> (MIT License).
     </p>
 
     <h2 id="highlights">Highlights</h2>
@@ -113,7 +122,7 @@
         <tbody>
             <tr><td><code>id</code></td><td>Letters, digits and hyphens, unique among your layouts.</td></tr>
             <tr><td><code>name</code></td><td>The name shown in the menu.</td></tr>
-            <tr><td><code>symbology</code></td><td>One of <code>ean13</code>, <code>ean8</code>, <code>upca</code>, <code>upce</code>, <code>gs1-128</code>, <code>code128</code>, <code>itf</code>, <code>itf14</code>, <code>code39</code> or <code>codabar</code>.</td></tr>
+            <tr><td><code>symbology</code></td><td>One of <code>ean13</code>, <code>ean8</code>, <code>upca</code>, <code>upce</code>, <code>gs1-128</code>, <code>code128</code>, <code>itf</code>, <code>itf14</code>, <code>code39</code>, <code>codabar</code> or <code>qr</code>.</td></tr>
             <tr><td><code>fields</code></td><td>The fields, in order.</td></tr>
             <tr><td><code>description</code></td><td>Optional text shown above the fields.</td></tr>
             <tr><td><code>explain</code></td><td>Optional template for the line under the barcode.</td></tr>

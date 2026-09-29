@@ -28,12 +28,12 @@ pudlApplets.define('barcodes', {
     src: '/js/barcode-tool.js',
     css: '/css/barcode-tool.css',
     page: '/page/barcodes',
-    ver: '9'
+    ver: '11'
 });
 
 pudlApplets.define('flashcards', {
     src: '/js/flashcards.js',
     css: '/css/flashcards.css',
     page: '/page/flashcards',
-    ver: '4'
+    ver: '5'
 });

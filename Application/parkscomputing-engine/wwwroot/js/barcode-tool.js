@@ -11,21 +11,26 @@
 (function () {
     'use strict';
 
-    var ENGINE_SRC = (function () {
-        var cur = document.currentScript && document.currentScript.src;
-        return cur ? cur.replace(/barcode-tool\.js/, 'barcode-engine.js') : '/js/barcode-engine.js';
-    })();
+    var SELF_SRC = document.currentScript && document.currentScript.src;
+    function beside(file) { return SELF_SRC ? SELF_SRC.replace(/barcode-tool\.js/, file) : '/js/' + file; }
+    function loadScript(src) {
+        return new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = function () { reject(new Error('could not load ' + src)); };
+            document.head.appendChild(s);
+        });
+    }
+    /* The engine, and the QR library it wraps. Without the library the
+       engine still loads and QR Code says it is unavailable. */
     var engineReady = null;
     function loadEngine() {
         if (window.pcBarcode) { return Promise.resolve(window.pcBarcode); }
         if (!engineReady) {
-            engineReady = new Promise(function (resolve, reject) {
-                var s = document.createElement('script');
-                s.src = ENGINE_SRC;
-                s.onload = function () { resolve(window.pcBarcode); };
-                s.onerror = function () { reject(new Error('could not load the barcode engine')); };
-                document.head.appendChild(s);
-            });
+            var qr = window.qrcodegen ? Promise.resolve() : loadScript(beside('vendor/qrcodegen-1.8.0.js')).catch(function () { });
+            engineReady = qr.then(function () { return loadScript(beside('barcode-engine.js')); })
+                .then(function () { return window.pcBarcode; });
         }
         return engineReady;
     }
@@ -138,13 +143,16 @@
     var SYM_GROUPS = [
         ['Retail', ['ean13', 'ean8', 'upca', 'upce']],
         ['Logistics', ['gs1-128', 'itf14', 'itf']],
-        ['General', ['code128', 'code39', 'codabar']]
+        ['General', ['code128', 'code39', 'codabar']],
+        ['Two-dimensional', ['qr']]
     ];
     var SAMPLE_DATA = {
         ean13: '480036140036', ean8: '9638507', upca: '03600029145', upce: '0425261',
         'gs1-128': '(01)09501101530003(17)271231(10)LOT42A', itf14: '1540014128876', itf: '123420260929001234',
-        code128: 'Hello, PUDL 2026', code39: 'CODE-39', codabar: '40156'
+        code128: 'Hello, PUDL 2026', code39: 'CODE-39', codabar: '40156',
+        qr: 'https://parkscomputing.com/page/barcodes'
     };
+    var ECC_LEVELS = [['L', 'L (7%)'], ['M', 'M (15%)'], ['Q', 'Q (25%)'], ['H', 'H (30%)']];
     var MODULE_MM = [['0.264', '0.264 mm (80%)'], ['0.33', '0.33 mm (100%)'], ['0.40', '0.40 mm'], ['0.495', '0.495 mm (150%)'], ['0.66', '0.66 mm (200%)']];
 
     var uid = 0;
@@ -326,9 +334,9 @@
               '</div>' +
               '<div class="bt-actions">' +
               '<div class="bt-controls">' +
-                '<label class="check"><input type="checkbox" data-flag="text" /> Text</label>' +
-                '<label class="check"><input type="checkbox" data-flag="checks" /> Check digits</label>' +
-                '<label class="check"><input type="checkbox" data-flag="structure" /> Guards, start and stop</label>' +
+                '<label class="check" data-linear-only><input type="checkbox" data-flag="text" /> Text</label>' +
+                '<label class="check" data-linear-only><input type="checkbox" data-flag="checks" /> Check digits</label>' +
+                '<label class="check"><input type="checkbox" data-flag="structure" /> <span data-role="structure-label">Guards, start and stop</span></label>' +
                 '<label class="check" data-role="colors-flag"><input type="checkbox" data-flag="colors" /> Field colors</label>' +
               '</div>' +
               '<div class="bt-controls">' +
@@ -593,6 +601,10 @@
                     var v = (st.opts[o] || 'A').toUpperCase();
                     html += '<label class="bt-inline">' + (o === 'start' ? 'Start' : 'Stop') + ' <select class="form-select" data-opt="' + o + '"' + (locked ? ' disabled' : '') + '>' +
                         ['A', 'B', 'C', 'D'].map(function (c) { return '<option' + (c === v ? ' selected' : '') + '>' + c + '</option>'; }).join('') + '</select></label>';
+                } else if (o === 'ecc') {
+                    var lv = (st.opts.ecc || 'M').toUpperCase();
+                    html += '<label class="bt-inline">Error correction <select class="form-select" data-opt="ecc"' + (locked ? ' disabled' : '') + '>' +
+                        ECC_LEVELS.map(function (e) { return '<option value="' + e[0] + '"' + (e[0] === lv ? ' selected' : '') + '>' + e[1] + '</option>'; }).join('') + '</select></label>';
                 }
             });
             el.symopts.innerHTML = html;
@@ -648,6 +660,11 @@
                 });
             }
             buildSymOptions();
+            /* A matrix symbol has no text line and no check characters to
+               mark; its structure is the finder patterns. */
+            var matrix = B.symbologies[st.sym].family === 'matrix';
+            root.querySelectorAll('[data-linear-only]').forEach(function (l) { l.hidden = matrix; });
+            q('[data-role="structure-label"]').textContent = matrix ? 'Finder patterns' : 'Guards, start and stop';
             renderLayoutMenu();
             root.querySelectorAll('[data-flag]').forEach(function (cb) { cb.checked = !!st.flags[cb.getAttribute('data-flag')]; });
             el.mm.value = st.mm;
@@ -659,7 +676,7 @@
             return {
                 check: st.opts.check === '1' || st.opts.check === true || st.opts.check === 'true',
                 bearer: st.opts.bearer !== '0',
-                start: st.opts.start, stop: st.opts.stop
+                start: st.opts.start, stop: st.opts.stop, ecc: st.opts.ecc
             };
         }
 
@@ -746,6 +763,7 @@
                 if (name) { parts.push('GS1 prefix ' + r.symbol.data.slice(0, 3) + ': ' + name + '.'); }
             }
             if (r.elements) { parts.push(r.elements.map(function (e) { return '(' + e.ai + ') ' + e.info.name; }).join(', ') + '.'); }
+            if (r.version) { parts.push('Version ' + r.version + ', ' + r.symbol.size + ' by ' + r.symbol.size + ' modules, error correction level ' + r.ecc + '.'); }
             return parts.join(' ');
         }
 
@@ -803,7 +821,7 @@
             var g = B.geometry(current, o);
             var dpr = window.devicePixelRatio || 1;
             var avail = Math.max(120, el.well.clientWidth - 24);
-            var px = Math.max(1, Math.min(Math.floor(4 * dpr), Math.floor(avail * dpr / g.width)));
+            var px = Math.max(1, Math.min(Math.floor((current.matrix ? 8 : 4) * dpr), Math.floor(avail * dpr / g.width)));
             o.px = px; o.cssScale = dpr;
             B.render(el.canvas, current, o);
             el.canvas.setAttribute('aria-label', B.symbologies[current.symbology].name + ' barcode encoding ' + (current.hri || current.data));

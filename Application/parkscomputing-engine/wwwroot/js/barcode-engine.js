@@ -689,6 +689,46 @@
         }
     };
 
+    /* === QR Code ========================================================= */
+
+    /* The module matrix comes from Project Nayuki's QR Code generator
+       (MIT), vendored at js/vendor/qrcodegen-1.8.0.js and loaded beside
+       this engine by whoever loads it. The engine only wraps its matrix
+       in a symbol; Reed-Solomon and masking stay in the vetted library. */
+    SYMBOLOGIES.qr = {
+        name: 'QR Code',
+        family: 'matrix',
+        help: 'Any text. Digits alone, or upper-case letters and digits, pack the most into a symbol.',
+        charset: /^[\s\S]*$/,
+        options: ['ecc'],
+        encode: function (input, opts) {
+            var Q = global.qrcodegen;
+            if (!Q) { return { ok: false, error: 'QR Code support did not load.' }; }
+            if (!input) { return { ok: false, error: 'Enter the text to encode.' }; }
+            var level = String(opts.ecc || 'M').toUpperCase();
+            var ecl = { L: Q.QrCode.Ecc.LOW, M: Q.QrCode.Ecc.MEDIUM, Q: Q.QrCode.Ecc.QUARTILE, H: Q.QrCode.Ecc.HIGH }[level];
+            if (!ecl) { level = 'M'; ecl = Q.QrCode.Ecc.MEDIUM; }
+            var qr;
+            try { qr = Q.QrCode.encodeSegments(Q.QrSegment.makeSegments(input), ecl, 1, 40, -1, false); }
+            catch (err) { return { ok: false, error: 'Too much data for a QR Code at error-correction level ' + level + '.' }; }
+            var n = qr.size, modules = [];
+            for (var y = 0; y < n; y++) { for (var x = 0; x < n; x++) { modules.push(qr.getModule(x, y)); } }
+            /* The three finder patterns, for the structure highlight. */
+            var specials = [[0, 0], [n - 7, 0], [0, n - 7]].map(function (p) {
+                return { kind: 'finder', x0: p[0], x1: p[0] + 7, y0: p[1], y1: p[1] + 7 };
+            });
+            return {
+                ok: true, version: qr.version, ecc: level,
+                symbol: {
+                    symbology: 'qr', matrix: true, size: n, modules: modules,
+                    runs: [], width: n, qz: [4, 4], chars: [], specials: specials, guards: [],
+                    textMode: 'none', hri: null, hriMap: null, data: input, bearer: false, barHeight: null,
+                    version: qr.version, ecc: level
+                }
+            };
+        }
+    };
+
     function encode(sym, input, opts) {
         var def = SYMBOLOGIES[sym];
         if (!def) { return { ok: false, error: 'Unknown symbology ' + sym + '.' }; }
@@ -710,6 +750,10 @@
 
     /* Geometry in module units, shared by the canvas and SVG renderers. */
     function geometry(sym, o) {
+        if (sym.matrix) {
+            var side = sym.size + sym.qz[0] + sym.qz[1];
+            return { pad: 0, left: sym.qz[0], width: side, barTop: sym.qz[0], barH: sym.size, guardH: sym.size, textTop: side, textH: 0, bandTop: side, height: side, bearerW: 0, font: 7 };
+        }
         var pad = 2;
         var bearerW = sym.bearer ? 4 : 0;
         var h = o.barHeight || sym.barHeight || defaultBarHeight(sym);
@@ -739,6 +783,7 @@
     function layoutDrawing(sym, o) {
         o = o || {};
         var g = geometry(sym, o), items = { bars: [], texts: [], bands: [], rects: [] };
+        if (sym.matrix) { return matrixDrawing(sym, o, g, items); }
         var x = g.left;
         sym.runs.forEach(function (r) {
             if (r.bar) {
@@ -781,6 +826,34 @@
         return { g: g, items: items };
     }
 
+    /* A matrix symbol draws its dark modules a row at a time, one rect per
+       run. A band with y0 is a frame around a region, drawn a quarter of a
+       module outside it and half a module thick, so it lies only on light
+       modules (the separator and the quiet zone) and never on the code. */
+    function matrixDrawing(sym, o, g, items) {
+        var n = sym.size;
+        for (var y = 0; y < n; y++) {
+            var x = 0;
+            while (x < n) {
+                if (!sym.modules[y * n + x]) { x++; continue; }
+                var x0 = x;
+                while (x < n && sym.modules[y * n + x]) { x++; }
+                items.rects.push({ x: g.left + x0, y: g.barTop + y, w: x - x0, h: 1 });
+            }
+        }
+        (o.bands || []).forEach(function (bd) {
+            if (bd.y0 == null) { return; }
+            var gap = 0.25, t = 0.5;
+            var l = g.left + bd.x0 - gap - t, r = g.left + bd.x1 + gap, top = g.barTop + bd.y0 - gap - t, bot = g.barTop + bd.y1 + gap;
+            var w = r + t - l, h = bot + t - top;
+            items.bands.push({ x: l, y: top, w: w, h: t, color: bd.color });
+            items.bands.push({ x: l, y: bot, w: w, h: t, color: bd.color });
+            items.bands.push({ x: l, y: top, w: t, h: h, color: bd.color });
+            items.bands.push({ x: r, y: top, w: t, h: h, color: bd.color });
+        });
+        return { g: g, items: items };
+    }
+
     /* Bands for the checks and the structure, from the symbol alone. */
     function roleBands(sym, o) {
         var bands = [];
@@ -789,7 +862,7 @@
             sym.specials.forEach(function (s) { if (s.kind === 'check') { bands.push({ x0: s.x0, x1: s.x1, color: ROLE_COLORS.check }); } });
         }
         if (o.structure) {
-            sym.specials.forEach(function (s) { if (s.kind !== 'check') { bands.push({ x0: s.x0, x1: s.x1, color: ROLE_COLORS.structure }); } });
+            sym.specials.forEach(function (s) { if (s.kind !== 'check') { bands.push({ x0: s.x0, x1: s.x1, y0: s.y0, y1: s.y1, color: ROLE_COLORS.structure }); } });
         }
         return bands;
     }

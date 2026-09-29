@@ -89,4 +89,8 @@ Read in reverse, a layout splits a scanned value into its fields. The tool tries
 
 The first two phases ship together, since the layout model shapes the engine's character map.
 
-Phases 1 and 2 shipped on 2026-09-29. Of phase 3, the barcode quiz's generated cards shipped the same day. The flash cards load the engine beside themselves and deal one freshly generated card per symbology the engine draws (two of each in the generated-only deck), and a reveal shows the data and colors the structure and check characters. QR Code and GS1 DataBar remain.
+Phases 1 and 2 shipped on 2026-09-29. Of phase 3, the barcode quiz's generated cards shipped the same day. The flash cards load the engine beside themselves and deal one freshly generated card per symbology the engine draws (two of each in the generated-only deck), and a reveal shows the data and colors the structure and check characters.
+
+QR Code shipped the same day as symbology `qr`, with the option `ecc` (L, M, Q or H, default M). The module matrix comes from Project Nayuki's QR Code generator v1.8.0 (MIT), compiled from its TypeScript source and vendored unmodified at `js/vendor/qrcodegen-1.8.0.js`. The tool and the flash cards load it before the engine, and the engine reports QR as unavailable if it is missing. Error correction is never boosted beyond the chosen level, so the level shown is the level encoded. A QR symbol is a matrix: the engine's symbol carries `matrix`, `size` and `modules` instead of bar runs, the renderers draw it with a four-module quiet zone, and the structure highlight frames the three finder patterns on light modules only. Every level round-trips through ZXing for numeric, alphanumeric, Unicode and 600-byte text.
+
+GS1 DataBar remains, and it is the last item of phase 3.

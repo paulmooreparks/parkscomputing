@@ -12,21 +12,26 @@
 (function () {
     'use strict';
 
-    var ENGINE_SRC = (function () {
-        var cur = document.currentScript && document.currentScript.src;
-        return cur ? cur.replace(/flashcards\.js/, 'barcode-engine.js') : '/js/barcode-engine.js';
-    })();
+    var SELF_SRC = document.currentScript && document.currentScript.src;
+    function beside(file) { return SELF_SRC ? SELF_SRC.replace(/flashcards\.js/, file) : '/js/' + file; }
+    function loadScript(src) {
+        return new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = function () { reject(new Error('could not load ' + src)); };
+            document.head.appendChild(s);
+        });
+    }
+    /* The engine, and the QR library it wraps; a deck without the library
+       simply has no QR card. */
     var engineReady = null;
     function loadEngine() {
         if (window.pcBarcode) { return Promise.resolve(window.pcBarcode); }
         if (!engineReady) {
-            engineReady = new Promise(function (resolve, reject) {
-                var s = document.createElement('script');
-                s.src = ENGINE_SRC;
-                s.onload = function () { resolve(window.pcBarcode); };
-                s.onerror = function () { engineReady = null; reject(new Error('could not load the barcode engine')); };
-                document.head.appendChild(s);
-            });
+            var qr = window.qrcodegen ? Promise.resolve() : loadScript(beside('vendor/qrcodegen-1.8.0.js')).catch(function () { });
+            engineReady = qr.then(function () { return loadScript(beside('barcode-engine.js')); })
+                .then(function () { return window.pcBarcode; }, function (err) { engineReady = null; throw err; });
         }
         return engineReady;
     }
@@ -57,6 +62,11 @@
                 var gtin = digits(13), s = '(01)' + gtin + B.checks['gs1-mod10'].compute(gtin);
                 if (rnd(2)) { s += '(17)' + yymmdd(); }
                 return { input: s + '(10)' + chars('ABCDEFGHJKLMNPQRSTUVWXYZ0123456789', 4, 8) };
+            }
+        },
+        {
+            name: 'QR Code', sym: 'qr', make: function () {
+                return { input: 'https://example.com/' + chars('abcdefghijkmnopqrstuvwxyz23456789', 4, 24), opts: { ecc: pick('LMQH') } };
             }
         }
     ];
@@ -114,8 +124,8 @@
                 '<span data-role="name" class="flashcard-name"></span>' +
                 '<span data-role="data" class="flashcard-data"></span>' +
                 '<span data-role="key" class="flashcard-key">' +
-                  '<span><i data-role="key-structure"></i>Guards, start and stop</span>' +
-                  '<span><i data-role="key-check"></i>Check characters</span>' +
+                  '<span><i data-role="key-structure"></i><span data-role="key-structure-label"></span></span>' +
+                  '<span data-role="key-check-item"><i data-role="key-check"></i>Check characters</span>' +
                 '</span>' +
               '</div>' +
             '</div>' +
@@ -183,7 +193,7 @@
             var availW = Math.max(160, faceEl.clientWidth - 32);
             var byW = Math.floor(availW * dpr / g.width);
             var byH = opts.fit === 'fill' ? Math.floor(Math.max(80, faceEl.clientHeight - 32) * dpr / g.height) : byW;
-            o.px = Math.max(1, Math.min(Math.floor(4 * dpr), byW, byH));
+            o.px = Math.max(1, Math.min(Math.floor((card.symbol.matrix ? 8 : 4) * dpr), byW, byH));
             o.cssScale = dpr;
             B.render(canvasEl, card.symbol, o);
         }
@@ -198,6 +208,8 @@
                 drawGenerated(card);
                 canvasEl.setAttribute('aria-label', 'Barcode example');
                 dataEl.textContent = card.symbol.hri || card.symbol.data;
+                q('[data-role="key-structure-label"]').textContent = card.symbol.matrix ? 'Finder patterns' : 'Guards, start and stop';
+                q('[data-role="key-check-item"]').hidden = !!card.symbol.matrix;
             } else {
                 imgEl.src = card.src;
                 imgEl.alt = 'Barcode example';
