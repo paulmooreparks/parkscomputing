@@ -1,10 +1,12 @@
 /* The terminal applet: the public site in terminal mode
    (Architecture/terminal-design.md). Its filesystem is the site's
    structure as sitenav describes it, served read-only by /api/site/tree;
-   nothing here can reach a file on the server. Commands are plain objects
-   with an async run(args, io), and io is the only thing a command can
-   touch. xterm.js 6.0.0 (MIT) draws the screen, loaded beside this script
-   from js/vendor. */
+   nothing here can reach a file on the server. Beside it sits the reader's
+   own home directory, /home/guest or ~, kept in this browser's storage,
+   with a small full-screen editor for its files. Commands are plain
+   objects with an async run(args, io), and io is the only thing a command
+   can touch. xterm.js 6.0.0 (MIT) draws the screen, loaded beside this
+   script from js/vendor. */
 (function () {
     'use strict';
 
@@ -36,13 +38,28 @@
         }
         return xtermReady;
     }
+    /* The barcode engine, only to check the layout library before saving. */
+    var engineReady = null;
+    function loadBarcodeEngine() {
+        if (window.pcBarcode) { return Promise.resolve(window.pcBarcode); }
+        if (!engineReady) {
+            engineReady = loadScript(beside('barcode-engine.js'))
+                .then(function () { return window.pcBarcode; })
+                .catch(function (err) { engineReady = null; throw err; });
+        }
+        return engineReady;
+    }
 
     var HISTORY_KEY = 'pc-terminal-history';
     var HISTORY_MAX = 200;
+    var HOME_KEY = 'pc-terminal-home';
+    var LAYOUTS_KEY = 'pc-barcode-layouts';
+    var FILE_MAX = 256 * 1024;
+    var HOME_MAX = 2 * 1024 * 1024;
 
     /* ANSI styling. Output that goes into a pipe is stripped of it. */
     var C = {
-        reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m',
+        reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', inverse: '\x1b[7m',
         red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m', blue: '\x1b[34m', cyan: '\x1b[36m'
     };
     function strip(s) { return String(s).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, ''); }
@@ -73,7 +90,7 @@
     function tagSlug(t) { return String(t).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
 
     /* Wraps the server's tree in nodes that know their parent and path, and
-       adds the virtual tags directory. */
+       adds the virtual tags directory and the home directory. */
     function buildFs(data) {
         function wrap(e, parent) {
             var n = {
@@ -108,6 +125,7 @@
             tags.children.push(d);
         });
         root.children.push(tags);
+        mountHome(root);
         return root;
     }
 
@@ -117,25 +135,214 @@
         return '/' + parts.join('/');
     }
 
+    /* The path as the reader sees it: the home directory reads as ~. */
+    function displayPath(n) {
+        var p = pathOf(n);
+        if (!home.dir) { return p; }
+        var h = pathOf(home.dir);
+        return p === h ? '~' : p.indexOf(h + '/') === 0 ? '~' + p.slice(h.length) : p;
+    }
+
     /* Resolves a path against a directory; null when it names nothing. */
     function resolve(root, cwd, path) {
         path = path == null ? '' : String(path);
-        var node = path[0] === '/' || path === '~' || path.indexOf('~/') === 0 ? root : cwd;
-        var parts = path.replace(/^~/, '').split('/').filter(Boolean);
+        var node = path[0] === '/' ? root : cwd;
+        if ((path === '~' || path.indexOf('~/') === 0) && home.dir) { node = home.dir; path = path.slice(1); }
+        var parts = path.split('/').filter(Boolean);
         for (var i = 0; i < parts.length; i++) {
             var p = parts[i];
             if (p === '.') { continue; }
             if (p === '..') { node = node.parent || node; continue; }
             if (!node.children) { return null; }
-            var next = null;
-            for (var j = 0; j < node.children.length; j++) { if (node.children[j].name === p) { next = node.children[j]; break; } }
+            var next = childNamed(node, p);
             if (!next) { return null; }
             node = next;
         }
         return node;
     }
 
+    function childNamed(d, name) {
+        var kids = d.children || [];
+        for (var j = 0; j < kids.length; j++) { if (kids[j].name === name) { return kids[j]; } }
+        return null;
+    }
+
+    /* Splits a path into the directory part and the last name. */
+    function splitPath(path) {
+        var p = String(path).replace(/\/+$/, '');
+        var i = p.lastIndexOf('/');
+        return i < 0 ? { dir: '.', base: p } : { dir: p.slice(0, i) || '/', base: p.slice(i + 1) };
+    }
+
     function realOf(n) { return n.target || n; }
+
+    /* === The home directory ===============================================
+       /home/guest, shown as ~, lives in localStorage under pc-terminal-home
+       as { seeded, files: { "/path": { t: "f"|"d", c, m } } }. The first
+       visit seeds a few files so there is something to try. The barcode
+       tool's layout library appears as ~/barcode-layouts.json, read from
+       and written to the tool's own storage. */
+
+    var home = { dir: null, raw: undefined };
+
+    var SEED = {
+        '/README': [
+            'Welcome to your home directory.',
+            '',
+            'Everything under ~ is yours. It lives in this',
+            'browser\'s storage and nowhere else, and "Forget',
+            'this browser\'s data" in the site\'s settings',
+            'erases it. The rest of the site is read-only.',
+            '',
+            'Some things to try:',
+            '',
+            '  edit glider.cells',
+            '  conway glider.cells',
+            '  sudoku puzzle.sudoku',
+            '  edit barcode-layouts.json',
+            '  cp /articles/coincidences ~/',
+            '  ls /articles > articles.txt',
+            '  download glider.cells',
+            '  upload',
+            '',
+            '"man edit" lists the editor\'s keys, and "help"',
+            'lists every command.',
+            ''
+        ].join('\n'),
+        '/glider.cells': '!Name: Glider\n!A small pattern that travels across the board. O is a live cell, . is a dead one.\n.O.\n..O\nOOO\n',
+        '/puzzle.sudoku': '# A Sudoku puzzle: digits are clues, dots are empty cells.\n53..7....\n6..195...\n.98....6.\n8...6...3\n4..8.3..1\n7...2...6\n.6....28.\n...419..5\n....8..79\n'
+    };
+
+    function mountHome(root) {
+        var homes = { name: 'home', kind: 'dir', title: 'Home directories', description: '', parent: root, children: [] };
+        var guest = { name: 'guest', kind: 'dir', title: 'Your home directory', description: 'Your own files, kept in this browser', parent: homes, children: [], home: true, mtime: null };
+        homes.children.push(guest);
+        root.children.push(homes);
+        home.dir = guest;
+        homeLoad();
+    }
+
+    function sortKids(d) { d.children.sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; }); }
+
+    function mkDirNode(parent, name, m) {
+        var n = { name: name, kind: 'dir', home: true, children: [], mtime: new Date(m || Date.now()), parent: parent };
+        parent.children.push(n);
+        sortKids(parent);
+        return n;
+    }
+
+    function homeInsert(p, e) {
+        var parts = p.split('/').filter(Boolean), d = home.dir;
+        if (!parts.length) { return; }
+        for (var i = 0; i < parts.length - 1; i++) { d = childNamed(d, parts[i]) || mkDirNode(d, parts[i], e.m); }
+        var name = parts[parts.length - 1];
+        if (childNamed(d, name)) { return; }
+        if (e.t === 'd') { mkDirNode(d, name, e.m); return; }
+        d.children.push({ name: name, kind: 'file', home: true, content: String(e.c || ''), mtime: new Date(e.m || Date.now()), parent: d });
+    }
+
+    function homeLoad() {
+        var raw = null;
+        try { raw = localStorage.getItem(HOME_KEY); } catch (err) { }
+        home.raw = raw;
+        var data = null;
+        try { data = raw ? JSON.parse(raw) : null; } catch (err) { data = null; }
+        if (!data || !data.files || typeof data.files !== 'object') { data = { files: {} }; }
+        var seedNow = !data.seeded;
+        if (seedNow) {
+            Object.keys(SEED).forEach(function (p) { if (!data.files[p]) { data.files[p] = { t: 'f', c: SEED[p], m: Date.now() }; } });
+        }
+        home.dir.children = [];
+        Object.keys(data.files).sort().forEach(function (p) { homeInsert(p, data.files[p]); });
+        home.dir.children.push({ name: 'barcode-layouts.json', kind: 'file', home: true, special: 'layouts', parent: home.dir, mtime: null });
+        sortKids(home.dir);
+        home.generation = (home.generation || 0) + 1;
+        if (seedNow) { homeSave(); }
+    }
+
+    function homeSerialize() {
+        var files = {};
+        (function walk(d, prefix) {
+            d.children.forEach(function (c) {
+                if (c.special) { return; }
+                var p = prefix + '/' + c.name;
+                if (c.children) { files[p] = { t: 'd', m: +c.mtime }; walk(c, p); }
+                else { files[p] = { t: 'f', c: c.content, m: +c.mtime }; }
+            });
+        })(home.dir, '');
+        return JSON.stringify({ seeded: true, files: files });
+    }
+
+    /* Saves the home directory; on failure the stored copy is reloaded so
+       what the terminal shows matches what the browser kept. */
+    function homeSave() {
+        var s = homeSerialize();
+        if (s.length > HOME_MAX) { homeLoad(); return 'your home directory is full (the limit is 2 MB)'; }
+        try { localStorage.setItem(HOME_KEY, s); home.raw = s; return null; }
+        catch (err) { homeLoad(); return 'this browser would not store it (' + err.name + ')'; }
+    }
+
+    /* Another tab may have changed the files since this one last looked. */
+    function homeSync() {
+        var raw = null;
+        try { raw = localStorage.getItem(HOME_KEY); } catch (err) { }
+        if (raw !== home.raw) { homeLoad(); }
+    }
+
+    function attached(n) {
+        for (var x = n; x && x.parent; x = x.parent) { if (x.parent.children.indexOf(x) < 0) { return false; } }
+        return true;
+    }
+
+    function validName(n) { return !!n && n !== '.' && n !== '..' && n !== '~' && n.length <= 100 && !/[\/\x00-\x1f]/.test(n); }
+
+    function layoutsText() {
+        var raw = null, obj = null;
+        try { raw = localStorage.getItem(LAYOUTS_KEY); } catch (err) { }
+        try { obj = raw ? JSON.parse(raw) : null; } catch (err) { obj = null; }
+        if (!obj || !Array.isArray(obj.layouts)) { obj = { format: 'pc-barcode-layouts', version: 1, layouts: [] }; }
+        return JSON.stringify(obj, null, 2) + '\n';
+    }
+
+    async function writeLayouts(text) {
+        var obj;
+        try { obj = JSON.parse(text); } catch (err) { return 'not valid JSON: ' + err.message; }
+        var B;
+        try { B = await loadBarcodeEngine(); } catch (err) { return 'the barcode engine could not load to check the file'; }
+        var v = B.layouts.validateFile(obj);
+        if (!v.ok) { return v.errors.slice(0, 3).join('; ') + (v.errors.length > 3 ? ' (and ' + (v.errors.length - 3) + ' more)' : ''); }
+        try { localStorage.setItem(LAYOUTS_KEY, JSON.stringify({ format: 'pc-barcode-layouts', version: 1, layouts: obj.layouts })); }
+        catch (err) { return 'this browser would not store the layouts (' + err.name + ')'; }
+        return null;
+    }
+
+    function readHome(n) { return n.special === 'layouts' ? layoutsText() : n.content; }
+
+    /* Writes a file in the home directory, creating it if need be. Resolves
+       to { error } or { node }. */
+    async function writeFile(root, cwd, path, content, append) {
+        var n = resolve(root, cwd, path);
+        if (n) { n = realOf(n); }
+        if (n && n.children) { return { error: path + ': is a directory' }; }
+        if (n && !n.home) { return { error: path + ' is part of the site, which is read-only' }; }
+        var full = append && n ? readHome(n) + content : content;
+        if (full.length > FILE_MAX) { return { error: path + ': too large (the limit is 256 KB)' }; }
+        if (n && n.special) { var e = await writeLayouts(full); return e ? { error: path + ': ' + e } : { node: n }; }
+        if (n) {
+            n.content = full;
+            n.mtime = new Date();
+        } else {
+            var sp = splitPath(path), d = resolve(root, cwd, sp.dir);
+            if (!d || !d.children) { return { error: sp.dir + ': no such directory' }; }
+            if (!d.home) { return { error: 'files can only be created in your home directory (~)' }; }
+            if (!validName(sp.base)) { return { error: sp.base + ' is not a valid file name' }; }
+            n = { name: sp.base, kind: 'file', home: true, content: full, mtime: new Date(), parent: d };
+            d.children.push(n);
+            sortKids(d);
+        }
+        var err = homeSave();
+        return err ? { error: err } : { node: n };
+    }
 
     /* === Article text ===================================================== */
 
@@ -157,12 +364,66 @@
         return textCache[slug];
     }
 
+    /* The text of any file: a home file, a page, or a link's address. */
+    function textOf(r) {
+        if (r.home) { return Promise.resolve(readHome(r)); }
+        if (r.kind === 'link') {
+            return Promise.resolve(r.title + '\n' + r.url + '\n' + (r.description ? '\n' + r.description + '\n' : ''));
+        }
+        return fetchText(r.name);
+    }
+
+    /* === Files the applets understand ===================================== */
+
+    /* A Conway pattern in the plain-text .cells format: O (or *, X) is a
+       live cell, anything else dead, and lines starting with ! are notes.
+       The pattern is centred on a board with room around it. */
+    function parseCells(text) {
+        var cells = [], y = 0, w = 0;
+        String(text).replace(/\r/g, '').split('\n').forEach(function (line) {
+            if (/^\s*!/.test(line)) { return; }
+            y++;
+            for (var x = 0; x < line.length; x++) { if (/[Oo*X]/.test(line[x])) { cells.push([x + 1, y]); } }
+            w = Math.max(w, line.replace(/\s+$/, '').length);
+        });
+        while (y > 0 && !cells.some(function (c) { return c[1] === y; })) { y--; }
+        if (!cells.length) { return { error: 'no live cells in it (mark them with O)' }; }
+        var size = Math.max(20, Math.max(w, y) + 24);
+        if (size > 400) { return { error: 'the pattern is too large (at most 376 cells across)' }; }
+        var ox = Math.floor((size - w) / 2), oy = Math.floor((size - y) / 2);
+        var cellSize = Math.max(2, Math.min(20, Math.floor(400 / size)));
+        return {
+            count: cells.length,
+            state: 'boardSize=' + size + '&cellSize=' + cellSize + '&init=' + cells.map(function (c) { return (c[0] + ox) + ',' + (c[1] + oy); }).join(';')
+        };
+    }
+
+    /* A Sudoku puzzle: 81 cells read left to right, top to bottom, where a
+       digit is a clue and a dot, 0 or _ is empty. Lines starting with #
+       are notes, and anything else (spaces, bars, dashes) is ignored. */
+    function parseSudoku(text) {
+        var cells = [];
+        String(text).replace(/\r/g, '').split('\n').forEach(function (line) {
+            if (/^\s*#/.test(line)) { return; }
+            line.replace(/[1-9._0]/g, function (ch) { cells.push(/[1-9]/.test(ch) ? ch : ''); return ch; });
+        });
+        if (cells.length !== 81) { return { error: 'a puzzle has 81 cells, and this has ' + cells.length }; }
+        var rows = [];
+        for (var r = 0; r < 9; r++) {
+            rows.push(cells.slice(r * 9, r * 9 + 9).map(function (v) { return v ? v + 'C' : '0P'; }).join('.'));
+        }
+        var board = rows.join('-');
+        return { clues: cells.filter(Boolean).length, state: 'medium|' + board, query: 'difficulty=medium&board=' + board };
+    }
+
     /* === Words ============================================================ */
 
     /* Splits a line into pipeline stages of words, honouring single and
-       double quotes and backslash escapes. */
+       double quotes and backslash escapes. An unquoted > or >> becomes a
+       redirection token. */
     function parse(line) {
         var stages = [[]], word = '', inWord = false, quote = null;
+        function flush() { if (inWord) { stages[stages.length - 1].push(word); word = ''; inWord = false; } }
         for (var i = 0; i < line.length; i++) {
             var ch = line[i];
             if (quote) {
@@ -171,19 +432,18 @@
             }
             if (ch === '"' || ch === "'") { quote = ch; inWord = true; continue; }
             if (ch === '\\' && i + 1 < line.length) { word += line[++i]; inWord = true; continue; }
-            if (ch === '|') {
-                if (inWord) { stages[stages.length - 1].push(word); word = ''; inWord = false; }
-                stages.push([]);
+            if (ch === '|') { flush(); stages.push([]); continue; }
+            if (ch === '>') {
+                flush();
+                if (line[i + 1] === '>') { i++; stages[stages.length - 1].push({ redirect: '>>' }); }
+                else { stages[stages.length - 1].push({ redirect: '>' }); }
                 continue;
             }
-            if (/\s/.test(ch)) {
-                if (inWord) { stages[stages.length - 1].push(word); word = ''; inWord = false; }
-                continue;
-            }
+            if (/\s/.test(ch)) { flush(); continue; }
             word += ch; inWord = true;
         }
         if (quote) { return { error: 'unterminated quote' }; }
-        if (inWord) { stages[stages.length - 1].push(word); }
+        flush();
         return { stages: stages };
     }
 
@@ -210,6 +470,8 @@
         if (!d || isNaN(d)) { return '          '; }
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
+
+    function fmtSize(n) { return n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB'; }
 
     function styledName(n) {
         var k = realOf(n).kind;
@@ -251,11 +513,11 @@
         summary: 'list the commands',
         help: 'help\n\nLists every command with a one-line summary. "man <command>" says more about one.',
         run: function (args, io) {
-            io.out(paint('bold', 'This is parkscomputing.com in terminal mode.') + ' The files are the site\'s pages.\n');
+            io.out(paint('bold', 'This is parkscomputing.com in terminal mode.') + ' The files are the site\'s pages, and ~ is your own.\n');
             Object.keys(COMMANDS).sort().forEach(function (k) {
                 io.out('  ' + paint('green', k.padEnd(11)) + COMMANDS[k].summary + '\n');
             });
-            io.out('\n' + wrap('Anything ls marks with * is an applet and runs by its name, or by its path. Tab completes, the arrow keys recall earlier commands, and "|" pipes one command into another.', io.cols - 1) + '\n');
+            io.out('\n' + wrap('Anything ls marks with * is an applet and runs by its name, or by its path. Your home directory, ~, holds files you can edit; everything else is read-only. Tab completes, the arrow keys recall earlier commands, "|" pipes one command into another, and "> file" saves a command\'s output in ~.', io.cols - 1) + '\n');
         }
     });
 
@@ -273,7 +535,7 @@
 
     command('ls', {
         summary: 'list a directory',
-        help: 'ls [-l] [path...]\n\nLists a directory, or the current one. Directories end in /, applets in *, and links to other sites in @.\n\n  -l   one entry per line, with its date, kind and title',
+        help: 'ls [-l] [path...]\n\nLists a directory, or the current one. Directories end in /, applets in *, and links to other sites in @.\n\n  -l   one entry per line, with its date, kind, and title or size',
         complete: 'path',
         run: function (args, io) {
             var long = false, paths = [];
@@ -288,8 +550,9 @@
                 if (long) {
                     list.forEach(function (c) {
                         var r = realOf(c);
-                        var kind = c.children ? 'dir ' : r.kind === 'app' ? 'app ' : r.kind === 'link' ? 'link' : 'page';
-                        io.out(paint('dim', fmtDate(r.date)) + '  ' + kind + '  ' + styledName(c) + (r.title && r.title !== c.name ? '  ' + paint('dim', r.title) : '') + '\n');
+                        var kind = c.children ? 'dir ' : r.home ? 'file' : r.kind === 'app' ? 'app ' : r.kind === 'link' ? 'link' : 'page';
+                        var extra = r.home ? (c.children ? '' : fmtSize(readHome(r).length)) : (r.title && r.title !== c.name ? r.title : '');
+                        io.out(paint('dim', fmtDate(r.home ? r.mtime : r.date)) + '  ' + kind + '  ' + styledName(c) + (extra ? '  ' + paint('dim', extra) : '') + '\n');
                     });
                 } else if (list.length) {
                     io.out(columns(list.map(styledName), io.cols) + '\n');
@@ -301,10 +564,10 @@
 
     command('cd', {
         summary: 'change directory',
-        help: 'cd [path]\n\nMoves into a directory. With no path, or ~, it goes to the top of the site.',
+        help: 'cd [path]\n\nMoves into a directory. With no path, or ~, it goes to your home directory; / is the top of the site.',
         complete: 'dir',
         run: function (args, io) {
-            var n = io.fs.resolve(args[0] || '/');
+            var n = io.fs.resolve(args[0] || '~');
             if (!n) { io.err('cd: ' + args[0] + ': no such directory'); return 1; }
             if (!n.children) { io.err('cd: ' + args[0] + ': not a directory'); return 1; }
             io.fs.chdir(n);
@@ -345,16 +608,9 @@
         return realOf(n);
     }
 
-    function textOf(io, r) {
-        if (r.kind === 'link') {
-            return Promise.resolve(r.title + '\n' + r.url + '\n' + (r.description ? '\n' + r.description + '\n' : ''));
-        }
-        return io.text(r.name);
-    }
-
     command('cat', {
-        summary: 'print a page',
-        help: 'cat <file...>\n\nPrints a page as text, with each link\'s address after it in angle brackets. A link to another site prints its address.',
+        summary: 'print a file',
+        help: 'cat <file...>\n\nPrints a file. A page prints as text, with each link\'s address after it in angle brackets; a link to another site prints its address.',
         complete: 'file',
         run: async function (args, io) {
             if (!args.length) { if (io.stdin != null) { io.out(io.stdin); return; } io.err('cat: which file?'); return 1; }
@@ -362,22 +618,22 @@
             for (var i = 0; i < args.length && !io.interrupted(); i++) {
                 var r = readable(io, args[i], 'cat');
                 if (!r) { status = 1; continue; }
-                try { io.out(await textOf(io, r)); } catch (err) { io.err('cat: ' + args[i] + ': ' + err.message); status = 1; }
+                try { io.out(await textOf(r)); } catch (err) { io.err('cat: ' + args[i] + ': ' + err.message); status = 1; }
             }
             return status;
         }
     });
 
     command('less', {
-        summary: 'read a page one screen at a time',
-        help: 'less <file>\n\nShows a page a screen at a time. Space or Page Down moves forward, b or Page Up back, the arrow keys a line, g and G to the top and bottom, and q quits.',
+        summary: 'read a file one screen at a time',
+        help: 'less <file>\n\nShows a file a screen at a time. Space or Page Down moves forward, b or Page Up back, the arrow keys a line, g and G to the top and bottom, and q quits.',
         complete: 'file',
         run: async function (args, io) {
             var text;
             if (args.length) {
                 var r = readable(io, args[0], 'less');
                 if (!r) { return 1; }
-                try { text = await textOf(io, r); } catch (err) { io.err('less: ' + err.message); return 1; }
+                try { text = await textOf(r); } catch (err) { io.err('less: ' + err.message); return 1; }
             } else if (io.stdin != null) {
                 text = io.stdin;
             } else { io.err('less: which file?'); return 1; }
@@ -395,6 +651,7 @@
             var n = needNode(io, args[0], 'open: ' + args[0]);
             if (!n) { return 1; }
             if (n.children) { io.err('open: ' + args[0] + ': is a directory (try "cd")'); return 1; }
+            if (realOf(n).home) { io.err('open: ' + args[0] + ' is one of your files. Change it with "edit", or use it with a command such as "conway" or "sudoku".'); return 1; }
             io.open(realOf(n));
         }
     });
@@ -412,7 +669,7 @@
 
     command('grep', {
         summary: 'search text for a pattern',
-        help: 'grep [-i] [-l] [-r] <pattern> [path...]\n\nPrints the lines matching a pattern (a regular expression). With no path it searches what is piped into it. With -r it searches every page under a directory, or under the current one.\n\n  -i   ignore case\n  -l   print only the names of pages that match\n  -r   search directories',
+        help: 'grep [-i] [-l] [-r] <pattern> [path...]\n\nPrints the lines matching a pattern (a regular expression). With no path it searches what is piped into it. With -r it searches every file under a directory, or under the current one.\n\n  -i   ignore case\n  -l   print only the names of files that match\n  -r   search directories',
         complete: 'path',
         run: async function (args, io) {
             var flags = '', rest = [];
@@ -449,21 +706,21 @@
             });
             var seen = {};
             if (files.length > 1) {
-                try { await io.prefetch(files.map(function (f) { return realOf(f); }).filter(function (r) { return r.kind !== 'link'; }).map(function (r) { return r.name; })); }
-                catch (err) { io.err('grep: ' + err.message); return 2; }
+                var pages = files.map(realOf).filter(function (r) { return r.kind !== 'link' && !r.home; }).map(function (r) { return r.name; });
+                try { await io.prefetch(pages); } catch (err) { io.err('grep: ' + err.message); return 2; }
             }
             for (var i = 0; i < files.length && !io.interrupted(); i++) {
-                var r = realOf(files[i]);
-                if (seen[r.name]) { continue; }
-                seen[r.name] = true;
-                try { scan(await textOf(io, r), files.length > 1 || flags.indexOf('r') >= 0 ? pathOf(r) : ''); } catch (err) { }
+                var r = realOf(files[i]), key = pathOf(r);
+                if (seen[key]) { continue; }
+                seen[key] = true;
+                try { scan(await textOf(r), files.length > 1 || flags.indexOf('r') >= 0 ? displayPath(r) : ''); } catch (err) { }
             }
             return found ? 0 : 1;
         }
     });
 
     command('find', {
-        summary: 'find pages by name',
+        summary: 'find files by name',
         help: 'find [path] [-name <pattern>]\n\nLists every path under a directory, or only those whose name matches a pattern such as "*barcode*".',
         complete: 'path',
         run: function (args, io) {
@@ -483,7 +740,7 @@
 
     command('echo', {
         summary: 'print its arguments',
-        help: 'echo [text...]\n\nPrints its arguments, which is mostly useful in front of a pipe.',
+        help: 'echo [text...]\n\nPrints its arguments, which is mostly useful in front of a pipe or a redirection: echo hello > ~/greeting',
         run: function (args, io) { io.out(args.join(' ') + '\n'); }
     });
 
@@ -502,41 +759,225 @@
         }
     });
 
+    /* --- Your own files ------------------------------------------------- */
+
+    command('edit', {
+        summary: 'edit a file in your home directory',
+        help: 'edit <file>\n\nOpens a file in a full-screen editor, creating it if it does not exist yet. Only files in your home directory (~) can be changed.\n\n  Ctrl+S   save (Ctrl+O works too)\n  Ctrl+X   exit, asking to save any changes\n  Ctrl+K   cut the current line\n  Ctrl+U   paste the lines cut last\n  Ctrl+G   show the keys\n\nThe arrow keys, Home, End, Page Up and Page Down move around.',
+        complete: 'file',
+        run: function (args, io) {
+            if (!args.length) { io.err('edit: which file? For a new one, give it a name: edit ~/notes'); return 1; }
+            return io.edit(args[0]);
+        }
+    });
+
+    command('touch', {
+        summary: 'create an empty file',
+        help: 'touch <file...>\n\nCreates each file that does not exist yet, empty, and updates the time on each that does. Only in your home directory.',
+        complete: 'file',
+        run: async function (args, io) {
+            if (!args.length) { io.err('touch: which file?'); return 1; }
+            var status = 0;
+            for (var i = 0; i < args.length; i++) {
+                var n = io.fs.resolve(args[i]);
+                if (n && realOf(n).home && !n.children) {
+                    if (!n.special) { n.mtime = new Date(); var e = io.fs.save(); if (e) { io.err('touch: ' + e); status = 1; } }
+                    continue;
+                }
+                var r = await io.fs.write(args[i], '', false);
+                if (r.error) { io.err('touch: ' + r.error); status = 1; }
+            }
+            return status;
+        }
+    });
+
+    command('mkdir', {
+        summary: 'make a directory',
+        help: 'mkdir [-p] <directory...>\n\nMakes directories in your home directory.\n\n  -p   make any missing parent directories too, and don\'t complain if it exists',
+        complete: 'dir',
+        run: function (args, io) {
+            var parents = false, paths = [];
+            args.forEach(function (a) { if (a === '-p') { parents = true; } else { paths.push(a); } });
+            if (!paths.length) { io.err('mkdir: which directory?'); return 1; }
+            var status = 0;
+            paths.forEach(function (p) { var e = io.fs.mkdir(p, parents); if (e) { io.err('mkdir: ' + e); status = 1; } });
+            return status;
+        }
+    });
+
+    command('rm', {
+        summary: 'remove a file',
+        help: 'rm [-r] <path...>\n\nRemoves files from your home directory.\n\n  -r   remove a directory and everything in it',
+        complete: 'path',
+        run: function (args, io) {
+            var recursive = false, paths = [];
+            args.forEach(function (a) { if (/^-[rRf]+$/.test(a)) { if (/[rR]/.test(a)) { recursive = true; } } else { paths.push(a); } });
+            if (!paths.length) { io.err('rm: which file?'); return 1; }
+            var status = 0;
+            paths.forEach(function (p) {
+                var n = needNode(io, p, 'rm: ' + p);
+                if (!n) { status = 1; return; }
+                var e = io.fs.remove(n, recursive, p);
+                if (e) { io.err('rm: ' + e); status = 1; }
+            });
+            return status;
+        }
+    });
+
+    command('rmdir', {
+        summary: 'remove an empty directory',
+        help: 'rmdir <directory...>\n\nRemoves empty directories from your home directory.',
+        complete: 'dir',
+        run: function (args, io) {
+            if (!args.length) { io.err('rmdir: which directory?'); return 1; }
+            var status = 0;
+            args.forEach(function (p) {
+                var n = needNode(io, p, 'rmdir: ' + p);
+                if (!n) { status = 1; return; }
+                if (!n.children) { io.err('rmdir: ' + p + ': not a directory'); status = 1; return; }
+                if (n.children.length) { io.err('rmdir: ' + p + ': not empty'); status = 1; return; }
+                var e = io.fs.remove(n, true, p);
+                if (e) { io.err('rmdir: ' + e); status = 1; }
+            });
+            return status;
+        }
+    });
+
+    command('cp', {
+        summary: 'copy a file into your home directory',
+        help: 'cp <file> <destination>\n\nCopies a file into your home directory. The file may be one of yours or a page of the site, which is copied as text. The destination may be a directory, such as ~/, or a new name.',
+        complete: 'path',
+        run: async function (args, io) {
+            if (args.length !== 2) { io.err('cp: give a file and a destination, such as: cp /articles/coincidences ~/'); return 1; }
+            var r = readable(io, args[0], 'cp');
+            if (!r) { return 1; }
+            var text;
+            try { text = await textOf(r); } catch (err) { io.err('cp: ' + args[0] + ': ' + err.message); return 1; }
+            var dest = args[1], d = io.fs.resolve(dest);
+            if (d && d.children) { dest = dest.replace(/\/+$/, '') + '/' + r.name; }
+            var res = await io.fs.write(dest, text, false);
+            if (res.error) { io.err('cp: ' + res.error); return 1; }
+        }
+    });
+
+    command('mv', {
+        summary: 'move or rename a file',
+        help: 'mv <path> <destination>\n\nMoves or renames a file or directory within your home directory. The destination may be a directory, such as ~/patterns/, or a new name.',
+        complete: 'path',
+        run: function (args, io) {
+            if (args.length !== 2) { io.err('mv: give a path and a destination'); return 1; }
+            var n = needNode(io, args[0], 'mv: ' + args[0]);
+            if (!n) { return 1; }
+            var e = io.fs.move(n, args[1], args[0]);
+            if (e) { io.err('mv: ' + e); return 1; }
+        }
+    });
+
+    command('download', {
+        summary: 'save a file to your computer',
+        help: 'download <file>\n\nSaves a file to your computer through the browser\'s usual download. A page of the site downloads as text.',
+        complete: 'file',
+        run: async function (args, io) {
+            if (!args.length) { io.err('download: which file?'); return 1; }
+            var r = readable(io, args[0], 'download');
+            if (!r) { return 1; }
+            var text;
+            try { text = await textOf(r); } catch (err) { io.err('download: ' + err.message); return 1; }
+            var name = r.home ? r.name : r.name + '.txt';
+            io.download(name, text);
+            io.out('Downloaded ' + name + ' (' + fmtSize(text.length) + ').\n');
+        }
+    });
+
+    command('upload', {
+        summary: 'bring text files in from your computer',
+        help: 'upload [directory]\n\nAsks for text files on your computer and copies them into a directory in your home, or into ~ itself. A file with the same name is replaced. Each file may be up to 256 KB.',
+        complete: 'dir',
+        run: async function (args, io) {
+            var d = io.fs.resolve(args[0] || (io.fs.cwd().home ? '.' : '~'));
+            if (!d || !d.children) { io.err('upload: ' + (args[0] || '.') + ': no such directory'); return 1; }
+            if (!d.home) { io.err('upload: files can only go into your home directory (~)'); return 1; }
+            io.out('Choose files in the dialog (Ctrl+C cancels).\n');
+            var files = await io.upload();
+            if (!files || !files.length) { io.out('Nothing uploaded.\n'); return; }
+            var status = 0;
+            for (var i = 0; i < files.length; i++) {
+                var f = files[i];
+                if (f.size > FILE_MAX) { io.err('upload: ' + f.name + ' is larger than 256 KB'); status = 1; continue; }
+                var text = await f.text();
+                if (text.indexOf('\0') >= 0) { io.err('upload: ' + f.name + ' is not a text file'); status = 1; continue; }
+                var target = displayPath(d).replace(/\/$/, '') + '/' + f.name;
+                var res = await io.fs.write(target, text, false);
+                if (res.error) { io.err('upload: ' + res.error); status = 1; } else { io.out('Uploaded ' + target + ' (' + fmtSize(text.length) + ').\n'); }
+            }
+            return status;
+        }
+    });
+
+    /* --- The applets ---------------------------------------------------- */
+
     /* Each applet runs by the name it has in /applets, where ls marks it
        with *. A few also take arguments or have a shorter alias. */
-    function appletCommand(slug, summary, help) {
-        command(slug, {
-            summary: summary, help: help,
-            run: function (args, io) {
-                var n = io.fs.resolve('/applets/' + slug) || { name: slug, kind: 'app', title: slug };
-                io.open(realOf(n));
-            }
-        });
-    }
     function alias(name, target) {
         var t = COMMANDS[target];
         command(name, {
             summary: 'the same as ' + target, help: name + ' is another name for ' + target + '.\n\n' + t.help,
-            complete: t.complete, run: t.run
+            complete: t.complete, completePaths: t.completePaths, run: t.run
         });
     }
-    appletCommand('sudoku', 'play Sudoku', 'sudoku\n\nOpens the Sudoku game.');
-    appletCommand('flashcards', 'drill barcode symbologies', 'flashcards\n\nOpens the barcode flash cards.');
+
+    async function fileArg(io, cmd, path) {
+        var r = readable(io, path, cmd);
+        if (!r) { return null; }
+        try { return await textOf(r); } catch (err) { io.err(cmd + ': ' + path + ': ' + err.message); return null; }
+    }
+
+    command('sudoku', {
+        summary: 'play Sudoku',
+        help: 'sudoku [file]\n\nOpens the Sudoku game, with the puzzle in a file if you name one. A puzzle file holds 81 cells, left to right and top to bottom: a digit is a clue, and a dot is an empty cell. Try: sudoku ~/puzzle.sudoku',
+        complete: 'file',
+        run: async function (args, io) {
+            if (!args.length) { io.open({ name: 'sudoku', kind: 'app', title: 'Sudoku' }); return; }
+            var text = await fileArg(io, 'sudoku', args[0]);
+            if (text == null) { return 1; }
+            var p = parseSudoku(text);
+            if (p.error) { io.err('sudoku: ' + args[0] + ': ' + p.error); return 1; }
+            io.out('Loaded a puzzle with ' + p.clues + ' clues.\n');
+            io.open({ name: 'sudoku', kind: 'app', title: 'Sudoku' }, p.state, p.query);
+        }
+    });
+
+    command('flashcards', {
+        summary: 'drill barcode symbologies',
+        help: 'flashcards\n\nOpens the barcode flash cards.',
+        run: function (args, io) { io.open({ name: 'flashcards', kind: 'app', title: 'Barcode Flash Cards' }); }
+    });
 
     command('conway', {
         summary: 'run Conway\'s Game of Life',
-        help: 'conway [pattern]\n\nOpens Conway\'s Game of Life, with one of the article\'s patterns if you name it:\n\n  glider   a pair of gliders that follow each other\n  gun      a Gosper glider gun\n  face     cells that settle into a funny face\n  long     a large board with a long-running pattern',
+        help: 'conway [pattern | file]\n\nOpens Conway\'s Game of Life, with one of the article\'s patterns or a pattern of your own. The patterns are:\n\n  glider   a pair of gliders that follow each other\n  gun      a Gosper glider gun\n  face     cells that settle into a funny face\n  long     a large board with a long-running pattern\n\nA file of your own is in the plain-text .cells format: O is a live cell, a dot is a dead one, and lines starting with ! are notes. Try: conway ~/glider.cells',
         complete: function () { return Object.keys(LIFE_PRESETS); },
-        run: function (args, io) {
-            if (args[0] && !LIFE_PRESETS[args[0]]) { io.err('conway: no pattern called ' + args[0] + '. Try: ' + Object.keys(LIFE_PRESETS).join(', ')); return 1; }
-            io.open({ name: 'conway', kind: 'app', title: 'Conway\'s Game of Life' }, args[0] ? LIFE_PRESETS[args[0]] : null);
+        completePaths: true,
+        run: async function (args, io) {
+            var state = null;
+            if (args[0] && LIFE_PRESETS[args[0]]) { state = LIFE_PRESETS[args[0]]; }
+            else if (args[0]) {
+                if (!io.fs.resolve(args[0])) { io.err('conway: ' + args[0] + ' is neither a pattern (' + Object.keys(LIFE_PRESETS).join(', ') + ') nor a file'); return 1; }
+                var text = await fileArg(io, 'conway', args[0]);
+                if (text == null) { return 1; }
+                var p = parseCells(text);
+                if (p.error) { io.err('conway: ' + args[0] + ': ' + p.error); return 1; }
+                io.out('Loaded ' + p.count + ' live cells.\n');
+                state = p.state;
+            }
+            io.open({ name: 'conway', kind: 'app', title: 'Conway\'s Game of Life' }, state);
         }
     });
     alias('life', 'conway');
 
     command('barcodes', {
         summary: 'make a barcode in the barcode tool',
-        help: 'barcodes [symbology] [data]\n\nOpens the barcode tool, set to a symbology and data if you give them.\n\nSymbologies: ' + BARCODE_SYMS.join(', ') + '\n\nExample: barcodes ean13 480036140036',
+        help: 'barcodes [symbology] [data]\n\nOpens the barcode tool, set to a symbology and data if you give them. Its layouts are in ~/barcode-layouts.json, which you can edit.\n\nSymbologies: ' + BARCODE_SYMS.join(', ') + '\n\nExample: barcodes ean13 480036140036',
         complete: function (words) { return words.length <= 2 ? BARCODE_SYMS : []; },
         run: function (args, io) {
             var state = null;
@@ -558,13 +999,14 @@
         help: 'terminal\n\nThe terminal you are using. Running it again leaves you where you are.',
         run: function (args, io) { io.out('You\'re already in the terminal.\n'); }
     });
+    alias('nano', 'edit');
 
     /* A word that names no command may name an applet: a path to one, one
        in the current directory, or one in /applets, which is the terminal's
        PATH. It opens, like any page. */
     function programAt(fs, cwd, word) {
         var n = word.indexOf('/') >= 0 ? resolve(fs, cwd, word)
-            : ((cwd.children || []).filter(function (c) { return c.name === word; })[0] || resolve(fs, fs, '/applets/' + word));
+            : (childNamed(cwd, word) || resolve(fs, fs, '/applets/' + word));
         if (!n || n.children || realOf(n).kind !== 'app') { return null; }
         var r = realOf(n);
         return COMMANDS[r.name] || { name: word, run: function (args, io) { io.open(r); } };
@@ -648,7 +1090,7 @@
 
         function write(s) { if (term) { term.write(String(s).replace(/\r?\n/g, '\r\n')); } }
         function prompt() {
-            return paint('green', 'guest@parkscomputing') + ':' + paint('blue', C.bold + pathOf(cwd)) + '$ ';
+            return paint('green', 'guest@parkscomputing') + ':' + paint('blue', C.bold + displayPath(cwd)) + '$ ';
         }
         function redraw() {
             term.write('\r\x1b[K' + prompt() + line);
@@ -657,28 +1099,37 @@
         }
         function newPrompt() { line = ''; cursor = 0; histPos = -1; term.write(prompt()); }
 
+        function pathCompletions(partial, dirsOnly) {
+            var slash = partial.lastIndexOf('/');
+            var dirPart = slash >= 0 ? partial.slice(0, slash + 1) : '';
+            var base = slash >= 0 ? partial.slice(slash + 1) : partial;
+            if (partial === '~') { return [{ word: '~/', done: false }]; }
+            var dir = resolve(fs, cwd, dirPart || '.');
+            if (!dir || !dir.children) { return []; }
+            return dir.children
+                .filter(function (n) { return n.name.indexOf(base) === 0 && (!dirsOnly || n.children); })
+                .map(function (n) { return { word: dirPart + n.name + (n.children ? '/' : ''), done: !n.children }; });
+        }
+
         function completions(words, partial) {
-            var first = words.length === 0;
-            if (first) {
+            var lastTok = words[words.length - 1];
+            if (lastTok && typeof lastTok === 'object') { return pathCompletions(partial, false); }
+            words = words.filter(function (w) { return typeof w === 'string'; });
+            if (!words.length) {
                 return Object.keys(COMMANDS).filter(function (k) { return k.indexOf(partial) === 0; }).map(function (k) { return { word: k, done: true }; });
             }
             var c = COMMANDS[words[0]];
             var mode = c && c.complete;
+            var list = [];
             if (typeof mode === 'function') {
-                return mode(words.concat([partial])).filter(function (k) { return k.indexOf(partial) === 0; }).map(function (k) { return { word: k, done: true }; });
+                list = mode(words.concat([partial])).filter(function (k) { return k.indexOf(partial) === 0; }).map(function (k) { return { word: k, done: true }; });
+            } else if (mode === 'command') {
+                list = Object.keys(COMMANDS).filter(function (k) { return k.indexOf(partial) === 0; }).map(function (k) { return { word: k, done: true }; });
             }
-            if (mode === 'command') {
-                return Object.keys(COMMANDS).filter(function (k) { return k.indexOf(partial) === 0; }).map(function (k) { return { word: k, done: true }; });
+            if (mode === 'path' || mode === 'file' || mode === 'dir' || (c && c.completePaths)) {
+                list = list.concat(pathCompletions(partial, mode === 'dir'));
             }
-            if (!mode) { return []; }
-            var slash = partial.lastIndexOf('/');
-            var dirPart = slash >= 0 ? partial.slice(0, slash + 1) : '';
-            var base = slash >= 0 ? partial.slice(slash + 1) : partial;
-            var dir = resolve(fs, cwd, dirPart || '.');
-            if (!dir || !dir.children) { return []; }
-            return dir.children
-                .filter(function (n) { return n.name.indexOf(base) === 0 && (mode !== 'dir' || n.children); })
-                .map(function (n) { return { word: dirPart + n.name + (n.children ? '/' : ''), done: !n.children }; });
+            return list;
         }
 
         function complete() {
@@ -721,7 +1172,7 @@
         function onData(data) {
             if (keyWaiter) { var k = keyWaiter; keyWaiter = null; k(data); return; }
             if (busy) {
-                if (data === '\x03') { interrupted = true; typeahead = []; write('^C'); }
+                if (data === '\x03') { interrupted = true; typeahead = []; write('^C'); if (uploadCancel) { uploadCancel(); } }
                 else { typeahead.push(data); }
                 return;
             }
@@ -791,6 +1242,94 @@
 
         /* === Running a line ============================================ */
 
+        function mkdir(path, parents) {
+            var parts = String(path).replace(/\/+$/, '');
+            var sp = splitPath(parts), existing = resolve(fs, cwd, parts);
+            if (existing) {
+                if (parents && existing.children) { return null; }
+                return path + ': already exists';
+            }
+            var parent = resolve(fs, cwd, sp.dir);
+            if (!parent && parents) { var e = mkdir(sp.dir, true); if (e) { return e; } parent = resolve(fs, cwd, sp.dir); }
+            if (!parent || !parent.children) { return sp.dir + ': no such directory'; }
+            if (!parent.home) { return 'directories can only be made in your home directory (~)'; }
+            if (!validName(sp.base)) { return sp.base + ' is not a valid name'; }
+            mkDirNode(parent, sp.base);
+            return homeSave();
+        }
+
+        function remove(n, recursive, label) {
+            n = realOf(n);
+            if (!n.home) { return label + ' is part of the site, which is read-only'; }
+            if (n === home.dir) { return 'your home directory can\'t be removed'; }
+            if (n.special) { return label + ' belongs to the barcode tool; remove layouts in the file or in the tool instead'; }
+            if (n.children && !recursive) { return label + ': is a directory (use rm -r)'; }
+            n.parent.children.splice(n.parent.children.indexOf(n), 1);
+            return homeSave();
+        }
+
+        function move(n, dest, label) {
+            n = realOf(n);
+            if (!n.home) { return label + ' is part of the site, which is read-only'; }
+            if (n === home.dir) { return 'your home directory can\'t be moved'; }
+            if (n.special) { return label + ' belongs to the barcode tool and can\'t be moved'; }
+            var target = resolve(fs, cwd, dest), parent, name;
+            if (target && target.children) { parent = target; name = n.name; }
+            else {
+                var sp = splitPath(dest);
+                parent = resolve(fs, cwd, sp.dir);
+                name = sp.base;
+                if (!parent || !parent.children) { return sp.dir + ': no such directory'; }
+            }
+            if (!parent.home) { return 'files can only be moved within your home directory (~)'; }
+            if (!validName(name)) { return name + ' is not a valid name'; }
+            for (var x = parent; x; x = x.parent) { if (x === n) { return 'a directory can\'t be moved into itself'; } }
+            var clash = childNamed(parent, name);
+            if (clash === n) { return null; }
+            if (clash) {
+                if (clash.children || n.children || clash.special) { return displayPath(parent).replace(/\/$/, '') + '/' + name + ' already exists'; }
+                parent.children.splice(parent.children.indexOf(clash), 1);
+            }
+            n.parent.children.splice(n.parent.children.indexOf(n), 1);
+            n.name = name;
+            n.parent = parent;
+            n.mtime = new Date();
+            parent.children.push(n);
+            sortKids(parent);
+            return homeSave();
+        }
+
+        function download(name, text) {
+            var url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+        }
+
+        /* Asks for files with a hidden file input. It must start while the
+           keypress that ran the command is still being handled, which it is:
+           nothing awaits before a command's run() is called. */
+        var uploadCancel = null;
+        function upload() {
+            return new Promise(function (done) {
+                var input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = true;
+                input.accept = '.txt,.md,.json,.cells,.sudoku,.csv,.xfer,text/*';
+                input.style.display = 'none';
+                function finish(files) { uploadCancel = null; input.remove(); done(files); }
+                input.addEventListener('change', function () { finish(Array.prototype.slice.call(input.files || [])); });
+                input.addEventListener('cancel', function () { finish([]); });
+                uploadCancel = function () { finish([]); };
+                document.body.appendChild(input);
+                input.click();
+            });
+        }
+
         function makeIo(stdin, sink) {
             var interactive = !sink;
             return {
@@ -803,11 +1342,18 @@
                 fs: {
                     resolve: function (p) { return resolve(fs, cwd, p); },
                     cwd: function () { return cwd; },
-                    chdir: function (n) { cwd = n; announce(); }
+                    chdir: function (n) { cwd = n; announce(); },
+                    write: function (p, content, append) { return writeFile(fs, cwd, p, content, append); },
+                    save: homeSave,
+                    mkdir: mkdir,
+                    remove: remove,
+                    move: move
                 },
-                text: fetchText,
                 prefetch: prefetchTexts,
                 open: openEntry,
+                edit: editor,
+                download: download,
+                upload: upload,
                 clear: function () { term.clear(); },
                 history: {
                     list: function () { return hist.slice(); },
@@ -818,24 +1364,46 @@
         }
 
         async function execute(text) {
+            homeSync();
             var parsed = parse(text);
             if (parsed.error) { write(paint('red', parsed.error) + '\n'); return; }
             var stages = parsed.stages.filter(function (s) { return s.length; });
             if (!stages.length) { return; }
+            /* A redirection may end only the last stage, and names a file. */
+            var redirect = null;
+            for (var s = 0; s < stages.length; s++) {
+                var at = -1;
+                stages[s].forEach(function (w, j) { if (typeof w === 'object' && at < 0) { at = j; } });
+                if (at < 0) { continue; }
+                if (s !== stages.length - 1) { write(paint('red', 'a redirection (> or >>) can only end the line') + '\n'); return; }
+                var target = stages[s][at + 1];
+                if (typeof target !== 'string' || stages[s].length !== at + 2) { write(paint('red', 'a redirection needs one file name after it') + '\n'); return; }
+                redirect = { mode: stages[s][at].redirect, path: target };
+                stages[s] = stages[s].slice(0, at);
+                if (!stages[s].length) { write(paint('red', 'nothing to redirect') + '\n'); return; }
+            }
+            var cwdPath = pathOf(cwd);
             var stdin = null;
             for (var i = 0; i < stages.length && !interrupted; i++) {
                 var words = stages[i], c = COMMANDS[words[0]] || programAt(fs, cwd, words[0]);
                 if (!c) { write(paint('red', words[0] + ': command not found. Type "help" for the list.') + '\n'); return; }
                 var last = i === stages.length - 1;
-                var sink = last ? null : [];
+                var sink = last && !redirect ? null : [];
                 await c.run(words.slice(1), makeIo(stdin, sink));
                 if (sink) { stdin = sink.join(''); }
             }
+            if (redirect && !interrupted) {
+                var res = await writeFile(fs, cwd, redirect.path, stdin || '', redirect.mode === '>>');
+                if (res.error) { write(paint('red', res.error) + '\n'); }
+            }
+            /* A command may have removed or moved the current directory. */
+            if (!attached(cwd)) { cwd = resolve(fs, fs, cwdPath) || home.dir; announce(); }
         }
 
         /* Opens a page, an applet or a link the way the current view opens
-           things. An applet may be handed a starting state. */
-        function openEntry(n, state) {
+           things. An applet may be handed a starting state, and a page of
+           its own takes a query instead. */
+        function openEntry(n, state, pageQuery) {
             if (n.kind === 'link') { window.open(n.url, '_blank', 'noopener'); return; }
             var inWindows = opts.host === 'window' && window.pudlWindows;
             if (inWindows) {
@@ -847,7 +1415,8 @@
                 window.pudlWindows.open(n.name);
                 return;
             }
-            location.assign('/page/' + encodeURIComponent(n.name) + (state ? '?' + state : ''));
+            var q = pageQuery || state;
+            location.assign('/page/' + encodeURIComponent(n.name) + (q ? '?' + q : ''));
         }
 
         /* A full-screen pager on the alternate screen. */
@@ -886,6 +1455,178 @@
             });
         }
 
+        /* === The editor ================================================
+           A small nano-style editor on the alternate screen: a title bar,
+           the text, a message line and a line of keys. It edits files in
+           the home directory only. Tabs become spaces. */
+        function editor(path) {
+            var node = resolve(fs, cwd, path);
+            if (node) {
+                if (node.children) { write(paint('red', 'edit: ' + path + ': is a directory') + '\n'); return 1; }
+                node = realOf(node);
+                if (!node.home) { write(paint('red', 'edit: ' + path + ' is part of the site, which is read-only. Copy it first: cp ' + path + ' ~/') + '\n'); return 1; }
+            } else {
+                var sp = splitPath(path), dir = resolve(fs, cwd, sp.dir);
+                if (!dir || !dir.children) { write(paint('red', 'edit: ' + sp.dir + ': no such directory') + '\n'); return 1; }
+                if (!dir.home) { write(paint('red', 'edit: files can only be created in your home directory (~)') + '\n'); return 1; }
+                if (!validName(sp.base)) { write(paint('red', 'edit: ' + sp.base + ' is not a valid file name') + '\n'); return 1; }
+            }
+            var label = node ? displayPath(node) : path;
+            var text = node ? readHome(node) : '';
+            /* Like nano, the buffer always ends in an empty line, so there is
+               somewhere to move to and paste after the last line of text. */
+            var lines = text.replace(/\r\n?/g, '\n').replace(/\t/g, '    ').split('\n');
+            if (lines[lines.length - 1] !== '') { lines.push(''); }
+            function textLines() { return lines.length - 1; }
+            var row = 0, col = 0, goal = 0, top = 0, left = 0, modified = false;
+            var message = node ? '' : 'New file', messageIsError = false, cut = [], lastWasCut = false, confirming = false, saving = false;
+            var KEYS = [['^S', 'Save'], ['^X', 'Exit'], ['^K', 'Cut line'], ['^U', 'Paste'], ['^G', 'Keys']];
+
+            return new Promise(function (done) {
+                var resizeSub = term.onResize(function () { draw(); });
+
+                function say(m, isError) { message = m; messageIsError = !!isError; }
+                function clampCol() { col = Math.min(col, lines[row].length); }
+
+                function draw() {
+                    var rows = term.rows, cols = term.cols, textRows = Math.max(1, rows - 3);
+                    if (row < top) { top = row; }
+                    if (row >= top + textRows) { top = row - textRows + 1; }
+                    if (col < left) { left = col; }
+                    if (col >= left + cols) { left = col - cols + 1; }
+                    var title = ' edit  ' + label + (modified ? '  (modified)' : '');
+                    var out = '\x1b[?25l\x1b[H' + C.inverse + (title + ' '.repeat(cols)).slice(0, cols) + C.reset + '\r\n';
+                    for (var i = 0; i < textRows; i++) {
+                        var l = lines[top + i];
+                        out += '\x1b[2K' + (l != null ? l.slice(left, left + cols) : paint('dim', '~')) + '\r\n';
+                    }
+                    out += '\x1b[2K' + (message ? (messageIsError ? paint('red', message.slice(0, cols)) : message.slice(0, cols)) : '') + '\r\n';
+                    var bar = '', used = 0;
+                    KEYS.forEach(function (k) {
+                        var piece = k[0] + ' ' + k[1] + '  ';
+                        if (used + piece.length > cols) { return; }
+                        bar += C.inverse + k[0] + C.reset + ' ' + k[1] + '  ';
+                        used += piece.length;
+                    });
+                    out += '\x1b[2K' + bar;
+                    out += '\x1b[' + (row - top + 2) + ';' + (col - left + 1) + 'H\x1b[?25h';
+                    term.write(out);
+                }
+
+                function insertText(s) {
+                    var parts = s.replace(/\r\n?/g, '\n').replace(/\t/g, '    ').replace(/[\x00-\x09\x0b-\x1f]/g, '').split('\n');
+                    var head = lines[row].slice(0, col), tail = lines[row].slice(col);
+                    if (parts.length === 1) {
+                        lines[row] = head + parts[0] + tail;
+                        col += parts[0].length;
+                    } else {
+                        var add = [head + parts[0]].concat(parts.slice(1, -1), [parts[parts.length - 1] + tail]);
+                        lines.splice.apply(lines, [row, 1].concat(add));
+                        row += parts.length - 1;
+                        col = parts[parts.length - 1].length;
+                    }
+                    goal = col;
+                    modified = true;
+                }
+
+                async function save() {
+                    if (saving) { return false; }
+                    saving = true;
+                    say('Saving…');
+                    draw();
+                    var content = lines.join('\n');
+                    if (content && content[content.length - 1] !== '\n') { content += '\n'; }
+                    var res = await writeFile(fs, cwd, node ? displayPath(node) : path, content, false);
+                    saving = false;
+                    if (res.error) { say('Not saved: ' + res.error, true); return false; }
+                    node = res.node;
+                    label = displayPath(node);
+                    modified = false;
+                    say(node.special ? 'Saved the layouts. Reopen the barcode tool to see them.'
+                        : 'Saved ' + label + ' (' + textLines() + (textLines() === 1 ? ' line)' : ' lines)'));
+                    return true;
+                }
+
+                function exit() {
+                    resizeSub.dispose();
+                    term.write('\x1b[?1049l');
+                    done(0);
+                }
+
+                async function key(k) {
+                    if (confirming) {
+                        if (k === 'y' || k === 'Y') { confirming = false; if (await save()) { exit(); return; } }
+                        else if (k === 'n' || k === 'N') { exit(); return; }
+                        else if (k === '\x1b' || k === '\x03') { confirming = false; say('Still editing.'); }
+                        draw();
+                        keyWaiter = key;
+                        return;
+                    }
+                    var cutting = false;
+                    if (k.length > 1 && k[0] !== '\x1b') { insertText(k); }
+                    else {
+                        switch (k) {
+                            case '\x13': case '\x0f': await save(); break;
+                            case '\x18':
+                                if (!modified) { exit(); return; }
+                                confirming = true;
+                                say('Save changes to ' + label + '? y to save, n to discard, Esc to keep editing');
+                                break;
+                            case '\x0b':
+                                cutting = true;
+                                if (!lastWasCut) { cut = []; }
+                                cut.push(lines[row]);
+                                if (lines.length > 1) { lines.splice(row, 1); if (row >= lines.length) { row = lines.length - 1; } } else { lines[0] = ''; }
+                                col = 0; goal = 0; modified = true;
+                                say('Cut ' + cut.length + (cut.length === 1 ? ' line' : ' lines'));
+                                break;
+                            case '\x15':
+                                if (!cut.length) { say('Nothing has been cut yet.'); break; }
+                                lines.splice.apply(lines, [row, 0].concat(cut));
+                                row += cut.length; col = 0; goal = 0; modified = true;
+                                break;
+                            case '\x07':
+                                say('Ctrl+S save, Ctrl+X exit, Ctrl+K cut line, Ctrl+U paste, arrows/Home/End/PgUp/PgDn move');
+                                break;
+                            case '\x03':
+                                say('Line ' + (row + 1) + ' of ' + textLines() + ', column ' + (col + 1));
+                                break;
+                            case '\r': insertText('\n'); break;
+                            case '\t': insertText('    '.slice(col % 4)); break;
+                            case '\x7f': case '\b':
+                                if (col > 0) { lines[row] = lines[row].slice(0, col - 1) + lines[row].slice(col); col--; modified = true; }
+                                else if (row > 0) { col = lines[row - 1].length; lines[row - 1] += lines[row]; lines.splice(row, 1); row--; modified = true; }
+                                goal = col;
+                                break;
+                            case '\x1b[3~':
+                                if (col < lines[row].length) { lines[row] = lines[row].slice(0, col) + lines[row].slice(col + 1); modified = true; }
+                                else if (row < lines.length - 1) { lines[row] += lines[row + 1]; lines.splice(row + 1, 1); modified = true; }
+                                break;
+                            case '\x1b[D': if (col > 0) { col--; } else if (row > 0) { row--; col = lines[row].length; } goal = col; break;
+                            case '\x1b[C': if (col < lines[row].length) { col++; } else if (row < lines.length - 1) { row++; col = 0; } goal = col; break;
+                            case '\x1b[A': if (row > 0) { row--; col = goal; clampCol(); } break;
+                            case '\x1b[B': if (row < lines.length - 1) { row++; col = goal; clampCol(); } break;
+                            case '\x1b[H': case '\x1bOH': case '\x01': col = 0; goal = 0; break;
+                            case '\x1b[F': case '\x1bOF': case '\x05': col = lines[row].length; goal = col; break;
+                            case '\x1b[5~': row = Math.max(0, row - Math.max(1, term.rows - 4)); col = goal; clampCol(); break;
+                            case '\x1b[6~': row = Math.min(lines.length - 1, row + Math.max(1, term.rows - 4)); col = goal; clampCol(); break;
+                            default:
+                                if (k >= ' ' && k.indexOf('\x1b') < 0) { insertText(k); }
+                        }
+                    }
+                    lastWasCut = cutting;
+                    if (lines[lines.length - 1] !== '') { lines.push(''); }
+                    if (!confirming && k !== '\x13' && k !== '\x0f' && k !== '\x07' && k !== '\x03' && k !== '\x0b' && k !== '\x15' && message && !messageIsError && message !== 'New file') { say(''); }
+                    draw();
+                    keyWaiter = key;
+                }
+
+                term.write('\x1b[?1049h');
+                draw();
+                keyWaiter = key;
+            });
+        }
+
         /* === Start ===================================================== */
 
         function applyTheme() { if (term) { term.options.theme = themeColors(root); } }
@@ -913,7 +1654,7 @@
                 ro = new ResizeObserver(function () { try { fit.fit(); } catch (err) { } });
                 ro.observe(screen);
             }
-            write(paint('bold', 'parkscomputing.com') + ' in terminal mode. Type ' + paint('green', 'help') + ' for the commands.\n\n');
+            write(paint('bold', 'parkscomputing.com') + ' in terminal mode. Type ' + paint('green', 'help') + ' for the commands; your own files are in ' + paint('blue', '~') + '.\n\n');
             term.write(prompt());
             if (prefill) { insert(prefill); }
             announce();

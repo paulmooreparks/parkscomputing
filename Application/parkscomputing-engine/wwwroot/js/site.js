@@ -137,7 +137,7 @@
             if (view) { setView(view.getAttribute('data-view-choice')); }
             if (e.target.closest('[data-settings-close]')) { dialog.close(); }
             if (e.target.closest('[data-settings-forget]')) {
-                ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku', 'pc-barcodes', 'pc-barcode-layouts', 'pc-terminal', 'pc-terminal-history'].forEach(function (key) {
+                ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku', 'pc-barcodes', 'pc-barcode-layouts', 'pc-terminal', 'pc-terminal-history', 'pc-terminal-home'].forEach(function (key) {
                     try { localStorage.removeItem(key); } catch (err) { }
                 });
                 /* The barcode tool's link to a layouts file on disk; the
