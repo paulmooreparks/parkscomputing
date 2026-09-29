@@ -18,7 +18,7 @@ pudlApplets.define('conway', {
     src: '/js/conway.js',
     css: '/css/conway.css',
     page: '/page/conways-game-of-life',
-    ver: '4'
+    ver: '5'
 });
 
 /* The barcode tool loads barcode-engine.js beside itself, with this same

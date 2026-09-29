@@ -23,15 +23,25 @@
        height belongs to the board; on a page they are open. */
     function buildMarkup(root, fill) {
         root.innerHTML =
-            '<div class="conway-links">' +
-              '<a data-role="current" href="#">Link to current board state</a>' +
-              '<a data-role="initial" href="#">Reset the board</a>' +
-            '</div>' +
             '<div class="conway-buttons">' +
               '<button type="button" class="btn btn-primary" data-action="start">Start</button>' +
               '<button type="button" class="btn" data-action="stop" disabled>Stop</button>' +
               '<button type="button" class="btn" data-action="step">Step</button>' +
+              '<button type="button" class="btn" data-action="reset" title="Put back the board this started with">Reset</button>' +
+              '<button type="button" class="btn" data-action="share" aria-haspopup="dialog">Share…</button>' +
             '</div>' +
+            '<dialog class="dialog conway-share" data-role="share-dialog" aria-label="Share this board">' +
+              '<h3 class="dialog-title">Share this board</h3>' +
+              '<div class="dialog-body">' +
+                '<p class="conway-share-help">This address reproduces the board as it is now: its cells, size, speed and wrapping.</p>' +
+                '<input class="form-input conway-share-url" data-role="share-url" readonly aria-label="Address of this board" />' +
+              '</div>' +
+              '<div class="dialog-actions">' +
+                '<button type="button" class="btn" data-action="share-open">Open this board</button>' +
+                '<button type="button" class="btn" data-action="share-close">Close</button>' +
+                '<button type="button" class="btn btn-primary" data-action="share-copy">Copy link</button>' +
+              '</div>' +
+            '</dialog>' +
             '<div class="conway-stats num">' +
               '<div>Generation: <span data-role="generation"></span></div>' +
               '<div>Live cells: <span data-role="live"></span></div>' +
@@ -68,8 +78,12 @@
             cellSize: q('[data-role="cellSize"]'),
             wrap: q('[data-role="wrap"]'),
             saveHistory: q('[data-role="saveHistory"]'),
-            initial: q('[data-role="initial"]'),
-            current: q('[data-role="current"]'),
+            reset: q('[data-action="reset"]'),
+            share: q('[data-action="share"]'),
+            shareDialog: q('[data-role="share-dialog"]'),
+            shareUrl: q('[data-role="share-url"]'),
+            shareOpen: q('[data-action="share-open"]'),
+            shareCopy: q('[data-action="share-copy"]'),
             generation: q('[data-role="generation"]'),
             live: q('[data-role="live"]'),
             rate: q('[data-role="rate"]')
@@ -146,11 +160,14 @@
             cellCount = boardSize * boardSize;
             if (Object.prototype.hasOwnProperty.call(p, 'init')) { init0 = p.init.replace(/\s/g, ''); }
             if (Object.prototype.hasOwnProperty.call(p, 'speed')) { speed = +p.speed; }
-            if (p.saveHistory === '1' || p.saveHistory === 'true') { saveHistory = true; }
-            if (p.wrap === '0' || p.wrap === 'false') { wrap = false; }
+            /* A state names the whole board, so a setting it leaves out
+               takes its default. */
+            saveHistory = p.saveHistory === '1' || p.saveHistory === 'true';
+            wrap = !(p.wrap === '0' || p.wrap === 'false');
         }
 
-        function updateLink() { el.current.href = shareBase() + '?' + stateString(); }
+        var currentHref = '';   /* the address of the board as it is now */
+        function updateLink() { currentHref = shareBase() + '?' + stateString(); }
         function shareBase() { return ownUrl ? location.pathname : (opts.pageUrl || location.pathname); }
 
         function updateInit() {
@@ -164,7 +181,7 @@
         /* History entries belong only to the applet's own page. */
         function updateHistory() {
             updateInit();
-            if (saveHistory && ownUrl) { window.history.pushState('', '', el.current.href); }
+            if (saveHistory && ownUrl) { window.history.pushState('', '', currentHref); }
             announce();
         }
 
@@ -388,8 +405,8 @@
         function updateStats() {
             el.generation.textContent = ++generationCount;
             el.live.textContent = liveTracker.length;
-            el.current.href = shareBase() + '?' + startLink + init0;
-            if (saveHistory && ownUrl) { window.history.pushState('', '', el.current.href); }
+            currentHref = shareBase() + '?' + startLink + init0;
+            if (saveHistory && ownUrl) { window.history.pushState('', '', currentHref); }
         }
 
         function run() {
@@ -423,10 +440,54 @@
         el.saveHistory.addEventListener('change', function () {
             saveHistory = el.saveHistory.checked;
             updateHistory();
-            if (!saveHistory && ownUrl) { window.history.replaceState('', '', el.current.href); }
+            if (!saveHistory && ownUrl) { window.history.replaceState('', '', currentHref); }
         });
         el.grid.addEventListener('click', onCanvasClick);
         el.grid.addEventListener('dblclick', onCanvasClick);
+
+        /* Reset puts back the board this instance started with, in place. */
+        el.reset.addEventListener('click', function () {
+            clearTimeout(intervalID);
+            setControlsRunning(false);
+            applyAndDraw(initialState);
+            if (ownUrl) { window.history.replaceState('', '', currentHref); }
+        });
+
+        /* Share shows the board's address, to copy or to open. Opening goes
+           to the Conway article with this board: as a window when this
+           game is in a window, as a page otherwise. On the article page
+           itself there is nowhere else to go, so the choice is hidden. */
+        function boardAddress() { return new URL(shareBase() + '?' + stateString(), location.origin).href; }
+        el.share.addEventListener('click', function () {
+            el.shareUrl.value = boardAddress();
+            el.shareOpen.hidden = ownUrl;
+            el.shareCopy.textContent = 'Copy link';
+            el.shareDialog.showModal();
+            el.shareUrl.select();
+        });
+        el.shareCopy.addEventListener('click', function () {
+            var url = el.shareUrl.value;
+            (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+                .then(function () { el.shareCopy.textContent = 'Copied'; },
+                      function () { el.shareUrl.select(); el.shareCopy.textContent = 'Press Ctrl+C to copy'; });
+        });
+        root.querySelector('[data-action="share-close"]').addEventListener('click', function () { el.shareDialog.close(); });
+        el.shareDialog.addEventListener('click', function (e) { if (e.target === el.shareDialog) { el.shareDialog.close(); } });
+        el.shareOpen.addEventListener('click', function () {
+            var url = el.shareUrl.value;
+            el.shareDialog.close();
+            var key = (opts.pageUrl || '').split('/').filter(Boolean).pop();
+            if (opts.host === 'window' && window.pudlWindows && key) {
+                /* The site host hands this state to the new window's
+                   instance as it boots (js/site.js). */
+                window.pcAppletHandoff = window.pcAppletHandoff || {};
+                window.pcAppletHandoff.conway = stateString();
+                if ((window.pudlWindows.state().open || []).indexOf(key) >= 0) { window.pudlWindows.close(key); }
+                window.pudlWindows.open(key);
+            } else {
+                location.assign(url);
+            }
+        });
 
         function syncSettings() {
             el.ticks.value = speed;
@@ -467,7 +528,7 @@
         }
         initializeBoard();
         syncSettings();
-        el.initial.href = shareBase() + '?' + stateString();
+        var initialState = stateString();
         el.generation.textContent = '0';
         el.live.textContent = liveTracker.length;
 

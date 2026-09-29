@@ -180,6 +180,15 @@
     var CONTINUITY = { sudoku: 'pc-sudoku', barcodes: 'pc-barcodes' };
 
     document.addEventListener('pudl:applet-state', function (e) {
+        /* A one-shot hand-off: an applet opening another instance of
+           itself elsewhere (Conway's "Open this board") leaves the state
+           here for the new instance, which takes it once. */
+        var handoff = window.pcAppletHandoff;
+        if (handoff && e.detail && Object.prototype.hasOwnProperty.call(handoff, e.detail.name)) {
+            e.detail.state = handoff[e.detail.name];
+            delete handoff[e.detail.name];
+            return;
+        }
         var key = CONTINUITY[e.detail && e.detail.name];
         if (!key || (e.detail && e.detail.param)) { return; }
         try {
