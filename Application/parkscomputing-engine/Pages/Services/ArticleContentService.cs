@@ -147,12 +147,16 @@ public class ArticleContentService {
 
     /// <summary>Renders a Markdown fragment from the content directory
     /// (chrome copy such as the desktop's welcome card), or null when the
-    /// file is absent. No window wrapping applies.</summary>
+    /// file is absent. The fragment sits on the desktop, so its links to
+    /// articles open windows, as links inside an article's window do.</summary>
     public string? RenderFragment(string name) {
         if (!SlugPattern.IsMatch(name)) { return null; }
         var path = Path.Combine(_environment.WebRootPath, "content", name + ".md");
         if (!File.Exists(path)) { return null; }
-        return Markdown.ToHtml(File.ReadAllText(path), new MarkdownPipelineBuilder().UseAutoLinks().Build());
+        var doc = new HtmlDocument();
+        doc.LoadHtml(Markdown.ToHtml(File.ReadAllText(path), new MarkdownPipelineBuilder().UseAutoLinks().Build()));
+        WrapInternalLinks(doc);
+        return doc.DocumentNode.InnerHtml;
     }
 
     private ArticleWindowContent? LoadRaw(string? slug) {
