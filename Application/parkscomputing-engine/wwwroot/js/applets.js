@@ -47,5 +47,5 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: '/page/terminal',
-    ver: '13'
+    ver: '14'
 });

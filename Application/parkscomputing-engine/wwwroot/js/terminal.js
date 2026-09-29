@@ -615,7 +615,7 @@
                 io.out('\n' + paint('bold', sec[0]) + '\n');
                 kids.forEach(function (n) { io.out('  ' + paint('green', n.name.padEnd(11)) + scriptSummary(n.name, scriptSource(n)) + '\n'); });
             });
-            io.out('\n' + wrap('Anything ls marks with * runs by its name, or by its path: the applets, and scripts, which are files of commands. Your home directory, ~, holds files you can edit, and a script you put in ~/bin runs like the site\'s; everything else is read-only. Tab completes, the arrow keys recall earlier commands, "|" pipes one command into another, and "> file" saves a command\'s output in ~.', io.cols - 1) + '\n');
+            io.out('\n' + wrap('Anything ls marks with * runs by its name, or by its path: the applets, and scripts, which are files of commands. Your home directory, ~, holds files you can edit, and a script you put in ~/bin runs like the site\'s; everything else is read-only. Tab completes, the arrow keys recall earlier commands, "|" pipes one command into another, and "> file" saves a command\'s output in ~. "guide" reads the full guide.', io.cols - 1) + '\n');
         }
     });
 
@@ -849,6 +849,31 @@
         summary: 'print its arguments',
         help: 'echo [text...]\n\nPrints its arguments, which is mostly useful in front of a pipe or a redirection: echo hello > ~/greeting',
         run: function (args, io) { io.out(args.join(' ') + '\n'); }
+    });
+
+    /* The guide is an ordinary page, terminal-guide, wherever the site's
+       navigation lists it. */
+    function findNamed(node, name) {
+        var kids = node.children || [];
+        for (var i = 0; i < kids.length; i++) {
+            if (kids[i].name === name && !kids[i].children) { return kids[i]; }
+            if (kids[i].children && !kids[i].virtual && !kids[i].home) { var hit = findNamed(kids[i], name); if (hit) { return hit; } }
+        }
+        return null;
+    }
+
+    command('guide', {
+        summary: 'read the full guide to this terminal',
+        help: 'guide [-w]\n\nShows the terminal guide a screen at a time, with the same keys as less. With -w it opens as a page instead: a window in the window view, or the page itself in the classic view.',
+        run: async function (args, io) {
+            var n = findNamed(io.fs.resolve('/'), 'terminal-guide');
+            if (!n) { io.err('guide: the guide is not on this site yet'); return 1; }
+            if (args[0] === '-w') { io.open(realOf(n)); return; }
+            var text;
+            try { text = await io.read(pathOf(n)); } catch (err) { io.err('guide: ' + err.message); return 1; }
+            if (!io.interactive) { io.out(text); return; }
+            return io.pager(text, 'Terminal Guide');
+        }
     });
 
     command('clear', {
@@ -1845,7 +1870,7 @@
                 ro = new ResizeObserver(function () { try { fit.fit(); } catch (err) { } });
                 ro.observe(screen);
             }
-            write(paint('bold', 'parkscomputing.com') + ' in terminal mode. Type ' + paint('green', 'help') + ' for the commands; your own files are in ' + paint('blue', '~') + '.\n\n');
+            write(paint('bold', 'parkscomputing.com') + ' in terminal mode. Type ' + paint('green', 'help') + ' for the commands, or ' + paint('green', 'guide') + ' for the full guide; your own files are in ' + paint('blue', '~') + '.\n\n');
             term.write(prompt());
             if (prefill) { insert(prefill); }
             announce();
