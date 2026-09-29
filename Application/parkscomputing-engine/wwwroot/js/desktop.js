@@ -5,7 +5,6 @@
 
    - Content enhancement (highlight.js, Mermaid) per arriving window.
    - The filter narrowing the list live as the reader types.
-   - The image window's arrow keys.
    - The reader's preferences: maximize-new for opens from outside any
      window, and remembering the window arrangement and list state (the
      list state rides a cookie the server redirects on). */
@@ -223,22 +222,6 @@
                 else { closeAll.removeAttribute('aria-disabled'); closeAll.tabIndex = 0; }
             });
         }
-
-        /* In an image window the plain arrow keys step between images, as
-           they do in the classic lightbox. Captured before pudl-windows'
-           own keyboard handling, which keeps Shift+arrows for resizing;
-           windows without images keep arrow-key movement. */
-        layer.addEventListener('keydown', function (e) {
-            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') { return; }
-            if (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) { return; }
-            if (e.target.closest && e.target.closest('input, textarea, select')) { return; }
-            var win = e.target.closest && e.target.closest('.win');
-            if (!win || !win.querySelector('.win-image')) { return; }
-            e.preventDefault();
-            e.stopPropagation();
-            var link = win.querySelector('[data-img-nav="' + (e.key === 'ArrowLeft' ? 'prev' : 'next') + '"]');
-            if (link) { link.click(); }
-        }, true);
     }
 
     restoreWindows();

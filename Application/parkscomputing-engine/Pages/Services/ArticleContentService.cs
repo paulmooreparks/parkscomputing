@@ -18,21 +18,16 @@ namespace ParksComputing.Engine.Pages.Services;
 /// frame straight onto that URL.</summary>
 public record ArticleWindowContent(string Slug, string Title, string BodyHtml, bool HasCode, bool HasMermaid, bool RequiresOwnDocument = false, string? FrameUrl = null, bool IsApplet = false);
 
-public record ArticleImage(string Src, string? Caption);
-
 /// <summary>
 /// Loads an article's title and body for rendering inside a PUDL window.
 /// This is a slimmer read path than PageLoaderModel (no comments, no
 /// audio/video metadata, no meta-tag extraction), because a window shows
 /// the article body alone; the full page remains the canonical rendering.
-///
-/// Images inside a window body are wrapped as child-window openers
-/// (PUDL 0.7.0 child windows): key "{slug}-img-{n}", 1-based, in document
-/// order. LoadChild serves those keys.
+/// Images in a window body are left as they are: the lightbox dialog shows
+/// them in both views.
 /// </summary>
 public class ArticleContentService {
     private static readonly Regex SlugPattern = new(@"^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
-    private static readonly Regex ChildImagePattern = new(@"^(?<slug>[A-Za-z0-9_-]+?)-img-(?<n>[1-9][0-9]*)$", RegexOptions.Compiled);
 
     private readonly IWebHostEnvironment _environment;
 
@@ -40,8 +35,8 @@ public class ArticleContentService {
         _environment = environment;
     }
 
-    /// <summary>An article prepared for a window: images wrapped as
-    /// child-window openers, and internal links as window openers.</summary>
+    /// <summary>An article prepared for a window: internal links become
+    /// window openers.</summary>
     public ArticleWindowContent? Load(string? slug) {
         var raw = LoadRaw(slug);
         if (raw is null) { return null; }
@@ -73,43 +68,6 @@ public class ArticleContentService {
             }
         }
         return null;
-    }
-
-    public bool TryParseChildKey(string? key, out string parentSlug, out int imageIndex) {
-        parentSlug = string.Empty;
-        imageIndex = 0;
-        var m = ChildImagePattern.Match(key ?? string.Empty);
-        if (!m.Success) { return false; }
-        parentSlug = m.Groups["slug"].Value;
-        imageIndex = int.Parse(m.Groups["n"].Value);
-        return true;
-    }
-
-    /// <summary>
-    /// A child window's content: one of the parent article's images. The key
-    /// is "{parent}-img-{n}". Null when the key does not parse, the parent
-    /// does not exist, or it has no such image.
-    /// </summary>
-    public ArticleWindowContent? LoadChild(string? key, out string parentSlug) {
-        parentSlug = string.Empty;
-        if (!TryParseChildKey(key, out parentSlug, out int n)) { return null; }
-
-        var parent = LoadRaw(parentSlug);
-        if (parent is null) { return null; }
-
-        var images = ExtractImages(parent.BodyHtml);
-        if (n > images.Count) { return null; }
-        var image = images[n - 1];
-
-        string title = string.IsNullOrWhiteSpace(image.Caption) ? $"Image {n}: {parent.Title}" : image.Caption!;
-        string caption = System.Net.WebUtility.HtmlEncode(image.Caption ?? string.Empty);
-        string body =
-            $"<figure class=\"win-image\"><img src=\"{System.Net.WebUtility.HtmlEncode(image.Src)}\" alt=\"{caption}\" data-no-lightbox />" +
-            (string.IsNullOrEmpty(caption) ? string.Empty : $"<figcaption>{caption}</figcaption>") +
-            "</figure>" +
-            BuildImageNav(parentSlug, n, images.Count);
-
-        return new ArticleWindowContent(key!, title, body, HasCode: false, HasMermaid: false);
     }
 
     private static readonly Regex TagKeyPattern = new(@"^tag-(?<slug>[a-z0-9-]+)$", RegexOptions.Compiled);
@@ -177,30 +135,6 @@ public class ArticleContentService {
         }
     }
 
-    /// <summary>
-    /// Prev/next controls between an article's image windows. Each is a
-    /// data-win-open link, so the script opens the sibling as a child of the
-    /// same article (desktop.js then closes this one); the href is the same
-    /// state as a URL for a browser without script. One image gets no nav.
-    /// </summary>
-    private static string BuildImageNav(string parentSlug, int n, int count) {
-        if (count < 2) { return string.Empty; }
-
-        string Link(int target, string dir, string glyph, string label) {
-            var key = $"{parentSlug}-img-{target}";
-            // data-win-replace swaps the sibling into this window's place
-            // (PUDL 0.10.0); the href is the equivalent state without script.
-            return $"<a class=\"icon-btn\" data-win-open=\"{key}\" data-win-replace data-img-nav=\"{dir}\" " +
-                   $"href=\"?open={parentSlug},{key}&amp;top={key}\" aria-label=\"{label}\">{glyph}</a>";
-        }
-
-        return "<nav class=\"win-img-nav\" aria-label=\"Images in this article\">" +
-               (n > 1 ? Link(n - 1, "prev", "❮", "Previous image") : "<span class=\"icon-btn is-disabled\" aria-hidden=\"true\">❮</span>") +
-               $"<span class=\"num\">{n} of {count}</span>" +
-               (n < count ? Link(n + 1, "next", "❯", "Next image") : "<span class=\"icon-btn is-disabled\" aria-hidden=\"true\">❯</span>") +
-               "</nav>";
-    }
-
     /// <summary>Renders a Markdown fragment from the content directory
     /// (chrome copy such as the desktop's welcome card), or null when the
     /// file is absent. No window wrapping applies.</summary>
@@ -225,40 +159,9 @@ public class ArticleContentService {
         return null;
     }
 
-    private static readonly Regex ImageHrefPattern = new(@"\.(jpe?g|png|gif|webp|avif|svg)([?#].*)?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    /// <summary>An image is a child-window candidate when it is unlinked, or
-    /// its link just points at an image file (the WordPress full-size link).</summary>
-    private static bool IsChildImageCandidate(HtmlNode img) {
-        if (img.GetAttributeValue("data-no-lightbox", null) is not null) { return false; }
-        var anchor = img.Ancestors("a").FirstOrDefault();
-        if (anchor is null) { return true; }
-        return ImageHrefPattern.IsMatch(anchor.GetAttributeValue("href", string.Empty));
-    }
-
-    private static string? CaptionOf(HtmlNode img) {
-        var figure = img.Ancestors("figure").FirstOrDefault();
-        var figcaption = figure?.SelectSingleNode(".//figcaption");
-        var caption = figcaption?.InnerText.Trim();
-        if (string.IsNullOrWhiteSpace(caption)) { caption = img.GetAttributeValue("alt", string.Empty).Trim(); }
-        return string.IsNullOrWhiteSpace(caption) ? null : System.Net.WebUtility.HtmlDecode(caption);
-    }
-
-    public static List<ArticleImage> ExtractImages(string bodyHtml) {
-        var doc = new HtmlDocument();
-        doc.LoadHtml(bodyHtml);
-        var images = doc.DocumentNode.SelectNodes("//img") ?? Enumerable.Empty<HtmlNode>() as IEnumerable<HtmlNode>;
-        return images
-            .Where(IsChildImageCandidate)
-            .Select(img => new ArticleImage(img.GetAttributeValue("src", string.Empty), CaptionOf(img)))
-            .Where(i => !string.IsNullOrEmpty(i.Src))
-            .ToList();
-    }
-
     private string PrepareWindowBody(string slug, string bodyHtml) {
         var doc = new HtmlDocument();
         doc.LoadHtml(bodyHtml);
-        WrapImages(slug, doc);
         WrapInternalLinks(doc);
         return doc.DocumentNode.InnerHtml;
     }
@@ -308,37 +211,6 @@ public class ArticleContentService {
         var baseDir = Path.Combine(_environment.WebRootPath, "content");
         return File.Exists(Path.Combine(baseDir, slug + ".md"))
             || File.Exists(Path.Combine(baseDir, slug + ".html"));
-    }
-
-    /// <summary>
-    /// Wraps each eligible image in a link that opens it as a child window.
-    /// Without script the link opens the image itself.
-    /// </summary>
-    private static void WrapImages(string slug, HtmlDocument doc) {
-        var images = doc.DocumentNode.SelectNodes("//img");
-        if (images is null) { return; }
-
-        int n = 0;
-        foreach (var img in images) {
-            if (!IsChildImageCandidate(img)) { continue; }
-            n++;
-            var src = img.GetAttributeValue("src", string.Empty);
-            if (string.IsNullOrEmpty(src)) { continue; }
-
-            // A full-size image link already around the image becomes the
-            // opener; otherwise the image gains one. Either way the href
-            // still reaches the image without script.
-            var anchor = img.Ancestors("a").FirstOrDefault();
-            if (anchor is null) {
-                anchor = doc.CreateElement("a");
-                anchor.SetAttributeValue("href", src);
-                img.ParentNode.ReplaceChild(anchor, img);
-                anchor.AppendChild(img);
-            }
-            anchor.SetAttributeValue("data-win-open", $"{slug}-img-{n}");
-            var cls = anchor.GetAttributeValue("class", string.Empty);
-            anchor.SetAttributeValue("class", string.IsNullOrEmpty(cls) ? "win-img-link" : cls + " win-img-link");
-        }
     }
 
     private static ArticleWindowContent LoadMarkdown(string path, string slug) {

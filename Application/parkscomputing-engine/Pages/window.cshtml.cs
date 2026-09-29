@@ -52,20 +52,6 @@ public class WindowModel : PageModel {
             return Page();
         }
 
-        // A child key ("{slug}-img-{n}") serves one of the article's images
-        // as a child window; anything else is an article window.
-        var child = _content.LoadChild(key, out var parentSlug);
-        if (child is not null) {
-            Window = new WindowViewModel {
-                Key = child.Slug,
-                Title = child.Title,
-                BodyHtml = child.BodyHtml,
-                PageUrl = $"/page/{parentSlug}",
-                Parent = parentSlug
-            };
-            return Page();
-        }
-
         var article = _content.Load(key);
         if (article is null) { return NotFound(); }
 

@@ -126,17 +126,24 @@
         }
     }
 
-    @* The lightbox shell is server-rendered (PUDL: dialogs come from the
-       server); lightbox.js fills it with the clicked image. *@
+    @* The image lightbox, for both views: server-rendered per PUDL, filled
+       and shown by lightbox.js. The stage scrolls when an image is zoomed
+       to its full size. *@
     <dialog class="lightbox" id="image-lightbox" aria-label="Image viewer">
-        <div class="lightbox-frame">
-            <img class="lightbox-img" src="" alt="">
-            <div class="lightbox-caption"></div>
-            <div class="lightbox-counter num"></div>
-            <button type="button" class="lightbox-btn lightbox-close" aria-label="Close">×</button>
-            <button type="button" class="lightbox-btn lightbox-prev" aria-label="Previous image" hidden>❮</button>
-            <button type="button" class="lightbox-btn lightbox-next" aria-label="Next image" hidden>❯</button>
+        <div class="lightbox-stage"><img class="lightbox-img" src="" alt=""></div>
+        <div class="lightbox-bar">
+            <span class="lightbox-caption"></span>
+            <span class="lightbox-counter num"></span>
         </div>
+        <button type="button" class="lightbox-btn lightbox-close" aria-label="Close" title="Close (Esc)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+        <button type="button" class="lightbox-btn lightbox-prev" aria-label="Previous image" title="Previous (Left arrow)" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        </button>
+        <button type="button" class="lightbox-btn lightbox-next" aria-label="Next image" title="Next (Right arrow)" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+        </button>
     </dialog>
 
     @* The settings dialog: a native <dialog> per PUDL 0.16.0, opened by the

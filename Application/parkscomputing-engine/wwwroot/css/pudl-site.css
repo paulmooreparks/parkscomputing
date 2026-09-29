@@ -216,54 +216,70 @@ body.desktop .site-header { position: static; flex: none; }
 .page-post-comment { max-width: 560px; margin-top: 2rem; }
 
 /* === Image lightbox =======================================================
-   A native dialog, styled with PUDL's dialog vocabulary. The shell is
-   server-rendered in the layout; lightbox.js swaps the image in and out.
-   The image itself is flat content; the controls are raised. */
+   One native dialog for both views, server-rendered in the layout and run
+   by lightbox.js. The dialog wraps the image: an image shows at its own
+   size up to the screen, scaled down beyond that, with its caption and
+   counter beneath. Zoomed, the dialog takes the screen and the stage
+   scrolls the image at full size. The image is flat content; the round
+   controls are raised, and their glyphs are drawn strokes. */
 .lightbox {
   padding: 0; margin: auto;
-  max-width: min(94vw, 1400px); max-height: 94vh;
+  max-width: 96vw; max-height: 96svh;
   background: transparent; border: 0;
   overflow: visible;
+  color: #fff;
 }
-.lightbox::backdrop { background: rgb(0 0 0 / 0.62); }
-.lightbox-frame {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  position: relative;
-}
+.lightbox::backdrop { background: rgb(0 0 0 / 0.86); }
+.lightbox[open] { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.lightbox-stage { display: flex; justify-content: center; align-items: center; touch-action: pan-y pinch-zoom; }
 .lightbox-img {
-  max-width: min(94vw, 1400px); max-height: 84vh;
+  display: block;
+  max-width: min(92vw, 1600px); max-height: calc(88svh - 3.5rem);
+  width: auto; height: auto;
   border-radius: var(--radius-sm);
   box-shadow: 0 24px 64px rgb(0 0 0 / 0.5);
+  background: #fff;
+  user-select: none; -webkit-user-drag: none;
 }
-.lightbox-caption {
-  color: #fff; font-size: .9rem; text-align: center;
-  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
-  max-width: 80ch;
+.lightbox-zoomable .lightbox-img { cursor: zoom-in; }
+.lightbox-zoomed { width: 96vw; height: 92svh; }
+.lightbox-zoomed .lightbox-stage {
+  flex: 1 1 auto; min-height: 0; width: 100%;
+  overflow: auto; display: block;
+  border-radius: var(--radius-sm);
+  touch-action: auto;
 }
-.lightbox-counter {
-  color: #fff; font-size: .8rem; opacity: .85;
-  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+.lightbox-zoomed .lightbox-img { max-width: none; max-height: none; cursor: zoom-out; box-shadow: none; }
+.lightbox-bar {
+  display: flex; align-items: baseline; justify-content: center; gap: var(--space-3);
+  max-width: min(92vw, 80ch); text-align: center;
+  font-size: var(--text-sm);
+  padding: 4px 12px; border-radius: var(--radius-sm);
+  background: rgb(0 0 0 / 0.55);
 }
+.lightbox-bar:has(.lightbox-caption[hidden]):has(.lightbox-counter:empty) { display: none; }
+.lightbox-counter { opacity: .8; white-space: nowrap; }
 .lightbox-btn {
+  position: fixed; z-index: 1;
   display: inline-flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px; padding: 0;
+  width: 44px; height: 44px; padding: 0;
   border-radius: 50%;
   border: 1px solid var(--raise-border);
   background: var(--raise-grad);
   box-shadow: var(--raise-shadow);
   color: var(--text);
-  font: 600 16px/1 var(--font);
   cursor: pointer;
 }
+.lightbox-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .lightbox-btn:hover { background: var(--raise-grad-hover); border-color: var(--raise-border-hover); }
 .lightbox-btn:focus-visible { outline: none; box-shadow: var(--raise-shadow), 0 0 0 3px var(--focus-ring); }
-.lightbox-close { position: absolute; top: -14px; right: -14px; }
-.lightbox-prev, .lightbox-next {
-  position: absolute; top: 50%; transform: translateY(-50%);
-}
-.lightbox-prev { left: -14px; }
-.lightbox-next { right: -14px; }
-.lightbox-prev[hidden], .lightbox-next[hidden] { display: none; }
+/* The controls sit at the screen's edges, where thumbs and pointers find
+   them without covering the image's middle. */
+.lightbox-close { top: max(12px, env(safe-area-inset-top)); right: 12px; }
+.lightbox-prev, .lightbox-next { top: 50%; transform: translateY(-50%); }
+.lightbox-prev { left: 12px; }
+.lightbox-next { right: 12px; }
+.lightbox-btn[hidden] { display: none; }
 
 /* === Desktop mode =========================================================
    The desktop is PUDL's master-detail layout with the windows as the
@@ -320,28 +336,6 @@ body.desktop .md-layout { --md-sidebar-w: 300px; }
 /* Windowed article prose keeps the page's reading measure. */
 .win-body .post-content { margin-bottom: 1.5rem; padding-top: 0; }
 
-/* An image opened as a child window. The body is a column: the figure
-   takes the room and the prev/next nav sits beneath it. */
-.win-body:has(> .win-image) {
-  display: flex; flex-direction: column;
-}
-.win-image {
-  margin: 0; flex: 1; min-height: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-}
-.win-image img { max-width: 100%; max-height: 100%; min-height: 0; object-fit: contain; }
-.win-image figcaption { font-size: .9rem; font-style: italic; color: var(--text-muted); flex: none; }
-.win-img-nav {
-  flex: none;
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  padding-top: 10px;
-}
-.win-img-nav .icon-btn { text-decoration: none; }
-.win-img-nav .is-disabled { opacity: .35; }
-.win-img-nav .num { font-size: .8rem; color: var(--text-muted); }
-
-/* An image wrapped as a child-window opener is content, not a link block. */
-.win-img-link { display: inline-block; line-height: 0; }
 
 /* A window hosting an app page in a frame gives it the whole body. */
 .win-app-frame { display: block; width: 100%; height: 100%; border: 0; }

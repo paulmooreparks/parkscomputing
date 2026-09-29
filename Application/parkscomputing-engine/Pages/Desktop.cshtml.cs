@@ -167,20 +167,20 @@ public class DesktopModel : PageModel {
         OpenOrder.AddRange(open);
 
         foreach (var key in open) {
-            string parentSlug = string.Empty;
             var tagList = _content.LoadTagList(key, Root);
             var external = tagList is null ? _content.LoadExternal(key, Root) : null;
-            var child = tagList is null && external is null ? _content.LoadChild(key, out parentSlug) : null;
-            var article = tagList ?? external ?? child ?? _content.Load(key);
+            var article = tagList ?? external ?? _content.Load(key);
             if (article is null) { continue; }
-            var parent = child is null ? null : parentSlug;
+            // No window loader produces child windows today (images show in
+            // the lightbox dialog); the parent plumbing stays for listings.
+            string? parent = null;
 
             var placement = ParsePlacement(Request.Query[$"p.{key}"].FirstOrDefault());
 
             // A child hides with its parent and is never minimised on its own.
             bool minimized = min.Contains(parent ?? key);
 
-            var node = tagList is null && external is null && child is null ? _navService.GetNavNode(key) : null;
+            var node = tagList is null && external is null ? _navService.GetNavNode(key) : null;
 
             // A page may prefer a window shape (sitenav win="w,h"); any
             // placement in the URL wins over it.
