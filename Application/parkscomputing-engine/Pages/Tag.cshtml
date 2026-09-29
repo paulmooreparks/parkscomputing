@@ -1,0 +1,39 @@
+@page "/tag/{slug}"
+@using System.Globalization
+@using ParksComputing.Engine.Pages.Services
+@model ParksComputing.Engine.Pages.TagModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Tagged " + Model.TagName;
+}
+
+@* The same cards as the classic home page, for the articles under one tag,
+   newest first. *@
+<div class="main-container">
+    <h1>Tagged <span class="tag-name">@Model.TagName</span></h1>
+    <p class="tag-page-count">@Model.Articles.Count @(Model.Articles.Count == 1 ? "article" : "articles"), newest first.</p>
+
+    <ul class="post-grid list-unstyled">
+        @foreach (var (node, _) in Model.Articles)
+        {
+            var url = "/page/" + node.Slug;
+            var date = NavService.EffectiveDate(node);
+            <li class="post-card">
+                @if (date is not null)
+                {
+                    <div class="post-card-meta">
+                        <time datetime="@date.Value.ToString("s", CultureInfo.InvariantCulture)">@date.Value.ToLongDateString()</time>
+                    </div>
+                }
+                <a class="post-card-title" href="@url">@(node.Title ?? node.Slug)</a>
+                @if (!string.IsNullOrEmpty(node.Description))
+                {
+                    <p class="post-card-excerpt">@node.Description</p>
+                }
+                <div class="mt-auto">
+                    <a class="post-card-more" href="@url">Read more &raquo;</a>
+                </div>
+            </li>
+        }
+    </ul>
+</div>

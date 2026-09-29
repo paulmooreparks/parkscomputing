@@ -85,18 +85,28 @@ public class ArticleContentService {
     /// under that tag, newest first, each row opening its article. Null
     /// when the key is not a tag key or no tag matches.
     /// </summary>
+    /// <summary>The articles under a tag, given its slug, newest first, each
+    /// with the tag as it is spelled on that article. Empty when no article
+    /// carries the tag. The tag window, the tag page and the tag menu in a
+    /// window all list from here.</summary>
+    public static List<(NavNode Node, string Tag)> TaggedWith(NavNode root, string slug) =>
+        TaggableNodes(root)
+            .Select(n => (Node: n, Tag: n.Tags!.FirstOrDefault(t => TagSlug(t) == slug)))
+            .Where(x => x.Tag is not null)
+            .GroupBy(x => x.Node.Slug, StringComparer.OrdinalIgnoreCase)
+            .Select(g => (g.First().Node, g.First().Tag!))
+            .OrderByDescending(x => NavService.EffectiveDate(x.Node) ?? DateTime.MinValue)
+            .ToList();
+
+    /// <summary>The classic page listing a tag's articles.</summary>
+    public static string TagPageUrl(string tag) => "/tag/" + TagSlug(tag);
+
     public ArticleWindowContent? LoadTagList(string? key, NavNode root) {
         var m = TagKeyPattern.Match(key ?? string.Empty);
         if (!m.Success) { return null; }
         var slug = m.Groups["slug"].Value;
 
-        var tagged = TaggableNodes(root)
-            .Select(n => (Node: n, Tag: n.Tags!.FirstOrDefault(t => TagSlug(t) == slug)))
-            .Where(x => x.Tag is not null)
-            .GroupBy(x => x.Node.Slug, StringComparer.OrdinalIgnoreCase)
-            .Select(g => g.First())
-            .OrderByDescending(x => NavService.EffectiveDate(x.Node) ?? DateTime.MinValue)
-            .ToList();
+        var tagged = TaggedWith(root, slug);
         if (tagged.Count == 0) { return null; }
 
         var tagName = tagged[0].Tag!;

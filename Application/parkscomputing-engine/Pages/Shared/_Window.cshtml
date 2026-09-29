@@ -1,4 +1,5 @@
 @model ParksComputing.Engine.Pages.Models.WindowViewModel
+@inject ParksComputing.Engine.Pages.Services.INavService TagNav
 @{
     // The button hrefs are placeholders here; pudl-windows.js rewrites each
     // one to the URL of the state it produces. Without script the window is
@@ -53,14 +54,27 @@
         }
         else if (Model.Parent is null)
         {
-            @* The tag row: each chip opens that tag's article list. *@
+            @* The tag row: each tag opens a menu of the articles under it,
+               and choosing one opens that article's window. A list is a
+               choice to make, not a place to keep, so it gets no window of
+               its own. The menu is a popover, so it works without script. *@
             if (Model.Tags.Length > 0)
             {
+                var tagRoot = TagNav.GetRoot();
                 <nav class="page-tags" aria-label="Tags">
                     @foreach (var tag in Model.Tags)
                     {
-                        var tagKey = ParksComputing.Engine.Pages.Services.ArticleContentService.TagKey(tag);
-                        <a class="tag-link" href="/?open=@tagKey&top=@tagKey" data-win-open="@tagKey">@tag</a>
+                        var tagSlug = ParksComputing.Engine.Pages.Services.ArticleContentService.TagSlug(tag);
+                        var menuId = $"tag-menu-{Model.Key}-{tagSlug}";
+                        <button type="button" class="tag-link" popovertarget="@menuId">@tag</button>
+                        <nav class="menu-panel tag-menu" id="@menuId" popover aria-label="Articles tagged @tag">
+                            <div class="md-section-label">Tagged @tag</div>
+                            @foreach (var (node, _) in ParksComputing.Engine.Pages.Services.ArticleContentService.TaggedWith(tagRoot, tagSlug))
+                            {
+                                var date = ParksComputing.Engine.Pages.Services.NavService.EffectiveDate(node);
+                                <div class="md-row"><a class="md-item" href="/?open=@node.Slug&top=@node.Slug" data-win-open="@node.Slug">@(node.Title ?? node.Slug)@if (date is not null) {<span class="md-meta">@date.Value.ToString("d MMMM yyyy")</span>}</a></div>
+                            }
+                        </nav>
                     }
                 </nav>
             }

@@ -395,6 +395,15 @@ body.desktop .md-layout { --md-sidebar-w: 300px; }
   text-underline-offset: 2px;
 }
 .tag-link::before { content: "#"; opacity: .55; margin-right: 1px; }
+/* In a window a tag opens a menu, so it is a button dressed as the same
+   link. */
+button.tag-link {
+  background: none; border: 0; padding: 0; margin: 0;
+  font-family: inherit; line-height: inherit; cursor: pointer;
+}
+button.tag-link:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 2px; }
+.tag-menu { min-width: 280px; max-width: min(460px, 92vw); }
+.tag-page-count { color: var(--text-muted); margin-top: -.5rem; }
 .tag-link:hover { color: var(--accent-hover); text-decoration-thickness: 2px; }
 
 .tag-window { max-width: 68ch; margin: 0 auto; }
