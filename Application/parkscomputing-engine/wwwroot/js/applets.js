@@ -21,8 +21,9 @@ pudlApplets.define('conway', {
     ver: '6'
 });
 
-/* The barcode tool loads barcode-engine.js beside itself, with this same
-   version, so bump ver when either file changes. */
+/* The barcode tool and the flash cards each load barcode-engine.js beside
+   themselves, with their own version, so a change to the engine bumps
+   both of them. */
 pudlApplets.define('barcodes', {
     src: '/js/barcode-tool.js',
     css: '/css/barcode-tool.css',
@@ -34,5 +35,5 @@ pudlApplets.define('flashcards', {
     src: '/js/flashcards.js',
     css: '/css/flashcards.css',
     page: '/page/flashcards',
-    ver: '2'
+    ver: '4'
 });

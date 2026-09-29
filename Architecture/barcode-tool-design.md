@@ -88,3 +88,5 @@ Read in reverse, a layout splits a scanned value into its fields. The tool tries
 3. QR Code and GS1 DataBar, and live-generated cards for the barcode quiz.
 
 The first two phases ship together, since the layout model shapes the engine's character map.
+
+Phases 1 and 2 shipped on 2026-09-29. Of phase 3, the barcode quiz's generated cards shipped the same day. The flash cards load the engine beside themselves and deal one freshly generated card per symbology the engine draws (two of each in the generated-only deck), and a reveal shows the data and colors the structure and check characters. QR Code and GS1 DataBar remain.
