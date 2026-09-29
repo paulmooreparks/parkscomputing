@@ -40,6 +40,33 @@
         </nav>
     </header>
     <div class="win-body">
+        @if (Model.FrameUrl is null && Model.Parent is null && Model.Tags.Length > 0)
+        {
+            @* The tag row: each tag opens a menu of the articles under it,
+               and choosing one opens that article's window. A list is a
+               choice to make, not a place to keep, so it gets no window of
+               its own. The menu is a popover, so it works without script.
+               It belongs to the window, not the page, so an article framed
+               for its own scripts gets it too, above the frame, and the
+               framed page leaves out its classic row. *@
+            var tagRoot = TagNav.GetRoot();
+            <nav class="page-tags" aria-label="Tags">
+                @foreach (var tag in Model.Tags)
+                {
+                    var tagSlug = ParksComputing.Engine.Pages.Services.ArticleContentService.TagSlug(tag);
+                    var menuId = $"tag-menu-{Model.Key}-{tagSlug}";
+                    <button type="button" class="tag-link" popovertarget="@menuId">@tag</button>
+                    <nav class="menu-panel tag-menu" id="@menuId" popover aria-label="Articles tagged @tag">
+                        <div class="md-section-label">Tagged @tag</div>
+                        @foreach (var (node, _) in ParksComputing.Engine.Pages.Services.ArticleContentService.TaggedWith(tagRoot, tagSlug))
+                        {
+                            var date = ParksComputing.Engine.Pages.Services.NavService.EffectiveDate(node);
+                            <div class="md-row"><a class="md-item" href="/?open=@node.Slug&top=@node.Slug" data-win-open="@node.Slug">@(node.Title ?? node.Slug)@if (date is not null) {<span class="md-meta">@date.Value.ToString("d MMMM yyyy")</span>}</a></div>
+                        }
+                    </nav>
+                }
+            </nav>
+        }
         @if (Model.FrameUrl is not null)
         {
             @* A framed external destination: the site asserted it permits
@@ -54,30 +81,6 @@
         }
         else if (Model.Parent is null)
         {
-            @* The tag row: each tag opens a menu of the articles under it,
-               and choosing one opens that article's window. A list is a
-               choice to make, not a place to keep, so it gets no window of
-               its own. The menu is a popover, so it works without script. *@
-            if (Model.Tags.Length > 0)
-            {
-                var tagRoot = TagNav.GetRoot();
-                <nav class="page-tags" aria-label="Tags">
-                    @foreach (var tag in Model.Tags)
-                    {
-                        var tagSlug = ParksComputing.Engine.Pages.Services.ArticleContentService.TagSlug(tag);
-                        var menuId = $"tag-menu-{Model.Key}-{tagSlug}";
-                        <button type="button" class="tag-link" popovertarget="@menuId">@tag</button>
-                        <nav class="menu-panel tag-menu" id="@menuId" popover aria-label="Articles tagged @tag">
-                            <div class="md-section-label">Tagged @tag</div>
-                            @foreach (var (node, _) in ParksComputing.Engine.Pages.Services.ArticleContentService.TaggedWith(tagRoot, tagSlug))
-                            {
-                                var date = ParksComputing.Engine.Pages.Services.NavService.EffectiveDate(node);
-                                <div class="md-row"><a class="md-item" href="/?open=@node.Slug&top=@node.Slug" data-win-open="@node.Slug">@(node.Title ?? node.Slug)@if (date is not null) {<span class="md-meta">@date.Value.ToString("d MMMM yyyy")</span>}</a></div>
-                            }
-                        </nav>
-                    }
-                </nav>
-            }
             <div class="post-content">
                 @if (Model.Created is not null || Model.Updated is not null)
                 {

@@ -57,7 +57,10 @@
     bool isApplet = Model.MetaElements?.Any(m => m.OuterHtml.Contains("applet-page", System.StringComparison.OrdinalIgnoreCase)) ?? false;
 }
 @{
-    var pageTags = isApplet ? null : Model.NavService.GetNavNode(ViewData["PageId"]?.ToString() ?? string.Empty)?.Tags;
+    // A page framed in a window (?frame) leaves its tags to the window,
+    // whose row opens a menu in the window view.
+    bool framed = ViewContext.HttpContext.Request.Query.ContainsKey("frame");
+    var pageTags = isApplet || framed ? null : Model.NavService.GetNavNode(ViewData["PageId"]?.ToString() ?? string.Empty)?.Tags;
 }
 @if (pageTags is { Length: > 0 })
 {
