@@ -41,7 +41,7 @@ Editor is an applet at `/page/editor` that edits the reader's files.
 ## Order of work
 
 1. The shared filesystem, with the terminal moved onto it and its test suites unchanged. Done.
-2. Files, browsing and opening.
-3. Files, changing `~`.
-4. Editor.
-5. The links between the three.
+2. Files, browsing and opening. Done.
+3. Files, changing `~`. Done.
+4. Editor. Done.
+5. The links between the three. Done: Files opens files in the Editor (an open editor takes the file as a new tab, through a `pc:editor-open` event), "Run in the terminal" hands the terminal a `run` it only pre-fills, and the terminal has `edit -g` and an `open` that sends a reader's file to the Editor.

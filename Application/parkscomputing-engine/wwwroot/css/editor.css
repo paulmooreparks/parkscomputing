@@ -1,0 +1,70 @@
+/* Editor: CodeMirror 6 in PUDL's clothes. The toolbar's controls are
+   raised, the editing surface is sunken like any input, and the tabs and
+   the status line are flat things to read. CodeMirror's own colours come
+   from the PUDL tokens in js/editor.js, so both themes apply. */
+
+.pc-editor {
+  display: flex; flex-direction: column; gap: 6px;
+  height: min(80svh, 820px); min-height: 360px;
+  font-size: var(--text-sm);
+}
+.pc-editor .ed-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pc-editor .ed-toolbar .icon-btn svg { width: 15px; height: 15px; }
+.pc-editor .ed-sep { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+.pc-editor .ed-spacer { flex: 1; }
+.pc-editor .ed-wrap { margin: 0 0 0 6px; font-size: var(--text-sm); }
+.pc-editor .ed-readonly {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: var(--text-muted); font-weight: 600; font-size: var(--text-xs);
+}
+.pc-editor .ed-readonly[hidden] { display: none; }
+.pc-editor .ed-readonly svg { width: 13px; height: 13px; }
+
+/* The tabs: one per open file, the current one lifted, and a dot for
+   unsaved changes (with its words for a screen reader). */
+.pc-editor .ed-tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--border); min-height: 30px; }
+.pc-editor .ed-tab {
+  display: inline-flex; align-items: center; flex: none;
+  border: 1px solid transparent; border-bottom: 0; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+.pc-editor .ed-tab-on { background: var(--surface); border-color: var(--border); margin-bottom: -1px; }
+.pc-editor .ed-tab-btn {
+  background: none; border: 0; cursor: pointer; color: var(--text-muted);
+  font: 600 var(--text-sm) var(--font); padding: 5px 4px 5px 10px; white-space: nowrap;
+}
+.pc-editor .ed-tab-on .ed-tab-btn { color: var(--text); }
+.pc-editor .ed-tab-btn:focus-visible, .pc-editor .ed-tab-close:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); border-radius: 3px; }
+.pc-editor .ed-dot { color: var(--accent); }
+.pc-editor .ed-ro-mark { font-weight: 400; color: var(--text-muted); }
+.pc-editor .ed-tab-close {
+  background: none; border: 0; cursor: pointer; color: var(--text-muted);
+  font-size: 15px; line-height: 1; padding: 2px 8px 2px 4px;
+}
+.pc-editor .ed-tab-close:hover { color: var(--text); }
+
+.pc-editor .ed-surface {
+  flex: 1 1 auto; min-height: 0; overflow: hidden;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  box-shadow: var(--recess-shadow); background: var(--input-bg);
+}
+.pc-editor .ed-surface .cm-editor { height: 100%; }
+
+.pc-editor .ed-status {
+  display: flex; flex-wrap: wrap; gap: 4px var(--space-4);
+  color: var(--text-muted); font-size: var(--text-xs); min-height: 1.5em;
+}
+.pc-editor .ed-status [data-role="where"] { font-family: var(--mono); color: var(--text); }
+.pc-editor .ed-message { flex-basis: 100%; }
+.pc-editor .ed-message-error { color: var(--danger); }
+.pc-editor .ed-failed { color: var(--text-muted); padding: var(--space-4); }
+.pc-editor .ed-dialog .form-input { width: 100%; }
+.pc-editor .ed-dialog .dialog-actions { gap: 8px; }
+
+/* === Filling a window ==================================================== */
+.pc-editor-fill { flex: 1 1 auto; height: auto; min-height: 0; }
+.win-body:has(.pc-editor-fill) { display: flex; flex-direction: column; overflow: hidden; }
+.win-body:has(.pc-editor-fill) .post-content {
+  flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+  max-width: none; margin: 0; padding: 0;
+}
+.win-body:has(.pc-editor-fill) .post-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }

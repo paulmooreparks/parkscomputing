@@ -425,7 +425,7 @@
             var n = needNode(io, args[0], 'open: ' + args[0]);
             if (!n) { return 1; }
             if (n.children) { io.err('open: ' + args[0] + ': is a directory (try "cd")'); return 1; }
-            if (realOf(n).home) { io.err('open: ' + args[0] + ' is one of your files. Change it with "edit", or use it with a command such as "conway" or "sudoku".'); return 1; }
+            if (realOf(n).home) { return io.openEditor(args[0]); }
             io.open(realOf(n));
         }
     });
@@ -562,10 +562,13 @@
 
     command('edit', {
         summary: 'edit a file in your home directory',
-        help: 'edit <file>\n\nOpens a file in a full-screen editor, creating it if it does not exist yet. Only files in your home directory (~) can be changed.\n\n  Ctrl+S   save (Ctrl+O works too)\n  Ctrl+X   exit, asking to save any changes\n  Ctrl+K   cut the current line\n  Ctrl+U   paste the lines cut last\n  Ctrl+G   show the keys\n\nThe arrow keys, Home, End, Page Up and Page Down move around.',
+        help: 'edit [-g] <file>\n\nOpens a file in a full-screen editor, creating it if it does not exist yet. Only files in your home directory (~) can be changed.\n\n  Ctrl+S   save (Ctrl+O works too)\n  Ctrl+X   exit, asking to save any changes\n  Ctrl+K   cut the current line\n  Ctrl+U   paste the lines cut last\n  Ctrl+G   show the keys\n\nThe arrow keys, Home, End, Page Up and Page Down move around.\n\nWith -g the file opens in the graphical Editor instead, which has tabs, syntax colouring, and search and replace.',
         complete: 'file',
         run: function (args, io) {
+            var graphical = args[0] === '-g';
+            if (graphical) { args = args.slice(1); }
             if (!args.length) { io.err('edit: which file? For a new one, give it a name: edit ~/notes'); return 1; }
+            if (graphical) { return io.openEditor(args[0]); }
             return io.edit(args[0]);
         }
     });
@@ -899,7 +902,10 @@
         var destroyed = false;
         var term = null, fit = null, fs = null, cwd = null, ro = null;
         var initialCwd = cwdFrom(opts.state) || (opts.ownsUrl ? cwdFrom(location.search) : null) || '/';
-        var prefill = opts.ownsUrl ? (new URLSearchParams(location.search).get('run') || '') : '';
+        /* A command to put at the prompt, never to run: from the page's own
+           address, or handed over by Files' "Run in the terminal". */
+        var prefill = (opts.state && new URLSearchParams(String(opts.state)).get('run')) ||
+            (opts.ownsUrl ? (new URLSearchParams(location.search).get('run') || '') : '');
 
         function cwdFrom(s) {
             if (!s) { return null; }
@@ -1158,6 +1164,7 @@
                 prefetch: prefetchTexts,
                 open: openEntry,
                 edit: editor,
+                openEditor: openEditor,
                 download: download,
                 upload: upload,
                 clear: function () { term.clear(); },
@@ -1234,6 +1241,23 @@
         /* Opens a page, an applet or a link the way the current view opens
            things. An applet may be handed a starting state, and a page of
            its own takes a query instead. */
+        /* Opens a file in the graphical Editor: an open editor is asked to
+           open it in a tab, and otherwise one opens with it. */
+        function openEditor(path) {
+            var n = resolve(fs, cwd, path);
+            if (n && n.children) { write(paint('red', path + ': is a directory') + '\n'); return 1; }
+            var target = n ? displayPath(realOf(n)) : (path[0] === '/' || path[0] === '~' ? path : displayPath(cwd).replace(/\/$/, '') + '/' + path);
+            var inWindows = opts.host === 'window' && window.pudlWindows;
+            if (inWindows && (window.pudlWindows.state().open || []).indexOf('editor') >= 0) {
+                document.dispatchEvent(new CustomEvent('pc:editor-open', { detail: { path: target } }));
+                window.pudlWindows.raise('editor');
+                return 0;
+            }
+            var st = 'file=' + encodeURIComponent(target).replace(/%2F/g, '/').replace(/%7E/g, '~');
+            openEntry({ name: 'editor', kind: 'app', title: 'Editor' }, st, st);
+            return 0;
+        }
+
         function openEntry(n, state, pageQuery) {
             if (n.kind === 'link') { window.open(n.url, '_blank', 'noopener'); return; }
             var inWindows = opts.host === 'window' && window.pudlWindows;

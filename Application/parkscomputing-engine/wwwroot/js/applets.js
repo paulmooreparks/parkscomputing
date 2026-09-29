@@ -52,5 +52,21 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: '/page/terminal',
-    ver: '15'
+    ver: '16'
+});
+
+/* Files and the editor use the same site filesystem as the terminal. */
+pudlApplets.define('files', {
+    src: '/js/files.js',
+    css: '/css/files.css',
+    page: '/page/files',
+    ver: '3'
+});
+
+/* The editor loads CodeMirror 6 from js/vendor beside itself. */
+pudlApplets.define('editor', {
+    src: '/js/editor.js',
+    css: '/css/editor.css',
+    page: '/page/editor',
+    ver: '1'
 });

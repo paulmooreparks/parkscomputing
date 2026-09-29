@@ -121,7 +121,7 @@ A file's name is the last part of its address on the site, so `/articles/coincid
 | --- | --- |
 | `cat <file...>` | Print a file. A page prints as plain text, with each link's address after it in angle brackets and each image as `[image: its description]`. A link to another site prints its address. With nothing but a pipe feeding it, `cat` passes the text straight through. |
 | `less <file>` | Show a file a screen at a time (keys below). It can also page through whatever is piped into it, such as the long listing of every article. |
-| `open <path>` | Open a page, an applet or a link the way the site normally does: as a window in the window view, or by going to the page in the classic view. A link to another site opens in a new tab. |
+| `open <path>` | Open a page, an applet or a link the way the site normally does: as a window in the window view, or by going to the page in the classic view. A link to another site opens in a new tab, and one of your own files opens in the graphical Editor. |
 | `grep [-i] [-l] [-r] pattern [path...]` | Print the lines that match a pattern, with the matches highlighted. The pattern is a regular expression, so `grep "^## "` finds the section headings in a page. `-i` ignores case, `-l` prints only the names of the files that match, and `-r` searches every file under a directory (the current one if you name none). Without a path, it searches what's piped into it. |
 | `tags` | List every tag and how many articles carry it. |
 
@@ -158,7 +158,7 @@ In the window view each applet opens as a window beside the terminal. In the cla
 
 | Command | What it does |
 | --- | --- |
-| `edit <file>` | Open a file in the editor, creating it if it doesn't exist. `nano` is another name for it. |
+| `edit [-g] <file>` | Open a file in the terminal's editor, creating it if it doesn't exist. `nano` is another name for it. With `-g` the file opens in the graphical [Editor](/page/editor) instead. |
 | `touch <file...>` | Create an empty file, or update the time on one that exists. |
 | `mkdir [-p] <directory...>` | Make a directory. `-p` makes any missing directories along the way and doesn't complain if it exists. |
 | `rm [-r] <path...>` | Remove files. `-r` removes a directory and everything in it. |
@@ -244,6 +244,15 @@ A few details:
 - Tabs are turned into spaces, and every saved file ends with a line break.
 - If you edit a file that doesn't exist yet, it's created the first time you save, as long as it's in your home directory.
 - Browsers keep a few keys for themselves, such as Ctrl+W and Ctrl+T, so the editor doesn't use them.
+
+## Files and the Editor
+
+The terminal has two graphical companions under **Applets**, and all three see the same files. A file you save in one appears in the others straight away, even in another tab.
+
+- **[Files](/page/files)** shows the site and your home directory as folders, with your home directory at the top. Double-click a folder to open it, a page to read it, an applet to launch it, or one of your files to edit it. Inside `~`, and only there, you can make files and folders, rename, move (drag an entry onto a folder), delete, download, and upload, including by dropping files from your computer onto the list. The Actions menu has "Open a terminal here", which opens the terminal in the folder you're looking at, and "Run in the terminal", which types a script's name at the prompt for you.
+- **[Editor](/page/editor)** is a full graphical editor, with tabs for several files, syntax colouring for Markdown, JSON and scripts, search and replace, and undo. Ctrl+S saves. A page of the site opens read-only, with "Save a copy to ~" to keep a copy you can change. `~/barcode-layouts.json` is checked as you type, and won't save while it has a mistake.
+
+From the terminal, `edit -g <file>` and `open <file>` send one of your files to the Editor.
 
 ## Files the applets understand
 

@@ -1,0 +1,118 @@
+/* Files: the site's sandbox as folders and files. PUDL's own parts carry
+   it (buttons, a menu, a data table, a dialog, chips); what PUDL has no
+   component for yet, the folder tree and the breadcrumb, is drawn here in
+   PUDL's categories: the tree and the list are flat things to read and
+   choose from, the toolbar's controls are raised, and the dialog's input
+   is sunken. */
+
+.pc-files {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  height: min(78svh, 760px); min-height: 360px;
+  font-size: var(--text-sm);
+}
+
+/* === Toolbar ============================================================= */
+.pc-files .fm-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pc-files .fm-toolbar .icon-btn svg { width: 15px; height: 15px; }
+.pc-files .fm-spacer { flex: 1; }
+.pc-files .fm-home-tools { display: inline-flex; gap: 6px; }
+.pc-files .fm-home-tools[hidden] { display: none; }
+.pc-files .fm-crumbs {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 2px;
+  font-family: var(--mono); font-size: var(--text-sm); min-width: 0;
+}
+.pc-files .fm-crumb { padding: 2px 4px; border-radius: var(--radius-sm); }
+.pc-files .fm-crumb[aria-current] { font-weight: 700; color: var(--text); }
+.pc-files .fm-crumb-sep { color: var(--text-muted); }
+
+/* === Body: the tree and the list ======================================== */
+.pc-files .fm-body {
+  flex: 1 1 auto; min-height: 0;
+  display: grid; grid-template-columns: minmax(170px, 28%) 1fr; gap: var(--space-2);
+}
+.pc-files .fm-tree, .pc-files .fm-main {
+  min-height: 0; overflow: auto;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.pc-files .fm-tree { padding: 4px 0; }
+.pc-files .fm-ti {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 8px 3px calc(8px + var(--depth, 0) * 14px);
+  cursor: pointer; white-space: nowrap; border-left: 3px solid transparent;
+}
+.pc-files .fm-ti:hover { background: var(--surface-alt); }
+.pc-files .fm-ti:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--focus-ring); }
+.pc-files .fm-ti-current { background: var(--surface-alt); border-left-color: var(--accent); font-weight: 700; }
+.pc-files .fm-twisty { width: 12px; flex: none; text-align: center; color: var(--text-muted); font-size: 10px; }
+.pc-files .fm-ti-label { overflow: hidden; text-overflow: ellipsis; }
+
+.pc-files .fm-main { position: relative; }
+.pc-files .fm-list { width: 100%; margin: 0; border: 0; }
+.pc-files .fm-list th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+.pc-files .fm-row { cursor: pointer; }
+.pc-files .fm-row:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--focus-ring); }
+.pc-files .fm-row.fm-selected td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.pc-files .fm-c-name { width: 55%; }
+.pc-files .fm-c-kind, .pc-files .fm-c-date, .pc-files .fm-c-size { color: var(--text-muted); white-space: nowrap; }
+.pc-files .fm-c-size { text-align: right; font-variant-numeric: tabular-nums; }
+.pc-files .fm-list th, .pc-files .fm-list td { font-size: var(--text-sm); line-height: 1.4; padding: 5px 10px; vertical-align: middle; }
+.pc-files .fm-cell { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pc-files .fm-name { font-family: var(--mono); }
+.pc-files .fm-title { color: var(--text-muted); font-size: var(--text-xs); }
+.pc-files .fm-empty { margin: var(--space-4); color: var(--text-muted); }
+
+/* A drop into ~ shows where it lands. */
+.pc-files .fm-drop-hint { display: none; }
+.pc-files .fm-main.fm-dragging { box-shadow: inset 0 0 0 2px var(--accent); }
+.pc-files .fm-main.fm-dragging .fm-drop-hint {
+  display: block; position: absolute; left: 50%; bottom: var(--space-3); transform: translateX(-50%);
+  margin: 0; padding: 4px 10px; border-radius: var(--radius-pill);
+  background: var(--accent); color: var(--on-accent); font-weight: 600;
+}
+.pc-files .fm-drop-target td, .pc-files .fm-ti.fm-drop-target { box-shadow: inset 0 0 0 2px var(--accent); }
+
+/* === Glyphs: one shape and one colour for each kind ===================== */
+.pc-files .fm-glyph { width: 15px; height: 15px; flex: none; align-self: center; }
+.pc-files .fm-k-dir { color: var(--accent); }
+.pc-files .fm-k-page { color: var(--text-muted); }
+.pc-files .fm-k-app { color: var(--positive); }
+.pc-files .fm-k-script { color: var(--warn); }
+.pc-files .fm-k-link { color: #0e7490; }
+:root[data-theme="dark"] .pc-files .fm-k-link { color: #22d3ee; }
+.pc-files .fm-k-file { color: var(--text); }
+
+/* === Detail and status ================================================== */
+.pc-files .fm-detail {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--space-3);
+  min-height: 1.6em; color: var(--text);
+}
+.pc-files .fm-d-title { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+.pc-files .fm-d-meta { color: var(--text-muted); }
+.pc-files .fm-d-desc { flex-basis: 100%; }
+.pc-files .fm-d-tags { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px; }
+.pc-files .fm-status { margin: 0; min-height: 1.4em; color: var(--text-muted); }
+.pc-files .fm-status-error { color: var(--danger); }
+.pc-files .fm-failed { color: var(--text-muted); padding: var(--space-4); }
+.pc-files .fm-dialog .dialog-body .form-input { width: 100%; }
+
+/* === Narrow: the tree gives way to the list ============================== */
+@container (max-width: 560px) {
+  .pc-files .fm-body { grid-template-columns: 1fr; }
+  .pc-files .fm-tree { display: none; }
+  .pc-files .fm-c-kind, .pc-files .fm-c-date { display: none; }
+}
+@media (max-width: 640px) {
+  .pc-files .fm-body { grid-template-columns: 1fr; }
+  .pc-files .fm-tree { display: none; }
+  .pc-files .fm-c-kind, .pc-files .fm-c-date { display: none; }
+}
+
+/* === Filling a window ==================================================== */
+.pc-files-fill { flex: 1 1 auto; height: auto; min-height: 0; container-type: inline-size; }
+.win-body:has(.pc-files-fill) { display: flex; flex-direction: column; overflow: hidden; }
+.win-body:has(.pc-files-fill) .post-content {
+  flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+  max-width: none; margin: 0; padding: 0;
+}
+.win-body:has(.pc-files-fill) .post-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
