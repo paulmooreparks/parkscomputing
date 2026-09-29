@@ -365,6 +365,7 @@
                 '<p class="form-help">One layout object. The <a href="' + GUIDE_URL + '#format" data-win-open="' + GUIDE_KEY + '">guide</a> describes every key. It is saved in this browser, and in your layouts file if one is linked.</p>' +
                 '<textarea class="form-textarea bt-json" data-role="json" spellcheck="false" aria-label="Layout JSON"></textarea>' +
                 '<ul class="form-error bt-json-errors" data-role="json-errors" hidden></ul>' +
+                '<p class="form-help" data-role="json-file" hidden>Or <a href="#" data-action="edit-file">edit every layout at once</a>, as the file ~/barcode-layouts.json. This dialog closes without saving.</p>' +
               '</div>' +
               '<div class="dialog-actions">' +
                 '<button type="button" class="btn" data-action="json-cancel">Cancel</button>' +
@@ -405,7 +406,7 @@
             status: q('[data-role="status"]'), legend: q('[data-role="legend"]'), explain: q('[data-role="explain"]'),
             mm: q('[data-role="mm"]'), scan: q('[data-role="scan"]'), results: q('[data-role="results"]'),
             file: q('[data-role="file"]'), dialog: q('[data-role="json-dialog"]'), json: q('[data-role="json"]'),
-            jsonErrors: q('[data-role="json-errors"]'), colorsFlag: q('[data-role="colors-flag"]'),
+            jsonErrors: q('[data-role="json-errors"]'), jsonFile: q('[data-role="json-file"]'), colorsFlag: q('[data-role="colors-flag"]'),
             helpDialog: q('[data-role="help-dialog"]'), noticeAction: q('[data-role="notice-action"]')
         };
 
@@ -428,14 +429,38 @@
         var linked = null;   /* the linked file's handle, once permission is granted */
         var pendingHandle = null;   /* a linked file awaiting permission after a restart */
 
+        function writeLinked(list) {
+            if (!linked) { return; }
+            writeHandle(linked, list).catch(function (err) {
+                notify('Your layouts are saved in this browser, but writing ' + linked.name + ' failed: ' + err.message);
+            });
+        }
+
+        /* The site shows the library as ~/barcode-layouts.json in its
+           shared filesystem, and pc:fs-change is how that filesystem says
+           something changed; saying it here lets an editor with the file
+           open in this page see the change. */
         function saveLibrary(list) {
             cacheLibrary(list);
-            if (linked) {
-                writeHandle(linked, list).catch(function (err) {
-                    notify('Your layouts are saved in this browser, but writing ' + linked.name + ' failed: ' + err.message);
-                });
-            }
+            writeLinked(list);
+            document.dispatchEvent(new CustomEvent('pc:fs-change', { detail: { reason: 'layouts' } }));
         }
+
+        /* The library changed somewhere else: in an editor, the terminal
+           or another tab. The tool takes the new library, passes it on to
+           a linked file, and redraws; a layout that has gone is let go. */
+        function onLibraryChange() {
+            var fresh = loadLibrary();
+            if (JSON.stringify(fresh) === JSON.stringify(library)) { return; }
+            library = fresh;
+            writeLinked(library);
+            if (st.layout && !findLayout(st.layout)) { selectLayout(''); }
+            else { buildForm(); update(); }
+            renderLayoutMenu();
+        }
+        function onStorage(e) { if (e.key === LIBRARY_KEY || e.key === null) { onLibraryChange(); } }
+        document.addEventListener('pc:fs-change', onLibraryChange);
+        window.addEventListener('storage', onStorage);
 
         /* Adds layouts from a file to the library: file entries win on the
            same id, and demonstration ids are skipped. */
@@ -903,7 +928,21 @@
             if (L && isDemo(L.id)) { obj.id = L.id.replace(/^demo-/, 'my-'); }
             el.json.value = JSON.stringify(obj, null, 2);
             el.jsonErrors.hidden = true;
+            el.jsonFile.hidden = !canEditFile();
             el.dialog.showModal();
+        }
+
+        /* On this site the library is also a file, and whichever applet
+           the site has for opening files can edit it whole. The tool asks
+           the site's handlers (js/handlers.js) and offers it only when one
+           answers. */
+        var LIBRARY_FILE = '~/barcode-layouts.json';
+        function canEditFile() { return !!window.pcOpen && window.pcOpen.can('open', 'file'); }
+        function editFile() {
+            el.dialog.close();
+            if (!window.pcOpen || !window.pcOpen.request('open', { path: LIBRARY_FILE, kind: 'file' }, root)) {
+                notify('Nothing on this page can open the layouts file.');
+            }
         }
 
         function saveJson() {
@@ -991,6 +1030,7 @@
                 case 'new-json': openJson(null); break;
                 case 'edit-json': openJson(findLayout(st.layout)); break;
                 case 'json-cancel': el.dialog.close(); break;
+                case 'edit-file': e.preventDefault(); editFile(); break;
                 case 'json-save': saveJson(); break;
                 case 'remove':
                     library = library.filter(function (L) { return L.id !== st.layout; });
@@ -1086,6 +1126,8 @@
             clearTimeout(writeTimer);
             if (ro) { ro.disconnect(); }
             document.removeEventListener('pudl:theme-change', onTheme);
+            document.removeEventListener('pc:fs-change', onLibraryChange);
+            window.removeEventListener('storage', onStorage);
             root.removeEventListener('click', onClick);
             root.removeEventListener('input', onInput);
             root.removeEventListener('change', onChange);

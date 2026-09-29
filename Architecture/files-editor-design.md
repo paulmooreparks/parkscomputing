@@ -38,10 +38,38 @@ Editor is an applet at `/page/editor` that edits the reader's files.
 - **Checking.** `~/barcode-layouts.json` is checked as the reader types, with the barcode engine's own checks, and it cannot be saved while it fails them.
 - **Integration.** Files opens a reader's file in the Editor. The terminal gains `edit -g <file>` to open the graphical editor instead of nano, and its `open` command opens a reader's file in the Editor where it used to refuse.
 
+## Handlers: how applets ask each other for things
+
+Files used to call the Editor and the terminal by name, the terminal did the same with the Editor, and each carried its own copy of the rules for reaching a running one. Handlers replace that with declarations. An applet says what requests it can serve, and a caller asks for the request without knowing which applet will serve it. The idea is the one the Web App Manifest uses for `file_handlers`, scaled down to one site.
+
+**The requests.** There are three, and each carries a path:
+
+- **open** a file, to read or edit it;
+- **browse** a folder;
+- **shell**, a command line in a folder, optionally with a command to put at the prompt without running it.
+
+**Declarations** live in `js/applets.js`, beside each applet's `define`, as `window.pcHandlers`. Each names the requests the applet serves, the state parameter the path travels in, which kinds of entry it accepts (for open), and whether a request makes a new instance or goes to the running one. Today the Editor serves open (files and scripts, in the parameter `file`), Files serves browse (`path`), and the terminal serves shell (`cwd`, with `run`), in a new instance each time, up to four.
+
+**The resolver** is `js/handlers.js`, `window.pcOpen`, loaded on every page after the registry. `pcOpen.request(verb, path, extra, from)` finds the first applet that declares the request and accepts the entry, and returns false when none does, so the caller can fall back to what it did before (the barcode tool keeps its own layout dialog; Files offers a download). `from` is the caller's element, which tells the resolver which view it is in.
+
+- In the window view, a request for the running instance goes to its window: the window is raised and the mount receives a `pc:applet-request` event whose detail carries the state string. An applet that declares a handler listens for that event on its own root and treats the state as it would a state handed to `setState`. A request for a new instance opens a new window with the state handed over through `pcAppletHandoff`, keyed by the new window's key.
+- In the classic view, a request navigates to the applet's page with the state in its query. When the caller is itself an instance of the target applet, as with `terminal` typed in the terminal's own page, it opens a new browser tab instead, since navigating would replace the caller.
+
+**Instances.** A window's key is its applet's page slug. A second instance takes the key `terminal-2`, then `terminal-3`, and so on, which PUDL's windows accept as any other key. The server answers `/window/{slug}-{n}` for any applet page and n from 2 to 9, with the title "Terminal 2" and the page link pointing at the applet's own page. The server is permissive and the declarations are the policy: the site opens extra instances only of an applet that declares them, and at its limit the resolver raises the most recently opened instance and hands it the request instead.
+
+Each instance keeps its own continuity. The first uses the applet's storage key, and a numbered one adds its window key (`pc-terminal:terminal-2`), which the settings dialog's Forget also clears. The terminal's command history stays shared between instances, as bash's does, and each instance re-reads it before adding a line so no instance overwrites another's.
+
+**The barcode tool** declares no handler. It re-reads its layout library whenever the shared filesystem reports a change, so a save in the Editor, the terminal or another tab reaches it at once, and it writes the change on to a linked layouts file if one is linked. Its layout dialog gains a link that asks for the whole file to be opened, shown only when some applet serves open.
+
+**What stays outside.** Opening a page or launching an applet by name is not a handler request; it stays the plain window or page open it always was. Handlers are for requests where the caller should not care who answers.
+
+This is the site's own mechanism for now. PUDL's `define` keeps unknown keys but neither documents nor exposes them, so the declarations sit in their own object. If it holds up, applets declaring handlers and the runtime routing requests to them is a proposal for PUDL.
+
 ## Order of work
 
 1. The shared filesystem, with the terminal moved onto it and its test suites unchanged. Done.
 2. Files, browsing and opening. Done.
 3. Files, changing `~`. Done.
 4. Editor. Done.
-5. The links between the three. Done: Files opens files in the Editor (an open editor takes the file as a new tab, through a `pc:editor-open` event), "Run in the terminal" hands the terminal a `run` it only pre-fills, and the terminal has `edit -g` and an `open` that sends a reader's file to the Editor.
+5. The links between the three. Done: Files opens files in the Editor (an open editor takes the file as a new tab), "Run in the terminal" hands the terminal a `run` it only pre-fills, and the terminal has `edit -g` and an `open` that sends a reader's file to the Editor.
+6. Handlers, replacing the direct calls of step 5; numbered terminal windows; the barcode tool following its layouts file. Done. The terminal also gained `files [dir]`, and on its own page it now prefers the folder in its address over the one it kept, which it had the wrong way round.

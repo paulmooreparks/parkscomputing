@@ -170,6 +170,12 @@ public class DesktopModel : PageModel {
             var tagList = _content.LoadTagList(key, Root);
             var external = tagList is null ? _content.LoadExternal(key, Root) : null;
             var article = tagList ?? external ?? _content.Load(key);
+            // A numbered instance ("terminal-2") is its applet's page again.
+            string? instanceOf = null;
+            if (article is null) {
+                article = _content.LoadInstance(key);
+                if (article is not null) { instanceOf = ArticleContentService.InstanceBase(key); }
+            }
             if (article is null) { continue; }
             // No window loader produces child windows today (images show in
             // the lightbox dialog); the parent plumbing stays for listings.
@@ -180,7 +186,7 @@ public class DesktopModel : PageModel {
             // A child hides with its parent and is never minimised on its own.
             bool minimized = min.Contains(parent ?? key);
 
-            var node = tagList is null && external is null ? _navService.GetNavNode(key) : null;
+            var node = tagList is null && external is null ? _navService.GetNavNode(instanceOf ?? key) : null;
 
             // A page may prefer a window shape (sitenav win="w,h"); any
             // placement in the URL wins over it.
@@ -194,7 +200,7 @@ public class DesktopModel : PageModel {
                 BodyHtml = article.BodyHtml,
                 // A tag list has no page of its own; an external's page is
                 // the destination itself.
-                PageUrl = external?.FrameUrl ?? (tagList is null ? $"/page/{parent ?? key}" : string.Empty),
+                PageUrl = external?.FrameUrl ?? (tagList is null ? $"/page/{parent ?? instanceOf ?? key}" : string.Empty),
                 FrameUrl = external?.FrameUrl,
                 Parent = parent,
                 OwnDocument = article.RequiresOwnDocument,

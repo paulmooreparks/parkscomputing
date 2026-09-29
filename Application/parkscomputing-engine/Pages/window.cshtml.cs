@@ -52,19 +52,26 @@ public class WindowModel : PageModel {
             return Page();
         }
 
+        // A numbered instance ("terminal-2") is its applet's page again,
+        // with that page's shape and page link.
         var article = _content.Load(key);
+        var slug = key;
+        if (article is null) {
+            article = _content.LoadInstance(key);
+            slug = ArticleContentService.InstanceBase(key) ?? key;
+        }
         if (article is null) { return NotFound(); }
 
         // An applet's window is the app itself: no tag row, no dates. The
         // page's preferred shape (sitenav win="w,h") rides in the markup
         // as the window's default, which a script-side open respects.
-        var node = _navService.GetNavNode(article.Slug);
+        var node = _navService.GetNavNode(slug);
         var shape = WindowViewModel.DefaultPlacement(node?.Win);
         Window = new WindowViewModel {
             Key = article.Slug,
             Title = article.Title,
             BodyHtml = article.BodyHtml,
-            PageUrl = $"/page/{article.Slug}",
+            PageUrl = $"/page/{slug}",
             OwnDocument = article.RequiresOwnDocument,
             Tags = article.IsApplet ? Array.Empty<string>() : node?.Tags ?? Array.Empty<string>(),
             Created = article.IsApplet ? null : node?.Date,

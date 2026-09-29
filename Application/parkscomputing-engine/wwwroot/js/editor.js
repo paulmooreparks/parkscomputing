@@ -298,6 +298,20 @@
             return true;
         }
 
+        /* A file that does not exist yet, in a folder of ~: a tab that
+           creates it when saved. */
+        function newNamed(path) {
+            var sp = F.splitPath(path), dir = F.resolve(F.home(), sp.dir);
+            if (!dir || !dir.children || !dir.home || !F.validName(sp.base)) {
+                newTab();
+                say(path + ': no such file, and one can\'t be made there', true);
+                return;
+            }
+            var display = F.displayPath(dir).replace(/\/$/, '') + '/' + sp.base;
+            addTab({ path: display, name: sp.base, lang: languageFor(display), readOnly: false, fresh: true }, '');
+            say(display + ' is a new file. Saving creates it.');
+        }
+
         function newTab() {
             untitled++;
             addTab({ path: null, name: 'untitled-' + untitled, lang: 'text', readOnly: false }, '');
@@ -341,6 +355,7 @@
             t.saved = text;
             t.modified = false;
             t.external = false;
+            t.fresh = false;
             t.readOnly = false;
             if (renamed) {
                 var lang = languageFor(display);
@@ -350,7 +365,7 @@
             }
             renderTabs();
             announce();
-            say(isLayouts(display) ? 'Saved the layouts. Reopen the barcode tool to see them.' : 'Saved ' + display + '.');
+            say('Saved ' + display + '.');
             return true;
         }
 
@@ -453,6 +468,7 @@
             tabs.forEach(function (t, i) {
                 if (!t.path || t.readOnly) { return; }
                 var node = F.resolve(F.home(), t.path);
+                if (!node && t.fresh) { return; }
                 if (!node) { t.external = true; if (i === active) { say(t.path + ' was deleted or moved somewhere else. Save to keep this text.', true); } return; }
                 var text = F.readHome(F.realOf(node));
                 if (text === t.saved) { return; }
@@ -469,9 +485,14 @@
             renderTabs();
         }
 
-        /* Files asks an open editor to open a file in a tab. */
-        function onOpenRequest(e) { if (e.detail && e.detail.path && F) { openPath(e.detail.path); } }
-        document.addEventListener('pc:editor-open', onOpenRequest);
+        /* A file asked of a running editor through the site's handlers
+           (js/handlers.js) opens in a tab, or a new file by that name. */
+        function onOpenRequest(e) {
+            var f = fileFrom(e.detail && e.detail.state);
+            if (!f || !F || !CM) { return; }
+            openPath(f).then(function (opened) { if (!opened && !F.resolve(F.home(), f)) { newNamed(f); } });
+        }
+        root.addEventListener('pc:applet-request', onOpenRequest);
 
         function onBeforeUnload(e) {
             if (tabs.some(function (t) { return t.modified; })) { e.preventDefault(); e.returnValue = ''; }
@@ -518,7 +539,9 @@
             view = new CM.EditorView({ parent: el.surface });
             unsubscribe = F.onChange(onFsChange);
             var opened = startFile ? await openPath(startFile) : false;
-            if (!opened) { newTab(); if (startFile) { say(startFile + ': no such file, so this is a new one', true); } }
+            if (!opened) {
+                if (startFile && !F.resolve(F.home(), startFile)) { newNamed(startFile); } else { newTab(); }
+            }
             if (!(opts.ownsUrl || root.closest('.win.active'))) { view.contentDOM.blur(); }
         }).catch(function (err) {
             if (destroyed) { return; }
@@ -527,11 +550,11 @@
 
         return {
             state: function () { return stateString() || null; },
-            setState: function (s) { var f = fileFrom(s); if (f && F && CM) { openPath(f); } },
+            setState: function (s) { onOpenRequest({ detail: { state: s } }); },
             destroy: function () {
                 destroyed = true;
                 if (unsubscribe) { unsubscribe(); }
-                document.removeEventListener('pc:editor-open', onOpenRequest);
+                root.removeEventListener('pc:applet-request', onOpenRequest);
                 window.removeEventListener('beforeunload', onBeforeUnload);
                 if (el.dialog.open) { el.dialog.close(); }
                 if (view) { view.destroy(); }

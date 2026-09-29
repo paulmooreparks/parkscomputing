@@ -150,9 +150,12 @@ Each applet runs by its name, as it appears in `/applets`. Some also take argume
 | `conway [pattern or file]` | Open Conway's Game of Life. The patterns from the article are `glider`, `gun` (a Gosper glider gun), `face` and `long`; a file of your own is a pattern in the `.cells` format described below. `life` is another name for it. |
 | `barcodes [symbology] [data]` | Open the barcode tool, set to a symbology and data if you give them: `barcodes ean13 480036140036`. The symbologies are `ean13`, `ean8`, `upca`, `upce`, `gs1-128`, `itf14`, `itf`, `code128`, `code39`, `codabar` and `qr`. `barcode` is another name for it. |
 | `flashcards` | Open the barcode flash cards. |
-| `terminal` | You're already here. |
+| `terminal [dir]` | Open another terminal, in this directory or the one you name. |
+| `files [dir]` | Show this directory, or the one you name, in Files. |
 
 In the window view each applet opens as a window beside the terminal. In the classic view the browser goes to the applet's page, and Back brings you back to the terminal.
+
+You can have up to four terminals open in the window view, titled Terminal, Terminal 2 and so on. Each keeps its own directory and scrollback, and all of them share one command history, so the Up arrow in any of them finds what you typed in the others. With four open, `terminal` moves the newest one to the directory instead of opening a fifth. On the terminal's own page, in the classic view, `terminal` opens the new one in a browser tab.
 
 ### Your files
 
@@ -249,7 +252,7 @@ A few details:
 
 The terminal has two graphical companions under **Applets**, and all three see the same files. A file you save in one appears in the others straight away, even in another tab.
 
-- **[Files](/page/files)** shows the site and your home directory as folders, with your home directory at the top. Double-click a folder to open it, a page to read it, an applet to launch it, or one of your files to edit it. Inside `~`, and only there, you can make files and folders, rename, move (drag an entry onto a folder), delete, download, and upload, including by dropping files from your computer onto the list. The Actions menu has "Open a terminal here", which opens the terminal in the folder you're looking at, and "Run in the terminal", which types a script's name at the prompt for you.
+- **[Files](/page/files)** shows the site and your home directory as folders, with your home directory at the top. Double-click a folder to open it, a page to read it, an applet to launch it, or one of your files to edit it. Inside `~`, and only there, you can make files and folders, rename, move (drag an entry onto a folder), delete, download, and upload, including by dropping files from your computer onto the list. The Actions menu has "Open a terminal here", which opens another terminal in the folder you're looking at, and "Run in the terminal", which types a script's name at the prompt for you.
 - **[Editor](/page/editor)** is a full graphical editor, with tabs for several files, syntax colouring for Markdown, JSON and scripts, search and replace, and undo. Ctrl+S saves. A page of the site opens read-only, with "Save a copy to ~" to keep a copy you can change. `~/barcode-layouts.json` is checked as you type, and won't save while it has a mistake.
 
 From the terminal, `edit -g <file>` and `open <file>` send one of your files to the Editor.
@@ -282,7 +285,7 @@ OOO
 ....8..79
 ```
 
-**Barcode layouts.** `~/barcode-layouts.json` is the barcode tool's library of your own layouts, the same one the tool's Layout menu manages. You can edit it here as JSON. When you save, the file is checked the same way the tool checks an import, and if anything is wrong it isn't saved, and the editor tells you why. Reopen the barcode tool to see your changes. The [barcode tool guide](/page/barcode-tool-guide) describes the layout format in full. You can't delete or rename this file, because it belongs to the tool.
+**Barcode layouts.** `~/barcode-layouts.json` is the barcode tool's library of your own layouts, the same one the tool's Layout menu manages. You can edit it here as JSON. When you save, the file is checked the same way the tool checks an import, and if anything is wrong it isn't saved, and the editor tells you why. An open barcode tool picks up your changes as soon as you save, and a change made in the tool shows up in an open editor the same way. The tool's layout dialog also has a link that opens this file in the Editor. The [barcode tool guide](/page/barcode-tool-guide) describes the layout format in full. You can't delete or rename this file, because it belongs to the tool.
 
 ## Scripts
 

@@ -796,10 +796,34 @@
     });
     alias('barcode', 'barcodes');
 
+    /* Another terminal, and Files, are asked for through the site's
+       handlers (js/handlers.js), not by name. */
+    function folderArg(io, args, label) {
+        var dir = args.length ? io.fs.resolve(args[0]) : io.fs.cwd();
+        if (!dir || !dir.children) { io.err(label + ': ' + args[0] + ': no such directory'); return null; }
+        return pathOf(dir);
+    }
+
     command('terminal', {
-        summary: 'this terminal',
-        help: 'terminal\n\nThe terminal you are using. Running it again leaves you where you are.',
-        run: function (args, io) { io.out('You\'re already in the terminal.\n'); }
+        summary: 'open another terminal',
+        help: 'terminal [dir]\n\nOpens another terminal in this directory, or in the one you name. In the window view it is a new window, up to four terminals; with four open, the newest one moves to the directory instead. On the terminal\'s own page it opens in a new tab.',
+        complete: 'dir',
+        run: function (args, io) {
+            var path = folderArg(io, args, 'terminal');
+            if (!path) { return 1; }
+            if (!io.request('shell', { path: path })) { io.err('terminal: nothing on this site opens another terminal'); return 1; }
+        }
+    });
+
+    command('files', {
+        summary: 'show a directory in Files',
+        help: 'files [dir]\n\nShows this directory, or the one you name, in Files, the graphical file manager.',
+        complete: 'dir',
+        run: function (args, io) {
+            var path = folderArg(io, args, 'files');
+            if (!path) { return 1; }
+            if (!io.request('browse', { path: path })) { io.err('files: nothing on this site browses folders'); return 1; }
+        }
     });
     alias('nano', 'edit');
 
@@ -901,11 +925,13 @@
 
         var destroyed = false;
         var term = null, fit = null, fs = null, cwd = null, ro = null;
-        var initialCwd = cwdFrom(opts.state) || (opts.ownsUrl ? cwdFrom(location.search) : null) || '/';
+        /* On its own page the address wins over the state kept for it, as
+           the site's continuity expects, so a link to a folder opens there. */
+        var initialCwd = (opts.ownsUrl ? cwdFrom(location.search) : null) || cwdFrom(opts.state) || '/';
         /* A command to put at the prompt, never to run: from the page's own
            address, or handed over by Files' "Run in the terminal". */
-        var prefill = (opts.state && new URLSearchParams(String(opts.state)).get('run')) ||
-            (opts.ownsUrl ? (new URLSearchParams(location.search).get('run') || '') : '');
+        var prefill = (opts.ownsUrl ? (new URLSearchParams(location.search).get('run') || '') : '') ||
+            (opts.state && new URLSearchParams(String(opts.state)).get('run')) || '';
 
         function cwdFrom(s) {
             if (!s) { return null; }
@@ -924,9 +950,11 @@
             if (opts.changed) { opts.changed(s); }
         }
 
-        /* History, kept per browser. */
-        var hist = [];
-        try { hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); if (!Array.isArray(hist)) { hist = []; } } catch (err) { hist = []; }
+        /* History, kept per browser and shared by every terminal in it. */
+        function loadHistory() {
+            try { var h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); return Array.isArray(h) ? h : []; } catch (err) { return []; }
+        }
+        var hist = loadHistory();
         function saveHistory() { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(hist.slice(-HISTORY_MAX))); } catch (err) { } }
 
         /* === Line editing ============================================= */
@@ -1075,6 +1103,9 @@
             var text = line.trim();
             write('\n');
             if (text) {
+                /* Other terminals share the history, so read what they
+                   added before adding to it. */
+                hist = loadHistory();
                 if (hist[hist.length - 1] !== text) { hist.push(text); saveHistory(); }
                 busy = true;
                 interrupted = false;
@@ -1084,6 +1115,7 @@
                 if (interrupted) { write('\n'); }
             }
             newPrompt();
+            if (waitingRequest) { var req = waitingRequest; waitingRequest = null; applyRequest(req); }
             var pending = typeahead;
             typeahead = [];
             pending.forEach(onData);
@@ -1163,6 +1195,7 @@
                 },
                 prefetch: prefetchTexts,
                 open: openEntry,
+                request: function (verb, req) { return !!window.pcOpen && window.pcOpen.request(verb, req, root); },
                 edit: editor,
                 openEditor: openEditor,
                 download: download,
@@ -1238,26 +1271,23 @@
             return status;
         }
 
-        /* Opens a page, an applet or a link the way the current view opens
-           things. An applet may be handed a starting state, and a page of
-           its own takes a query instead. */
-        /* Opens a file in the graphical Editor: an open editor is asked to
-           open it in a tab, and otherwise one opens with it. */
+        /* Opens a file in whatever applet opens files, the graphical Editor
+           on this site. A file that does not exist yet opens as a new one. */
         function openEditor(path) {
             var n = resolve(fs, cwd, path);
             if (n && n.children) { write(paint('red', path + ': is a directory') + '\n'); return 1; }
             var target = n ? displayPath(realOf(n)) : (path[0] === '/' || path[0] === '~' ? path : displayPath(cwd).replace(/\/$/, '') + '/' + path);
-            var inWindows = opts.host === 'window' && window.pudlWindows;
-            if (inWindows && (window.pudlWindows.state().open || []).indexOf('editor') >= 0) {
-                document.dispatchEvent(new CustomEvent('pc:editor-open', { detail: { path: target } }));
-                window.pudlWindows.raise('editor');
-                return 0;
+            var kind = n ? F.kindOf(n) : 'file';
+            if (!window.pcOpen || !window.pcOpen.request('open', { path: target, kind: kind }, root)) {
+                write(paint('red', path + ': nothing on this site opens it') + '\n');
+                return 1;
             }
-            var st = 'file=' + encodeURIComponent(target).replace(/%2F/g, '/').replace(/%7E/g, '~');
-            openEntry({ name: 'editor', kind: 'app', title: 'Editor' }, st, st);
             return 0;
         }
 
+        /* Opens a page, an applet or a link the way the current view opens
+           things. An applet may be handed a starting state, and a page of
+           its own takes a query instead. */
         function openEntry(n, state, pageQuery) {
             if (n.kind === 'link') { window.open(n.url, '_blank', 'noopener'); return; }
             var inWindows = opts.host === 'window' && window.pudlWindows;
@@ -1397,7 +1427,7 @@
                     node = res.node;
                     label = displayPath(node);
                     modified = false;
-                    say(node.special ? 'Saved the layouts. Reopen the barcode tool to see them.'
+                    say(node.special ? 'Saved the layouts.'
                         : 'Saved ' + label + ' (' + textLines() + (textLines() === 1 ? ' line)' : ' lines)'));
                     return true;
                 }
@@ -1487,6 +1517,28 @@
         function applyTheme() { if (term) { term.options.theme = themeColors(root); } }
         document.addEventListener('pudl:theme-change', applyTheme);
 
+        /* A shell asked of this terminal through the site's handlers, when
+           no new one could open: it moves to the directory and puts any
+           command at the prompt. While a command runs, which it does when
+           this terminal made the request itself, it waits for the prompt. */
+        var waitingRequest = null;
+        function onRequest(e) {
+            var s = e.detail && e.detail.state;
+            if (!s || !fs || !term) { return; }
+            if (busy) { waitingRequest = s; return; }
+            applyRequest(s);
+        }
+        function applyRequest(s) {
+            var p = cwdFrom(s), n = p ? resolve(fs, fs, p) : null;
+            if (n && n.children) { cwd = n; announce(); }
+            var run = new URLSearchParams(String(s)).get('run');
+            if (run) { line = ''; cursor = 0; }
+            redraw();
+            if (run) { insert(run); }
+            term.focus();
+        }
+        root.addEventListener('pc:applet-request', onRequest);
+
         var boot = Promise.all([loadXterm(), loadSiteFs().then(function (fsApi) { return fsApi.load(); }), loadExtras()]).then(function (results) {
             if (destroyed) { return; }
             fs = results[1];
@@ -1531,6 +1583,7 @@
             destroy: function () {
                 destroyed = true;
                 document.removeEventListener('pudl:theme-change', applyTheme);
+                root.removeEventListener('pc:applet-request', onRequest);
                 if (ro) { ro.disconnect(); }
                 if (term) { term.dispose(); }
             },

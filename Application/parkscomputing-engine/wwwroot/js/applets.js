@@ -28,7 +28,7 @@ pudlApplets.define('barcodes', {
     src: '/js/barcode-tool.js',
     css: '/css/barcode-tool.css',
     page: '/page/barcodes',
-    ver: '11'
+    ver: '12'
 });
 
 pudlApplets.define('flashcards', {
@@ -52,7 +52,7 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: '/page/terminal',
-    ver: '16'
+    ver: '18'
 });
 
 /* Files and the editor use the same site filesystem as the terminal. */
@@ -60,7 +60,7 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: '/page/files',
-    ver: '3'
+    ver: '4'
 });
 
 /* The editor loads CodeMirror 6 from js/vendor beside itself. */
@@ -68,5 +68,17 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: '/page/editor',
-    ver: '1'
+    ver: '2'
 });
+
+/* The requests each applet serves, for js/handlers.js: open a file,
+   browse a folder, or give a shell in one. param is the state parameter
+   the path travels in, kinds limits open to those kinds of entry, extra
+   names further parameters a request may carry, and fresh means each
+   request gets a new instance, up to instances of them. An applet that
+   declares a request listens for pc:applet-request on its mount. */
+window.pcHandlers = {
+    editor: { open: { param: 'file', kinds: ['file', 'script', 'page'] } },
+    files: { browse: { param: 'path' } },
+    terminal: { shell: { param: 'cwd', extra: ['run'], fresh: true }, instances: 4 }
+};

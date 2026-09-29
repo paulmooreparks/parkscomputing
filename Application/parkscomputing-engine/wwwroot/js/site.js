@@ -140,6 +140,14 @@
                 ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku', 'pc-barcodes', 'pc-barcode-layouts', 'pc-terminal', 'pc-terminal-history', 'pc-terminal-home'].forEach(function (key) {
                     try { localStorage.removeItem(key); } catch (err) { }
                 });
+                /* The continuity of numbered instances, such as
+                   pc-terminal:terminal-2. */
+                try {
+                    var prefixes = Object.keys(CONTINUITY).map(function (k) { return CONTINUITY[k] + ':'; });
+                    Object.keys(localStorage).forEach(function (key) {
+                        if (prefixes.some(function (p) { return key.indexOf(p) === 0; })) { localStorage.removeItem(key); }
+                    });
+                } catch (err) { }
                 /* The barcode tool's link to a layouts file on disk; the
                    file itself is the reader's and is left alone. */
                 try { if (window.indexedDB) { indexedDB.deleteDatabase('pc-barcodes'); } } catch (err) { }
@@ -179,17 +187,35 @@
        Forget. */
     var CONTINUITY = { sudoku: 'pc-sudoku', barcodes: 'pc-barcodes', terminal: 'pc-terminal' };
 
+    /* A window's key names the instance: the applet's own name for the
+       first, and name-2, name-3 and so on for the numbered ones
+       js/handlers.js opens. Outside a window it is the applet's name. */
+    function instanceKey(mount, name) {
+        var win = mount.closest && mount.closest('.win[data-win]');
+        return win ? win.getAttribute('data-win') : name;
+    }
+    /* The first instance keeps the applet's storage key, so continuity
+       kept before instances existed still applies; a numbered one adds its
+       window key. */
+    function continuityKey(mount, name) {
+        var key = CONTINUITY[name], inst = instanceKey(mount, name);
+        return key && inst !== name ? key + ':' + inst : key;
+    }
+
     document.addEventListener('pudl:applet-state', function (e) {
         /* A one-shot hand-off: an applet opening another instance of
            itself elsewhere (Conway's "Open this board") leaves the state
-           here for the new instance, which takes it once. */
+           here for the new instance, which takes it once. It is keyed by
+           the instance, so a new terminal-2 takes its own. */
         var handoff = window.pcAppletHandoff;
-        if (handoff && e.detail && Object.prototype.hasOwnProperty.call(handoff, e.detail.name)) {
-            e.detail.state = handoff[e.detail.name];
-            delete handoff[e.detail.name];
+        var name = e.detail && e.detail.name;
+        var inst = name ? instanceKey(e.target, name) : null;
+        if (handoff && inst && Object.prototype.hasOwnProperty.call(handoff, inst)) {
+            e.detail.state = handoff[inst];
+            delete handoff[inst];
             return;
         }
-        var key = CONTINUITY[e.detail && e.detail.name];
+        var key = name ? continuityKey(e.target, name) : null;
         if (!key || (e.detail && e.detail.param)) { return; }
         try {
             var kept = localStorage.getItem(key);
@@ -200,7 +226,7 @@
     document.addEventListener('pudl:applet-change', function (e) {
         var mount = e.target;
         if (!mount.getAttribute) { return; }
-        var key = CONTINUITY[mount.getAttribute('data-applet')];
+        var key = continuityKey(mount, mount.getAttribute('data-applet'));
         if (!key || mount.hasAttribute('data-applet-param')) { return; }
         try {
             if (e.detail && e.detail.state != null) { localStorage.setItem(key, e.detail.state); }

@@ -280,12 +280,12 @@
         /* The actions menu offers only what applies: changing ~ is not on
            offer outside it. */
         function renderMenu() {
-            var items = [], c = selected, home = inHome(cwd);
+            var items = [], c = selected, home = inHome(cwd), shell = canOpen('shell');
             if (c) {
-                var kind = F.kindOf(c), r = F.realOf(c);
-                items.push(['open', kind === 'dir' ? 'Open folder' : kind === 'app' ? 'Launch' : kind === 'link' ? 'Open link in a new tab' : kind === 'file' || kind === 'script' && r.home ? 'Open in the editor' : 'Open']);
-                if (kind !== 'dir' && kind !== 'link' && kind !== 'app') { items.push(['edit', r.home ? 'Edit' : 'View in the editor']); }
-                if (kind === 'script' || kind === 'app') { items.push(['run', 'Run in the terminal']); }
+                var kind = F.kindOf(c), r = F.realOf(c), editable = canOpen('open', kind);
+                items.push(['open', kind === 'dir' ? 'Open folder' : kind === 'app' ? 'Launch' : kind === 'link' ? 'Open link in a new tab' : (kind === 'file' || kind === 'script') && editable ? 'Open in the editor' : 'Open']);
+                if (kind !== 'dir' && kind !== 'link' && kind !== 'app' && editable) { items.push(['edit', r.home ? 'Edit' : 'View in the editor']); }
+                if ((kind === 'script' || kind === 'app') && shell) { items.push(['run', 'Run in the terminal']); }
                 if (kind !== 'dir') { items.push(['download', 'Download']); }
                 if (r.home && !r.special) {
                     items.push(['sep']);
@@ -301,8 +301,10 @@
                 items.push(['new-folder', 'New folder…']);
                 items.push(['upload', 'Upload…']);
             }
-            items.push(['sep']);
-            items.push(['terminal', 'Open a terminal here']);
+            if (shell) {
+                items.push(['sep']);
+                items.push(['terminal', 'Open a terminal here']);
+            }
             var html = '';
             items.forEach(function (it, i) {
                 if (it[0] === 'sep') { if (html && i < items.length - 1 && items[i + 1][0] !== 'sep') { html += '<div class="menu-sep" role="separator"></div>'; } return; }
@@ -315,47 +317,35 @@
 
         var inWindows = function () { return opts.host === 'window' && window.pudlWindows; };
 
-        function openApplet(name, state, query) {
-            if (inWindows()) {
-                if (state != null) {
-                    window.pcAppletHandoff = window.pcAppletHandoff || {};
-                    window.pcAppletHandoff[name] = state;
-                    if ((window.pudlWindows.state().open || []).indexOf(name) >= 0) { window.pudlWindows.close(name); }
-                }
-                window.pudlWindows.open(name);
-                return;
-            }
-            location.assign('/page/' + encodeURIComponent(name) + (query != null ? '?' + query : state ? '?' + state : ''));
-        }
+        /* Files and shells are asked for through the site's handlers
+           (js/handlers.js): whichever applet serves the request answers,
+           and an action with nothing to serve it is not offered. */
+        function canOpen(verb, kind) { return !!window.pcOpen && window.pcOpen.can(verb, kind); }
+        function request(verb, req) { return !!window.pcOpen && window.pcOpen.request(verb, req, root); }
 
-        /* The editor takes a file by path: an open editor is asked to open
-           it in a tab, and otherwise one opens with it. */
         function openInEditor(node) {
-            var path = F.displayPath(F.realOf(node));
-            var open = inWindows() && (window.pudlWindows.state().open || []).indexOf('editor') >= 0;
-            if (open) {
-                document.dispatchEvent(new CustomEvent('pc:editor-open', { detail: { path: path } }));
-                window.pudlWindows.raise('editor');
-                return;
-            }
-            var st = 'file=' + encodeURIComponent(path).replace(/%2F/g, '/');
-            openApplet('editor', st, st);
+            if (!request('open', { path: F.displayPath(F.realOf(node)), kind: F.kindOf(node) })) { say('Nothing on this site opens ' + node.name + '.', true); }
         }
 
         function openEntry(c) {
             var r = F.realOf(c), kind = F.kindOf(c);
             if (kind === 'dir') { go(c); focusList(); return; }
             if (kind === 'link') { window.open(r.url, '_blank', 'noopener'); return; }
-            if (kind === 'file' || (kind === 'script' && r.home)) { openInEditor(c); return; }
-            if (kind === 'script') { openInEditor(c); return; }
+            if (kind === 'file' || kind === 'script') { openInEditor(c); return; }
             if (inWindows()) { window.pudlWindows.open(r.name); return; }
             location.assign('/page/' + encodeURIComponent(r.name));
         }
 
         function openTerminal(run) {
-            var st = 'cwd=' + encodeURIComponent(F.pathOf(cwd)).replace(/%2F/g, '/') + (run ? '&run=' + encodeURIComponent(run) : '');
-            openApplet('terminal', st, st);
+            if (!request('shell', { path: F.pathOf(cwd), run: run })) { say('Nothing on this site opens a terminal.', true); }
         }
+
+        /* A folder asked of this Files through the site's handlers. */
+        function onRequest(e) {
+            var p = pathFrom(e.detail && e.detail.state);
+            if (F && p) { goPath(p); focusList(); }
+        }
+        root.addEventListener('pc:applet-request', onRequest);
 
         /* === Dialogs ====================================================== */
 
@@ -676,6 +666,7 @@
             setState: function (s) { var p = pathFrom(s); if (F && p) { goPath(p); } },
             destroy: function () {
                 destroyed = true;
+                root.removeEventListener('pc:applet-request', onRequest);
                 if (unsubscribe) { unsubscribe(); }
                 if (el.dialog.open) { el.dialog.close(); }
             },

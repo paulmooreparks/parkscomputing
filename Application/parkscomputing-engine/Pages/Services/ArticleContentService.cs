@@ -43,6 +43,32 @@ public class ArticleContentService {
         return raw with { BodyHtml = PrepareWindowBody(raw.Slug, raw.BodyHtml) };
     }
 
+    private static readonly Regex InstanceKeyPattern = new(@"^(?<slug>[A-Za-z0-9_-]+)-(?<n>[2-9])$", RegexOptions.Compiled);
+
+    /// <summary>The applet page a numbered instance key ("terminal-2")
+    /// names, or null when the key is not shaped like one.</summary>
+    public static string? InstanceBase(string? key) {
+        var m = InstanceKeyPattern.Match(key ?? string.Empty);
+        return m.Success ? m.Groups["slug"].Value : null;
+    }
+
+    /// <summary>
+    /// A numbered instance of an applet ("terminal-2"): the applet's page
+    /// again under the instance's key, titled with its number, for the
+    /// windows js/handlers.js opens beside the first. Any applet page may be
+    /// numbered from 2 to 9; which applets the site actually opens more of
+    /// is the handler declarations' business. Null when the key is not an
+    /// instance key or its base is not an applet page. A page whose own slug
+    /// ends in a number is found by Load first and never reaches here.
+    /// </summary>
+    public ArticleWindowContent? LoadInstance(string? key) {
+        var m = InstanceKeyPattern.Match(key ?? string.Empty);
+        if (!m.Success) { return null; }
+        var applet = Load(m.Groups["slug"].Value);
+        if (applet is null || !applet.IsApplet) { return null; }
+        return applet with { Slug = key!, Title = $"{applet.Title} {m.Groups["n"].Value}" };
+    }
+
     private static readonly Regex ExternalKeyPattern = new(@"^ext-(?<slug>[a-z0-9-]+)$", RegexOptions.Compiled);
 
     /// <summary>The window key for a framed external destination.</summary>
