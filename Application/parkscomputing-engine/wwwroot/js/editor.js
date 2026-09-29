@@ -62,26 +62,25 @@
                 '.cm-panels': { backgroundColor: 'var(--surface)', color: 'var(--text)', borderColor: 'var(--border)' },
                 '.cm-panels input, .cm-panels button': { font: 'inherit', fontSize: '13px' },
                 '.cm-tooltip': { backgroundColor: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' },
-                '.cm-diagnostic-error': { borderLeftColor: 'var(--danger)' },
-                '.cm-lintRange-error': { backgroundImage: 'none', textDecoration: 'underline wavy var(--danger)' },
+                '.cm-diagnostic-error': { borderLeftColor: 'var(--syntax-error)' },
+                '.cm-lintRange-error': { backgroundImage: 'none', textDecoration: 'underline wavy var(--syntax-error)' },
                 '&.cm-focused': { outline: 'none' }
             }),
+            /* PUDL's syntax tokens (0.26.0), after the README's CodeMirror
+               recipe, with the Markdown and shell tags this editor meets. */
             CM.syntaxHighlighting(CM.HighlightStyle.define([
-                { tag: CM.tags.heading, fontWeight: '700', color: 'var(--accent)' },
+                { tag: [CM.tags.keyword, CM.tags.operator], color: 'var(--syntax-keyword)' },
+                { tag: [CM.tags.string, CM.tags.special(CM.tags.string), CM.tags.regexp, CM.tags.monospace], color: 'var(--syntax-string)' },
+                { tag: [CM.tags.number, CM.tags.bool, CM.tags.null], color: 'var(--syntax-number)' },
+                { tag: [CM.tags.comment, CM.tags.meta, CM.tags.quote, CM.tags.processingInstruction], color: 'var(--syntax-comment)', fontStyle: 'italic' },
+                { tag: [CM.tags.function(CM.tags.variableName), CM.tags.variableName, CM.tags.definition(CM.tags.variableName)], color: 'var(--syntax-name)' },
+                { tag: [CM.tags.tagName, CM.tags.typeName, CM.tags.angleBracket], color: 'var(--syntax-tag)' },
+                { tag: [CM.tags.attributeName, CM.tags.propertyName], color: 'var(--syntax-attr)' },
+                { tag: CM.tags.heading, color: 'var(--syntax-heading)', fontWeight: '700' },
+                { tag: [CM.tags.link, CM.tags.url], color: 'var(--syntax-link)', textDecoration: 'underline' },
+                { tag: CM.tags.invalid, color: 'var(--syntax-error)' },
                 { tag: CM.tags.strong, fontWeight: '700' },
-                { tag: CM.tags.emphasis, fontStyle: 'italic' },
-                { tag: [CM.tags.link, CM.tags.url], color: 'var(--accent)', textDecoration: 'underline' },
-                { tag: CM.tags.quote, color: 'var(--text-muted)', fontStyle: 'italic' },
-                { tag: CM.tags.monospace, color: 'var(--positive)' },
-                { tag: [CM.tags.string, CM.tags.special(CM.tags.string)], color: 'var(--positive)' },
-                { tag: [CM.tags.number, CM.tags.bool, CM.tags.null], color: 'var(--warn)' },
-                { tag: CM.tags.propertyName, color: 'var(--accent)' },
-                { tag: [CM.tags.comment, CM.tags.meta], color: 'var(--text-muted)', fontStyle: 'italic' },
-                { tag: [CM.tags.keyword, CM.tags.operator], color: 'var(--danger)' },
-                { tag: [CM.tags.variableName, CM.tags.definition(CM.tags.variableName)], color: 'var(--accent)' },
-                { tag: [CM.tags.tagName, CM.tags.angleBracket], color: 'var(--danger)' },
-                { tag: CM.tags.attributeName, color: 'var(--warn)' },
-                { tag: CM.tags.processingInstruction, color: 'var(--text-muted)' }
+                { tag: CM.tags.emphasis, fontStyle: 'italic' }
             ]))
         ];
     }
@@ -107,8 +106,8 @@
               '<span class="ed-spacer"></span>' +
               '<span class="ed-readonly" data-role="readonly" hidden><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Read-only</span>' +
             '</div>' +
-            '<div class="ed-tabs" role="tablist" aria-label="Open files" data-role="tabs"></div>' +
-            '<div class="ed-surface" data-role="surface"></div>' +
+            '<div class="tablist doc-tabs ed-tabs" role="tablist" aria-label="Open files" data-role="tabs"></div>' +
+            '<div class="code-surface ed-surface" data-role="surface"></div>' +
             '<div class="ed-status" data-role="status-bar">' +
               '<span data-role="where"></span><span data-role="lang"></span><span data-role="pos"></span>' +
               '<span class="ed-message" data-role="message" role="status" aria-live="polite"></span>' +
@@ -237,13 +236,16 @@
             if (mod !== tab.modified) { tab.modified = mod; renderTabs(); }
         }
 
+        /* PUDL's document tabs (pudl-tabs.js): the arrow keys move along
+           them, and the close button or Delete asks, through
+           pudl:tab-close, for the tab to close. */
         function renderTabs() {
             el.tabs.innerHTML = tabs.map(function (t, i) {
                 var on = i === active;
-                return '<span class="ed-tab' + (on ? ' ed-tab-on' : '') + '">' +
-                    '<button type="button" role="tab" class="ed-tab-btn" data-tab="' + i + '" aria-selected="' + on + '" tabindex="' + (on ? '0' : '-1') + '" title="' + esc(t.path || t.name) + '">' +
-                    esc(t.name) + (t.modified ? '<span class="ed-dot" aria-label="unsaved changes"> &#9679;</span>' : '') + (t.readOnly ? '<span class="ed-ro-mark"> (read-only)</span>' : '') + '</button>' +
-                    '<button type="button" class="ed-tab-close" data-close="' + i + '" aria-label="Close ' + esc(t.name) + '" title="Close">&#215;</button></span>';
+                return '<button type="button" role="tab" data-tab="' + i + '" aria-selected="' + on + '" tabindex="' + (on ? '0' : '-1') + '" title="' + esc(t.path || t.name) + '">' +
+                    esc(t.name) + (t.readOnly ? '<span class="ed-ro-mark">(read-only)</span>' : '') +
+                    (t.modified ? '<span class="doc-tab-dirty">unsaved</span>' : '') +
+                    '<span class="doc-tab-close" aria-hidden="true" title="Close"></span></button>';
             }).join('');
             var t = current();
             el.where.textContent = t ? (t.path || 'Not saved yet') : '';
@@ -501,9 +503,16 @@
 
         /* === Controls ===================================================== */
 
+        /* A tab closed from the keyboard leaves the focus on the tab that
+           takes its place, so Delete can close one after another. */
+        el.tabs.addEventListener('pudl:tab-close', function (e) {
+            var fromList = el.tabs.contains(document.activeElement);
+            closeTab(+e.target.getAttribute('data-tab')).then(function () {
+                var b = el.tabs.querySelector('[aria-selected="true"]');
+                if (fromList && b) { b.focus(); }
+            });
+        });
         root.addEventListener('click', function (e) {
-            var closeBtn = e.target.closest('[data-close]');
-            if (closeBtn) { closeTab(+closeBtn.getAttribute('data-close')); return; }
             var tabBtn = e.target.closest('[data-tab]');
             if (tabBtn) { activate(+tabBtn.getAttribute('data-tab')); view.focus(); return; }
             var a = e.target.closest('[data-action]');
@@ -517,14 +526,6 @@
                 case 'redo': CM.redo(view); view.focus(); break;
                 case 'find': CM.openSearchPanel(view); break;
             }
-        });
-        el.tabs.addEventListener('keydown', function (e) {
-            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') { return; }
-            var i = Math.max(0, Math.min(tabs.length - 1, active + (e.key === 'ArrowRight' ? 1 : -1)));
-            activate(i);
-            var b = el.tabs.querySelector('[data-tab="' + i + '"]');
-            if (b) { b.focus(); }
-            e.preventDefault();
         });
         el.wrap.addEventListener('change', function () {
             if (view) { view.dispatch({ effects: wrapComp.reconfigure(el.wrap.checked ? CM.EditorView.lineWrapping : []) }); }

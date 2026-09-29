@@ -1,7 +1,7 @@
 /* Editor: CodeMirror 6 in PUDL's clothes. The toolbar's controls are
-   raised, the editing surface is sunken like any input, and the tabs and
-   the status line are flat things to read. CodeMirror's own colours come
-   from the PUDL tokens in js/editor.js, so both themes apply. */
+   raised, the editing surface is sunken like any input, and the status
+   line is flat, for reading. CodeMirror's colours come from PUDL's syntax
+   tokens in js/editor.js, so both themes apply. */
 
 .pc-editor {
   display: flex; flex-direction: column; gap: 6px;
@@ -20,33 +20,11 @@
 .pc-editor .ed-readonly[hidden] { display: none; }
 .pc-editor .ed-readonly svg { width: 13px; height: 13px; }
 
-/* The tabs: one per open file, the current one lifted, and a dot for
-   unsaved changes (with its words for a screen reader). */
-.pc-editor .ed-tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--border); min-height: 30px; }
-.pc-editor .ed-tab {
-  display: inline-flex; align-items: center; flex: none;
-  border: 1px solid transparent; border-bottom: 0; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-}
-.pc-editor .ed-tab-on { background: var(--surface); border-color: var(--border); margin-bottom: -1px; }
-.pc-editor .ed-tab-btn {
-  background: none; border: 0; cursor: pointer; color: var(--text-muted);
-  font: 600 var(--text-sm) var(--font); padding: 5px 4px 5px 10px; white-space: nowrap;
-}
-.pc-editor .ed-tab-on .ed-tab-btn { color: var(--text); }
-.pc-editor .ed-tab-btn:focus-visible, .pc-editor .ed-tab-close:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); border-radius: 3px; }
-.pc-editor .ed-dot { color: var(--accent); }
+/* The tabs are PUDL's document tabs and the surface PUDL's code surface
+   (0.26.0); only their place in the layout is set here. */
+.pc-editor .ed-tabs { min-height: 34px; }
 .pc-editor .ed-ro-mark { font-weight: 400; color: var(--text-muted); }
-.pc-editor .ed-tab-close {
-  background: none; border: 0; cursor: pointer; color: var(--text-muted);
-  font-size: 15px; line-height: 1; padding: 2px 8px 2px 4px;
-}
-.pc-editor .ed-tab-close:hover { color: var(--text); }
-
-.pc-editor .ed-surface {
-  flex: 1 1 auto; min-height: 0; overflow: hidden;
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  box-shadow: var(--recess-shadow); background: var(--input-bg);
-}
+.pc-editor .ed-surface { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 .pc-editor .ed-surface .cm-editor { height: 100%; }
 
 .pc-editor .ed-status {

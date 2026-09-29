@@ -33,20 +33,12 @@
     function fmtDate(d) { return d && !isNaN(d) ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }
     function fmtSize(n) { return n == null ? '' : n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB'; }
 
-    /* A glyph for each kind of entry. The kind is also named in words in
-       its own column, so colour is never the only signal. */
-    var GLYPHS = {
-        dir: '<path d="M1.5 4.5a1 1 0 0 1 1-1h3.6l1.4 1.5h5.9a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1h-10.9a1 1 0 0 1-1-1z"/>',
-        page: '<path d="M3.5 1.5h6l3 3v10h-9z"/><path d="M9.5 1.5v3h3"/><line x1="5.5" y1="8" x2="10.5" y2="8"/><line x1="5.5" y1="10.5" x2="10.5" y2="10.5"/>',
-        app: '<rect x="1.5" y="1.5" width="5" height="5" rx="1"/><rect x="9.5" y="1.5" width="5" height="5" rx="1"/><rect x="1.5" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/>',
-        script: '<rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M4.5 6.5l2 1.75-2 1.75"/><line x1="8" y1="11" x2="11.5" y2="11"/>',
-        link: '<path d="M9 2.5h4.5V7"/><line x1="13.5" y1="2.5" x2="7.5" y2="8.5"/><path d="M12 9.5v3.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3.5"/>',
-        file: '<path d="M3.5 1.5h6l3 3v10h-9z"/><path d="M9.5 1.5v3h3"/>',
-        home: '<path d="M2 7.5L8 2.5l6 5"/><path d="M3.5 6.5v7h9v-7"/><rect x="6.75" y="9.5" width="2.5" height="4"/>'
-    };
+    /* PUDL's glyph for each kind of entry. The shape says the kind, which
+       is also named in words in its own column. */
+    var GLYPHS = { dir: 'folder', page: 'document', app: 'app', script: 'script', link: 'link', file: 'file', home: 'home' };
     var KIND_NAMES = { dir: 'Folder', page: 'Page', app: 'Applet', script: 'Script', link: 'Link', file: 'File' };
-    function glyph(kind, cls) {
-        return '<svg class="fm-glyph fm-k-' + kind + (cls ? ' ' + cls : '') + '" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">' + (GLYPHS[kind] || GLYPHS.file) + '</svg>';
+    function glyph(kind) {
+        return '<span class="glyph" style="--glyph: var(--glyph-' + (GLYPHS[kind] || 'file') + ')" aria-hidden="true"></span>';
     }
 
     var uid = 0;
@@ -60,7 +52,7 @@
             '<div class="fm-toolbar">' +
               '<button type="button" class="icon-btn" data-action="up" aria-label="Up one folder" title="Up one folder"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3.5"/><path d="M4 7.5l4-4 4 4"/></svg></button>' +
               '<button type="button" class="icon-btn" data-action="home" aria-label="Your home directory" title="Your home directory">' + glyph('home') + '</button>' +
-              '<nav class="fm-crumbs" data-role="crumbs" aria-label="Path"></nav>' +
+              '<nav class="path mono fm-path" data-role="crumbs" aria-label="Location"></nav>' +
               '<span class="fm-spacer"></span>' +
               '<span class="fm-home-tools" data-role="home-tools">' +
                 '<button type="button" class="btn btn-sm" data-action="new-file">New file</button>' +
@@ -73,14 +65,14 @@
               '</div>' +
             '</div>' +
             '<div class="fm-body">' +
-              '<div class="fm-tree" data-role="tree" role="tree" aria-label="Folders"></div>' +
-              '<div class="fm-main" data-role="drop">' +
+              '<div class="fm-tree-pane"><ul class="tree fm-tree" data-role="tree" aria-label="Folders"></ul></div>' +
+              '<div class="fm-main drop-zone" data-role="drop">' +
                 '<table class="data-table fm-list" data-role="list" role="grid" aria-label="Contents">' +
-                  '<thead><tr><th scope="col" class="fm-c-name">Name</th><th scope="col" class="fm-c-kind">Kind</th><th scope="col" class="fm-c-date">Date</th><th scope="col" class="fm-c-size">Size</th></tr></thead>' +
+                  '<thead><tr><th scope="col" class="fm-c-name">Name</th><th scope="col" class="fm-c-kind">Kind</th><th scope="col" class="fm-c-date">Date</th><th scope="col" class="fm-c-size num">Size</th></tr></thead>' +
                   '<tbody data-role="rows"></tbody>' +
                 '</table>' +
                 '<p class="fm-empty" data-role="empty" hidden></p>' +
-                '<p class="fm-drop-hint" data-role="drop-hint">Drop text files here to upload them.</p>' +
+                '<p class="drop-hint">Drop text files here to upload them</p>' +
               '</div>' +
             '</div>' +
             '<div class="fm-detail" data-role="detail" aria-live="polite"></div>' +
@@ -183,50 +175,62 @@
             q('[data-action="up"]').disabled = !cwd.parent;
         }
 
+        /* PUDL's path bar: the folders above this one, each an address. */
         function renderCrumbs() {
             var chain = [];
             for (var x = cwd; x; x = x.parent) { chain.unshift(x); }
-            var homeDir = F.home(), html = '', start = 0;
-            var h = chain.indexOf(homeDir);
-            if (h >= 0) { start = h; }
+            var h = chain.indexOf(F.home()), start = h >= 0 ? h : 0, html = '';
             for (var i = start; i < chain.length; i++) {
                 var c = chain[i], label = i === start && h >= 0 ? '~' : (c.parent ? c.name : 'site');
-                var last = i === chain.length - 1;
-                html += (i > start ? '<span class="fm-crumb-sep" aria-hidden="true">/</span>' : '') +
-                    (last ? '<span class="fm-crumb" aria-current="page">' + esc(label) + '</span>'
-                        : '<a class="fm-crumb" href="' + esc(linkFor(c)) + '" data-path="' + esc(F.pathOf(c)) + '">' + esc(label) + '</a>');
+                html += '<li>' + (i === chain.length - 1 ? '<span aria-current="location">' + esc(label) + '</span>'
+                    : '<a href="' + esc(linkFor(c)) + '" data-path="' + esc(F.pathOf(c)) + '">' + esc(label) + '</a>') + '</li>';
             }
-            el.crumbs.innerHTML = html;
+            el.crumbs.innerHTML = '<ol>' + html + '</ol>';
         }
 
         function linkFor(node) { return (opts.pageUrl || '/page/files') + '?path=' + encodeURIComponent(F.pathOf(node)).replace(/%2F/g, '/'); }
 
+        /* PUDL's tree (pudl-tree.js): nested lists of links, one for each
+           folder, each an address of this applet. A closed folder's branch
+           is drawn when it first opens, and the tree takes it in. */
+        function treeNode(node, seen) {
+            var path = F.pathOf(node);
+            var dirs = (node.children || []).filter(function (c) { return c.children; });
+            var open = !!expanded[path];
+            /* ~ shows twice, as its own root and under the site; only its
+               first appearance is the current node. */
+            var current = node === cwd && !seen[path];
+            seen[path] = true;
+            var label = !node.parent ? 'Site' : node === F.home() ? 'Home (~)' : node.name;
+            return '<li><a href="' + esc(linkFor(node)) + '" data-path="' + esc(path) + '"' +
+                (dirs.length ? ' aria-expanded="' + open + '"' : '') + (current ? ' aria-current="location"' : '') + '>' +
+                glyph(node === F.home() ? 'home' : 'dir') + '<span class="fm-ti-label">' + esc(label) + '</span></a>' +
+                (dirs.length && open ? branch(dirs, seen) : '') + '</li>';
+        }
+        function branch(dirs, seen) { return '<ul>' + dirs.map(function (d) { return treeNode(d, seen); }).join('') + '</ul>'; }
+
         function renderTree() {
-            var focusPath = document.activeElement && root.contains(document.activeElement) ? document.activeElement.getAttribute('data-path') : null;
-            var html = '', seen = {};
-            function item(node, depth) {
-                var path = F.pathOf(node);
-                var dirs = (node.children || []).filter(function (c) { return c.children; });
-                var open = !!expanded[path];
-                /* ~ shows twice, as its own root and under the site; only
-                   its first appearance takes the keyboard. */
-                var current = node === cwd && !seen[path];
-                seen[path] = true;
-                var label = !node.parent ? 'Site' : node === F.home() ? 'Home (~)' : node.name;
-                html += '<div class="fm-ti' + (current ? ' fm-ti-current' : '') + '" role="treeitem" data-path="' + esc(path) + '"' +
-                    ' aria-level="' + (depth + 1) + '" aria-selected="' + current + '"' + (dirs.length ? ' aria-expanded="' + open + '"' : '') +
-                    ' tabindex="' + (current ? '0' : '-1') + '" style="--depth:' + depth + '"' + (inHome(node) ? ' data-home' : '') + '>' +
-                    '<span class="fm-twisty" data-toggle aria-hidden="true">' + (dirs.length ? (open ? '&#9662;' : '&#9656;') : '') + '</span>' +
-                    glyph(node === F.home() ? 'home' : 'dir', node === F.home() ? 'fm-k-dir' : '') + '<span class="fm-ti-label">' + esc(label) + '</span></div>';
-                if (open) { dirs.forEach(function (d) { item(d, depth + 1); }); }
-            }
+            var focusPath = document.activeElement && el.tree.contains(document.activeElement) ? document.activeElement.getAttribute('data-path') : null;
+            var seen = {};
             /* Your home directory is a root of its own, first, since it is
                where the changes happen; the site follows. */
-            item(F.home(), 0);
-            item(F.root(), 0);
-            el.tree.innerHTML = html;
-            if (focusPath) { var f = el.tree.querySelector('[data-path="' + CSS.escape(focusPath) + '"]'); if (f) { f.focus(); } }
+            el.tree.innerHTML = treeNode(F.home(), seen) + treeNode(F.root(), seen);
+            if (window.pudlTree) { window.pudlTree.enhance(el.tree); }
+            if (focusPath) {
+                var f = el.tree.querySelector('a[data-path="' + CSS.escape(focusPath) + '"]');
+                if (f) { el.tree.querySelectorAll('a[tabindex="0"]').forEach(function (a) { a.tabIndex = -1; }); f.tabIndex = 0; f.focus(); }
+            }
         }
+
+        el.tree.addEventListener('pudl:tree-toggle', function (e) {
+            var a = e.target, path = a.getAttribute('data-path');
+            expanded[path] = !!(e.detail && e.detail.open);
+            var drawn = a.nextElementSibling && a.nextElementSibling.tagName === 'UL';
+            if (!expanded[path] || drawn) { return; }
+            var node = F.resolve(null, path);
+            a.insertAdjacentHTML('afterend', branch((node ? node.children : []).filter(function (c) { return c.children; }), {}));
+            window.pudlTree.enhance(el.tree);
+        });
 
         function entries() {
             var kids = (cwd.children || []).slice();
@@ -235,21 +239,37 @@
             return kids.filter(function (c) { return c.children; }).concat(kids.filter(function (c) { return !c.children; }));
         }
 
+        /* The address an entry has of its own, which its row's link names:
+           a folder in this applet, a page or an applet on its page, a link
+           where it points. A reader's file lives only in this browser and
+           has none, so its row opens through pudl:row-open instead. */
+        function addressOf(c, r, kind) {
+            if (kind === 'dir') { return linkFor(c); }
+            if (kind === 'page' || kind === 'app') { return '/page/' + encodeURIComponent(r.name); }
+            if (kind === 'link') { return r.url; }
+            return null;
+        }
+
+        /* PUDL's grid (pudl-grid.js): the rows are choices, selection
+           follows focus, and Enter or a double-click opens a row. */
         function renderList() {
             var list = entries(), html = '';
             list.forEach(function (c) {
                 var r = F.realOf(c), kind = F.kindOf(c);
                 var date = r.home ? r.mtime : r.date;
-                var sel = selected === c;
-                html += '<tr class="fm-row' + (sel ? ' fm-selected' : '') + '" data-name="' + esc(c.name) + '" aria-selected="' + sel + '" tabindex="' + (sel || (!selected && c === list[0]) ? '0' : '-1') + '"' +
+                var sel = selected === c, href = addressOf(c, r, kind);
+                var name = esc(c.name) + (kind === 'dir' ? '/' : '');
+                html += '<tr class="fm-row" data-name="' + esc(c.name) + '" aria-selected="' + sel + '" tabindex="' + (sel || (!selected && c === list[0]) ? '0' : '-1') + '"' +
                     (inHome(c) && !r.special ? ' draggable="true"' : '') + '>' +
-                    '<td class="fm-c-name"><span class="fm-cell">' + glyph(kind) + '<span class="fm-name">' + esc(c.name) + (kind === 'dir' ? '/' : '') + '</span>' +
+                    '<td class="fm-c-name"><span class="fm-cell">' + glyph(kind) +
+                    (href ? '<a class="fm-name" href="' + esc(href) + '">' + name + '</a>' : '<span class="fm-name">' + name + '</span>') +
                     (r.title && r.title !== c.name && !r.home ? '<span class="fm-title">' + esc(r.title) + '</span>' : '') + '</span></td>' +
                     '<td class="fm-c-kind">' + KIND_NAMES[kind] + '</td>' +
                     '<td class="fm-c-date">' + esc(fmtDate(date)) + '</td>' +
-                    '<td class="fm-c-size">' + esc(fmtSize(F.size(c))) + '</td></tr>';
+                    '<td class="fm-c-size num">' + esc(fmtSize(F.size(c))) + '</td></tr>';
             });
             el.rows.innerHTML = html;
+            if (window.pudlGrid) { window.pudlGrid.enhance(el.list); }
             el.empty.hidden = list.length > 0;
             el.empty.textContent = inHome(cwd) ? 'This folder is empty. Make a file or a folder, or drop files here.' : 'This folder is empty.';
         }
@@ -501,7 +521,6 @@
             selected = name ? F.childNamed(cwd, name) : null;
             el.rows.querySelectorAll('tr').forEach(function (tr) {
                 var on = tr.getAttribute('data-name') === name;
-                tr.classList.toggle('fm-selected', on);
                 tr.setAttribute('aria-selected', String(on));
                 tr.tabIndex = on ? 0 : -1;
             });
@@ -521,72 +540,49 @@
                 act(a.getAttribute('data-action'));
                 return;
             }
-            var crumb = e.target.closest('a.fm-crumb');
-            if (crumb && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) { e.preventDefault(); goPath(crumb.getAttribute('data-path')); return; }
-            var ti = e.target.closest('.fm-ti');
-            if (ti) {
-                var node = F.resolve(null, ti.getAttribute('data-path'));
-                if (e.target.closest('[data-toggle]') && node && node.children.some(function (x) { return x.children; })) {
-                    var p = ti.getAttribute('data-path'); expanded[p] = !expanded[p]; renderTree();
-                    return;
-                }
-                go(node);
+            /* Links in the tree, the path bar and the rows are addresses
+               of their own, which a modified click opens as the browser
+               would; a plain one is handled here. The tree's toggles are
+               pudl-tree.js's. */
+            var link = e.target.closest('a[href]');
+            if (!link || !root.contains(link) || e.target.closest('.tree-toggle')) { return; }
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) { return; }
+            if (link.hasAttribute('data-path')) {
+                e.preventDefault();
+                /* Enter on a folder in the tree moves on to its contents;
+                   asked before going there, which redraws the tree. */
+                var fromTree = e.detail === 0 && el.tree.contains(link);
+                goPath(link.getAttribute('data-path'));
+                if (fromTree) { focusList(); }
                 return;
             }
-            var tr = e.target.closest('tr.fm-row');
-            if (tr) { select(tr.getAttribute('data-name')); }
-        });
-        root.addEventListener('dblclick', function (e) {
-            var tr = e.target.closest('tr.fm-row');
-            if (tr) { select(tr.getAttribute('data-name'), false); if (selected) { openEntry(selected); } }
-        });
-
-        /* The row with the focus is the selected one, however it got the
-           focus. */
-        el.rows.addEventListener('focusin', function (e) {
-            var tr = e.target.closest('tr.fm-row');
-            if (tr && (!selected || selected.name !== tr.getAttribute('data-name'))) { select(tr.getAttribute('data-name'), false); }
-        });
-
-        el.rows.addEventListener('keydown', function (e) {
-            var rows = Array.prototype.slice.call(el.rows.querySelectorAll('tr'));
-            var i = rows.indexOf(document.activeElement);
-            var name = function (k) { return rows[k] ? rows[k].getAttribute('data-name') : null; };
-            switch (e.key) {
-                case 'ArrowDown': if (i < rows.length - 1) { select(name(i + 1)); } e.preventDefault(); break;
-                case 'ArrowUp': if (i > 0) { select(name(i - 1)); } e.preventDefault(); break;
-                case 'Home': select(name(0)); e.preventDefault(); break;
-                case 'End': select(name(rows.length - 1)); e.preventDefault(); break;
-                case 'Enter': if (i >= 0) { select(name(i), false); openEntry(selected); } e.preventDefault(); break;
-                case 'Backspace': act('up'); e.preventDefault(); break;
-                case 'Delete': if (selected && inHome(selected) && !F.realOf(selected).special) { act('delete'); } e.preventDefault(); break;
-                case 'F2': if (selected && inHome(selected) && !F.realOf(selected).special) { act('rename'); } e.preventDefault(); break;
-                case ' ': if (i >= 0) { select(name(i)); } e.preventDefault(); break;
+            var tr = link.closest('tr.fm-row');
+            if (tr) {
+                e.preventDefault();
+                select(tr.getAttribute('data-name'), false);
+                if (selected) { openEntry(selected); }
             }
         });
 
-        /* The tree follows the ARIA tree pattern: the arrow keys move and
-           open, Enter goes to the folder. */
-        el.tree.addEventListener('keydown', function (e) {
-            var items = Array.prototype.slice.call(el.tree.querySelectorAll('.fm-ti'));
-            var i = items.indexOf(document.activeElement);
-            if (i < 0) { return; }
-            var it = items[i], path = it.getAttribute('data-path'), exp = it.getAttribute('aria-expanded');
-            function focusAt(k) { if (items[k]) { items.forEach(function (x) { x.tabIndex = -1; }); items[k].tabIndex = 0; items[k].focus(); } }
+        /* pudl-grid.js moves the selection and opens rows; this keeps the
+           detail and the menu in step, and opens a row with no address. */
+        el.rows.addEventListener('pudl:row-select', function (e) {
+            selected = F.childNamed(cwd, e.target.getAttribute('data-name'));
+            renderDetail();
+            renderMenu();
+        });
+        el.rows.addEventListener('pudl:row-open', function (e) {
+            var c = F.childNamed(cwd, e.target.getAttribute('data-name'));
+            if (c) { selected = c; openEntry(c); }
+        });
+
+        /* The file manager's own keys, beside the grid's. */
+        el.rows.addEventListener('keydown', function (e) {
+            if (e.target.tagName !== 'TR') { return; }
             switch (e.key) {
-                case 'ArrowDown': focusAt(i + 1); break;
-                case 'ArrowUp': focusAt(i - 1); break;
-                case 'ArrowRight':
-                    if (exp === 'false') { expanded[path] = true; renderTree(); el.tree.querySelector('[data-path="' + CSS.escape(path) + '"]').focus(); }
-                    else if (exp === 'true') { focusAt(i + 1); }
-                    break;
-                case 'ArrowLeft':
-                    if (exp === 'true') { expanded[path] = false; renderTree(); el.tree.querySelector('[data-path="' + CSS.escape(path) + '"]').focus(); }
-                    else { var parent = path.slice(0, path.lastIndexOf('/')) || '/'; var pe = el.tree.querySelector('[data-path="' + CSS.escape(parent) + '"]'); if (pe && pe !== it) { focusAt(items.indexOf(pe)); } }
-                    break;
-                case 'Home': focusAt(0); break;
-                case 'End': focusAt(items.length - 1); break;
-                case 'Enter': case ' ': go(F.resolve(null, path)); focusList(); break;
+                case 'Backspace': act('up'); break;
+                case 'Delete': if (selected && inHome(selected) && !F.realOf(selected).special) { act('delete'); } break;
+                case 'F2': if (selected && inHome(selected) && !F.realOf(selected).special) { act('rename'); } break;
                 default: return;
             }
             e.preventDefault();
@@ -605,14 +601,16 @@
             e.dataTransfer.effectAllowed = 'move';
         });
         el.rows.addEventListener('dragend', function () { dragName = null; clearDropMarks(); });
-        function clearDropMarks() { root.querySelectorAll('.fm-drop-target').forEach(function (x) { x.classList.remove('fm-drop-target'); }); el.drop.classList.remove('fm-dragging'); }
+        /* PUDL draws the drop targets; which ones there are is decided
+           here. */
+        function clearDropMarks() { root.querySelectorAll('[data-drop-target]').forEach(function (x) { x.removeAttribute('data-drop-target'); }); el.drop.removeAttribute('data-drop-over'); }
 
-        /* A folder in ~ (a row or a tree item) takes a dragged entry; the
+        /* A folder in ~ (a row or a tree node) takes a dragged entry; the
            list itself, in ~, takes files dropped from the computer. */
         function folderTarget(e) {
-            var t = e.target.closest('tr.fm-row, .fm-ti');
+            var t = e.target.closest('tr.fm-row, .fm-tree a[data-path]');
             if (!t) { return null; }
-            var node = t.classList.contains('fm-ti') ? F.resolve(null, t.getAttribute('data-path')) : F.childNamed(cwd, t.getAttribute('data-name'));
+            var node = t.hasAttribute('data-path') ? F.resolve(null, t.getAttribute('data-path')) : F.childNamed(cwd, t.getAttribute('data-name'));
             return node && node.children && inHome(node) ? { el: t, node: node } : null;
         }
         function isFiles(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0; }
@@ -620,10 +618,10 @@
             if (dragName) {
                 var t = folderTarget(e);
                 clearDropMarks();
-                if (t && F.pathOf(t.node) !== F.pathOf(F.childNamed(cwd, dragName) || cwd)) { t.el.classList.add('fm-drop-target'); e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+                if (t && F.pathOf(t.node) !== F.pathOf(F.childNamed(cwd, dragName) || cwd)) { t.el.setAttribute('data-drop-target', ''); e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
                 return;
             }
-            if (isFiles(e) && inHome(cwd) && el.drop.contains(e.target)) { el.drop.classList.add('fm-dragging'); e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
+            if (isFiles(e) && inHome(cwd) && el.drop.contains(e.target)) { el.drop.setAttribute('data-drop-over', ''); e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
         });
         root.addEventListener('dragleave', function (e) { if (!root.contains(e.relatedTarget)) { clearDropMarks(); } });
         root.addEventListener('drop', function (e) {

@@ -60,7 +60,7 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: '/page/files',
-    ver: '4'
+    ver: '6'
 });
 
 /* The editor loads CodeMirror 6 from js/vendor beside itself. */
@@ -68,7 +68,7 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: '/page/editor',
-    ver: '2'
+    ver: '3'
 });
 
 /* The requests each applet serves, for js/handlers.js: open a file,

@@ -1,21 +1,13 @@
 /* Site-wide enhancements. PUDL's theme loader sets data-theme on <html>
-   before first paint; the highlight.js stylesheets are chosen per theme
-   here, because their media="(prefers-color-scheme: …)" attributes follow
-   the OS and not the toggle. */
+   before first paint. Highlighted code needs nothing here: pudl-hljs.css
+   colours it from the theme's own tokens. */
 (function () {
     'use strict';
 
-    function syncHighlightTheme() {
+    function syncFrameTheme() {
         var theme = document.documentElement.getAttribute('data-theme');
         if (theme !== 'light' && theme !== 'dark') {
             theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-
-        var light = document.getElementById('hljs-light');
-        var dark = document.getElementById('hljs-dark');
-        if (light && dark) {
-            light.media = theme === 'dark' ? 'not all' : 'all';
-            dark.media = theme === 'dark' ? 'all' : 'not all';
         }
 
         /* A framed page (a window hosting an app page) read its theme when
@@ -29,10 +21,10 @@
         });
     }
 
-    syncHighlightTheme();
-    new MutationObserver(syncHighlightTheme)
+    syncFrameTheme();
+    new MutationObserver(syncFrameTheme)
         .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncHighlightTheme);
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncFrameTheme);
 
     /* A page framed inside a desktop window (the ?frame rendering) hands
        its internal article links up to the desktop, so following one opens

@@ -58,8 +58,9 @@
     @Html.RenderStaticFile("/content/head-section.html", FileReaderService)
     @if (needsHighlight)
     {
-        <link id="hljs-light" rel="stylesheet" href="/highlightjs/styles/vs.min.css" media="(prefers-color-scheme: light)">
-        <link id="hljs-dark" rel="stylesheet" href="/highlightjs/styles/vs2015.min.css" media="(prefers-color-scheme: dark)">
+        @* Highlighted code takes PUDL's syntax tokens (0.26.0), so it
+           follows the site's theme switch as well as the system's. *@
+        <link rel="stylesheet" href="~/pudl/pudl-hljs.css" asp-append-version="true" />
         <script src="/highlightjs/highlight.min.js"></script>
         @if (hasMermaid || isDesktop)
         {
@@ -287,6 +288,11 @@
     <script src="~/js/applets.js" defer asp-append-version="true"></script>
     <script src="~/js/handlers.js" defer asp-append-version="true"></script>
     <script src="~/pudl/pudl-dialog.js" defer asp-append-version="true"></script>
+    @* Document tabs, trees and grids, for the Editor and Files applets,
+       which can open on any page. *@
+    <script src="~/pudl/pudl-tabs.js" defer asp-append-version="true"></script>
+    <script src="~/pudl/pudl-tree.js" defer asp-append-version="true"></script>
+    <script src="~/pudl/pudl-grid.js" defer asp-append-version="true"></script>
     @RenderSection("BodyScripts", required: false)
     @if (isMarkdown)
     {

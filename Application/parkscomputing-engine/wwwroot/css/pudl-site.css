@@ -116,16 +116,19 @@ body.desktop .site-header { position: static; flex: none; }
 .post-body h2 { margin-top: 2.4rem; font-size: 1.6rem; }
 .post-body h3 { margin-top: 1.9rem; font-size: 1.3rem; }
 .post-body h4 { margin-top: 1.6rem; font-size: 1.1rem; }
+/* A code block is for reading, so it is flat, as PUDL's pre.code is
+   (0.26.0). The articles' Markdown writes a bare pre, so the look is
+   matched here rather than by the class. */
 .post-body pre {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--surface-alt);
   border-radius: var(--radius-sm);
   padding: 0;
-  font-size: .85rem;
+  font-size: var(--text-sm);
+  line-height: 1.55;
   overflow: auto;
-  box-shadow: var(--entry-shadow);
+  tab-size: 4;
 }
-.post-body pre code { display: block; padding: 12px 14px; font-family: var(--mono); }
+.post-body pre code { display: block; padding: var(--space-3) var(--space-4); font-family: var(--mono); background: transparent; }
 .post-body code:not(pre code) {
   font-family: var(--mono);
   background: var(--surface-alt);
