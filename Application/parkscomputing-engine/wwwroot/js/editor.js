@@ -501,6 +501,35 @@
         }
         window.addEventListener('beforeunload', onBeforeUnload);
 
+        /* Closing the editor's window with unsaved changes asks first
+           (pudl:window-closing, PUDL 0.28.0): Cancel keeps the window,
+           Don't save closes it, and Save all saves every changed file and
+           then closes, unless a save fails. */
+        var win = root.closest('.win[data-win]'), closeAgreed = false;
+        function onWindowClosing(e) {
+            if (e.target !== win || closeAgreed) { return; }
+            var changed = tabs.filter(function (t) { return t.modified; });
+            if (!changed.length) { return; }
+            e.preventDefault();
+            var key = win.getAttribute('data-win');
+            var names = changed.map(function (t) { return t.name; });
+            ask('Save changes before closing?',
+                (names.length === 1 ? names[0] + ' has' : names.length + ' files have') + ' unsaved changes, which are lost if you close without saving.' +
+                (names.length > 1 ? ' (' + names.join(', ') + ')' : ''), null,
+                [['cancel', 'Cancel'], ['discard', 'Don\'t save'], ['save', 'Save all', true]]).then(async function (choice) {
+                    if (choice === 'save') {
+                        for (var i = 0; i < tabs.length; i++) {
+                            if (!tabs[i].modified) { continue; }
+                            activate(i);
+                            if (!(await save())) { return; }
+                        }
+                    } else if (choice !== 'discard') { return; }
+                    closeAgreed = true;
+                    window.pudlWindows.close(key);
+                });
+        }
+        if (win) { win.addEventListener('pudl:window-closing', onWindowClosing); }
+
         /* === Controls ===================================================== */
 
         /* A tab closed from the keyboard leaves the focus on the tab that
@@ -556,6 +585,7 @@
                 destroyed = true;
                 if (unsubscribe) { unsubscribe(); }
                 window.removeEventListener('beforeunload', onBeforeUnload);
+                if (win) { win.removeEventListener('pudl:window-closing', onWindowClosing); }
                 if (el.dialog.open) { el.dialog.close(); }
                 if (view) { view.destroy(); }
             },

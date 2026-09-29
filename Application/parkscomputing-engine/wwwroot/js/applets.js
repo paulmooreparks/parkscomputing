@@ -79,6 +79,6 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: '/page/editor',
-    ver: '4',
+    ver: '5',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } }
 });
