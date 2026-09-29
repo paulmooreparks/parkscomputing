@@ -26,8 +26,13 @@
                 </div>
             }
             <a class="post-card-title" href="@post.Url">@post.Title</a>
-            @if (Model.ShowExcerpts && !string.IsNullOrEmpty(post.Excerpt)) {
-                <p class="post-card-excerpt">@post.Excerpt</p>
+            @{
+                // An entry with no excerpt, such as an applet or a project,
+                // shows its description instead.
+                var blurb = !string.IsNullOrEmpty(post.Excerpt) ? post.Excerpt : post.Description;
+            }
+            @if (Model.ShowExcerpts && !string.IsNullOrEmpty(blurb)) {
+                <p class="post-card-excerpt">@blurb</p>
             }
             <div class="mt-auto">
                 <a class="post-card-more" href="@post.Url">Read more &raquo;</a>
