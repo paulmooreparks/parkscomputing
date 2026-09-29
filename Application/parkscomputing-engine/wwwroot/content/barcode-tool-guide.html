@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <title>Barcode Tool Guide</title>
+    <meta name="description" content="How to use the barcode tool: symbologies, check digits, layouts for embedded data, reading codes back, and keeping your own layouts" />
+    <meta charset="utf-8">
+    <meta http-equiv="date" content="2026-09-29T00:00:00" />
+    <meta http-equiv="last-modified" content="2026-09-29T00:00:00" />
+</head>
+<body>
+    <h1>Barcode Tool Guide</h1>
+
+    <p>
+        The <a href="/page/barcodes">barcode tool</a> makes the linear barcodes found in shops and warehouses, checks
+        what you type as you type it, and understands barcodes that carry data inside them. This guide covers each part
+        of it, from choosing a symbology to writing layouts of your own.
+    </p>
+
+    <h2 id="make">Making a barcode</h2>
+    <p>
+        Choose <strong>Make</strong>, pick a symbology, and type the data. The barcode redraws on every keystroke. When
+        the data cannot be encoded, the field is marked and a line under it says why. When you supply a check digit that
+        is wrong, the tool shows the right one and offers a button that puts it in.
+    </p>
+    <p>The symbologies, and what each takes, are these:</p>
+    <table>
+        <thead><tr><th>Symbology</th><th>Used for</th><th>Data</th></tr></thead>
+        <tbody>
+            <tr><td>EAN-13</td><td>Products worldwide</td><td>12 digits, or 13 with the check digit</td></tr>
+            <tr><td>EAN-8</td><td>Small packages</td><td>7 digits, or 8 with the check digit</td></tr>
+            <tr><td>UPC-A</td><td>Products in North America</td><td>11 digits, or 12 with the check digit</td></tr>
+            <tr><td>UPC-E</td><td>Small North American packages</td><td>6 digits, 7 with the number system (0 or 1), or 8 with the check digit</td></tr>
+            <tr><td>GS1-128</td><td>Logistics labels and data-carrying codes</td><td>Element strings such as <code>(01)09501101530003(17)271231(10)LOT42A</code></td></tr>
+            <tr><td>ITF-14</td><td>Shipping cases</td><td>13 digits, or 14 with the check digit</td></tr>
+            <tr><td>Interleaved 2 of 5</td><td>Numeric codes printed by a store or warehouse</td><td>An even number of digits</td></tr>
+            <tr><td>Code 128</td><td>Internal labels</td><td>Any printable ASCII character</td></tr>
+            <tr><td>Code 39</td><td>Older internal labels</td><td>Capital letters, digits, and <code>- . space $ / + %</code></td></tr>
+            <tr><td>Codabar (NW-7)</td><td>Membership cards, coupons, libraries</td><td>Digits and <code>- $ : / . +</code>, between start and stop characters A to D</td></tr>
+        </tbody>
+    </table>
+    <p>
+        Some symbologies have options under the data field. Interleaved 2 of 5, Code 39 and Codabar can add a check
+        character, Codabar lets you choose its start and stop characters, and ITF-14 draws its bearer bars unless you
+        turn them off. For an EAN-13, the line under the barcode names the country or range of its GS1 prefix, so
+        <code>480</code> reads as the Philippines and <code>20</code> to <code>29</code> as in-store codes.
+    </p>
+
+    <h2 id="highlights">Highlights</h2>
+    <p>
+        The check boxes under the barcode control what is marked. <strong>Check digits</strong> colors the check
+        characters purple. <strong>Guards, start and stop</strong> marks the fixed patterns at the ends and in the middle
+        of the symbol. With a layout, <strong>Field colors</strong> gives each field its own color. The marks are bands
+        drawn below the bars and colors on the printed digits; the bars themselves stay black, because a scanner sees red
+        bars as white and would not read them.
+    </p>
+
+    <h2 id="downloads">Downloads and links</h2>
+    <p>
+        <strong>Download SVG</strong> saves the barcode sized in millimetres, at the module width you choose. For EAN and
+        UPC codes, 0.33 mm is the nominal size, and the standard allows from 80% to 200% of it. <strong>Download PNG</strong>
+        saves an image at 300 dots per inch. Downloads leave out the highlights unless you tick <strong>Highlights in
+        downloads</strong>, so a downloaded barcode is ready to print and scan. <strong>Copy link</strong> copies an
+        address that reproduces the barcode exactly, layout and field values included.
+    </p>
+
+    <h2 id="layouts">Layouts: data inside a barcode</h2>
+    <p>
+        Many retail barcodes carry more than a single number. An in-store code for loose produce holds an item and a
+        price, a coupon holds a discount type and a value, and a receipt holds a store, a register, a date and a
+        transaction. A layout names those fields. With one chosen, the tool shows a box for each field, builds the
+        barcode from them, colors each field in the symbol, and writes a line explaining the result.
+    </p>
+    <p>
+        The <strong>Layout</strong> menu lists six demonstration layouts. They are invented for this guide, but each
+        follows a common pattern: a price-embedded item, a weight-embedded item, a GS1-128 logistics label, a receipt
+        lookup code, a Codabar membership card, and a store coupon.
+    </p>
+
+    <h3 id="format">The layout format</h3>
+    <p>
+        A layout is JSON. A file holds a list of them, and the tool's editor works on one at a time. This is a complete
+        file with one layout:
+    </p>
+<pre><code class="language-json">{
+  "format": "pc-barcode-layouts",
+  "version": 1,
+  "layouts": [
+    {
+      "id": "shelf-price",
+      "name": "Shelf price label",
+      "symbology": "ean13",
+      "description": "An in-store code carrying a department, an item and a price.",
+      "explain": "Department {dept:meaning}, item {item}, at {price}.",
+      "fields": [
+        { "id": "prefix", "name": "Prefix", "type": "fixed", "values": ["24"], "color": "blue" },
+        { "id": "dept", "name": "Department", "type": "enum",
+          "values": { "1": "produce", "2": "bakery", "3": "deli" }, "color": "orange" },
+        { "id": "item", "name": "Item", "type": "number", "length": 4, "color": "gray" },
+        { "id": "price", "name": "Price", "type": "decimal", "length": 5, "decimals": 2, "color": "green" }
+      ],
+      "sample": { "dept": "2", "item": "318", "price": "4.75" }
+    }
+  ]
+}</code></pre>
+    <p>
+        Fields follow one another in order, and each field's length decides where the next one starts, so a layout never
+        states positions. The tool shows positions counted from 1. For EAN, UPC and ITF-14 layouts the fields cover the
+        data before the symbology's own check digit, which the tool adds.
+    </p>
+    <p>A layout has these keys:</p>
+    <table>
+        <thead><tr><th>Key</th><th>Meaning</th></tr></thead>
+        <tbody>
+            <tr><td><code>id</code></td><td>Letters, digits and hyphens, unique among your layouts.</td></tr>
+            <tr><td><code>name</code></td><td>The name shown in the menu.</td></tr>
+            <tr><td><code>symbology</code></td><td>One of <code>ean13</code>, <code>ean8</code>, <code>upca</code>, <code>upce</code>, <code>gs1-128</code>, <code>code128</code>, <code>itf</code>, <code>itf14</code>, <code>code39</code> or <code>codabar</code>.</td></tr>
+            <tr><td><code>fields</code></td><td>The fields, in order.</td></tr>
+            <tr><td><code>description</code></td><td>Optional text shown above the fields.</td></tr>
+            <tr><td><code>explain</code></td><td>Optional template for the line under the barcode.</td></tr>
+            <tr><td><code>options</code></td><td>Optional symbology options, such as <code>{"start": "A", "stop": "B"}</code> for Codabar or <code>{"check": true}</code>.</td></tr>
+            <tr><td><code>hri</code></td><td>Optional. The printed line: <code>"data"</code> (the default), <code>"none"</code>, or a template.</td></tr>
+            <tr><td><code>sample</code></td><td>Optional field values filled in when the layout is chosen.</td></tr>
+        </tbody>
+    </table>
+    <p>
+        Every field has an <code>id</code>, a <code>name</code> and a <code>type</code>. It may also have a
+        <code>color</code> (blue, gray, orange, green, purple, teal, red or gold) and a <code>description</code>. These
+        are the types:
+    </p>
+    <table>
+        <thead><tr><th>Type</th><th>What it holds</th><th>Keys</th></tr></thead>
+        <tbody>
+            <tr><td><code>fixed</code></td><td>One of a set of literal values, such as a prefix. The first is the default.</td><td><code>values</code></td></tr>
+            <tr><td><code>number</code></td><td>Digits, padded with zeros on the left to its length unless <code>pad</code> is <code>"none"</code>.</td><td><code>length</code>, <code>pad</code></td></tr>
+            <tr><td><code>text</code></td><td>Characters the symbology allows, of an exact length or up to a maximum. Only the last field may vary in length, except in GS1-128.</td><td><code>length</code> or <code>maxLength</code></td></tr>
+            <tr><td><code>date</code></td><td>A calendar date, checked for real, in a format built from <code>dd</code>, <code>mm</code>, <code>yy</code> and <code>yyyy</code>.</td><td><code>format</code></td></tr>
+            <tr><td><code>decimal</code></td><td>A number with implied decimal places, typed as <code>12.50</code> or as raw digits.</td><td><code>length</code>, <code>decimals</code>, <code>prefix</code>, <code>suffix</code></td></tr>
+            <tr><td><code>enum</code></td><td>A code from a table, each with a meaning.</td><td><code>values</code>, an object of code to meaning</td></tr>
+            <tr><td><code>check</code></td><td>A check digit the tool computes over earlier fields.</td><td><code>algorithm</code>, <code>over</code></td></tr>
+        </tbody>
+    </table>
+    <p>
+        A check field's <code>algorithm</code> is <code>gs1-mod10</code> (the EAN and UPC method), <code>luhn</code>
+        (payment and membership cards), <code>mod11</code> (weights 2 to 7 from the right, with a result of 10 written as
+        0), or <code>7dr</code> (the remainder after dividing by 7). By default it covers every earlier field; list field
+        ids in <code>over</code> to cover only some.
+    </p>
+    <p>
+        In an <code>explain</code> template, <code>{price}</code> is a field's formatted value, <code>{price:raw}</code>
+        is its encoded digits, and <code>{dept:meaning}</code> is an enumeration's meaning. An <code>hri</code> template
+        takes <code>{field}</code> and <code>{field:unpadded}</code>, the latter dropping leading zeros, which suits a
+        store number printed without them.
+    </p>
+
+    <h3 id="gs1">GS1-128 layouts</h3>
+    <p>
+        In a GS1-128 layout, a field with an <code>ai</code> key starts a new element string with that Application
+        Identifier, and a field without one continues the element before it. That lets a GTIN be split into its digits
+        and its check digit:
+    </p>
+<pre><code class="language-json">{ "id": "gtin",  "name": "GTIN", "type": "number", "length": 13, "ai": "01" },
+{ "id": "check", "name": "GTIN check", "type": "check", "algorithm": "gs1-mod10", "over": ["gtin"] },
+{ "id": "best",  "name": "Best before", "type": "date", "format": "yymmdd", "ai": "15" }</code></pre>
+    <p>
+        The tool inserts the separators GS1 requires after variable-length elements. Company-internal AIs 91 to 99 are
+        accepted with any structure you give them.
+    </p>
+
+    <h2 id="read">Reading a barcode back</h2>
+    <p>
+        Choose <strong>Read</strong> and paste a scanned value. Every layout whose shape fits is tried: its length must
+        match, and its fixed fields must match exactly. Each match is shown as a table of fields with their positions,
+        encoded values and meanings, together with any problems, such as a check digit that does not add up or a date
+        that does not exist. The best match comes first, and <strong>Open in Make</strong> loads it into the fields.
+    </p>
+    <p>
+        Without a matching layout, the tool still says what it can. It checks an EAN-13 and names its prefix, recognizes a
+        UPC-A, an EAN-8 or a UPC-E, and lays out GS1 element strings with each AI named and its dates and weights
+        formatted. Paste GS1 data with the AIs in parentheses.
+    </p>
+
+    <h2 id="yours">Your own layouts</h2>
+    <p>
+        The Layout menu holds the tools for your own layouts. <strong>New layout from JSON</strong> opens an editor with
+        a starting point, and <strong>Edit this layout as JSON</strong> opens the chosen one; saving checks the layout and
+        lists every problem it finds. <strong>Save this layout as JSON</strong> downloads the chosen layout as a file,
+        and <strong>Export all layouts</strong> downloads every layout, the demonstrations included, as one file.
+        <strong>Import layouts</strong> reads such a file back, skipping the demonstrations it already has.
+    </p>
+    <p>
+        Your layouts are kept in your browser. They stay when you close it, but they belong to that one browser on that
+        one device, and clearing the site's data or using <strong>Forget this browser's data</strong> in the settings
+        removes them. This site never receives them.
+    </p>
+
+    <h3 id="file">Keeping layouts in a file</h3>
+    <p>
+        In Edge and Chrome, the tool can also keep your layouts in a JSON file on your own disk. <strong>Create a layouts
+        file</strong> saves them to a new file, and <strong>Open a layouts file</strong> links an existing one, adding in
+        any layouts that were only in the browser. From then on every change is written to that file. Put it in a folder
+        that syncs, such as OneDrive, and the same layouts follow you to each computer. After the browser restarts it
+        asks once for permission to use the file again; the tool shows a <strong>Reopen</strong> button for that.
+        <strong>Unlink the layouts file</strong> stops writing to it and leaves the file where it is.
+    </p>
+    <p>
+        When two computers change the same file at once, the last one to save wins, so edit layouts on one machine at a
+        time.
+    </p>
+</body>
+</html>

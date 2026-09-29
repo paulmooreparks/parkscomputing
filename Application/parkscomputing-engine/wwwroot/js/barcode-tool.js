@@ -31,6 +31,7 @@
     }
 
     var LIBRARY_KEY = 'pc-barcode-layouts';
+    var GUIDE_URL = '/page/barcode-tool-guide', GUIDE_KEY = 'barcode-tool-guide';
 
     /* Demonstration layouts. They are generic and invented: nothing here
        comes from a customer or a real scheme. */
@@ -125,6 +126,9 @@
     var uid = 0;
     function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
+    function libraryFile(list) {
+        return JSON.stringify({ format: 'pc-barcode-layouts', version: 1, layouts: list }, null, 2);
+    }
     function loadLibrary() {
         try {
             var raw = localStorage.getItem(LIBRARY_KEY);
@@ -133,8 +137,46 @@
             return Array.isArray(obj.layouts) ? obj.layouts : [];
         } catch (err) { return []; }
     }
-    function saveLibrary(list) {
+    function cacheLibrary(list) {
         try { localStorage.setItem(LIBRARY_KEY, JSON.stringify({ format: 'pc-barcode-layouts', version: 1, layouts: list })); } catch (err) { }
+    }
+
+    /* A linked layouts file (File System Access, Edge and Chrome): the
+       handle is kept in IndexedDB, since it cannot go in localStorage, and
+       the browser asks again for permission after a restart. Everything
+       here fails soft: without the API or the database, the library is
+       simply the browser's own copy. */
+    var FILE_API = typeof window.showOpenFilePicker === 'function' && typeof window.showSaveFilePicker === 'function';
+    var DB_NAME = 'pc-barcodes', HANDLE_KEY = 'library-file';
+    function idb(op, value) {
+        return new Promise(function (resolve, reject) {
+            if (!window.indexedDB) { reject(new Error('no IndexedDB')); return; }
+            var open = indexedDB.open(DB_NAME, 1);
+            open.onupgradeneeded = function () { open.result.createObjectStore('kv'); };
+            open.onerror = function () { reject(open.error); };
+            open.onsuccess = function () {
+                var db = open.result;
+                try {
+                    var tx = db.transaction('kv', op === 'get' ? 'readonly' : 'readwrite'), store = tx.objectStore('kv');
+                    var req = op === 'get' ? store.get(HANDLE_KEY) : op === 'delete' ? store.delete(HANDLE_KEY) : store.put(value, HANDLE_KEY);
+                    req.onsuccess = function () { resolve(req.result); };
+                    req.onerror = function () { reject(req.error); };
+                    tx.oncomplete = function () { db.close(); };
+                } catch (err) {
+                    /* put() throws at once for a value it cannot store. */
+                    db.close();
+                    reject(err);
+                }
+            };
+        });
+    }
+    function readHandle(handle) {
+        return handle.getFile().then(function (f) { return f.text(); }).then(function (text) { return JSON.parse(text); });
+    }
+    function writeHandle(handle, list) {
+        return handle.createWritable().then(function (w) {
+            return w.write(libraryFile(list)).then(function () { return w.close(); });
+        });
     }
 
     function parseState(s) {
@@ -234,8 +276,12 @@
                   '<nav class="menu-panel" id="bt-layouts-' + n + '" popover aria-label="Layouts" data-role="layout-menu"></nav>' +
                 '</span>' +
               '</span>' +
+              '<span class="bt-spacer"></span>' +
+              '<button type="button" class="btn" data-action="help" aria-haspopup="dialog">Help</button>' +
             '</div>' +
-            '<div class="notice" data-role="notice" hidden><span data-role="notice-text"></span> <button type="button" class="btn" data-action="notice-close">Dismiss</button></div>' +
+            '<div class="notice" data-role="notice" hidden><span data-role="notice-text"></span>' +
+              '<button type="button" class="btn btn-primary" data-role="notice-action" hidden></button>' +
+              '<button type="button" class="btn" data-action="notice-close">Dismiss</button></div>' +
             '<section class="bt-make" data-role="make">' +
               '<p class="bt-layout-desc" data-role="layout-desc" hidden></p>' +
               '<div class="bt-free" data-role="free">' +
@@ -284,13 +330,35 @@
             '<dialog class="dialog bt-json-dialog" data-role="json-dialog" aria-labelledby="bt-json-title-' + n + '">' +
               '<h3 class="dialog-title" id="bt-json-title-' + n + '">Layout JSON</h3>' +
               '<div class="dialog-body">' +
-                '<p class="form-help">One layout object, in the format described in the tool\'s design. It is saved in this browser only.</p>' +
+                '<p class="form-help">One layout object. The <a href="' + GUIDE_URL + '#format" data-win-open="' + GUIDE_KEY + '">guide</a> describes every key. It is saved in this browser, and in your layouts file if one is linked.</p>' +
                 '<textarea class="form-textarea bt-json" data-role="json" spellcheck="false" aria-label="Layout JSON"></textarea>' +
                 '<ul class="form-error bt-json-errors" data-role="json-errors" hidden></ul>' +
               '</div>' +
               '<div class="dialog-actions">' +
                 '<button type="button" class="btn" data-action="json-cancel">Cancel</button>' +
                 '<button type="button" class="btn btn-primary" data-action="json-save">Save layout</button>' +
+              '</div>' +
+            '</dialog>' +
+            '<dialog class="dialog bt-help-dialog" data-role="help-dialog" aria-labelledby="bt-help-title-' + n + '">' +
+              '<h3 class="dialog-title" id="bt-help-title-' + n + '">Using the barcode tool</h3>' +
+              '<div class="dialog-body bt-help">' +
+                '<p><strong>Make</strong> draws a barcode. Pick a symbology and type the data; the barcode redraws as you type. ' +
+                  'A problem is shown under the field, and a wrong check digit comes with a button that puts the right one in.</p>' +
+                '<p><strong>Layouts</strong> describe data inside a barcode, such as an item and a price. Choose one from the ' +
+                  '<strong>Layout</strong> menu to fill in named fields instead of raw digits; each field gets its own color and ' +
+                  'the line under the barcode explains the result.</p>' +
+                '<p><strong>Read</strong> works the other way: paste a scanned value and the tool splits it into the fields of ' +
+                  'every layout that fits, and checks its check digits and dates.</p>' +
+                '<p>The check boxes mark check digits, guards and fields. <strong>Download SVG</strong> is sized in millimetres ' +
+                  'for printing; downloads leave the highlights out unless you ask for them. <strong>Copy link</strong> ' +
+                  'reproduces the exact barcode.</p>' +
+                '<p>Your own layouts stay in this browser, or in a file on your disk if you link one from the Layout menu. ' +
+                  'This site never receives them.</p>' +
+                '<p><a href="' + GUIDE_URL + '" data-win-open="' + GUIDE_KEY + '">Read the full guide</a>, with the layout ' +
+                  'format and examples.</p>' +
+              '</div>' +
+              '<div class="dialog-actions">' +
+                '<button type="button" class="btn btn-primary" data-action="help-close">Close</button>' +
               '</div>' +
             '</dialog>';
 
@@ -305,15 +373,115 @@
             status: q('[data-role="status"]'), legend: q('[data-role="legend"]'), explain: q('[data-role="explain"]'),
             mm: q('[data-role="mm"]'), scan: q('[data-role="scan"]'), results: q('[data-role="results"]'),
             file: q('[data-role="file"]'), dialog: q('[data-role="json-dialog"]'), json: q('[data-role="json"]'),
-            jsonErrors: q('[data-role="json-errors"]'), colorsFlag: q('[data-role="colors-flag"]')
+            jsonErrors: q('[data-role="json-errors"]'), colorsFlag: q('[data-role="colors-flag"]'),
+            helpDialog: q('[data-role="help-dialog"]'), noticeAction: q('[data-role="notice-action"]')
         };
 
         var current = null;   /* the last good encode, for downloads */
         var currentBands = [], currentColors = [];
 
-        function notify(msg) {
+        /* A notice may carry one action, such as reopening a linked file,
+           which needs the click to count as the reader's own gesture. */
+        var noticeHandler = null;
+        function notify(msg, actionLabel, handler) {
             el.noticeText.textContent = msg;
+            el.noticeAction.hidden = !actionLabel;
+            el.noticeAction.textContent = actionLabel || '';
+            noticeHandler = handler || null;
             el.notice.hidden = false;
+        }
+
+        /* === The library: this browser, and a linked file if there is one */
+
+        var linked = null;   /* the linked file's handle, once permission is granted */
+        var pendingHandle = null;   /* a linked file awaiting permission after a restart */
+
+        function saveLibrary(list) {
+            cacheLibrary(list);
+            if (linked) {
+                writeHandle(linked, list).catch(function (err) {
+                    notify('Your layouts are saved in this browser, but writing ' + linked.name + ' failed: ' + err.message);
+                });
+            }
+        }
+
+        /* Adds layouts from a file to the library: file entries win on the
+           same id, and demonstration ids are skipped. */
+        function mergeLayouts(fromFile) {
+            var incoming = fromFile.filter(function (L) { return !isDemo(L.id); });
+            var ids = incoming.map(function (L) { return L.id; });
+            library = library.filter(function (L) { return ids.indexOf(L.id) < 0; }).concat(incoming);
+            return { added: incoming.length, skipped: fromFile.length - incoming.length };
+        }
+
+        function adoptHandle(handle, fromOpen) {
+            return readHandle(handle).then(function (obj) {
+                var res = B.layouts.validateFile(obj);
+                if (!res.ok) { throw new Error(res.errors.slice(0, 2).join(' ')); }
+                var inFile = res.layouts.filter(function (L) { return !isDemo(L.id); }).length;
+                mergeLayouts(res.layouts);
+                linked = handle; pendingHandle = null;
+                cacheLibrary(library);
+                /* Layouts that were only in the browser go into the file. */
+                if (library.length !== inFile) { return writeHandle(handle, library); }
+            }).then(function () {
+                renderLayoutMenu();
+                if (fromOpen) { notify('Linked to ' + handle.name + '. Changes to your layouts are written to it.'); }
+                else { el.notice.hidden = true; }
+            });
+        }
+
+        function linkExisting() {
+            window.showOpenFilePicker({ types: [{ description: 'Barcode layouts', accept: { 'application/json': ['.json'] } }] })
+                .then(function (handles) {
+                    var h = handles[0];
+                    return h.requestPermission({ mode: 'readwrite' }).then(function (p) {
+                        if (p !== 'granted') { throw new Error('permission to write the file was refused'); }
+                        return adoptHandle(h, true).then(function () { return idb('put', h).catch(function () { }); });
+                    });
+                })
+                .catch(function (err) { if (err && err.name !== 'AbortError') { notify('The file was not linked: ' + err.message); } });
+        }
+
+        function linkNew() {
+            window.showSaveFilePicker({ suggestedName: 'barcode-layouts.json', types: [{ description: 'Barcode layouts', accept: { 'application/json': ['.json'] } }] })
+                .then(function (h) {
+                    return writeHandle(h, library).then(function () {
+                        linked = h; pendingHandle = null;
+                        renderLayoutMenu();
+                        notify('Created ' + h.name + ' with ' + library.length + ' layout' + (library.length === 1 ? '' : 's') + '. Changes are written to it.');
+                        return idb('put', h).catch(function () { });
+                    });
+                })
+                .catch(function (err) { if (err && err.name !== 'AbortError') { notify('The file was not created: ' + err.message); } });
+        }
+
+        function unlink() {
+            var name = linked ? linked.name : pendingHandle ? pendingHandle.name : 'the file';
+            linked = null; pendingHandle = null;
+            idb('delete').catch(function () { });
+            renderLayoutMenu();
+            notify('Unlinked ' + name + '. Your layouts stay in this browser, and the file is left as it is.');
+        }
+
+        /* After a restart the browser keeps the handle but asks again for
+           permission, which only a click can grant. */
+        function restoreLink() {
+            if (!FILE_API) { return; }
+            idb('get').then(function (h) {
+                if (!h || typeof h.queryPermission !== 'function') { return; }
+                return h.queryPermission({ mode: 'readwrite' }).then(function (p) {
+                    if (p === 'granted') { return adoptHandle(h, false); }
+                    pendingHandle = h;
+                    renderLayoutMenu();
+                    notify('Your layouts file ' + h.name + ' is linked. Allow the tool to use it again?', 'Reopen', function () {
+                        h.requestPermission({ mode: 'readwrite' }).then(function (p2) {
+                            if (p2 === 'granted') { return adoptHandle(h, true); }
+                            notify('The file stays linked, but the tool cannot use it until you allow it.');
+                        }).catch(function (err) { notify('The file could not be reopened: ' + err.message); });
+                    });
+                });
+            }).catch(function () { });
         }
 
         /* === State plumbing ============================================== */
@@ -341,17 +509,30 @@
                 html += '<button type="button" class="menu-action" data-layout="' + esc(d.id) + '">' + esc(d.name) + ' <span class="bt-menu-sym">' + esc(B.symbologies[d.symbology].name) + '</span></button>';
             });
             if (library.length) {
-                html += '<hr class="menu-sep" /><div class="md-section-label">Your layouts (this browser only)</div>';
+                var where = linked ? 'in ' + linked.name : 'in this browser';
+                html += '<hr class="menu-sep" /><div class="md-section-label">Your layouts (' + esc(where) + ')</div>';
                 library.forEach(function (d) {
                     html += '<button type="button" class="menu-action" data-layout="' + esc(d.id) + '">' + esc(d.name) + ' <span class="bt-menu-sym">' + esc((B.symbologies[d.symbology] || {}).name || d.symbology) + '</span></button>';
                 });
             }
             html += '<hr class="menu-sep" />';
-            html += '<button type="button" class="menu-action" data-action="import">Import layouts…</button>';
             html += '<button type="button" class="menu-action" data-action="new-json">New layout from JSON…</button>';
-            if (L) { html += '<button type="button" class="menu-action" data-action="edit-json">Edit this layout as JSON…</button>'; }
-            if (library.length) { html += '<button type="button" class="menu-action" data-action="export">Export your layouts</button>'; }
-            if (L && !isDemo(L.id)) { html += '<button type="button" class="menu-action danger" data-action="remove">Remove this layout</button>'; }
+            if (L) {
+                html += '<button type="button" class="menu-action" data-action="edit-json">' + (isDemo(L.id) ? 'Copy this layout as JSON…' : 'Edit this layout as JSON…') + '</button>';
+                html += '<button type="button" class="menu-action" data-action="save-json">Save this layout as JSON</button>';
+            }
+            html += '<button type="button" class="menu-action" data-action="import">Import layouts…</button>';
+            html += '<button type="button" class="menu-action" data-action="export">Export all layouts</button>';
+            if (FILE_API) {
+                html += '<hr class="menu-sep" />';
+                if (linked || pendingHandle) {
+                    html += '<button type="button" class="menu-action" data-action="unlink">Unlink the layouts file (' + esc((linked || pendingHandle).name) + ')</button>';
+                } else {
+                    html += '<button type="button" class="menu-action" data-action="link-new">Create a layouts file…</button>';
+                    html += '<button type="button" class="menu-action" data-action="link-open">Open a layouts file…</button>';
+                }
+            }
+            if (L && !isDemo(L.id)) { html += '<hr class="menu-sep" /><button type="button" class="menu-action danger" data-action="remove">Remove this layout</button>'; }
             el.layoutMenu.innerHTML = html;
         }
 
@@ -678,7 +859,6 @@
                 fields: [{ id: 'prefix', name: 'Prefix', type: 'fixed', values: ['20'], color: 'blue' }, { id: 'item', name: 'Item', type: 'number', length: 10, color: 'gray' }]
             };
             if (L && isDemo(L.id)) { obj.id = L.id.replace(/^demo-/, 'my-'); }
-            delete obj.sample;
             el.json.value = JSON.stringify(obj, null, 2);
             el.jsonErrors.hidden = true;
             el.dialog.showModal();
@@ -711,13 +891,12 @@
                 catch (err) { notify('That file is not valid JSON.'); return; }
                 var res = B.layouts.validateFile(obj);
                 if (!res.ok) { notify('Nothing imported. ' + res.errors.slice(0, 3).join(' ') + (res.errors.length > 3 ? ' (and ' + (res.errors.length - 3) + ' more)' : '')); return; }
-                var clash = res.layouts.filter(function (L) { return isDemo(L.id); });
-                if (clash.length) { notify('Nothing imported: ' + clash[0].id + ' is a demonstration layout id.'); return; }
-                var ids = res.layouts.map(function (L) { return L.id; });
-                library = library.filter(function (L) { return ids.indexOf(L.id) < 0; }).concat(res.layouts);
+                var m = mergeLayouts(res.layouts);
                 saveLibrary(library);
                 renderLayoutMenu();
-                notify('Imported ' + res.layouts.length + ' layout' + (res.layouts.length === 1 ? '' : 's') + '. They are kept in this browser only.');
+                notify('Imported ' + m.added + ' layout' + (m.added === 1 ? '' : 's') +
+                    (m.skipped ? ', skipping ' + m.skipped + ' demonstration layout' + (m.skipped === 1 ? '' : 's') + ' the tool already has' : '') +
+                    '. They are kept ' + (linked ? 'in ' + linked.name + ' and this browser.' : 'in this browser.'));
             };
             reader.readAsText(file);
         }
@@ -750,6 +929,21 @@
             if (!action && t.hasAttribute('data-layout')) { selectLayout(t.getAttribute('data-layout')); return; }
             switch (action) {
                 case 'notice-close': el.notice.hidden = true; break;
+                case 'help': el.helpDialog.showModal(); break;
+                case 'help-close': el.helpDialog.close(); break;
+                case 'save-json': {
+                    var cur = findLayout(st.layout);
+                    if (!cur) { break; }
+                    var copy = JSON.parse(JSON.stringify(cur));
+                    /* A demonstration saves as a copy under its own id, so it
+                       imports as a layout of your own. */
+                    if (isDemo(copy.id)) { copy.id = copy.id.replace(/^demo-/, 'my-'); copy.name += ' (copy)'; }
+                    download(copy.id + '.json', new Blob([libraryFile([copy])], { type: 'application/json' }));
+                    break;
+                }
+                case 'link-new': linkNew(); break;
+                case 'link-open': linkExisting(); break;
+                case 'unlink': unlink(); break;
                 case 'fix': st.data = t.getAttribute('data-fix'); el.data.value = st.data; update(); commit(); break;
                 case 'import': el.file.value = ''; el.file.click(); break;
                 case 'new-json': openJson(null); break;
@@ -762,7 +956,9 @@
                     selectLayout('');
                     break;
                 case 'export':
-                    download('barcode-layouts.json', new Blob([JSON.stringify({ format: 'pc-barcode-layouts', version: 1, layouts: library }, null, 2)], { type: 'application/json' }));
+                    /* Everything the menu lists, demonstrations included;
+                       importing the file back skips those. */
+                    download('barcode-layouts.json', new Blob([libraryFile(DEMOS.concat(library))], { type: 'application/json' }));
                     break;
                 case 'open-layout': {
                     var vals = JSON.parse(t.getAttribute('data-values'));
@@ -854,9 +1050,16 @@
             if (el.dialog.open) { el.dialog.close(); }
         };
 
+        el.noticeAction.addEventListener('click', function () {
+            var h = noticeHandler;
+            el.notice.hidden = true;
+            if (h) { h(); }
+        });
+
         buildForm();
         update();
         setMode(st.mode);
+        restoreLink();
     }
 
     window.pudlApplets.register('barcodes', {

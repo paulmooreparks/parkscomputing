@@ -831,6 +831,7 @@
         if (!/^[A-Za-z0-9-]+$/.test(L.id || '')) { errs.push(at + ': id must be letters, digits and hyphens.'); }
         if (!L.name) { errs.push(at + ': name is missing.'); }
         if (!SYMBOLOGIES[L.symbology]) { errs.push(at + ': symbology "' + L.symbology + '" is not one of ' + Object.keys(SYMBOLOGIES).join(', ') + '.'); }
+        if (L.sample != null && (typeof L.sample !== 'object' || Array.isArray(L.sample))) { errs.push(at + ': sample must be an object of field id to value.'); }
         if (!Array.isArray(L.fields) || !L.fields.length) { errs.push(at + ': fields must be a non-empty list.'); return errs; }
         var ids = {};
         L.fields.forEach(function (f, i) {

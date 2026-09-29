@@ -40,6 +40,11 @@
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
 }
 .pc-barcodes .bt-tools { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.pc-barcodes .bt-spacer { flex: 1; }
+.pc-barcodes .bt-help-dialog { max-width: 560px; }
+.pc-barcodes .dialog .dialog-title { margin-top: 0; }
+.pc-barcodes .bt-help p { margin: 0 0 var(--space-3); color: var(--text); }
+.pc-barcodes .bt-help p:last-child { margin-bottom: 0; }
 .pc-barcodes .bt-tools .form-select { width: auto; }
 .pc-barcodes .bt-menu-sym { color: var(--text-muted); font-size: var(--text-xs); margin-left: var(--space-2); }
 .pc-barcodes .notice { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }

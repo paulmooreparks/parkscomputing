@@ -140,6 +140,9 @@
                 ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku', 'pc-barcodes', 'pc-barcode-layouts'].forEach(function (key) {
                     try { localStorage.removeItem(key); } catch (err) { }
                 });
+                /* The barcode tool's link to a layouts file on disk; the
+                   file itself is the reader's and is left alone. */
+                try { if (window.indexedDB) { indexedDB.deleteDatabase('pc-barcodes'); } } catch (err) { }
                 document.cookie = 'pc-list=; path=/; max-age=0; SameSite=Lax';
                 setView('window');
                 /* Forgetting lands the theme on System: the device decides. */
