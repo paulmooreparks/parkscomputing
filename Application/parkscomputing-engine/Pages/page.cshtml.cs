@@ -306,7 +306,7 @@ namespace ParksComputing.Engine.Pages {
 
             // Code blocks in an HTML article get the site's highlighting, as
             // a Markdown article's do, so the article need not load its own.
-            if (node.InnerHtml.Contains("<pre><code", StringComparison.OrdinalIgnoreCase)) { ViewData["HasCodeBlocks"] = true; }
+            if (node.SelectSingleNode("//pre/code") is not null) { ViewData["HasCodeBlocks"] = true; }
 
             // Check for audio content - first check meta tag from Markdown front matter
             var hasAudioMeta = doc.DocumentNode.SelectSingleNode("//meta[@name='has-audio']");
