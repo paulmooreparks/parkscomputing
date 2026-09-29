@@ -424,6 +424,9 @@ SOFTWARE.
             q('[data-action="reset"]').disabled = isEditingMode;
             q('[data-action="clear"]').disabled = !isEditingMode;
             q('[data-action="hintmode"]').setAttribute('aria-pressed', String(isHintMode));
+            /* In pencil mode the pad itself changes, so the mode shows
+               wherever the reader is looking. */
+            root.classList.toggle('pc-sudoku-pencil', isHintMode);
             q('[data-action="undo"]').disabled = undoIndex <= 0;
             q('[data-action="redo"]').disabled = undoIndex >= undoStack.length - 1;
         }
