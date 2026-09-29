@@ -137,7 +137,7 @@
             if (view) { setView(view.getAttribute('data-view-choice')); }
             if (e.target.closest('[data-settings-close]')) { dialog.close(); }
             if (e.target.closest('[data-settings-forget]')) {
-                ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku', 'pc-barcodes', 'pc-barcode-layouts'].forEach(function (key) {
+                ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku', 'pc-barcodes', 'pc-barcode-layouts', 'pc-terminal', 'pc-terminal-history'].forEach(function (key) {
                     try { localStorage.removeItem(key); } catch (err) { }
                 });
                 /* The barcode tool's link to a layouts file on disk; the
@@ -177,7 +177,7 @@
        (data-applet-param) is the URL's business, not this. The keys are
        per-applet, functional storage wiped by the settings dialog's
        Forget. */
-    var CONTINUITY = { sudoku: 'pc-sudoku', barcodes: 'pc-barcodes' };
+    var CONTINUITY = { sudoku: 'pc-sudoku', barcodes: 'pc-barcodes', terminal: 'pc-terminal' };
 
     document.addEventListener('pudl:applet-state', function (e) {
         /* A one-shot hand-off: an applet opening another instance of

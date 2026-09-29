@@ -37,3 +37,11 @@ pudlApplets.define('flashcards', {
     page: '/page/flashcards',
     ver: '5'
 });
+
+/* The terminal loads xterm.js from js/vendor beside itself. */
+pudlApplets.define('terminal', {
+    src: '/js/terminal.js',
+    css: '/css/terminal.css',
+    page: '/page/terminal',
+    ver: '3'
+});
