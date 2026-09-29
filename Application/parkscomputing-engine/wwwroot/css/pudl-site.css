@@ -334,7 +334,11 @@ body.desktop .md-item .md-meta { white-space: normal; overflow-wrap: anywhere; }
 .menu-panel .menu-check:hover { background: var(--surface-alt); }
 
 /* The close-all and clear-filters controls, and any disabled icon button. */
-.close-all svg, .filter-clear svg { width: 15px; height: 15px; }
+.close-all svg, .filter-clear svg, .min-all svg { width: 15px; height: 15px; }
+/* Minimise-all shows a down arrow, and restore-all, the same button once
+   every window is minimised, an up arrow. */
+.min-all .min-all-up, .min-all.is-restore .min-all-down { display: none; }
+.min-all.is-restore .min-all-up { display: inline; }
 .md-filter-group .filter-clear { margin-left: 6px; }
 .icon-btn.is-disabled { opacity: .45; pointer-events: none; cursor: not-allowed; }
 
@@ -359,10 +363,14 @@ body.desktop .md-item .md-meta { white-space: normal; overflow-wrap: anywhere; }
    separator, so the two jobs read as different. */
 .bar-spacer { flex: 1; }
 .bar-sep {
-  align-self: center;
-  width: 1px; height: 16px;   /* fixed: a % of an auto-height bar is zero */
+  /* Two thirds the height of the 30px tabs and centred on them. The bar
+     aligns its items to the bottom and its content box is shorter than a
+     tab, so neither a % height nor stretching reaches the tabs' height;
+     a fixed size does. */
+  align-self: flex-end;
+  width: 1px; height: 20px;
   background: var(--border);
-  margin: 0 6px;
+  margin: 0 6px 5px;
 }
 /* The link area holds links, not tabs, so they follow the underline rule
    and carry none of the raised tab chrome (0.16.0 raises .section-tab). */

@@ -161,6 +161,21 @@
         <span class="md-section-label">Open</span>
         <nav class="win-dock" data-win-dock aria-label="Open windows"></nav>
         <span class="md-toolbar-sep"></span>
+        @* Minimise every window, or bring them all back. While any window
+           shows it is PUDL's data-win-back link, which minimises them all
+           and keeps its own href current; once all are minimised,
+           desktop.js makes it a restore link to the same state without
+           min=, and restores in place. *@
+        @{
+            bool anyOpen = Model.Windows.Count > 0;
+            bool anyShowing = Model.Windows.Any(w => !w.Minimized);
+        }
+        <a class="icon-btn min-all @(anyOpen ? null : "is-disabled")" data-min-all
+           @(anyShowing ? Html.Raw("data-win-back") : null)
+           href="@(anyShowing ? Model.MinimizeAllUrl : Model.RestoreAllUrl)"
+           @(anyOpen ? null : Html.Raw("aria-disabled=\"true\" tabindex=\"-1\""))
+           aria-label="@(anyShowing || !anyOpen ? "Minimize all windows" : "Restore all windows")"
+           title="@(anyShowing || !anyOpen ? "Minimize all windows" : "Restore all windows")"><svg class="min-all-down" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="13" height="9" rx="1.5"/><line x1="4.5" y1="14" x2="11.5" y2="14"/><path d="M6 5.5l2 2 2-2"/></svg><svg class="min-all-up" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="13" height="9" rx="1.5"/><line x1="4.5" y1="14" x2="11.5" y2="14"/><path d="M6 7.5l2-2 2 2"/></svg></a>
         @* Close every window. A real link to the windowless state for
            no-script; desktop.js intercepts to close in place. *@
         <a class="icon-btn close-all @(Model.Windows.Count == 0 ? "is-disabled" : null)"

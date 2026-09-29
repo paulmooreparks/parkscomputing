@@ -222,6 +222,70 @@
                 else { closeAll.removeAttribute('aria-disabled'); closeAll.tabIndex = 0; }
             });
         }
+
+        /* Minimise all, or restore all. While any window shows, the button
+           is PUDL's data-win-back link, which minimises every window in one
+           step. Once all are minimised it becomes a restore link: the same
+           address without min=, and in place, each window raised again in
+           stacking order so the one that was on top ends on top. */
+        var minAll = document.querySelector('[data-min-all]');
+        if (minAll) {
+            var topLevel = function (st) {
+                return st.open.filter(function (key) {
+                    var el = layer.querySelector('.win[data-win="' + key + '"]');
+                    return el && !el.hasAttribute('data-win-parent');
+                });
+            };
+            var addressWith = function (min, top) {
+                var q = new URLSearchParams(location.search);
+                q.delete('min'); q.delete('top');
+                if (top) { q.set('top', top); }
+                if (min.length) { q.set('min', min.join(',')); }
+                var s = q.toString().replace(/%2C/g, ',');
+                return location.pathname + (s ? '?' + s : '');
+            };
+            var syncMinAll = function () {
+                if (!window.pudlWindows) { return; }
+                var st = window.pudlWindows.state(), tops = topLevel(st);
+                var none = tops.length === 0;
+                var showing = tops.some(function (k) { return !st.min[k]; });
+                var restoring = !none && !showing;
+                if (restoring) {
+                    minAll.removeAttribute('data-win-back');
+                    minAll.setAttribute('href', addressWith([], tops[tops.length - 1]));
+                } else {
+                    minAll.setAttribute('data-win-back', '');
+                    minAll.setAttribute('href', addressWith(tops, null));
+                }
+                var label = restoring ? 'Restore all windows' : 'Minimize all windows';
+                minAll.setAttribute('aria-label', label);
+                minAll.setAttribute('title', label);
+                minAll.classList.toggle('is-restore', restoring);
+                minAll.classList.toggle('is-disabled', none);
+                if (none) { minAll.setAttribute('aria-disabled', 'true'); minAll.tabIndex = -1; }
+                else { minAll.removeAttribute('aria-disabled'); minAll.tabIndex = 0; }
+            };
+            /* Minimising them all clears the top window, so the last one
+               there is remembered, and raised last on restore. */
+            var lastTop = null;
+            minAll.addEventListener('click', function (e) {
+                if (minAll.hasAttribute('data-win-back')) { return; }
+                if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) { return; }
+                e.preventDefault();
+                if (!window.pudlWindows || minAll.classList.contains('is-disabled')) { return; }
+                var st = window.pudlWindows.state();
+                var order = topLevel(st).filter(function (k) { return st.min[k]; });
+                if (lastTop && order.indexOf(lastTop) >= 0) { order.splice(order.indexOf(lastTop), 1); order.push(lastTop); }
+                order.forEach(function (k) { window.pudlWindows.raise(k); });
+            });
+            document.addEventListener('pudl:windows-change', function () {
+                var st = window.pudlWindows && window.pudlWindows.state();
+                if (st && st.top) { lastTop = st.top; }
+                syncMinAll();
+            });
+            if (window.pudlWindows) { lastTop = window.pudlWindows.state().top || null; }
+            syncMinAll();
+        }
     }
 
     restoreWindows();

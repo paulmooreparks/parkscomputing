@@ -287,6 +287,27 @@ public class DesktopModel : PageModel {
         if (mins.Count > 0) { parts.Add("min=" + string.Join(",", mins)); }
         return "/?" + string.Join("&", parts);
     }
+    /// <summary>The current desktop with every top-level window minimised
+    /// (min= lists them all, top= goes), or with none minimised: the
+    /// minimise-all and restore-all buttons' no-script destinations. PUDL
+    /// keeps the minimise href current once script runs.</summary>
+    public string MinimizeAllUrl => WindowsUrl(Windows.Where(w => w.Parent is null).Select(w => w.Key), top: null);
+    public string RestoreAllUrl => WindowsUrl(Array.Empty<string>(), top: OpenOrder.LastOrDefault());
+
+    private string WindowsUrl(IEnumerable<string> min, string? top) {
+        var parts = new List<string>();
+        foreach (var kv in Request.Query) {
+            if (kv.Key is "top" or "min" or "view") { continue; }
+            foreach (var value in kv.Value) {
+                parts.Add($"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(value ?? string.Empty)}");
+            }
+        }
+        var mins = min.ToList();
+        if (top is not null) { parts.Add("top=" + top); }
+        if (mins.Count > 0) { parts.Add("min=" + string.Join(",", mins)); }
+        return parts.Count > 0 ? "/?" + string.Join("&", parts) : "/";
+    }
+
     public string RemoveCatUrl(string cat) => BuildUrl(SelectedCats.Where(c => c != cat), Q, SelectedTags);
     public string RemoveTagUrl(string tag) => BuildUrl(SelectedCats, Q, SelectedTags.Where(t => t != tag));
     public string RemoveQUrl => BuildUrl(SelectedCats, null, SelectedTags);
