@@ -71,7 +71,9 @@ Each field has an `id`, a `name`, a `type`, and optionally a `color` (blue, gray
 | `enum` | A code from a table of meanings. | `values` (an object of code to meaning) |
 | `check` | A computed check digit over earlier fields. | `algorithm`, `over` (field ids, default all earlier fields) |
 
-The check algorithms are `gs1-mod10`, `luhn`, `mod11` (weights 2 to 7 from the right, a result of 10 written as 0) and `7dr` (the remainder of the number divided by 7).
+The check algorithms are `gs1-mod10`, `luhn`, `mod11` (weights 2 to 7 from the right, a result of 10 written as 0), `7dr` (the remainder of the number divided by 7), `7dsr` (7 less that remainder), and `gs1-price4` and `gs1-price5` (the price check digits of GS1 General Specifications 7.9.3 and 7.9.4). The public definitions of 7DSR say only "subtract the remainder from the modulus", so a remainder of 0 gives 7; if a real scheme turns out to write 0 there, that is a separate algorithm, not a change to this one. A price check covers exactly four or five digits, and the layout is refused otherwise.
+
+Check digits are computed after every other field, so `over` may name a field that comes later. The GS1 price check digit stands in front of the price it guards, which is why. A check may cover another check digit only when that one comes first.
 
 The `explain` template substitutes `{field}` with the field's formatted value, `{field:raw}` with its digits, and `{field:meaning}` with an enumeration's meaning.
 

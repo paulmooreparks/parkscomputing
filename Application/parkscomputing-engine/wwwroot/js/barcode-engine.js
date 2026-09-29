@@ -13,6 +13,15 @@
 
     /* === Check-digit algorithms ========================================= */
 
+    /* Weighted products for the GS1 price check digits, indexed by digit
+       (General Specifications, figures 7.9.2-1 to 7.9.2-4). */
+    var WEIGHT = {
+        '2-': [0, 2, 4, 6, 8, 9, 1, 3, 5, 7],
+        '3':  [0, 3, 6, 9, 2, 5, 8, 1, 4, 7],
+        '5+': [0, 5, 1, 6, 2, 7, 3, 8, 4, 9],
+        '5-': [0, 5, 9, 4, 8, 3, 7, 2, 6, 1]
+    };
+
     var CHECKS = {
         'gs1-mod10': {
             name: 'GS1 modulo 10',
@@ -49,6 +58,39 @@
                 var r = 0;
                 for (var i = 0; i < s.length; i++) { r = (r * 10 + (+s[i])) % 7; }
                 return String(r);
+            }
+        },
+        /* 7 less the remainder. The public definitions stop at "subtract
+           the remainder from the modulus", so a remainder of 0 gives 7. */
+        '7dsr': {
+            name: '7DSR (7 less the remainder of division by 7)',
+            compute: function (s) {
+                var r = 0;
+                for (var i = 0; i < s.length; i++) { r = (r * 10 + (+s[i])) % 7; }
+                return String(7 - r);
+            }
+        },
+        /* The price check digits of the GS1 General Specifications, 7.9.2
+           to 7.9.4, for a price inside a variable-measure code. Each covers
+           a price of exactly its length. */
+        'gs1-price4': {
+            name: 'GS1 four-digit price check',
+            length: 4,
+            compute: function (s) {
+                if (s.length !== 4) { return null; }
+                var w = [WEIGHT['2-'], WEIGHT['2-'], WEIGHT['3'], WEIGHT['5-']], sum = 0;
+                for (var i = 0; i < 4; i++) { sum += w[i][+s[i]]; }
+                return String(sum * 3 % 10);
+            }
+        },
+        'gs1-price5': {
+            name: 'GS1 five-digit price check',
+            length: 5,
+            compute: function (s) {
+                if (s.length !== 5) { return null; }
+                var w = [WEIGHT['5+'], WEIGHT['2-'], WEIGHT['5-'], WEIGHT['5+'], WEIGHT['2-']], sum = 0;
+                for (var i = 0; i < 5; i++) { sum += w[i][+s[i]]; }
+                return String(WEIGHT['5-'].indexOf((10 - sum % 10) % 10));
             }
         }
     };
@@ -833,7 +875,8 @@
         if (!SYMBOLOGIES[L.symbology]) { errs.push(at + ': symbology "' + L.symbology + '" is not one of ' + Object.keys(SYMBOLOGIES).join(', ') + '.'); }
         if (L.sample != null && (typeof L.sample !== 'object' || Array.isArray(L.sample))) { errs.push(at + ': sample must be an object of field id to value.'); }
         if (!Array.isArray(L.fields) || !L.fields.length) { errs.push(at + ': fields must be a non-empty list.'); return errs; }
-        var ids = {};
+        var ids = {}, byId = {};
+        L.fields.forEach(function (f) { if (f && f.id && !byId[f.id]) { byId[f.id] = f; } });
         L.fields.forEach(function (f, i) {
             var fat = at + ' field ' + (i + 1) + (f && f.id ? ' (' + f.id + ')' : '');
             if (!f || typeof f !== 'object') { errs.push(fat + ' is not an object.'); return; }
@@ -850,7 +893,14 @@
             if (f.type === 'enum' && (!f.values || typeof f.values !== 'object' || Array.isArray(f.values) || !Object.keys(f.values).length)) { errs.push(fat + ': an enum needs values, an object of code to meaning.'); }
             if (f.type === 'enum' && f.values && Object.keys(f.values).some(function (k) { return k.length !== Object.keys(f.values)[0].length; })) { errs.push(fat + ': every enum code must be the same length.'); }
             if (f.type === 'check' && !CHECKS[f.algorithm]) { errs.push(fat + ': algorithm must be one of ' + Object.keys(CHECKS).join(', ') + '.'); }
-            if (f.type === 'check' && f.over && f.over.some(function (id) { return !ids[id]; })) { errs.push(fat + ': over names a field that does not come before it.'); }
+            if (f.type === 'check' && f.over && f.over.some(function (id) { var g = byId[id]; return !g || g === f || (g.type === 'check' && !ids[id]); })) { errs.push(fat + ': over must name other fields of this layout, and a check digit it covers must come before it.'); }
+            else if (f.type === 'check' && CHECKS[f.algorithm] && CHECKS[f.algorithm].length) {
+                var covered = f.over
+                    ? L.fields.filter(function (g) { return f.over.indexOf(g.id) >= 0; })
+                    : L.fields.slice(0, i).filter(function (g) { return g.type !== 'check'; });
+                var n = covered.reduce(function (a, g) { var k = fieldLength(g); return a === null || !k ? null : a + k; }, 0);
+                if (n !== CHECKS[f.algorithm].length) { errs.push(fat + ': ' + f.algorithm + ' covers exactly ' + CHECKS[f.algorithm].length + ' digits of fixed length; name them with over.'); }
+            }
             if (f.type === 'text' && !(f.length > 0) && !(f.maxLength > 0)) { errs.push(fat + ': a text field needs length or maxLength.'); }
             if (f.type === 'text' && !(f.length > 0) && i < L.fields.length - 1 && L.symbology !== 'gs1-128') { errs.push(fat + ': only the last field may vary in length.'); }
             if (L.symbology === 'gs1-128' && i === 0 && !f.ai) { errs.push(fat + ': the first GS1-128 field needs an ai.'); }
@@ -962,6 +1012,9 @@
         return CHECKS[f.algorithm].compute(src);
     }
 
+    /* Check digits are computed after every other field, so one can cover
+       a field that follows it, as the GS1 price check precedes its price. */
+
     /* Composes a layout's field values into encoder input. Returns the
        input string, per-field results, and each field's span in the data
        string the encoder builds (for GS1-128, the element string without
@@ -969,14 +1022,18 @@
     function compose(L, values) {
         values = values || {};
         var results = {}, raws = {}, ok = true;
+        L.fields.forEach(function (f) {
+            if (f.type === 'check') { return; }
+            var r = normalizeField(f, values[f.id]);
+            if (r.error) { ok = false; }
+            results[f.id] = r;
+            raws[f.id] = r.raw || '';
+        });
         L.fields.forEach(function (f, idx) {
-            var r;
-            if (f.type === 'check') {
-                var c = checkOver(L, idx, raws);
-                r = c === null ? { error: 'Computed once the fields it covers are valid.' } : { raw: c, display: c, computed: true };
-            } else {
-                r = normalizeField(f, values[f.id]);
-            }
+            if (f.type !== 'check') { return; }
+            var covered = f.over || L.fields.slice(0, idx).filter(function (g) { return g.type !== 'check'; }).map(function (g) { return g.id; });
+            var c = covered.some(function (id) { return results[id] && results[id].error; }) ? null : checkOver(L, idx, raws);
+            var r = c === null ? { error: 'Computed once the fields it covers are valid.' } : { raw: c, display: c, computed: true };
             if (r.error) { ok = false; }
             results[f.id] = r;
             raws[f.id] = r.raw || '';

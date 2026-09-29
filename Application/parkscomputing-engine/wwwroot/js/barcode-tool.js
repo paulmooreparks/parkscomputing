@@ -48,6 +48,30 @@
             sample: { item: '4213', price: '3.49' }
         },
         {
+            id: 'demo-price-check5', name: 'Price with a price check digit', symbology: 'ean13',
+            description: 'A variable-measure EAN-13 whose five-digit price is guarded by the GS1 price check digit that stands before it.',
+            explain: 'Item {item} at {price}.',
+            fields: [
+                { id: 'prefix', name: 'Prefix', type: 'fixed', values: ['20'], color: 'blue', description: 'Restricted-circulation prefix chosen for priced items' },
+                { id: 'item', name: 'Item', type: 'number', length: 4, color: 'gray' },
+                { id: 'pcheck', name: 'Price check', type: 'check', algorithm: 'gs1-price5', over: ['price'], color: 'purple' },
+                { id: 'price', name: 'Price', type: 'decimal', length: 5, decimals: 2, color: 'green' }
+            ],
+            sample: { item: '731', price: '146.85' }
+        },
+        {
+            id: 'demo-price-check4', name: 'UPC-A price with a price check digit', symbology: 'upca',
+            description: 'A variable-measure UPC-A, number system 2, with a five-digit item and a four-digit price behind the GS1 price check digit.',
+            explain: 'Item {item} at {price}.',
+            fields: [
+                { id: 'system', name: 'Number system', type: 'fixed', values: ['2'], color: 'blue' },
+                { id: 'item', name: 'Item', type: 'number', length: 5, color: 'gray' },
+                { id: 'pcheck', name: 'Price check', type: 'check', algorithm: 'gs1-price4', over: ['price'], color: 'purple' },
+                { id: 'price', name: 'Price', type: 'decimal', length: 4, decimals: 2, prefix: '$', color: 'green' }
+            ],
+            sample: { item: '4011', price: '28.75' }
+        },
+        {
             id: 'demo-weight-embedded', name: 'Weight-embedded item', symbology: 'ean13',
             description: 'An in-store EAN-13 carrying an item number and a net weight in kilograms.',
             explain: 'Item {item}, weighing {weight}.',

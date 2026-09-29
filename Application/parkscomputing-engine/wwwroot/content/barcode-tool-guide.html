@@ -136,14 +136,24 @@
             <tr><td><code>date</code></td><td>A calendar date, checked for real, in a format built from <code>dd</code>, <code>mm</code>, <code>yy</code> and <code>yyyy</code>.</td><td><code>format</code></td></tr>
             <tr><td><code>decimal</code></td><td>A number with implied decimal places, typed as <code>12.50</code> or as raw digits.</td><td><code>length</code>, <code>decimals</code>, <code>prefix</code>, <code>suffix</code></td></tr>
             <tr><td><code>enum</code></td><td>A code from a table, each with a meaning.</td><td><code>values</code>, an object of code to meaning</td></tr>
-            <tr><td><code>check</code></td><td>A check digit the tool computes over earlier fields.</td><td><code>algorithm</code>, <code>over</code></td></tr>
+            <tr><td><code>check</code></td><td>A check digit the tool computes over other fields.</td><td><code>algorithm</code>, <code>over</code></td></tr>
         </tbody>
     </table>
+    <p>A check field's <code>algorithm</code> is one of these:</p>
+    <ul>
+        <li><code>gs1-mod10</code> is the EAN and UPC method.</li>
+        <li><code>luhn</code> is used on payment and membership cards.</li>
+        <li><code>mod11</code> uses weights 2 to 7 from the right and writes a result of 10 as 0.</li>
+        <li><code>7dr</code> is the remainder after dividing the number by 7.</li>
+        <li><code>7dsr</code> is 7 less that remainder, so a remainder of 0 gives 7.</li>
+        <li><code>gs1-price4</code> and <code>gs1-price5</code> are the price check digits of the GS1 General
+            Specifications (sections 7.9.3 and 7.9.4), which guard a four- or five-digit price inside a variable-measure
+            code. Each covers exactly that many digits.</li>
+    </ul>
     <p>
-        A check field's <code>algorithm</code> is <code>gs1-mod10</code> (the EAN and UPC method), <code>luhn</code>
-        (payment and membership cards), <code>mod11</code> (weights 2 to 7 from the right, with a result of 10 written as
-        0), or <code>7dr</code> (the remainder after dividing by 7). By default it covers every earlier field; list field
-        ids in <code>over</code> to cover only some.
+        By default a check covers every earlier field. List field ids in <code>over</code> to cover only some, and these
+        may come after the check, since the GS1 price check digit stands in front of the price it guards. The
+        demonstration layout <em>Price with a price check digit</em> shows how that looks.
     </p>
     <p>
         In an <code>explain</code> template, <code>{price}</code> is a field's formatted value, <code>{price:raw}</code>
