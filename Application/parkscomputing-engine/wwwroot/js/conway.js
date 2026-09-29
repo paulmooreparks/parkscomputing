@@ -29,7 +29,43 @@
               '<button type="button" class="btn" data-action="step">Step</button>' +
               '<button type="button" class="btn" data-action="reset" title="Put back the board this started with">Reset</button>' +
               '<button type="button" class="btn" data-action="share" aria-haspopup="dialog">Share…</button>' +
+              '<button type="button" class="btn" data-action="help" aria-haspopup="dialog">Help</button>' +
             '</div>' +
+            '<dialog class="dialog conway-help" data-role="help-dialog" aria-label="How to use the Game of Life">' +
+              '<h3 class="dialog-title">How to use the Game of Life</h3>' +
+              '<div class="dialog-body">' +
+                '<p>Each generation, every cell looks at its eight neighbours. A live cell with two or three live neighbours ' +
+                  'survives, a dead cell with exactly three comes to life, and every other cell is dead in the next generation.</p>' +
+                '<h4>Running the game</h4>' +
+                '<p><strong>Start</strong> runs one generation after another until you press <strong>Stop</strong>. ' +
+                  '<strong>Step</strong> advances a single generation, so you can watch how the cells interact. ' +
+                  '<strong>Reset</strong> puts back the board you started with, and <strong>Share</strong> gives you a link ' +
+                  'to the board exactly as it is.</p>' +
+                '<h4>Setting up the board</h4>' +
+                '<p>Click any cell to bring it to life, and click a live cell to clear it. This works while the game is ' +
+                  'running too: a cell you click joins the very next generation, so you can drop a new pattern into a running ' +
+                  'world and see what it does. To start from nothing, set the cells you want before pressing Start.</p>' +
+                '<h4>Settings</h4>' +
+                '<p>The settings take effect the next time you press Start or Step, and they are locked while the game ' +
+                  'runs, so press Stop to change them.</p>' +
+                '<ul>' +
+                  '<li><strong>Milliseconds delay</strong> is the pause between generations. Zero runs as fast as your ' +
+                    'computer allows.</li>' +
+                  '<li><strong>Cells across and down</strong> sets the size of the square board. Changing it starts a new ' +
+                    'board, keeping the live cells that still fit.</li>' +
+                  '<li><strong>Pixels across each cell</strong> sets how large each cell is drawn. In a window the board is ' +
+                    'scaled to fit, so this matters most on the article page.</li>' +
+                  '<li><strong>Wrap around edges</strong> joins the left edge to the right and the top to the bottom, so ' +
+                    'patterns leaving one side come back on the other. Turned off, the edges are walls.</li>' +
+                  '<li><strong>Save history</strong> records each generation in the browser\'s history, so Back and Forward ' +
+                    'step through time. It slows long runs, and it is available only on the article page, which owns ' +
+                    'its address.</li>' +
+                '</ul>' +
+              '</div>' +
+              '<div class="dialog-actions">' +
+                '<button type="button" class="btn btn-primary" data-action="help-close">Close</button>' +
+              '</div>' +
+            '</dialog>' +
             '<dialog class="dialog conway-share" data-role="share-dialog" aria-label="Share this board">' +
               '<h3 class="dialog-title">Share this board</h3>' +
               '<div class="dialog-body">' +
@@ -472,6 +508,11 @@
                       function () { el.shareUrl.select(); el.shareCopy.textContent = 'Press Ctrl+C to copy'; });
         });
         root.querySelector('[data-action="share-close"]').addEventListener('click', function () { el.shareDialog.close(); });
+
+        var helpDialog = q('[data-role="help-dialog"]');
+        q('[data-action="help"]').addEventListener('click', function () { helpDialog.showModal(); });
+        q('[data-action="help-close"]').addEventListener('click', function () { helpDialog.close(); });
+        helpDialog.addEventListener('click', function (e) { if (e.target === helpDialog) { helpDialog.close(); } });
         el.shareDialog.addEventListener('click', function (e) { if (e.target === el.shareDialog) { el.shareDialog.close(); } });
         el.shareOpen.addEventListener('click', function () {
             var url = el.shareUrl.value;

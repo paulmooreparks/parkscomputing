@@ -15,7 +15,14 @@
 }
 
 .pc-conway .conway-share { max-width: 560px; }
-.pc-conway .conway-share .dialog-title { margin-top: 0; }
+.pc-conway .conway-share .dialog-title,
+.pc-conway .conway-help .dialog-title { margin-top: 0; }
+.pc-conway .conway-help { max-width: 620px; }
+.pc-conway .conway-help .dialog-body { color: var(--text); }
+.pc-conway .conway-help h4 { margin: var(--space-4) 0 var(--space-1); font-size: var(--text-md); }
+.pc-conway .conway-help p { margin: 0 0 var(--space-2); }
+.pc-conway .conway-help ul { margin: 0; padding-left: 1.2em; }
+.pc-conway .conway-help li { margin: var(--space-1) 0; }
 .pc-conway .conway-share-help { margin: 0 0 var(--space-3); }
 .pc-conway .conway-share-url { width: 100%; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: var(--text-sm); }
 .pc-conway .conway-buttons { flex-wrap: wrap; justify-content: center; }
