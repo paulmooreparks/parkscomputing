@@ -62,8 +62,8 @@ public class TerminalController : ControllerBase {
 
     /// <summary>The site's scripts, from content/bin: plain-text files of
     /// terminal commands, which can do only what the terminal's commands
-    /// can. A file named with a .sh extension drops it; names are lower
-    /// case, and a script over 16 KB is left out.</summary>
+    /// can. A .sh or .txt extension is dropped from the name; names are
+    /// lower case, and a script over 16 KB is left out.</summary>
     private Entry? Scripts() {
         var dir = Path.Combine(_environment.WebRootPath, "content", "bin");
         if (!Directory.Exists(dir)) { return null; }
@@ -71,6 +71,7 @@ public class TerminalController : ControllerBase {
         foreach (var path in Directory.EnumerateFiles(dir).OrderBy(p => p, StringComparer.Ordinal).Take(200)) {
             var name = Path.GetFileName(path);
             if (name.EndsWith(".sh", StringComparison.Ordinal)) { name = name[..^3]; }
+            else if (name.EndsWith(".txt", StringComparison.Ordinal)) { name = name[..^4]; }
             if (!ScriptName.IsMatch(name) || new FileInfo(path).Length > ScriptMax) { continue; }
             var source = System.IO.File.ReadAllText(path);
             scripts.Add(new Entry(name, "script", name, ScriptSummary(name, source), null,

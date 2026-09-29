@@ -205,14 +205,35 @@
             '  ls /articles > articles.txt',
             '  download glider.cells',
             '  upload',
+            '  hello                  (a script in ~/bin)',
             '',
             '"man edit" lists the editor\'s keys, and "help"',
             'lists every command.',
             ''
         ].join('\n'),
+        '/bin/hello': [
+            '# hello: greet someone, a first script to copy',
+            '#',
+            '# Usage: hello [name]',
+            '#',
+            '# A script is a file of terminal commands, one a line. Scripts in',
+            '# ~/bin run by name, like the site\'s own in /bin. $1 is the first',
+            '# argument, and ${1:-world} gives it a default. Change this one',
+            '# with "edit ~/bin/hello", or copy it to start another:',
+            '# cp ~/bin/hello ~/bin/mine',
+            'echo Hello, ${1:-world}!',
+            'echo Your home directory holds:',
+            'ls ~',
+            ''
+        ].join('\n'),
         '/glider.cells': '!Name: Glider\n!A small pattern that travels across the board. O is a live cell, . is a dead one.\n.O.\n..O\nOOO\n',
         '/puzzle.sudoku': '# A Sudoku puzzle: digits are clues, dots are empty cells.\n53..7....\n6..195...\n.98....6.\n8...6...3\n4..8.3..1\n7...2...6\n.6....28.\n...419..5\n....8..79\n'
     };
+
+    /* The seed version that introduced each file; files not named here
+       came with version 1. */
+    var SEED_VERSION = 2;
+    var SEED_SINCE = { '/bin/hello': 2 };
 
     function mountHome(root) {
         var homes = { name: 'home', kind: 'dir', title: 'Home directories', description: '', parent: root, children: [] };
@@ -249,9 +270,18 @@
         var data = null;
         try { data = raw ? JSON.parse(raw) : null; } catch (err) { data = null; }
         if (!data || !data.files || typeof data.files !== 'object') { data = { files: {} }; }
-        var seedNow = !data.seeded;
+        /* Seeding is versioned: a home directory gets each seed file once,
+           in the version that introduced it, so a reader who deletes one
+           keeps it deleted, and a later seed still reaches an older home. */
+        var had = data.seeded === true ? 1 : (+data.seeded || 0);
+        var seedNow = had < SEED_VERSION;
         if (seedNow) {
-            Object.keys(SEED).forEach(function (p) { if (!data.files[p]) { data.files[p] = { t: 'f', c: SEED[p], m: Date.now() }; } });
+            Object.keys(SEED).forEach(function (p) {
+                if ((SEED_SINCE[p] || 1) <= had || data.files[p]) { return; }
+                var dir = p.slice(0, p.lastIndexOf('/'));
+                if (dir && !data.files[dir]) { data.files[dir] = { t: 'd', m: Date.now() }; }
+                data.files[p] = { t: 'f', c: SEED[p], m: Date.now() };
+            });
         }
         home.dir.children = [];
         Object.keys(data.files).sort().forEach(function (p) { homeInsert(p, data.files[p]); });
@@ -271,7 +301,7 @@
                 else { files[p] = { t: 'f', c: c.content, m: +c.mtime }; }
             });
         })(home.dir, '');
-        return JSON.stringify({ seeded: true, files: files });
+        return JSON.stringify({ seeded: SEED_VERSION, files: files });
     }
 
     /* Saves the home directory; on failure the stored copy is reloaded so

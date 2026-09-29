@@ -305,6 +305,11 @@ body.desktop .md-toolbar .win-dock { flex: 1 1 auto; min-width: 0; }
 /* The default width rides the PUDL variable so a dragged width (pudl-md.js
    sets it inline on the layout) wins over it. */
 body.desktop .md-layout { --md-sidebar-w: 300px; }
+/* A row's title stays on one line with an ellipsis, but its description
+   wraps, so it can be read at any sidebar width. PUDL's .md-item sets
+   nowrap for the whole row; this is proposed upstream, and goes when a
+   PUDL release carries it. */
+body.desktop .md-item .md-meta { white-space: normal; overflow-wrap: anywhere; }
 /* The filter's apply button is PUDL's .md-filter-group since 0.11.0. */
 .reader-stage { padding: 0; overflow: hidden; }
 .reader-col { display: flex; flex-direction: column; height: 100%; }
