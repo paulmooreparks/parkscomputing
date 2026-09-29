@@ -43,9 +43,14 @@ pudlApplets.define('flashcards', {
    version, so a change to one of them bumps the terminal's ver. Scripts
    (files of commands) need no listing: they live in content/bin. */
 window.pcTerminalCommands = ['/js/terminal-text.js'];
+
+/* The site filesystem the terminal, the file manager and the editor share
+   (js/sitefs.js). Every applet loads it from this one address, so a page
+   holds one copy; raise its v on every change to the file. */
+window.pcSiteFsSrc = '/js/sitefs.js?v=1';
 pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: '/page/terminal',
-    ver: '14'
+    ver: '15'
 });
