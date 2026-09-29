@@ -15,7 +15,10 @@
 @{
     void RenderRow(NavNode node)
     {
-        var meta = NavService.EffectiveDate(node)?.ToString("d MMMM yyyy") ?? node.Description;
+        @* Under the title: the date and the description, each when there is
+           one, as two muted lines. *@
+        var date = NavService.EffectiveDate(node)?.ToString("d MMMM yyyy");
+        var description = node.Description;
         if (IsInternal(node))
         {
             var key = node.Slug!;
@@ -26,9 +29,13 @@
                 <a class="md-item" href="@(node.Url ?? $"/page/{key}")" data-win-open="@key"
                    title="@node.Description" aria-current="@(active ? "true" : null)">
                     @node.Title
-                    @if (!string.IsNullOrEmpty(meta))
+                    @if (!string.IsNullOrEmpty(date))
                     {
-                        <span class="md-meta">@meta</span>
+                        <span class="md-meta">@date</span>
+                    }
+                    @if (!string.IsNullOrEmpty(description))
+                    {
+                        <span class="md-meta md-desc">@description</span>
                     }
                 </a>
             </div>
