@@ -28,7 +28,7 @@ pudlApplets.define('barcodes', {
     src: '/js/barcode-tool.js',
     css: '/css/barcode-tool.css',
     page: '/page/barcodes',
-    ver: '12'
+    ver: '13'
 });
 
 pudlApplets.define('flashcards', {
@@ -48,11 +48,21 @@ window.pcTerminalCommands = ['/js/terminal-text.js'];
    (js/sitefs.js). Every applet loads it from this one address, so a page
    holds one copy; raise its v on every change to the file. */
 window.pcSiteFsSrc = '/js/sitefs.js?v=1';
+
+/* The terminal, Files and the editor ask each other for things through
+   PUDL's requests (0.27.0), never by name: open a file, browse a folder,
+   or give a shell in one. param is the state parameter the path travels
+   in, kinds limits a request to those kinds of entry, extra names further
+   parameters it may carry, and reuse: false gives each request a new
+   instance, up to instances of them. A request reaches a running applet
+   through its setState(). */
 pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: '/page/terminal',
-    ver: '18'
+    ver: '19',
+    handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
+    instances: 4
 });
 
 /* Files and the editor use the same site filesystem as the terminal. */
@@ -60,7 +70,8 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: '/page/files',
-    ver: '6'
+    ver: '7',
+    handles: { browse: { param: 'path' } }
 });
 
 /* The editor loads CodeMirror 6 from js/vendor beside itself. */
@@ -68,17 +79,6 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: '/page/editor',
-    ver: '3'
+    ver: '4',
+    handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } }
 });
-
-/* The requests each applet serves, for js/handlers.js: open a file,
-   browse a folder, or give a shell in one. param is the state parameter
-   the path travels in, kinds limits open to those kinds of entry, extra
-   names further parameters a request may carry, and fresh means each
-   request gets a new instance, up to instances of them. An applet that
-   declares a request listens for pc:applet-request on its mount. */
-window.pcHandlers = {
-    editor: { open: { param: 'file', kinds: ['file', 'script', 'page'] } },
-    files: { browse: { param: 'path' } },
-    terminal: { shell: { param: 'cwd', extra: ['run'], fresh: true }, instances: 4 }
-};

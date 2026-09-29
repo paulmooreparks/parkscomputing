@@ -487,14 +487,14 @@
             renderTabs();
         }
 
-        /* A file asked of a running editor through the site's handlers
-           (js/handlers.js) opens in a tab, or a new file by that name. */
-        function onOpenRequest(e) {
-            var f = fileFrom(e.detail && e.detail.state);
+        /* A file handed to a running editor, by an open request
+           (pudlApplets.request) or a preset, opens in a tab, or as a new
+           file by that name. */
+        function takeFile(s) {
+            var f = fileFrom(s);
             if (!f || !F || !CM) { return; }
             openPath(f).then(function (opened) { if (!opened && !F.resolve(F.home(), f)) { newNamed(f); } });
         }
-        root.addEventListener('pc:applet-request', onOpenRequest);
 
         function onBeforeUnload(e) {
             if (tabs.some(function (t) { return t.modified; })) { e.preventDefault(); e.returnValue = ''; }
@@ -551,11 +551,10 @@
 
         return {
             state: function () { return stateString() || null; },
-            setState: function (s) { onOpenRequest({ detail: { state: s } }); },
+            setState: takeFile,
             destroy: function () {
                 destroyed = true;
                 if (unsubscribe) { unsubscribe(); }
-                root.removeEventListener('pc:applet-request', onOpenRequest);
                 window.removeEventListener('beforeunload', onBeforeUnload);
                 if (el.dialog.open) { el.dialog.close(); }
                 if (view) { view.destroy(); }

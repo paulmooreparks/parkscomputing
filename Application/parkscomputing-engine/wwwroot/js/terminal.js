@@ -796,8 +796,8 @@
     });
     alias('barcode', 'barcodes');
 
-    /* Another terminal, and Files, are asked for through the site's
-       handlers (js/handlers.js), not by name. */
+    /* Another terminal, and Files, are asked for through PUDL's requests
+       (pudlApplets.request), not by name. */
     function folderArg(io, args, label) {
         var dir = args.length ? io.fs.resolve(args[0]) : io.fs.cwd();
         if (!dir || !dir.children) { io.err(label + ': ' + args[0] + ': no such directory'); return null; }
@@ -1195,7 +1195,7 @@
                 },
                 prefetch: prefetchTexts,
                 open: openEntry,
-                request: function (verb, req) { return !!window.pcOpen && window.pcOpen.request(verb, req, root); },
+                request: function (verb, req) { return window.pudlApplets.request(verb, req, root); },
                 edit: editor,
                 openEditor: openEditor,
                 download: download,
@@ -1278,7 +1278,7 @@
             if (n && n.children) { write(paint('red', path + ': is a directory') + '\n'); return 1; }
             var target = n ? displayPath(realOf(n)) : (path[0] === '/' || path[0] === '~' ? path : displayPath(cwd).replace(/\/$/, '') + '/' + path);
             var kind = n ? F.kindOf(n) : 'file';
-            if (!window.pcOpen || !window.pcOpen.request('open', { path: target, kind: kind }, root)) {
+            if (!window.pudlApplets.request('open', { path: target, kind: kind }, root)) {
                 write(paint('red', path + ': nothing on this site opens it') + '\n');
                 return 1;
             }
@@ -1517,13 +1517,13 @@
         function applyTheme() { if (term) { term.options.theme = themeColors(root); } }
         document.addEventListener('pudl:theme-change', applyTheme);
 
-        /* A shell asked of this terminal through the site's handlers, when
-           no new one could open: it moves to the directory and puts any
-           command at the prompt. While a command runs, which it does when
-           this terminal made the request itself, it waits for the prompt. */
+        /* A state handed to this terminal, by a shell request that found
+           no room for a new terminal or by a preset: it moves to the
+           directory and puts any command at the prompt. While a command
+           runs, which it does when this terminal made the request itself,
+           it waits for the prompt. */
         var waitingRequest = null;
-        function onRequest(e) {
-            var s = e.detail && e.detail.state;
+        function takeState(s) {
             if (!s || !fs || !term) { return; }
             if (busy) { waitingRequest = s; return; }
             applyRequest(s);
@@ -1537,7 +1537,6 @@
             if (run) { insert(run); }
             term.focus();
         }
-        root.addEventListener('pc:applet-request', onRequest);
 
         var boot = Promise.all([loadXterm(), loadSiteFs().then(function (fsApi) { return fsApi.load(); }), loadExtras()]).then(function (results) {
             if (destroyed) { return; }
@@ -1574,16 +1573,10 @@
 
         return {
             state: stateString,
-            setState: function (s) {
-                var p = cwdFrom(s);
-                if (!fs || !p) { return; }
-                var n = resolve(fs, fs, p);
-                if (n && n.children) { cwd = n; if (!busy && term) { redraw(); } }
-            },
+            setState: takeState,
             destroy: function () {
                 destroyed = true;
                 document.removeEventListener('pudl:theme-change', applyTheme);
-                root.removeEventListener('pc:applet-request', onRequest);
                 if (ro) { ro.disconnect(); }
                 if (term) { term.dispose(); }
             },

@@ -179,35 +179,36 @@
        Forget. */
     var CONTINUITY = { sudoku: 'pc-sudoku', barcodes: 'pc-barcodes', terminal: 'pc-terminal' };
 
-    /* A window's key names the instance: the applet's own name for the
-       first, and name-2, name-3 and so on for the numbered ones
-       js/handlers.js opens. Outside a window it is the applet's name. */
+    /* The key an instance goes by: the applet's own name for the first,
+       and name-2, name-3 and so on for the numbered windows PUDL's
+       requests open (0.27.0). pudl:applet-state carries it as
+       detail.instance; pudl:applet-change does not, so there it is read
+       from the window, as PUDL reads it. */
     function instanceKey(mount, name) {
         var win = mount.closest && mount.closest('.win[data-win]');
         return win ? win.getAttribute('data-win') : name;
     }
     /* The first instance keeps the applet's storage key, so continuity
        kept before instances existed still applies; a numbered one adds its
-       window key. */
-    function continuityKey(mount, name) {
-        var key = CONTINUITY[name], inst = instanceKey(mount, name);
-        return key && inst !== name ? key + ':' + inst : key;
+       key. */
+    function continuityKey(name, inst) {
+        var key = CONTINUITY[name];
+        return key && inst && inst !== name ? key + ':' + inst : key;
     }
 
     document.addEventListener('pudl:applet-state', function (e) {
         /* A one-shot hand-off: an applet opening another instance of
            itself elsewhere (Conway's "Open this board") leaves the state
-           here for the new instance, which takes it once. It is keyed by
-           the instance, so a new terminal-2 takes its own. */
+           here for the new instance, which takes it once. */
         var handoff = window.pcAppletHandoff;
         var name = e.detail && e.detail.name;
-        var inst = name ? instanceKey(e.target, name) : null;
+        var inst = e.detail && (e.detail.instance || name);
         if (handoff && inst && Object.prototype.hasOwnProperty.call(handoff, inst)) {
             e.detail.state = handoff[inst];
             delete handoff[inst];
             return;
         }
-        var key = name ? continuityKey(e.target, name) : null;
+        var key = name ? continuityKey(name, inst) : null;
         if (!key || (e.detail && e.detail.param)) { return; }
         try {
             var kept = localStorage.getItem(key);
@@ -218,7 +219,8 @@
     document.addEventListener('pudl:applet-change', function (e) {
         var mount = e.target;
         if (!mount.getAttribute) { return; }
-        var key = continuityKey(mount, mount.getAttribute('data-applet'));
+        var name = mount.getAttribute('data-applet');
+        var key = continuityKey(name, instanceKey(mount, name));
         if (!key || mount.hasAttribute('data-applet-param')) { return; }
         try {
             if (e.detail && e.detail.state != null) { localStorage.setItem(key, e.detail.state); }

@@ -934,13 +934,14 @@
 
         /* On this site the library is also a file, and whichever applet
            the site has for opening files can edit it whole. The tool asks
-           the site's handlers (js/handlers.js) and offers it only when one
-           answers. */
+           through PUDL's requests (0.27.0) and offers it only when one
+           answers; under an older PUDL, which has no requests, it offers
+           nothing. */
         var LIBRARY_FILE = '~/barcode-layouts.json';
-        function canEditFile() { return !!window.pcOpen && window.pcOpen.can('open', 'file'); }
+        function canEditFile() { return !!window.pudlApplets.can && window.pudlApplets.can('open', 'file'); }
         function editFile() {
             el.dialog.close();
-            if (!window.pcOpen || !window.pcOpen.request('open', { path: LIBRARY_FILE, kind: 'file' }, root)) {
+            if (!window.pudlApplets.request || !window.pudlApplets.request('open', { path: LIBRARY_FILE, kind: 'file' }, root)) {
                 notify('Nothing on this page can open the layouts file.');
             }
         }

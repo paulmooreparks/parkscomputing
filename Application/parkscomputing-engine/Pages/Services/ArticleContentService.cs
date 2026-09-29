@@ -55,7 +55,7 @@ public class ArticleContentService {
     /// <summary>
     /// A numbered instance of an applet ("terminal-2"): the applet's page
     /// again under the instance's key, titled with its number, for the
-    /// windows js/handlers.js opens beside the first. Any applet page may be
+    /// windows PUDL's requests open beside the first. Any applet page may be
     /// numbered from 2 to 9; which applets the site actually opens more of
     /// is the handler declarations' business. Null when the key is not an
     /// instance key or its base is not an applet page. A page whose own slug

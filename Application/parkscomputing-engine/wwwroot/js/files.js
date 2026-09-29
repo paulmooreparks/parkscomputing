@@ -337,11 +337,11 @@
 
         var inWindows = function () { return opts.host === 'window' && window.pudlWindows; };
 
-        /* Files and shells are asked for through the site's handlers
-           (js/handlers.js): whichever applet serves the request answers,
-           and an action with nothing to serve it is not offered. */
-        function canOpen(verb, kind) { return !!window.pcOpen && window.pcOpen.can(verb, kind); }
-        function request(verb, req) { return !!window.pcOpen && window.pcOpen.request(verb, req, root); }
+        /* Files and shells are asked for through PUDL's requests
+           (pudlApplets.request): whichever applet serves the request
+           answers, and an action with nothing to serve it is not offered. */
+        function canOpen(verb, kind) { return window.pudlApplets.can(verb, kind); }
+        function request(verb, req) { return window.pudlApplets.request(verb, req, root); }
 
         function openInEditor(node) {
             if (!request('open', { path: F.displayPath(F.realOf(node)), kind: F.kindOf(node) })) { say('Nothing on this site opens ' + node.name + '.', true); }
@@ -359,13 +359,6 @@
         function openTerminal(run) {
             if (!request('shell', { path: F.pathOf(cwd), run: run })) { say('Nothing on this site opens a terminal.', true); }
         }
-
-        /* A folder asked of this Files through the site's handlers. */
-        function onRequest(e) {
-            var p = pathFrom(e.detail && e.detail.state);
-            if (F && p) { goPath(p); focusList(); }
-        }
-        root.addEventListener('pc:applet-request', onRequest);
 
         /* === Dialogs ====================================================== */
 
@@ -661,10 +654,10 @@
 
         return {
             state: function () { return cwd && F ? stateString() : null; },
-            setState: function (s) { var p = pathFrom(s); if (F && p) { goPath(p); } },
+            /* A folder handed over, by a browse request or a preset. */
+            setState: function (s) { var p = pathFrom(s); if (F && p) { goPath(p); focusList(); } },
             destroy: function () {
                 destroyed = true;
-                root.removeEventListener('pc:applet-request', onRequest);
                 if (unsubscribe) { unsubscribe(); }
                 if (el.dialog.open) { el.dialog.close(); }
             },
