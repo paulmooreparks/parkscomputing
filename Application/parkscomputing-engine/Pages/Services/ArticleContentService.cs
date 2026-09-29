@@ -58,13 +58,11 @@ public class ArticleContentService {
         if (!m.Success) { return null; }
         var slug = m.Groups["slug"].Value;
 
-        foreach (var section in root.Nav ?? Array.Empty<NavNode>()) {
-            foreach (var node in section.Nav ?? new[] { section }) {
-                if (node.External && node.Frame && !string.IsNullOrEmpty(node.Url)
-                    && TagSlug(node.Slug ?? string.Empty) == slug) {
-                    return new ArticleWindowContent(key!, node.Title ?? node.Slug!, string.Empty,
-                        HasCode: false, HasMermaid: false, FrameUrl: node.Url);
-                }
+        foreach (var node in NavLeaves(root)) {
+            if (node.External && node.Frame && !string.IsNullOrEmpty(node.Url)
+                && TagSlug(node.Slug ?? string.Empty) == slug) {
+                return new ArticleWindowContent(key!, node.Title ?? node.Slug!, string.Empty,
+                    HasCode: false, HasMermaid: false, FrameUrl: node.Url);
             }
         }
         return null;
@@ -138,9 +136,22 @@ public class ArticleContentService {
         foreach (var post in root.Posts ?? Array.Empty<NavNode>()) {
             if (post.Tags is { Length: > 0 } && !string.IsNullOrEmpty(post.Slug)) { yield return post; }
         }
-        foreach (var section in root.Nav ?? Array.Empty<NavNode>()) {
-            foreach (var child in section.Nav ?? new[] { section }) {
-                if (child.Tags is { Length: > 0 } && !string.IsNullOrEmpty(child.Slug) && !child.External) { yield return child; }
+        foreach (var node in NavLeaves(root)) {
+            if (node.Tags is { Length: > 0 } && !string.IsNullOrEmpty(node.Slug) && !node.External) { yield return node; }
+        }
+    }
+
+    /// <summary>Every sitenav entry that is a destination rather than a
+    /// section, at any depth: a top-level leaf such as About as well as the
+    /// entries inside sections. A node's Nav is an empty array, never null,
+    /// when it has no children, so emptiness is the test.</summary>
+    private static IEnumerable<NavNode> NavLeaves(NavNode node) {
+        foreach (var child in node.Nav ?? Array.Empty<NavNode>()) {
+            if (child.Nav is { Length: > 0 }) {
+                foreach (var leaf in NavLeaves(child)) { yield return leaf; }
+            }
+            else {
+                yield return child;
             }
         }
     }
