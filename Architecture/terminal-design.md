@@ -1,6 +1,6 @@
 # Terminal design
 
-The terminal is an applet that shows the public site in terminal mode. A reader moves through the site's structure with shell commands, reads articles as text, and launches the other applets. It follows the PUDL theme, and it is sandboxed: nothing in it reaches the server's file system.
+The terminal is an applet that shows the public site in terminal mode. To add a script or a JavaScript command, see `terminal-how-to.md`. A reader moves through the site's structure with shell commands, reads articles as text, and launches the other applets. It follows the PUDL theme, and it is sandboxed: nothing in it reaches the server's file system.
 
 ## The filesystem
 
