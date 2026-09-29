@@ -41,6 +41,7 @@
                 window.hljs.highlightElement(block);
             });
         }
+        if (window.pcEnhanceCode) { window.pcEnhanceCode(win); }
         win.querySelectorAll('pre > code[class*="language-mermaid"]').forEach(function (code) {
             var node = document.createElement('div');
             node.className = 'mermaid';

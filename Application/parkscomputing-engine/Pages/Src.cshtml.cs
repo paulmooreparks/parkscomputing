@@ -30,8 +30,14 @@ namespace ParksComputing.Engine.Pages {
             }
 
             try {
-                var path = $"{Environment.ContentRootPath}/wwwroot/{slug}";
+                // The listing must be a file under wwwroot: a path that climbs
+                // out of it, however it is spelled, is refused.
+                var root = Path.GetFullPath(Path.Combine(Environment.ContentRootPath, "wwwroot"));
+                var path = Path.GetFullPath(Path.Combine(root, slug));
+                if (!path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)) { return NotFound(); }
                 PageContent = await System.IO.File.ReadAllTextAsync(path);
+                // A download of the listing keeps the file's own name.
+                ViewData["filename"] = Path.GetFileName(path);
                 var encoder = HtmlEncoder.Default;
                 PageContent = encoder.Encode(PageContent);
 

@@ -228,13 +228,46 @@
         } catch (err) { }
     });
 
+    /* Every code block offers Copy and Download, from PUDL's pudl-code.js
+       (0.29.0). The articles' Markdown and HTML write a bare pre, so the
+       site hands each block over itself, with PUDL's pre.code look, from
+       the places code appears: the page, each window as it opens, a
+       listing filled from its file, and code htmx brings in later. */
+    /* The site's languages PUDL's maps don't know. */
+    function addLanguages() {
+        var names = window.pudlCode.names, ext = window.pudlCode.extensions;
+        if (!names.brainfuck) { names.brainfuck = 'Brainf**k'; ext.brainfuck = 'b'; }
+        if (!names.xfer) { names.xfer = 'XferLang'; ext.xfer = 'xfer'; }
+        if (!names.txt) { names.txt = 'Text'; ext.txt = 'txt'; }
+    }
+    function enhanceCode(scope) {
+        function run() {
+            if (!window.pudlCode) { return; }
+            addLanguages();
+            (scope || document).querySelectorAll('pre > code:not(.language-mermaid)').forEach(function (code) {
+                var pre = code.parentElement;
+                pre.classList.add('code');
+                window.pudlCode.enhance(pre);
+            });
+        }
+        if (window.pudlCode) { run(); } else { document.addEventListener('DOMContentLoaded', run, { once: true }); }
+    }
+    window.pcEnhanceCode = enhanceCode;
+    enhanceCode(document);
+    document.addEventListener('htmx:afterSwap', function (e) { enhanceCode(e.target); });
+
     /* A code listing that names its source (code[data-code-src]) is
        filled from that file and highlighted; windows hydrate through
        desktop.js's enhancement pass. */
     function hydrateSource(scope) {
         (scope || document).querySelectorAll('code[data-code-src]:not([data-code-loaded])').forEach(function (block) {
             block.setAttribute('data-code-loaded', '');
-            fetch(block.getAttribute('data-code-src'))
+            /* Its download keeps the source's own name. */
+            var pre = block.closest('pre'), src = block.getAttribute('data-code-src');
+            if (pre && !pre.hasAttribute('data-code-filename')) {
+                pre.setAttribute('data-code-filename', src.split('?')[0].split('/').pop());
+            }
+            fetch(src)
                 .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error(r.status)); })
                 .then(function (text) {
                     block.textContent = text;
