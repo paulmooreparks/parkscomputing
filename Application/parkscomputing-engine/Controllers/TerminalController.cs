@@ -8,6 +8,8 @@ using System.Text.RegularExpressions;
 
 using HtmlAgilityPack;
 
+using Markdig;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 
@@ -25,6 +27,10 @@ namespace ParksComputing.Engine.Controllers;
 [Route("api/site")]
 public class TerminalController : ControllerBase {
     private static readonly Regex SlugPattern = new(@"^[a-z0-9-]+$", RegexOptions.Compiled);
+
+    private static readonly Markdig.MarkdownPipeline MarkdownPipeline = new Markdig.MarkdownPipelineBuilder()
+        .UsePipeTables().UseTaskLists().UseAutoLinks().UseEmphasisExtras().UseSmartyPants().UseGenericAttributes()
+        .Build();
 
     private readonly INavService _navService;
     private readonly IWebHostEnvironment _environment;
@@ -101,7 +107,13 @@ public class TerminalController : ControllerBase {
         var mdPath = Path.Combine(baseDir, slug + ".md");
         var htmlPath = Path.Combine(baseDir, slug + ".html");
         if (System.IO.File.Exists(mdPath)) {
-            return StripFrontMatter(System.IO.File.ReadAllText(mdPath));
+            // Rendered to HTML first, with the site's own pipeline, because
+            // articles carry raw HTML (links, figures) that reads badly as
+            // source; both kinds then go through the same conversion.
+            var html = Markdig.Markdown.ToHtml(StripFrontMatter(System.IO.File.ReadAllText(mdPath)), MarkdownPipeline);
+            var mdDoc = new HtmlDocument();
+            mdDoc.LoadHtml(html);
+            return HtmlToText(mdDoc.DocumentNode, slug);
         }
         if (System.IO.File.Exists(htmlPath)) {
             var doc = new HtmlDocument();

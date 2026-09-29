@@ -191,6 +191,21 @@
         return new RegExp('^' + glob.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$', 'i');
     }
 
+    /* Wraps prose at word boundaries to a width, keeping indented lines
+       (tables and examples) as they are. */
+    function wrap(text, width) {
+        return String(text).split('\n').map(function (line) {
+            if (/^\s/.test(line) || strip(line).length <= width) { return line; }
+            var out = [], cur = '';
+            line.split(' ').forEach(function (w) {
+                if (cur && strip(cur + ' ' + w).length > width) { out.push(cur); cur = w; }
+                else { cur = cur ? cur + ' ' + w : w; }
+            });
+            if (cur) { out.push(cur); }
+            return out.join('\n');
+        }).join('\n');
+    }
+
     function fmtDate(d) {
         if (!d || isNaN(d)) { return '          '; }
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -240,7 +255,7 @@
             Object.keys(COMMANDS).sort().forEach(function (k) {
                 io.out('  ' + paint('green', k.padEnd(11)) + COMMANDS[k].summary + '\n');
             });
-            io.out('\nAnything ls marks with * is an applet and runs by its name, or by its path. Tab completes, the arrow keys recall earlier commands, and "|" pipes one command into another.\n');
+            io.out('\n' + wrap('Anything ls marks with * is an applet and runs by its name, or by its path. Tab completes, the arrow keys recall earlier commands, and "|" pipes one command into another.', io.cols - 1) + '\n');
         }
     });
 
@@ -252,7 +267,7 @@
             if (!args.length) { io.err('man: which command? Try "help".'); return 1; }
             var c = COMMANDS[args[0]];
             if (!c) { io.err('man: no entry for ' + args[0]); return 1; }
-            io.out(paint('bold', c.name) + ' - ' + c.summary + '\n\n' + c.help + '\n');
+            io.out(paint('bold', c.name) + ' - ' + c.summary + '\n\n' + wrap(c.help, io.cols - 1) + '\n');
         }
     });
 
@@ -339,7 +354,7 @@
 
     command('cat', {
         summary: 'print a page',
-        help: 'cat <file...>\n\nPrints a page as text. A Markdown article prints as its source; a link prints its address.',
+        help: 'cat <file...>\n\nPrints a page as text, with each link\'s address after it in angle brackets. A link to another site prints its address.',
         complete: 'file',
         run: async function (args, io) {
             if (!args.length) { if (io.stdin != null) { io.out(io.stdin); return; } io.err('cat: which file?'); return 1; }

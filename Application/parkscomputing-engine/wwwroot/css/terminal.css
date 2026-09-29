@@ -15,19 +15,25 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--recess-shadow);
-  padding: 8px 4px 8px 10px;
   overflow: hidden;
 }
-.pc-terminal .pc-terminal-screen .xterm { height: 100%; }
+/* The inset for the text sits on xterm's own element, because the fit
+   addon subtracts that element's padding but not its container's; padding
+   on the container cut off the last row. */
+.pc-terminal .pc-terminal-screen .xterm { height: 100%; padding: 8px 4px 8px 10px; }
 .pc-terminal .pc-terminal-screen .xterm-viewport { background: transparent !important; }
 .pc-terminal .pc-terminal-failed {
   font-family: var(--font); color: var(--text-muted); padding: var(--space-4);
 }
 
-/* === Filling a window ==================================================== */
+/* === Filling a window ====================================================
+   In a window the terminal is the window's whole body, edge to edge: the
+   window frame is its border, so the well's own border, radius and shadow
+   go, and so does the body's padding. */
 .pc-terminal-fill { flex: 1 1 auto; height: auto; min-height: 0; }
+.pc-terminal-fill .pc-terminal-screen { border: 0; border-radius: 0; box-shadow: none; }
 
-.win-body:has(.pc-terminal-fill) { display: flex; flex-direction: column; overflow: hidden; }
+.win-body:has(.pc-terminal-fill) { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
 .win-body:has(.pc-terminal-fill) .post-content {
   flex: 1 1 auto; min-height: 0;
   display: flex; flex-direction: column;

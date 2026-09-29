@@ -30,7 +30,7 @@ Each entry's name is its slug. An entry is one of three kinds:
 `TerminalController` serves two read-only GET endpoints under `/api/site`.
 
 - `/api/site/tree` returns the tree above as JSON: for each entry, its name, kind, title, description, tags, date and, for a link, its URL. The tags directory is derived on the client from the entries' tags.
-- `/api/site/text/{slug}` returns an article as plain text, and only for a slug that appears in the tree as a page or app. A Markdown article returns its source without the front matter. An HTML article is converted to text on the server: headings, paragraphs, list items and preformatted blocks keep their shape, links keep their target, and scripts, styles and applet placeholders are dropped (an applet placeholder becomes a one-line note). Any other slug is a 404.
+- `/api/site/text/{slug}` returns an article as plain text, and only for a slug that appears in the tree as a page or app. A Markdown article is rendered to HTML with the site's own pipeline, because articles carry raw HTML that reads badly as source, and then every article is converted to text on the server the same way: headings, paragraphs, list items and preformatted blocks keep their shape, links keep their target, and scripts, styles and applet placeholders are dropped (an applet placeholder becomes a one-line note). Any other slug is a 404.
 
 - `/api/site/texts?slugs=a,b,c` returns several pages' text as an object of slug to text, leaving out any slug the tree does not list. A recursive `grep` uses it, so it costs one request instead of one per page; the API allows 60 requests a minute per client, and one request per page would exhaust that in two searches of the whole site.
 
