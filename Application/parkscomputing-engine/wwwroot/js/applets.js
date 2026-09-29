@@ -18,6 +18,15 @@ pudlApplets.define('conway', {
     src: '/js/conway.js',
     css: '/css/conway.css',
     page: '/page/conways-game-of-life',
+    ver: '4'
+});
+
+/* The barcode tool loads barcode-engine.js beside itself, with this same
+   version, so bump ver when either file changes. */
+pudlApplets.define('barcodes', {
+    src: '/js/barcode-tool.js',
+    css: '/css/barcode-tool.css',
+    page: '/page/barcodes',
     ver: '3'
 });
 

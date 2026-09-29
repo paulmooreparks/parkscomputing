@@ -1,215 +1,68 @@
-﻿<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en-US">
-
+<!DOCTYPE html>
+<html lang="en-US">
 <head>
     <title>Barcode Generator</title>
-
-    <meta name="description" content="A simple JavaScript barcode generator" />
+    <meta name="description" content="Make retail barcodes, lay out the data inside them, and read scanned values back into their fields" />
     <meta charset="utf-8">
     <meta http-equiv="date" content="2015-09-30T11:52:09" />
-    <meta http-equiv="last-modified" content="2022-12-23T11:52:09" />
-
-    <link rel='canonical' href='http://www.parkscomputing.com/page/barcode-generator/' />
-    <link rel="stylesheet" href="/css/barcode.css" />
-    <link rel="stylesheet" href="/highlightjs/styles/vs.min.css" media="(prefers-color-scheme: light)">
-    <link rel="stylesheet" href="/highlightjs/styles/vs2015.min.css" media="(prefers-color-scheme: dark)">
-    <script src="/highlightjs/highlight.min.js"></script>
-    <script src="/js/barcode.js"></script>
-    <script src="/js/htmx.min.js"></script>
+    <meta http-equiv="last-modified" content="2026-09-29T00:00:00" />
 </head>
-
 <body>
-    <h1>JavaScript Barcode Generator</h1>
+    <h1>Barcode Generator</h1>
 
     <p>
-        This is a very old barcode generator in JavaScript that I wrote long, long ago. I intend to update
-        it eventually to take advantage of the <code>canvas</code> element, but for now, feel free to play
-        around with this page or the <a href="/content/ean13.html?code=0724171484086&desc=Jammie%20Dodgers">stand-alone page</a>.
+        I wrote my first barcode generator in 2015. It drew EAN-13 codes out of hundreds of little <code>div</code>
+        elements, and it has not worked for a while. This is its replacement: it draws to a <code>canvas</code>, handles
+        the symbologies you meet in a shop, and knows what the digits inside a barcode mean.
     </p>
 
-        <div>
-            <div class="postentry">
-                <div class="barcodeContainer">
-                    <div class="barcode" id="EAN-13">
-                        <div class="quietZone">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div class="leader">
-                            <div class="bitOn"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOn"></div>
-                        </div>
-                        <div id="EAN-13_digit01" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div id="EAN-13_digit02" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div id="EAN-13_digit03" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div id="EAN-13_digit04" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div id="EAN-13_digit05" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div id="EAN-13_digit06" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div class="separator" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOn"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOn"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div id="EAN-13_digit07" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div id="EAN-13_digit08" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div id="EAN-13_digit09" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div id="EAN-13_digit10" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div id="EAN-13_digit11" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div id="EAN-13_digit12" class="digit">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div class="trailer">
-                            <div class="bitOn"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOn"></div>
-                        </div>
-                        <div class="quietZone">
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                            <div class="bitOff"></div>
-                        </div>
-                        <div id="labels">
-                            <p id="codeDisplay">1</p>
-                            <p id="descDisplay">a</p>
-                            <p id="credit"><a href="http://parkscomputing.com/">http://parkscomputing.com/</a></p>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-        </div>
-
-    <div style="clear: left;">
-
-        <p>
-            Like I said above, this is old stuff, and not my best work, but I'm including it here for archival
-            purposes. The code depends upon some CSS classes as well (shown farther below).
-        </p>
-
-        <p>
-            Soon, I'll rewrite this with more modern JavaScript and use the <code>canvas</code> element for painting
-            the barcode.
-        </p>
-
-        <h2>JavaScript Source</h2>
-
-        <pre><code class="language-javascript" hx-get="/js/barcode.js" hx-trigger="load" ></code></pre>
-
-        <h2>CSS Source</h2>
-
-        <pre><code class="language-javascript" hx-get="/css/barcode.css" hx-trigger="load" ></code></pre>
+    <!-- The tool itself: a PUDL applet whose files and version come from
+         the site registry (js/applets.js). The tool alone lives at
+         /page/barcodes. -->
+    <div data-applet="barcodes" data-applet-fit="flow" role="application" aria-label="Barcode tool">
+        <noscript>
+            <p>The barcode tool needs JavaScript to run.</p>
+        </noscript>
     </div>
-    <script>hljs.highlightAll();</script>
+
+    <h2>What it makes</h2>
+    <p>
+        It makes EAN-13, EAN-8, UPC-A and UPC-E for products; GS1-128, ITF-14 and Interleaved 2 of 5 for cases and
+        logistics; and Code 128, Code 39 and Codabar for everything else a store prints for itself. It checks what you
+        type as you type it, works out check digits, and tells you when a supplied one is wrong. The highlights mark the
+        check digits and the guard, start and stop patterns underneath the bars, where they do not stop a scanner from
+        reading the result. Downloads come as SVG, sized in millimetres for printing, or as PNG.
+    </p>
+
+    <h2>Data inside the barcode</h2>
+    <p>
+        Plenty of retail barcodes are not just a number. An in-store code for loose produce carries an item and a price,
+        a coupon carries a discount type and value, and a receipt carries a store, a register, a date and a transaction.
+        A <em>layout</em> describes those fields, so the tool can build the barcode from them, color each one, and
+        explain the result in words. These demonstrations are invented, but each one follows a common pattern:
+    </p>
+    <ul>
+        <li><a data-applet-preset="barcodes" href="/page/barcodes?l=demo-price-embedded">A price-embedded item</a> in the in-store EAN-13 range</li>
+        <li><a data-applet-preset="barcodes" href="/page/barcodes?l=demo-weight-embedded">A weight-embedded item</a></li>
+        <li><a data-applet-preset="barcodes" href="/page/barcodes?l=demo-logistics">A logistics label</a> with a GTIN, an expiry date, a weight and a batch, as GS1-128</li>
+        <li><a data-applet-preset="barcodes" href="/page/barcodes?l=demo-receipt">A receipt lookup code</a> in Interleaved 2 of 5</li>
+        <li><a data-applet-preset="barcodes" href="/page/barcodes?l=demo-membership">A membership card</a> in Codabar, with a Luhn check digit</li>
+        <li><a data-applet-preset="barcodes" href="/page/barcodes?l=demo-coupon">A store coupon</a> with a discount type, a value and an expiry date</li>
+    </ul>
+
+    <h2>Reading a barcode back</h2>
+    <p>
+        The Read side works the other way round. Paste a scanned value and the tool tries every layout whose shape fits,
+        splits the value into its fields, checks the check digits and dates, and says what it found. Even without a
+        layout it recognizes a valid EAN-13 and names its GS1 prefix, and it lays out GS1 element strings with each
+        Application Identifier named.
+    </p>
+
+    <h2>Your own layouts</h2>
+    <p>
+        You can write layouts of your own in JSON, either in the tool's editor or in a file you import. They are kept in
+        your browser and nowhere else; this site never sees them. That matters for anyone working with a retailer's own
+        barcode formats, which are usually not public.
+    </p>
 </body>
 </html>

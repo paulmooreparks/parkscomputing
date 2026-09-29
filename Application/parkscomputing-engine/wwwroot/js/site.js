@@ -137,7 +137,7 @@
             if (view) { setView(view.getAttribute('data-view-choice')); }
             if (e.target.closest('[data-settings-close]')) { dialog.close(); }
             if (e.target.closest('[data-settings-forget]')) {
-                ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku'].forEach(function (key) {
+                ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku', 'pc-barcodes', 'pc-barcode-layouts'].forEach(function (key) {
                     try { localStorage.removeItem(key); } catch (err) { }
                 });
                 document.cookie = 'pc-list=; path=/; max-age=0; SameSite=Lax';
@@ -174,7 +174,7 @@
        (data-applet-param) is the URL's business, not this. The keys are
        per-applet, functional storage wiped by the settings dialog's
        Forget. */
-    var CONTINUITY = { sudoku: 'pc-sudoku' };
+    var CONTINUITY = { sudoku: 'pc-sudoku', barcodes: 'pc-barcodes' };
 
     document.addEventListener('pudl:applet-state', function (e) {
         var key = CONTINUITY[e.detail && e.detail.name];

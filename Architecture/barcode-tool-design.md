@@ -1,0 +1,88 @@
+# Barcode tool design
+
+The barcode tool replaces the 2015 DIV-based generator with a PUDL applet that draws to a canvas. It generates the linear symbologies found in retail stores, validates data as it is typed, and highlights check digits and structure. Its distinctive feature is the layout: a description of what the characters in a barcode mean, which lets the tool compose a barcode from named fields, explain one, and read a scanned value back into its fields.
+
+## Scope
+
+The first two phases cover the linear symbologies a store actually meets:
+
+- EAN-13, EAN-8, UPC-A and UPC-E for products.
+- GS1-128, with Application Identifier validation, for logistics labels and embedded-data codes.
+- ITF-14 and general Interleaved 2 of 5 for cases and for numeric codes printed by the store.
+- Code 128 and Code 39 for internal labels.
+- Codabar (NW-7) for membership cards, coupons and older in-store codes.
+
+QR Code and GS1 DataBar come in a third phase. QR needs Reed-Solomon error correction, and a vetted MIT-licensed library vendored into the pinned assets is safer than a hand-written one.
+
+## Public and private layouts
+
+The site's repository is public and everything it deploys is published, so the tool ships only generic, standards-based demonstration layouts. Customer layouts, GK's barcode rule set and anything else under confidentiality are imported from a JSON file into the reader's own browser, where they live in local storage and never reach the server. A URL can name a private layout by its id, and a browser without that layout says so and shows the raw data instead.
+
+## Architecture
+
+The tool is an applet in the site registry, following Conway and the flash cards. `/page/barcodes` is the tool alone, and the `barcode-generator` article embeds it. There are three layers.
+
+The engine (`js/barcode-engine.js`) is plain JavaScript with no DOM beyond a canvas context. Its encoders turn data into a list of bar and space runs, together with a map from every input character to the run range that carries it. That map is what makes highlighting possible. The same module holds the check-digit algorithms, the GS1 Application Identifier table and the layout model, and it is loadable on its own so the flash cards can generate codes too.
+
+The renderer draws a symbol to a canvas at the device pixel ratio with whole device pixels per module, so bars stay crisp. It exports the same geometry as SVG, sized in millimetres for print, and as PNG. Highlights are colored bands beneath the bars and tints on the printed digits, and they never color the bars themselves, because a scanner reads red as white.
+
+The applet (`js/barcode-tool.js`) is the PUDL interface: a toolbar, sunken inputs validated on every keystroke, a flat preview in a white well, and raised controls. Its whole state serializes to the query string, so any barcode it makes is a link.
+
+## The layout format
+
+A layout file is JSON. Positions are never written in it, because fields are sequential and each field's length determines where the next begins. The tool shows positions 1-based. Rule lists that number positions from 0 or from 1 must be converted by whoever writes the file, and the converter should check its work against a known sample, since an off-by-one in a price field is the kind of error this tool exists to catch.
+
+```json
+{
+  "format": "pc-barcode-layouts",
+  "version": 1,
+  "layouts": [
+    {
+      "id": "demo-price-embedded",
+      "name": "Price-embedded item",
+      "symbology": "ean13",
+      "description": "An in-store code carrying an item number and a price.",
+      "options": {},
+      "hri": "data",
+      "explain": "Item {item}, price {price}.",
+      "fields": [
+        { "id": "prefix", "name": "Prefix", "type": "fixed", "values": ["21"], "color": "blue" },
+        { "id": "item", "name": "Item", "type": "number", "length": 5, "color": "gray" },
+        { "id": "price", "name": "Price", "type": "decimal", "length": 5, "decimals": 2, "prefix": "$", "color": "green" }
+      ]
+    }
+  ]
+}
+```
+
+A layout has an `id` (letters, digits and hyphens, unique across the reader's library), a `name`, a `symbology` from the list below, and its `fields`. It may add a `description`, an `explain` template, `options` for the symbology, and `hri`, which sets the human-readable line. The value `data` prints the encoded data, `none` prints nothing, and any other string is a template.
+
+The symbologies are `ean13`, `ean8`, `upca`, `upce`, `gs1-128`, `code128`, `itf`, `itf14`, `code39` and `codabar`. For the EAN and UPC family and for ITF-14 the fields cover the data before the symbology's own check digit, which the tool adds.
+
+Each field has an `id`, a `name`, a `type`, and optionally a `color` (blue, gray, orange, green, purple, teal, red or gold), a `description`, and for GS1-128 an `ai`, which starts a new element string. A field without an `ai` continues the element before it.
+
+| Type | Meaning | Keys |
+| --- | --- | --- |
+| `fixed` | One of a set of literal values. The first is the default. | `values` |
+| `number` | Digits, zero-padded on the left to `length` unless `pad` is `none`. | `length`, `pad` |
+| `text` | Characters the symbology allows, of exact `length` or at most `maxLength`. | `length` or `maxLength` |
+| `date` | A calendar date in a format built from `dd`, `mm`, `yy` and `yyyy`. | `format` |
+| `decimal` | Digits with implied decimals, entered as `127.60` or as raw digits. | `length`, `decimals`, `prefix`, `suffix` |
+| `enum` | A code from a table of meanings. | `values` (an object of code to meaning) |
+| `check` | A computed check digit over earlier fields. | `algorithm`, `over` (field ids, default all earlier fields) |
+
+The check algorithms are `gs1-mod10`, `luhn`, `mod11` (weights 2 to 7 from the right, a result of 10 written as 0) and `7dr` (the remainder of the number divided by 7).
+
+The `explain` template substitutes `{field}` with the field's formatted value, `{field:raw}` with its digits, and `{field:meaning}` with an enumeration's meaning.
+
+## Interpretation
+
+Read in reverse, a layout splits a scanned value into its fields. The tool tries every layout whose symbology family and length fit, requires its fixed fields to match, verifies its check digits and dates, and lists the matches with any problems. Without a matching layout it still identifies what it can: a valid EAN-13 and its GS1 prefix country, a UPC-A, a GTIN-14, or a GS1 element string with each AI named and its dates and weights formatted.
+
+## Phases
+
+1. The engine with every linear symbology above, the canvas and SVG renderers, highlighting, export, and URL state.
+2. Layouts: the field editor, the check algorithms, explanations, interpretation, the demonstration layouts, the imported library and a JSON editor for authoring.
+3. QR Code and GS1 DataBar, and live-generated cards for the barcode quiz.
+
+The first two phases ship together, since the layout model shapes the engine's character map.

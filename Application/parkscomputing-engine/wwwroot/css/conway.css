@@ -25,6 +25,11 @@
 .pc-conway .conway-stage { max-width: 100%; overflow: auto; }
 .pc-conway canvas { display: block; background: var(--conway-dead); }
 
+.pc-conway .conway-more { align-self: stretch; display: flex; flex-direction: column; align-items: center; }
+.pc-conway .conway-more > summary {
+  cursor: pointer; font-size: var(--text-sm); font-weight: 600; color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
 .pc-conway .conway-settings {
   display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
 }
@@ -33,6 +38,9 @@
 
 /* === Filling a window ==================================================== */
 .pc-conway-fill { flex: 1 1 auto; min-height: 0; }
+/* The settings, when opened in a window, scroll inside their own share
+   rather than crushing the board to nothing. */
+.pc-conway-fill .conway-more { flex: 0 1 auto; min-height: 0; overflow: auto; }
 .pc-conway-fill .conway-stage {
   flex: 1 1 auto; min-height: 0; width: 100%;
   display: flex; align-items: center; justify-content: center;

@@ -1,0 +1,114 @@
+/* The barcode tool as a PUDL applet. Rules are scoped under .pc-barcodes.
+   Inputs are PUDL's sunken fields, the barcode sits in a white well
+   (a barcode is dark bars on a light ground in every theme), and the
+   field colors come from data-color, tinted toward the theme's surface
+   so they read in light and dark alike. */
+
+.pc-barcodes {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  max-width: 980px; margin: 0 auto;
+}
+.pc-barcodes [data-color="blue"]   { --bt-c: #2f6fb3; }
+.pc-barcodes [data-color="gray"]   { --bt-c: #6b7280; }
+.pc-barcodes [data-color="orange"] { --bt-c: #c2410c; }
+.pc-barcodes [data-color="green"]  { --bt-c: #1f7a3a; }
+.pc-barcodes [data-color="purple"] { --bt-c: #6d3fb3; }
+.pc-barcodes [data-color="teal"]   { --bt-c: #0f766e; }
+.pc-barcodes [data-color="red"]    { --bt-c: #b91c1c; }
+.pc-barcodes [data-color="gold"]   { --bt-c: #a16207; }
+
+.pc-barcodes .bt-loading { color: var(--text-muted); }
+
+/* === Toolbar ============================================================= */
+.pc-barcodes .bt-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+}
+.pc-barcodes .bt-tools { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.pc-barcodes .bt-tools .form-select { width: auto; }
+.pc-barcodes .bt-menu-sym { color: var(--text-muted); font-size: var(--text-xs); margin-left: var(--space-2); }
+.pc-barcodes .notice { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+
+/* === Data entry ========================================================== */
+.pc-barcodes .bt-layout-desc { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
+.pc-barcodes .bt-data { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .04em; }
+.pc-barcodes .form-error .btn { margin-left: var(--space-2); }
+
+.pc-barcodes .bt-fields {
+  display: flex; flex-wrap: wrap; gap: var(--space-3);
+}
+.pc-barcodes .bt-field {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border-top: 3px solid var(--bt-c);
+  background: color-mix(in srgb, var(--bt-c) 9%, var(--surface));
+}
+.pc-barcodes .bt-field-name { font-size: var(--text-sm); font-weight: 700; color: var(--bt-c); }
+.pc-barcodes .bt-field .form-input,
+.pc-barcodes .bt-field .form-select {
+  width: auto;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+.pc-barcodes .bt-computed {
+  min-height: 36px; display: flex; align-items: center;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: var(--text-lg); font-weight: 700;
+  color: var(--bt-c);
+}
+.pc-barcodes .bt-pos { font-weight: 400; font-size: var(--text-xs); color: var(--text-muted); }
+.pc-barcodes .bt-field-note { font-size: var(--text-xs); color: var(--text-muted); min-height: 1.3em; }
+.pc-barcodes .bt-field-note.bt-note-error { color: var(--danger); }
+
+.pc-barcodes .bt-symopts, .pc-barcodes .bt-controls {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4);
+}
+.pc-barcodes .bt-controls .form-select { width: auto; }
+.pc-barcodes .bt-inline { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
+.pc-barcodes .bt-inline .form-select { width: auto; }
+
+/* === Preview ============================================================= */
+.pc-barcodes .bt-preview { display: flex; flex-direction: column; gap: var(--space-2); }
+.pc-barcodes .bt-well {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  display: flex; justify-content: center; align-items: center;
+  min-height: 120px;
+  overflow: hidden;
+}
+.pc-barcodes .bt-well canvas { display: block; }
+.pc-barcodes .bt-status { margin: 0; font-size: var(--text-sm); color: var(--text-muted); }
+.pc-barcodes .bt-status.bt-status-error { color: var(--danger); }
+.pc-barcodes .bt-explain { margin: 0; font-size: var(--text-md); }
+
+.pc-barcodes .bt-legend {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+}
+.pc-barcodes .bt-legend li { display: inline-flex; align-items: baseline; gap: 6px; }
+.pc-barcodes .bt-swatch {
+  display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+  background: var(--bt-c); align-self: center;
+}
+.pc-barcodes .bt-legend-name { font-weight: 700; color: var(--bt-c); }
+.pc-barcodes .bt-legend-value { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+
+/* === Read mode =========================================================== */
+.pc-barcodes .bt-match { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
+.pc-barcodes .bt-match-title { margin: 0; }
+.pc-barcodes .bt-match .btn { align-self: flex-start; }
+.pc-barcodes .bt-match td .bt-swatch { margin-right: 6px; }
+.pc-barcodes .bt-ident { margin: 0; padding-left: 1.2em; }
+
+/* === JSON authoring ====================================================== */
+.pc-barcodes .bt-json-dialog { max-width: 720px; }
+.pc-barcodes .bt-json {
+  min-height: 22em; width: 100%;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: var(--text-sm);
+}
+.pc-barcodes .bt-json-errors { margin: var(--space-2) 0 0; padding-left: 1.2em; }
+
+/* In a window the tool scrolls with its content: it is a form, not a
+   board that has to fill a box. */
+.win .pc-barcodes { max-width: none; }

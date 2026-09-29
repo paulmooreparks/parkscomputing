@@ -23,7 +23,7 @@
                 { slug "flashcards" title "Barcode Flash Cards" description "The drill alone; the article about it is under Articles" }
                 { slug "sudoku" win "0.17,0.58" }
                 { slug "conway" title "Conway's Game of Life" description "The game alone; the article about it is under Articles" }
-                </ { slug "barcode-generator" } />
+                { slug "barcodes" win "0.5,0.85" title "Barcode Tool" description "Make retail barcodes with embedded data, and read them back" }
             ]
         }
         {

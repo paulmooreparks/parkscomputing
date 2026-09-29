@@ -19,7 +19,9 @@
 (function () {
     'use strict';
 
-    function buildMarkup(root) {
+    /* In a window the settings start folded away, because a window's
+       height belongs to the board; on a page they are open. */
+    function buildMarkup(root, fill) {
         root.innerHTML =
             '<div class="conway-links">' +
               '<a data-role="current" href="#">Link to current board state</a>' +
@@ -36,6 +38,7 @@
               '<div>Generation time (ms): <span data-role="rate"></span></div>' +
             '</div>' +
             '<div class="conway-stage"><canvas data-role="grid" width="321" height="321"></canvas></div>' +
+            '<details class="conway-more"' + (fill ? '' : ' open') + '><summary>Settings</summary>' +
             '<div class="conway-settings">' +
               '<label class="check"><input class="form-input num" data-role="ticks" type="text" inputmode="decimal" /> milliseconds delay between generations.</label>' +
               '<label class="check"><input class="form-input num" data-role="boardSize" type="text" inputmode="numeric" /> cells across and down.</label>' +
@@ -43,14 +46,14 @@
               '<label class="check"><input data-role="wrap" type="checkbox" /> Wrap around edges.</label>' +
               '<label class="check"><input data-role="saveHistory" type="checkbox" /> Save history (turn off to improve performance; best with single-stepping).</label>' +
               '<p class="conway-hint">Click "Stop" to edit the settings, "Start" to activate them. Click cells on the board to toggle them.</p>' +
-            '</div>';
+            '</div></details>';
     }
 
     function init(root, opts) {
         opts = opts || {};
         var ownUrl = !!opts.ownsUrl;
 
-        buildMarkup(root);
+        buildMarkup(root, opts.fit === 'fill');
         root.classList.add('pc-conway');
         if (opts.fit === 'fill') { root.classList.add('pc-conway-fill'); }
 
