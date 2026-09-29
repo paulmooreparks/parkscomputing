@@ -7,8 +7,10 @@ services:
     environment:
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=${SA_PASSWORD}
+    # Loopback only: the sites reach it over the compose network, and
+    # nothing outside this host should reach it at all.
     ports:
-      - "1433:1433"
+      - "127.0.0.1:1433:1433"
     volumes:
       - sqlserver-data:/var/opt/mssql
     restart: unless-stopped
@@ -26,8 +28,11 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - AUTH_CONNECTION_STRING=Server=sqlserver,1433;Database=ParksComputingAuth;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=true;Encrypt=false;
       - JWT_SECRET=${JWT_SECRET_PARKSCOMPUTING}
+    # Loopback only: the public reaches the site through the cloudflared
+    # tunnel on this host, so a request can never go around Cloudflare
+    # (and around Cloudflare Access on edit.parkscomputing.com).
     ports:
-      - "80:8080"
+      - "127.0.0.1:80:8080"
     volumes:
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\wwwroot:/app/wwwroot:ro
     depends_on:
@@ -49,7 +54,7 @@ services:
       - AUTH_CONNECTION_STRING=Server=sqlserver,1433;Database=PadmaJairamSite;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=true;Encrypt=false;
       - JWT_SECRET=${JWT_SECRET_PADMAJAIRAM}
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"
     volumes:
       - C:\Users\paul\OneDrive\Documents\padmajairam.com\wwwroot:/app/wwwroot:ro
     depends_on:

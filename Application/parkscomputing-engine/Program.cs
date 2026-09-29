@@ -11,22 +11,26 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace ParksComputing.Engine {
     public class Program {
         public static void Main(string[] args) {
-            CreateWebHostBuilder(args).Build().Run();
-            // var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(args);
+            CreateHostBuilder(args).Build().Run();
         }
 
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
-                // Bind to provided ASPNETCORE_URLS or fall back to all interfaces on 8080 for container hosting
-                .UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://0.0.0.0:8080")
-                // Allow override of web root path for development
-                .UseWebRoot(Environment.GetEnvironmentVariable("ASPNETCORE_WEBROOT") ?? "wwwroot")
-                .UseStartup<Startup>();
+        /* The generic host with the web host inside it, which replaced the
+           obsolete WebHost builder (ASPDEPR008 in .NET 10); Startup is
+           unchanged. */
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(web => web
+                    // Bind to provided ASPNETCORE_URLS or fall back to all interfaces on 8080 for container hosting
+                    .UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://0.0.0.0:8080")
+                    // Allow override of web root path for development
+                    .UseWebRoot(Environment.GetEnvironmentVariable("ASPNETCORE_WEBROOT") ?? "wwwroot")
+                    .UseStartup<Startup>());
     }
 }
 

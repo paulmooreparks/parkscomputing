@@ -103,8 +103,8 @@ This is for soon after the mount ships, because the mount is what makes it worth
 
 ## Order of work
 
-1. Upgrade the engine to .NET 10.
-2. Bind the site's and SQL Server's ports to `127.0.0.1`; add the edit hostname to the tunnel and put Access in front of it. This step is Paul's, in the Cloudflare dashboard and the compose file.
+1. Upgrade the engine to .NET 10. Done 2026-09-30: the SDK and runtime images are 10.0, the framework-bound packages are on 10.0, `Program.cs` uses the generic host in place of the obsolete `WebHost`, and every browser suite passes.
+2. Bind the site's and SQL Server's ports to `127.0.0.1`, which was done 2026-09-30 (the site answers through the tunnel and refuses a direct connection). Add the edit hostname to the tunnel's ingress and put Access in front of it, which is Paul's to do.
 3. Remove the first attempt, and add Identity with passkeys, recovery codes, email links through Resend, and the Admin role seeded from the server.
 4. Add the edit origin's host routing, session cookie, Access verification, CSP and antiforgery, and the sign-in pages and elevated state, all read-only at first.
 5. Build the mount: the filesystem API, history, audit log, asset-stamp clearing and the sliding scale, then the terminal's and Files' mounted root.
