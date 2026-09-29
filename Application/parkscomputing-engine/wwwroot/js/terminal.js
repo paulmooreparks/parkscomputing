@@ -240,7 +240,7 @@
             Object.keys(COMMANDS).sort().forEach(function (k) {
                 io.out('  ' + paint('green', k.padEnd(11)) + COMMANDS[k].summary + '\n');
             });
-            io.out('\nTab completes, the arrow keys recall earlier commands, and "|" pipes one command into another.\n');
+            io.out('\nAnything ls marks with * is an applet and runs by its name, or by its path. Tab completes, the arrow keys recall earlier commands, and "|" pipes one command into another.\n');
         }
     });
 
@@ -487,37 +487,47 @@
         }
     });
 
-    function appletCommand(name, slug, summary, help) {
-        command(name, {
+    /* Each applet runs by the name it has in /applets, where ls marks it
+       with *. A few also take arguments or have a shorter alias. */
+    function appletCommand(slug, summary, help) {
+        command(slug, {
             summary: summary, help: help,
             run: function (args, io) {
-                var n = io.fs.resolve('/applets/' + slug) || { name: slug, kind: 'app', title: name };
+                var n = io.fs.resolve('/applets/' + slug) || { name: slug, kind: 'app', title: slug };
                 io.open(realOf(n));
             }
         });
     }
-    appletCommand('sudoku', 'sudoku', 'play Sudoku', 'sudoku\n\nOpens the Sudoku game.');
-    appletCommand('flashcards', 'flashcards', 'drill barcode symbologies', 'flashcards\n\nOpens the barcode flash cards.');
+    function alias(name, target) {
+        var t = COMMANDS[target];
+        command(name, {
+            summary: 'the same as ' + target, help: name + ' is another name for ' + target + '.\n\n' + t.help,
+            complete: t.complete, run: t.run
+        });
+    }
+    appletCommand('sudoku', 'play Sudoku', 'sudoku\n\nOpens the Sudoku game.');
+    appletCommand('flashcards', 'drill barcode symbologies', 'flashcards\n\nOpens the barcode flash cards.');
 
-    command('life', {
+    command('conway', {
         summary: 'run Conway\'s Game of Life',
-        help: 'life [pattern]\n\nOpens Conway\'s Game of Life, with one of the article\'s patterns if you name it:\n\n  glider   a pair of gliders that follow each other\n  gun      a Gosper glider gun\n  face     cells that settle into a funny face\n  long     a large board with a long-running pattern',
+        help: 'conway [pattern]\n\nOpens Conway\'s Game of Life, with one of the article\'s patterns if you name it:\n\n  glider   a pair of gliders that follow each other\n  gun      a Gosper glider gun\n  face     cells that settle into a funny face\n  long     a large board with a long-running pattern',
         complete: function () { return Object.keys(LIFE_PRESETS); },
         run: function (args, io) {
-            if (args[0] && !LIFE_PRESETS[args[0]]) { io.err('life: no pattern called ' + args[0] + '. Try: ' + Object.keys(LIFE_PRESETS).join(', ')); return 1; }
+            if (args[0] && !LIFE_PRESETS[args[0]]) { io.err('conway: no pattern called ' + args[0] + '. Try: ' + Object.keys(LIFE_PRESETS).join(', ')); return 1; }
             io.open({ name: 'conway', kind: 'app', title: 'Conway\'s Game of Life' }, args[0] ? LIFE_PRESETS[args[0]] : null);
         }
     });
+    alias('life', 'conway');
 
-    command('barcode', {
+    command('barcodes', {
         summary: 'make a barcode in the barcode tool',
-        help: 'barcode [symbology] [data]\n\nOpens the barcode tool, set to a symbology and data if you give them.\n\nSymbologies: ' + BARCODE_SYMS.join(', ') + '\n\nExample: barcode ean13 480036140036',
+        help: 'barcodes [symbology] [data]\n\nOpens the barcode tool, set to a symbology and data if you give them.\n\nSymbologies: ' + BARCODE_SYMS.join(', ') + '\n\nExample: barcodes ean13 480036140036',
         complete: function (words) { return words.length <= 2 ? BARCODE_SYMS : []; },
         run: function (args, io) {
             var state = null;
             if (args.length) {
                 var sym = args[0].toLowerCase();
-                if (BARCODE_SYMS.indexOf(sym) < 0) { io.err('barcode: unknown symbology ' + args[0] + '. Try: ' + BARCODE_SYMS.join(', ')); return 1; }
+                if (BARCODE_SYMS.indexOf(sym) < 0) { io.err('barcodes: unknown symbology ' + args[0] + '. Try: ' + BARCODE_SYMS.join(', ')); return 1; }
                 var q = new URLSearchParams();
                 q.set('s', sym);
                 if (args.length > 1) { q.set('d', args.slice(1).join(' ')); }
@@ -526,6 +536,24 @@
             io.open({ name: 'barcodes', kind: 'app', title: 'Barcode Tool' }, state);
         }
     });
+    alias('barcode', 'barcodes');
+
+    command('terminal', {
+        summary: 'this terminal',
+        help: 'terminal\n\nThe terminal you are using. Running it again leaves you where you are.',
+        run: function (args, io) { io.out('You\'re already in the terminal.\n'); }
+    });
+
+    /* A word that names no command may name an applet: a path to one, one
+       in the current directory, or one in /applets, which is the terminal's
+       PATH. It opens, like any page. */
+    function programAt(fs, cwd, word) {
+        var n = word.indexOf('/') >= 0 ? resolve(fs, cwd, word)
+            : ((cwd.children || []).filter(function (c) { return c.name === word; })[0] || resolve(fs, fs, '/applets/' + word));
+        if (!n || n.children || realOf(n).kind !== 'app') { return null; }
+        var r = realOf(n);
+        return COMMANDS[r.name] || { name: word, run: function (args, io) { io.open(r); } };
+    }
 
     /* === The applet ======================================================= */
 
@@ -781,7 +809,7 @@
             if (!stages.length) { return; }
             var stdin = null;
             for (var i = 0; i < stages.length && !interrupted; i++) {
-                var words = stages[i], c = COMMANDS[words[0]];
+                var words = stages[i], c = COMMANDS[words[0]] || programAt(fs, cwd, words[0]);
                 if (!c) { write(paint('red', words[0] + ': command not found. Type "help" for the list.') + '\n'); return; }
                 var last = i === stages.length - 1;
                 var sink = last ? null : [];

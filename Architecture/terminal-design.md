@@ -50,7 +50,7 @@ Commands are JavaScript objects registered with the terminal: a name, a one-line
 
 Simple pipes (`ls | grep sudoku`) are supported. Output that is piped carries no color codes.
 
-The first commands are `ls`, `cd`, `pwd`, `tree`, `cat`, `less`, `open`, `tags`, `grep`, `find`, `help`, `man`, `clear` and `history`, and one command per applet: `sudoku`, `life`, `barcode` and `flashcards`. Tab completes commands and paths, and the arrow keys walk the history.
+The first commands are `ls`, `cd`, `pwd`, `tree`, `cat`, `less`, `open`, `tags`, `grep`, `find`, `help`, `man`, `clear` and `history`, and one command per applet, named as the applet is in `/applets`: `sudoku`, `conway` (alias `life`), `barcodes` (alias `barcode`), `flashcards` and `terminal`. A word that names no command but names an applet (in the current directory, in `/applets`, which serves as the PATH, or by its path) runs it, so everything `ls` marks with `*` is runnable. Tab completes commands and paths, and the arrow keys walk the history.
 
 `open` and the applet commands open things the way the reader's view does: a window in the window view, and a page in the classic view.
 
