@@ -305,11 +305,6 @@ body.desktop .md-toolbar .win-dock { flex: 1 1 auto; min-width: 0; }
 /* The default width rides the PUDL variable so a dragged width (pudl-md.js
    sets it inline on the layout) wins over it. */
 body.desktop .md-layout { --md-sidebar-w: 300px; }
-/* A row's title stays on one line with an ellipsis, but its description
-   wraps, so it can be read at any sidebar width. PUDL's .md-item sets
-   nowrap for the whole row; this is proposed upstream, and goes when a
-   PUDL release carries it. */
-body.desktop .md-item .md-meta { white-space: normal; overflow-wrap: anywhere; }
 /* The filter's apply button is PUDL's .md-filter-group since 0.11.0. */
 .reader-stage { padding: 0; overflow: hidden; }
 .reader-col { display: flex; flex-direction: column; height: 100%; }
@@ -334,11 +329,15 @@ body.desktop .md-item .md-meta { white-space: normal; overflow-wrap: anywhere; }
 .menu-panel .menu-check:hover { background: var(--surface-alt); }
 
 /* The close-all and clear-filters controls, and any disabled icon button. */
-.close-all svg, .filter-clear svg, .min-all svg { width: 15px; height: 15px; }
-/* Minimise-all shows a down arrow, and restore-all, the same button once
-   every window is minimised, an up arrow. */
-.min-all .min-all-up, .min-all.is-restore .min-all-down { display: none; }
-.min-all.is-restore .min-all-up { display: inline; }
+.close-all svg, .filter-clear svg, .min-all svg, .restore-all svg { width: 15px; height: 15px; }
+/* Minimise-all and restore-all share one place: restore shows only when it
+   is the useful one, every window minimised (minimise-all disabled and
+   restore-all not); otherwise minimise-all shows, disabled when nothing is
+   open. PUDL keeps both links' aria-disabled current. */
+.restore-all[aria-disabled="true"],
+.md-site-tools:has(.min-all:not([aria-disabled="true"])) .restore-all { display: none; }
+.md-site-tools:has(.min-all[aria-disabled="true"]):has(.restore-all:not([aria-disabled="true"])) .min-all { display: none; }
+.icon-btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
 .md-filter-group .filter-clear { margin-left: 6px; }
 .icon-btn.is-disabled { opacity: .45; pointer-events: none; cursor: not-allowed; }
 

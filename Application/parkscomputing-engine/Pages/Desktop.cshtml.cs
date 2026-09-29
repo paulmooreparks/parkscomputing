@@ -287,12 +287,22 @@ public class DesktopModel : PageModel {
         if (mins.Count > 0) { parts.Add("min=" + string.Join(",", mins)); }
         return "/?" + string.Join("&", parts);
     }
-    /// <summary>The current desktop with every top-level window minimised
-    /// (min= lists them all, top= goes), or with none minimised: the
-    /// minimise-all and restore-all buttons' no-script destinations. PUDL
-    /// keeps the minimise href current once script runs.</summary>
-    public string MinimizeAllUrl => WindowsUrl(Windows.Where(w => w.Parent is null).Select(w => w.Key), top: null);
-    public string RestoreAllUrl => WindowsUrl(Array.Empty<string>(), top: OpenOrder.LastOrDefault());
+    /// <summary>The current desktop with every top-level window minimised,
+    /// or with none: the minimise-all and restore-all links' no-script
+    /// destinations, which PUDL keeps current once script runs. Since PUDL
+    /// 0.24.0, top= may name a minimised window: minimise-all keeps the
+    /// front window there, and restore-all brings back the window it
+    /// names.</summary>
+    public string MinimizeAllUrl => WindowsUrl(Windows.Where(w => w.Parent is null).Select(w => w.Key), top: TopKey ?? RequestedTop);
+    public string RestoreAllUrl => WindowsUrl(Array.Empty<string>(), top: RequestedTop ?? TopKey ?? OpenOrder.LastOrDefault());
+
+    /// <summary>The window top= names, if it is open, minimised or not.</summary>
+    private string? RequestedTop {
+        get {
+            var t = Request.Query["top"].FirstOrDefault();
+            return t is not null && OpenOrder.Contains(t) ? t : null;
+        }
+    }
 
     private string WindowsUrl(IEnumerable<string> min, string? top) {
         var parts = new List<string>();
