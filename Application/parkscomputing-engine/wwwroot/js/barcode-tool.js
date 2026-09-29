@@ -254,6 +254,7 @@
                 '<ul class="bt-legend" data-role="legend" hidden></ul>' +
                 '<p class="bt-explain" data-role="explain" hidden></p>' +
               '</div>' +
+              '<div class="bt-actions">' +
               '<div class="bt-controls">' +
                 '<label class="check"><input type="checkbox" data-flag="text" /> Text</label>' +
                 '<label class="check"><input type="checkbox" data-flag="checks" /> Check digits</label>' +
@@ -268,6 +269,7 @@
                 '<button type="button" class="btn" data-action="svg">Download SVG</button>' +
                 '<button type="button" class="btn" data-action="png">Download PNG</button>' +
                 '<button type="button" class="btn" data-action="link">Copy link</button>' +
+              '</div>' +
               '</div>' +
             '</section>' +
             '<section class="bt-read" data-role="read" hidden>' +

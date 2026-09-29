@@ -27,7 +27,7 @@ pudlApplets.define('barcodes', {
     src: '/js/barcode-tool.js',
     css: '/css/barcode-tool.css',
     page: '/page/barcodes',
-    ver: '3'
+    ver: '5'
 });
 
 pudlApplets.define('flashcards', {

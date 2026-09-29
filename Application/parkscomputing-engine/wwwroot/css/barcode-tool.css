@@ -4,10 +4,26 @@
    field colors come from data-color, tinted toward the theme's surface
    so they read in light and dark alike. */
 
+/* One vertical rhythm: every block in the tool, and every block in a
+   section, is separated by the same gap, and the blocks bring no margins
+   of their own. Rows that belong together (the two control rows, the
+   preview and its captions) sit closer inside their own group. */
 .pc-barcodes {
-  display: flex; flex-direction: column; gap: var(--space-3);
+  display: flex; flex-direction: column; gap: var(--space-4);
   max-width: 980px; margin: 0 auto;
 }
+.pc-barcodes .bt-make,
+.pc-barcodes .bt-read {
+  display: flex; flex-direction: column; gap: var(--space-4);
+}
+.pc-barcodes .bt-make[hidden],
+.pc-barcodes .bt-read[hidden] { display: none; }
+.pc-barcodes .form-group { margin: 0; }
+/* The host page's prose styles give paragraphs margins; the tool's own
+   paragraphs take their spacing from the gaps above instead. */
+.pc-barcodes .form-help, .pc-barcodes .form-error, .pc-barcodes .bt-status,
+.pc-barcodes .bt-explain, .pc-barcodes .bt-layout-desc, .pc-barcodes .bt-loading { margin: 0; }
+.pc-barcodes .bt-actions { display: flex; flex-direction: column; gap: var(--space-3); }
 .pc-barcodes [data-color="blue"]   { --bt-c: #2f6fb3; }
 .pc-barcodes [data-color="gray"]   { --bt-c: #6b7280; }
 .pc-barcodes [data-color="orange"] { --bt-c: #c2410c; }
