@@ -41,6 +41,13 @@ public sealed class SshTarget {
 
     public string? Description { get; set; }
 
+    /// <summary>
+    /// What to run on arrival instead of a plain shell, such as
+    /// "wsl tmux new -A -s main" to rejoin a tmux session. ssh NAME --shell
+    /// skips it.
+    /// </summary>
+    public string? Command { get; set; }
+
     /// <summary>The destination's host keys, each a line as in known_hosts without the host name: "ssh-ed25519 AAAA...".</summary>
     public List<string> HostKeys { get; set; } = new();
 

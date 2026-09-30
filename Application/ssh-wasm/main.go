@@ -17,6 +17,7 @@
 //	  sign:      data (Uint8Array) => Promise<Uint8Array>, the 64-byte signature
 //	  hostKeys:  the destination's keys, each an authorized_keys line
 //	  cols, rows, term
+//	  command:   what to run in the pty instead of the login shell, if anything
 //	  onData:    bytes (Uint8Array) from the far end's terminal
 //	  onClose:   message (string), empty when the far end ended the session
 //	}) => Promise<{ write(bytes or string), resize(cols, rows), close() }>
@@ -238,7 +239,14 @@ func connect(this js.Value, args []js.Value) any {
 		}
 		go pump(stdout)
 		go pump(stderr)
-		if err := sess.Shell(); err != nil {
+		// A destination may name a command to run on arrival, in the pty,
+		// as ssh -t host command does; otherwise it is the login shell.
+		if cmd := o.Get("command"); cmd.Type() == js.TypeString && cmd.String() != "" {
+			err = sess.Start(cmd.String())
+		} else {
+			err = sess.Shell()
+		}
+		if err != nil {
 			client.Close()
 			return js.Undefined(), err
 		}

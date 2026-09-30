@@ -103,7 +103,7 @@ public sealed class SshController : ControllerBase {
         return Ok(new {
             ok = true,
             targets = _ssh.CurrentValue.Targets.Where(t => t.Valid).Select(t => new {
-                name = t.Name, user = t.User, description = t.Description,
+                name = t.Name, user = t.User, description = t.Description, command = t.Command,
                 addr = t.Host + ":" + t.Port, hostKeys = t.HostKeys
             })
         });

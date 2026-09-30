@@ -142,6 +142,7 @@
         var w = Math.max.apply(null, ts.map(function (t) { return t.name.length; }));
         ts.forEach(function (t) {
             io.out('  ' + paint('green', t.name.padEnd(w)) + '  ' + (t.user ? t.user + '@' : '') + t.addr + (t.description ? '  ' + paint('dim', t.description) : '') + '\n');
+            if (t.command) { io.out('  ' + ' '.repeat(w) + '  ' + paint('dim', 'runs: ' + t.command) + '\n'); }
         });
     }
 
@@ -150,11 +151,13 @@
         summary: 'connect to a server over SSH, from this browser',
         help: 'ssh                 list the destinations the server allows\n' +
               'ssh NAME            connect to one, as its usual login\n' +
-              'ssh USER@NAME       connect as USER\n\n' +
+              'ssh USER@NAME       connect as USER\n' +
+              'ssh NAME --shell    a plain shell, skipping the destination\'s start-up command\n\n' +
               'The SSH client runs in this browser, with a key that never leaves it\n' +
               '(see ssh-key). The site relays the encrypted connection and nothing\n' +
-              'else. Connecting asks for a passkey tap. Type exit, or close the\n' +
-              'window, to end the session; tmux at the far end keeps work running.',
+              'else. Connecting asks for a passkey tap. A destination may run a\n' +
+              'command on arrival, such as rejoining a tmux session; ssh lists it.\n' +
+              'Type exit, or close the window, to end the session.',
         complete: function (words) {
             return words.length === 2 && cachedNames ? cachedNames : [];
         },
@@ -162,6 +165,8 @@
             var ts;
             try { ts = await targets(); } catch (err) { io.err('ssh: ' + err.message); return 1; }
             cachedNames = ts.map(function (t) { return t.name; });
+            var plain = args.indexOf('--shell') >= 0;
+            args = args.filter(function (a) { return a !== '--shell'; });
             if (!args.length) { list(io, ts); return 0; }
             if (args.length > 1 || !io.takeOver) { io.err('ssh: give one destination, at the prompt (see help ssh)'); return 1; }
             var m = /^(?:([a-z_][a-z0-9_.-]{0,31})@)?([a-z0-9][a-z0-9._-]{0,39})$/i.exec(args[0]);
@@ -208,6 +213,7 @@
                         return crypto.subtle.sign({ name: 'Ed25519' }, key.privateKey, data).then(function (s) { return new Uint8Array(s); });
                     },
                     hostKeys: t.hostKeys,
+                    command: plain ? '' : (t.command || ''),
                     cols: hold.cols, rows: hold.rows,
                     onData: function (bytes) { hold.write(bytes); },
                     onClose: function (msg) { finish(msg); }
