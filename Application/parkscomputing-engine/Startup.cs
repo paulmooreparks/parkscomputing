@@ -102,7 +102,7 @@ namespace ParksComputing.Engine {
 
             ConfigureIdentity(services, configuredConn);
 
-            // Simple built-in fixed window limiter (metadata only; custom middleware adds headers/body).
+            // The built-in partitioned limiter is the site's only rate limit.
             // Readers are told apart by Cloudflare's CF-Connecting-IP, since every
             // request arrives through the tunnel from the same local address.
             services.AddRateLimiter(o => {
@@ -228,12 +228,14 @@ namespace ParksComputing.Engine {
             app.UseCookiePolicy();
             app.UseSession();
             app.UseRouting();
-            app.UseRateLimiter();
-            app.UseMiddleware<ParksComputing.Engine.Api.RateLimitMiddleware>();
-            app.UseMiddleware<ParksComputing.Engine.Api.CachingMiddleware>();
+            // Authentication comes before the limiter, whose policies tell a
+            // signed-in admin from everyone else; before it, every request
+            // looked anonymous and the admin allowances never applied.
             app.UseAuthentication();
+            app.UseRateLimiter();
+            app.UseMiddleware<ParksComputing.Engine.Api.ApiNotFoundMiddleware>();
+            app.UseMiddleware<ParksComputing.Engine.Api.CachingMiddleware>();
             app.UseAuthorization();
-            // 404 ProblemDetails for unmatched API routes handled inside RateLimitMiddleware after pipeline
 
             app.UseEndpoints(endpoints => {
                 endpoints.MapRazorPages();

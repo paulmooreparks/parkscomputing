@@ -30,6 +30,19 @@
         }
         return siteFsReady;
     }
+    /* Files' one setting, whether names starting with a dot show, lives in
+       ~/.config/files.json (js/config.js) and is toggled from its menu. */
+    var configReady = null;
+    function loadConfig() {
+        if (window.pcConfig) { return Promise.resolve(window.pcConfig); }
+        if (!configReady) {
+            configReady = loadScript(window.pcConfigSrc || beside('config.js'))
+                .then(function () { return window.pcConfig; })
+                .catch(function (err) { configReady = null; throw err; });
+        }
+        return configReady;
+    }
+
     var browserReady = null;
     function loadBrowser() {
         if (window.pcFileBrowser) { return Promise.resolve(window.pcFileBrowser); }
@@ -206,6 +219,8 @@
                 items.push(['sep']);
                 items.push(['terminal', 'Open a terminal here']);
             }
+            items.push(['sep']);
+            items.push(['hidden', showHidden ? 'Hide hidden files' : 'Show hidden files']);
             var html = '';
             items.forEach(function (it, i) {
                 if (it[0] === 'sep') { if (html && i < items.length - 1 && items[i + 1][0] !== 'sep') { html += '<div class="menu-sep" role="separator"></div>'; } return; }
@@ -309,6 +324,10 @@
                 case 'edit': if (c) { openInEditor(c); } return;
                 case 'run': if (c) { openTerminal(c.name); } return;
                 case 'terminal': openTerminal(null); return;
+                case 'hidden':
+                    setHidden(!showHidden);
+                    loadConfig().then(function (cfg) { return cfg.set('files', { hidden: showHidden }); }).catch(function () { });
+                    return;
                 case 'download': if (c) { download(c); } return;
                 case 'copy': if (c) { await copyHome(c); } return;
                 case 'new-file': {
@@ -418,9 +437,18 @@
 
         /* === Start ======================================================== */
 
-        var boot = Promise.all([loadSiteFs().then(function (api) { F = api; return F.load(); }), loadBrowser()]).then(function (got) {
+        var showHidden = false, unConfig = null;
+        function setHidden(on) { showHidden = !!on; if (b) { b.showHidden(showHidden); renderMenu(); } }
+
+        var boot = Promise.all([loadSiteFs().then(function (api) { F = api; return F.load(); }), loadBrowser()]).then(async function (got) {
             if (destroyed) { return; }
             FB = got[1];
+            var cfg = await loadConfig().catch(function () { return null; });
+            if (cfg) {
+                showHidden = !!(await cfg.load('files', { hidden: false }).catch(function () { return {}; })).hidden;
+                unConfig = cfg.onChange('files', function (s) { if (!!s.hidden !== showHidden) { setHidden(s.hidden); } });
+            }
+            if (destroyed) { return; }
             build();
             root.addEventListener('click', onClick);
             el.fileInput.addEventListener('change', function () { if (el.fileInput.files && el.fileInput.files.length) { uploadFiles(Array.prototype.slice.call(el.fileInput.files)); } });
@@ -436,6 +464,7 @@
                 onRender: afterRender,
                 onKey: onKey,
                 say: say,
+                showHidden: showHidden,
                 emptyText: function (dir) { return inHome(dir) ? 'This folder is empty. Make a file or a folder, or drop files here.' : 'This folder is empty.'; }
             });
             afterRender();
@@ -452,6 +481,7 @@
             setState: function (s) { var p = pathFrom(s); if (b && p) { if (b.goPath(F.upgradePath(p))) { b.focusList(); } } },
             destroy: function () {
                 destroyed = true;
+                if (unConfig) { unConfig(); }
                 if (b) { b.destroy(); }
                 root.removeEventListener('click', onClick);
                 if (el && el.dialog.open) { el.dialog.close(); }

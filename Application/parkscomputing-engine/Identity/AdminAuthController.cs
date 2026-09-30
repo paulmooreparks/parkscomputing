@@ -139,7 +139,7 @@ public sealed class AdminAuthController : ControllerBase {
         if (me is null) {
             return Unauthorized(Refused);
         }
-        if (!_sessions.RecentlyConfirmed(User)) {
+        if (!await _sessions.RecentlyConfirmedAsync(User)) {
             return StatusCode(StatusCodes.Status403Forbidden, NeedsConfirm);
         }
         byte[] id;
@@ -166,7 +166,7 @@ public sealed class AdminAuthController : ControllerBase {
         if (me is null) {
             return Unauthorized(Refused);
         }
-        if (!_sessions.RecentlyConfirmed(User)) {
+        if (!await _sessions.RecentlyConfirmedAsync(User)) {
             return StatusCode(StatusCodes.Status403Forbidden, NeedsConfirm);
         }
         var codes = await _users.GenerateNewTwoFactorRecoveryCodesAsync(me, 10);
@@ -199,7 +199,7 @@ public sealed class AdminAuthController : ControllerBase {
         if (me is null) {
             return (null, Unauthorized(Refused));
         }
-        if (!_sessions.RecentlyConfirmed(User)) {
+        if (!await _sessions.RecentlyConfirmedAsync(User)) {
             return (null, StatusCode(StatusCodes.Status403Forbidden, NeedsConfirm));
         }
         return (me, null);

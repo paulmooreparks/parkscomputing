@@ -193,4 +193,15 @@
             say('Ten new recovery codes are shown. They won\'t be shown again.');
         });
     });
+
+    /* Signing out clears what the edit origin keeps in this browser: the
+       terminals' folders and the copy of the theme. Settings and history
+       live in ~ on the server, so nothing of the admin's is lost, and a
+       borrowed computer keeps nothing behind. */
+    document.querySelectorAll('.admin-bar-signout').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            try { localStorage.clear(); } catch (err) { }
+            try { sessionStorage.clear(); } catch (err) { }
+        });
+    });
 })();

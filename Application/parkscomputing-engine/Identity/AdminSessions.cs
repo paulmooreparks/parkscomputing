@@ -20,21 +20,25 @@ public sealed class AdminSessions {
     public const string MethodClaim = "pc_method";
     public const string SignedInClaim = "pc_signed_in";
     public const string ConfirmedClaim = "pc_confirmed";
+    /// <summary>A random id for the session, by which its idle time is kept (A14).</summary>
+    public const string SessionClaim = "pc_session";
 
     public const string Passkey = "passkey";
     public const string EmailLink = "email";
     public const string RecoveryCode = "recovery";
 
-    private static readonly string[] Carried = { MethodClaim, SignedInClaim, ConfirmedClaim };
+    private static readonly string[] Carried = { MethodClaim, SignedInClaim, ConfirmedClaim, SessionClaim };
 
     private readonly SignInManager<IdentityUser> _signIn;
     private readonly UserManager<IdentityUser> _users;
     private readonly ResendMailer _mail;
-    private readonly AdminOptions _options;
+    private readonly SessionPolicy _policy;
 
-    public AdminSessions(SignInManager<IdentityUser> signIn, UserManager<IdentityUser> users, ResendMailer mail, IOptions<AdminOptions> options) {
-        _signIn = signIn; _users = users; _mail = mail; _options = options.Value;
+    public AdminSessions(SignInManager<IdentityUser> signIn, UserManager<IdentityUser> users, ResendMailer mail, SessionPolicy policy) {
+        _signIn = signIn; _users = users; _mail = mail; _policy = policy;
     }
+
+    private static string NewSessionId() => Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
 
     private static string Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
 
@@ -52,7 +56,8 @@ public sealed class AdminSessions {
         await _signIn.SignInWithClaimsAsync(user, isPersistent: false, new[] {
             new Claim(MethodClaim, method),
             new Claim(SignedInClaim, now),
-            new Claim(ConfirmedClaim, method == Passkey ? now : "0")
+            new Claim(ConfirmedClaim, method == Passkey ? now : "0"),
+            new Claim(SessionClaim, NewSessionId())
         });
         await NotifyAsync(user, "Signed in to parkscomputing.com",
             $"Someone signed in to edit parkscomputing.com as {user.Email}, with {Describe(method)}.", ctx);
@@ -63,19 +68,30 @@ public sealed class AdminSessions {
         await _signIn.SignInWithClaimsAsync(user, isPersistent: false, new[] {
             new Claim(MethodClaim, current.FindFirstValue(MethodClaim) ?? Passkey),
             new Claim(SignedInClaim, current.FindFirstValue(SignedInClaim) ?? Now()),
-            new Claim(ConfirmedClaim, Now())
+            new Claim(ConfirmedClaim, Now()),
+            new Claim(SessionClaim, current.FindFirstValue(SessionClaim) ?? NewSessionId())
         });
     }
 
-    /// <summary>Whether the session tapped a passkey within the confirmation window.</summary>
-    public bool RecentlyConfirmed(ClaimsPrincipal p) => Within(p, ConfirmedClaim, TimeSpan.FromMinutes(_options.ConfirmMinutes));
+    /// <summary>Whether the session tapped a passkey within its admin's confirmation window.</summary>
+    public async Task<bool> RecentlyConfirmedAsync(ClaimsPrincipal p) =>
+        Within(p, ConfirmedClaim, TimeSpan.FromMinutes((await _policy.ForAsync(p)).ConfirmMinutes));
 
     /// <summary>Whether the session tapped a passkey recently enough for a destructive change (A8).</summary>
-    public bool ConfirmedForDestructive(ClaimsPrincipal p) => Within(p, ConfirmedClaim, TimeSpan.FromMinutes(_options.DestructiveConfirmMinutes));
+    public async Task<bool> ConfirmedForDestructiveAsync(ClaimsPrincipal p) =>
+        Within(p, ConfirmedClaim, TimeSpan.FromMinutes((await _policy.ForAsync(p)).DestructiveConfirmMinutes));
 
-    /// <summary>Whether the session has outlived its absolute lifetime.</summary>
-    public static bool Expired(ClaimsPrincipal p, AdminOptions options) =>
-        !Within(p, SignedInClaim, TimeSpan.FromHours(options.AbsoluteHours));
+    /// <summary>Whether the session has outlived its absolute lifetime, or gone idle too long (A14).</summary>
+    public static async Task<bool> ExpiredAsync(ClaimsPrincipal p, SessionPolicy policy) {
+        var t = await policy.ForAsync(p);
+        if (!Within(p, SignedInClaim, TimeSpan.FromHours(t.AbsoluteHours))) {
+            return true;
+        }
+        /* A session from before sessions carried their own id can't be
+           timed for idleness, so it ends and signs in again. */
+        var sid = p.FindFirstValue(SessionClaim);
+        return sid is null || !policy.Touch(sid, t.IdleMinutes);
+    }
 
     private static bool Within(ClaimsPrincipal p, string claim, TimeSpan window) {
         var v = p.FindFirstValue(claim);

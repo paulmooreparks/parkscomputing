@@ -47,13 +47,17 @@ window.pcTerminalCommands = ['/js/terminal-text.js'];
 /* The site filesystem the terminal, the file manager and the editor share
    (js/sitefs.js). Every applet loads it from this one address, so a page
    holds one copy; raise its v on every change to the file. */
-window.pcSiteFsSrc = '/js/sitefs.js?v=3';
+window.pcSiteFsSrc = '/js/sitefs.js?v=4';
 
 /* The file browser Files, the editor and the barcode tool share (js/filebrowser.js), with its
    stylesheet; like the site filesystem, one copy a page, and a raised v on
    every change to either. */
-window.pcFileBrowserSrc = '/js/filebrowser.js?v=4';
-window.pcFileBrowserCss = '/css/filebrowser.css?v=4';
+window.pcFileBrowserSrc = '/js/filebrowser.js?v=5';
+window.pcFileBrowserCss = '/css/filebrowser.css?v=5';
+
+/* The settings files in ~/.config (js/config.js), which each applet with
+   settings of its own reads and writes; one copy a page, like the above. */
+window.pcConfigSrc = '/js/config.js?v=1';
 
 /* Where the terminal, Files and the editor have their pages: /page/ on the
    public site, and on the edit origin the admin workspace's, which its
@@ -71,7 +75,7 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: pcWorkspacePages + 'terminal',
-    ver: '22',
+    ver: '23',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
     instances: 4
 });
@@ -81,7 +85,7 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: pcWorkspacePages + 'files',
-    ver: '11',
+    ver: '12',
     handles: { browse: { param: 'path' } }
 });
 
@@ -90,6 +94,17 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
-    ver: '10',
+    ver: '11',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } }
+});
+
+/* The admin desktop's Settings (Architecture/admin-and-identity-design.md,
+   A12 and A14): new windows, the theme, the background, the file tree and
+   the sign-in timeouts. Each tool keeps its own settings; these are the
+   desktop's. */
+pudlApplets.define('settings', {
+    src: '/js/settings.js',
+    css: '/css/settings.css',
+    page: pcWorkspacePages + 'settings',
+    ver: '1'
 });

@@ -862,7 +862,9 @@
         var r = realOf(n);
         if (r.children) { return false; }
         if (!r.server) { return true; }
-        return TEXT_EXT.test(r.name) || r.name.indexOf('.') < 0;
+        /* No extension counts as text, and a dotfile's leading dot, as in
+           ~/.history, isn't one. */
+        return TEXT_EXT.test(r.name) || r.name.lastIndexOf('.') <= 0;
     }
 
     /* The file under /wwwroot/content a site page is made from, or null. */

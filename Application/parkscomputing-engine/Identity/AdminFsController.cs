@@ -108,7 +108,7 @@ public sealed class AdminFsController : ControllerBase {
         if (!Directory.Exists(Path.GetDirectoryName(t.Full))) {
             return Conflict(new { ok = false, error = "There is no directory to hold " + path + "." });
         }
-        if (ServerFiles.IsProtected(t.Root, t.Rel) && !_sessions.ConfirmedForDestructive(User)) {
+        if (ServerFiles.IsProtected(t.Root, t.Rel) && !await _sessions.ConfirmedForDestructiveAsync(User)) {
             return StatusCode(StatusCodes.Status403Forbidden, NeedsConfirm);
         }
         if (Request.ContentLength > _options.MaxFileBytes) {
@@ -152,7 +152,7 @@ public sealed class AdminFsController : ControllerBase {
         if (!Directory.Exists(Path.GetDirectoryName(t.Full))) {
             return Conflict(new { ok = false, error = "There is no directory to hold " + body.Path + "." });
         }
-        if (ServerFiles.IsProtected(t.Root, t.Rel) && !_sessions.ConfirmedForDestructive(User)) {
+        if (ServerFiles.IsProtected(t.Root, t.Rel) && !await _sessions.ConfirmedForDestructiveAsync(User)) {
             return StatusCode(StatusCodes.Status403Forbidden, NeedsConfirm);
         }
         Directory.CreateDirectory(t.Full);
@@ -182,7 +182,7 @@ public sealed class AdminFsController : ControllerBase {
             return Conflict(new { ok = false, error = "There is no directory to hold " + body.To + "." });
         }
         if ((ServerFiles.IsProtected(from.Root, from.Rel) || ServerFiles.IsProtected(to.Root, to.Rel) || System.IO.File.Exists(to.Full))
-            && !_sessions.ConfirmedForDestructive(User)) {
+            && !await _sessions.ConfirmedForDestructiveAsync(User)) {
             return StatusCode(StatusCodes.Status403Forbidden, NeedsConfirm);
         }
         if (System.IO.File.Exists(to.Full)) {
@@ -214,7 +214,7 @@ public sealed class AdminFsController : ControllerBase {
         if (isDir && !body.Recursive && Directory.EnumerateFileSystemEntries(t.Full).Any()) {
             return Conflict(new { ok = false, error = body.Path + " is a directory that isn't empty." });
         }
-        if (!_sessions.ConfirmedForDestructive(User)) {
+        if (!await _sessions.ConfirmedForDestructiveAsync(User)) {
             return StatusCode(StatusCodes.Status403Forbidden, NeedsConfirm);
         }
         _files.KeepPrevious(t.RootKey, t.Rel, t.Full, moveAway: true);
@@ -245,7 +245,7 @@ public sealed class AdminFsController : ControllerBase {
         if (t is null || version is null) {
             return NotFound();
         }
-        if (!_sessions.ConfirmedForDestructive(User)) {
+        if (!await _sessions.ConfirmedForDestructiveAsync(User)) {
             return StatusCode(StatusCodes.Status403Forbidden, NeedsConfirm);
         }
         if (!Directory.Exists(Path.GetDirectoryName(t.Full))) {

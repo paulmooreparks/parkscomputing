@@ -28,6 +28,18 @@ public sealed class AdminOptions {
     /// <summary>Deleting, or changing js/, css/ or pudl/, needs a passkey tap this recent (A8).</summary>
     public int DestructiveConfirmMinutes { get; set; } = 15;
 
+    /* The four values above are each admin's defaults; an admin may set
+       their own within these bounds (A14), which only the server's
+       configuration can move. */
+    public int IdleMinutesMin { get; set; } = 5;
+    public int IdleMinutesMax { get; set; } = 240;
+    public int AbsoluteHoursMin { get; set; } = 1;
+    public int AbsoluteHoursMax { get; set; } = 72;
+    public int ConfirmMinutesMin { get; set; } = 1;
+    public int ConfirmMinutesMax { get; set; } = 30;
+    public int DestructiveConfirmMinutesMin { get; set; } = 1;
+    public int DestructiveConfirmMinutesMax { get; set; } = 120;
+
     /// <summary>The public site, where pages are viewed and previews shown.</summary>
     public string PublicOrigin { get; set; } = "https://parkscomputing.com";
 

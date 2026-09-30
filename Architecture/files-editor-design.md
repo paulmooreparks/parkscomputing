@@ -19,6 +19,17 @@ Every change to `~` fires `pc:fs-change` on the document: saves made in this pag
 
 The module has no user interface and makes no decisions about views; opening a page, an applet or a file is each applet's own business.
 
+### Settings files and hidden names
+
+Each applet owns its settings and keeps them in `~/.config/<name>.json` (Paul, 2026-09-30), read and written through `js/config.js` (`window.pcConfig`), which fills in defaults and tells every open window when a file changes, whether here, in another tab, or by hand in the Editor. The applet draws its own controls; there is no central list of every tool's settings. On the edit origin `~` is on the server, so the settings follow the admin; on the public site they are in the browser, like the rest of `~`.
+
+- The terminal has a gear in its corner, opening a small dialog with its text size (`terminal.json`).
+- The Editor's own Wrap lines and Explorer controls remember themselves (`editor.json`); they needed no second place to set them.
+- Files' menu shows or hides hidden files (`files.json`).
+- The admin desktop's Settings keeps `desktop.json` (`admin-and-identity-design.md`, A14).
+
+Names starting with a dot, such as `~/.config` and `~/.history`, are hidden as a shell hides them: `ls` shows them with `-a`, Files and the desktop's tree with their "show hidden files" setting, and the shared browser with its `showHidden` option. A dotfile with no other extension counts as text.
+
 ### The root
 
 The root holds siblings, each with one meaning and one store (Paul, 2026-09-30). Before this the site's pages sat at the root itself, with `/home` and, on the edit origin, `/wwwroot` grafted onto them.

@@ -24,7 +24,7 @@ public sealed class EditOriginGate {
        too. Nothing else of the public site answers here. */
     private static readonly string[] AssetPaths = {
         "/pudl/", "/favicon", "/css/admin.css", "/js/admin.js", "/js/admin-desktop.js",
-        "/js/continuity.js", "/js/taskbar.js", "/css/taskbar.css",
+        "/js/continuity.js", "/js/taskbar.js", "/css/taskbar.css", "/js/config.js", "/js/settings.js", "/css/settings.css",
         "/js/applets.js", "/js/sitefs.js", "/js/filebrowser.js", "/js/terminal.js", "/js/terminal-text.js", "/js/files.js", "/js/editor.js", "/js/vendor/",
         "/css/terminal.css", "/css/files.css", "/css/filebrowser.css", "/css/editor.css",
         "/api/site/"
@@ -37,7 +37,7 @@ public sealed class EditOriginGate {
     public EditOriginGate(RequestDelegate next, IOptions<AdminOptions> options) {
         _next = next; _options = options.Value;
         // Only the public site's previews may be framed here (A11).
-        _csp = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
+        _csp = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
             "font-src 'self'; connect-src 'self'; frame-src " + _options.PublicOrigin.TrimEnd('/') + "; " +
             "form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
     }

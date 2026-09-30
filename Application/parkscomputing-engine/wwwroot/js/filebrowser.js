@@ -26,6 +26,9 @@
      onKey(e, node)  a key on a row the browser doesn't handle; true if taken
      say(msg, isError)  a message for the host to show
      filter(node) true for the files to show; folders always show
+     showHidden   show entries whose names start with a dot, such as
+                  ~/.config, which are hidden otherwise, as in a shell
+     expand       paths of folders to open in the tree at the start
 
    The browser follows every change to the filesystem by itself.
 
@@ -145,8 +148,9 @@
            folder's branch is drawn the first time it opens. The tree marks
            the current folder, or with treeFiles the current file, which the
            host names with markCurrent. */
+        function visible(c) { return o.showHidden || c.name.charAt(0) !== '.'; }
         function kidsOf(node) {
-            var kids = node.children || [];
+            var kids = (node.children || []).filter(visible);
             var dirs = kids.filter(function (c) { return c.children; });
             return o.treeFiles ? dirs.concat(kids.filter(shownFile)) : dirs;
         }
@@ -194,7 +198,7 @@
         }
 
         function entries() {
-            var kids = (cwd.children || []).slice();
+            var kids = (cwd.children || []).filter(visible);
             /* Folders first; within each, the order the site gives, which
                for articles is newest first. */
             return kids.filter(function (c) { return c.children; }).concat(kids.filter(shownFile));
@@ -385,6 +389,7 @@
         cwd = start && start.children ? start : F.root();
         for (var x = cwd; x; x = x.parent) { expanded[F.pathOf(x)] = true; }
         expanded[F.pathOf(F.home())] = true;
+        (o.expand || []).forEach(function (p) { var n = F.resolve(null, p); if (n && n.children) { expanded[F.pathOf(n)] = true; } });
         render();
 
         return {
@@ -398,6 +403,8 @@
             select: select,
             focusList: focusList,
             markCurrent: markCurrent,
+            /* Shows or hides the entries whose names start with a dot. */
+            showHidden: function (on) { o.showHidden = !!on; render(); },
             destroy: function () {
                 destroyed = true;
                 if (unsubscribe) { unsubscribe(); }

@@ -50,6 +50,7 @@
   padding: var(--space-3) 16px; display: flex; flex-direction: column;
 }
 .admin-workspace .admin-applet { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.admin-workspace .admin-applet-scroll { overflow-y: auto; }
 .admin-title { margin: 0 0 var(--space-4); font-family: var(--font-display); }
 .admin-card { margin-bottom: var(--space-4); }
 .admin-card > .btn { margin-top: var(--space-2); }

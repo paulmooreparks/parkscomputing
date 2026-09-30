@@ -17,17 +17,14 @@ namespace ParksComputing.Engine.Api {
             Add(resp, "ETag", "Entity or aggregate ETag");
             Add(resp, "Cache-Control", "Cache directives");
 
-            // Apply pagination + rate headers only for list
+            // Apply pagination headers only for list
             if (name == "List") {
                 Add(resp, "X-Total-Count", "Total items for current filter");
                 Add(resp, "X-Page", "Current page");
                 Add(resp, "X-Page-Size", "Page size");
-                Add(resp, "X-RateLimit-Limit", "Request limit per window (illustrative)");
-                Add(resp, "X-RateLimit-Remaining", "Remaining requests in window");
-                Add(resp, "X-RateLimit-Reset", "Epoch seconds window resets");
             }
 
-            // Ensure 429 documented with ProblemDetails + Xfer examples
+            // The built-in rate limiter answers 429 when a client goes over.
             if (!operation.Responses.ContainsKey("429")) {
                 operation.Responses["429"] = new Microsoft.OpenApi.Models.OpenApiResponse { Description = "Too Many Requests" };
             }

@@ -52,9 +52,22 @@
     /* Whether the Explorer pane shows, kept per browser; with no choice
        made, it shows on a wide screen, unless the page has a file tree of
        its own at the side (the admin desktop says so in a meta tag). */
-    var EXPLORER_KEY = 'pc-editor-explorer';
-    function explorerWanted() {
-        try { var v = localStorage.getItem(EXPLORER_KEY); if (v != null) { return v === '1'; } } catch (err) { }
+    /* The Editor's settings are its own toolbar's Wrap lines and Explorer
+       controls, which remember themselves in ~/.config/editor.json
+       (js/config.js), so they follow the reader wherever ~ does. */
+    var SETTINGS = { wrap: true, explorer: null };
+    var configReady = null;
+    function loadConfig() {
+        if (window.pcConfig) { return Promise.resolve(window.pcConfig); }
+        if (!configReady) {
+            configReady = loadScript(window.pcConfigSrc || beside('config.js'))
+                .then(function () { return window.pcConfig; })
+                .catch(function (err) { configReady = null; throw err; });
+        }
+        return configReady;
+    }
+    function explorerWanted(s) {
+        if (s && typeof s.explorer === 'boolean') { return s.explorer; }
         if (document.querySelector('meta[name="pc-file-sidebar"]')) { return false; }
         return window.matchMedia('(min-width: 900px)').matches;
     }
@@ -334,8 +347,12 @@
             t.state = stateFor(t, text);
             tabs.push(t);
             activate(tabs.length - 1);
-            view.focus();
+            /* Focus would raise the Editor's window over one the reader has
+               since brought forward, so it waits for the window to be in
+               front. */
+            if (inFront()) { view.focus(); }
         }
+        function inFront() { return opts.ownsUrl || !root.closest('.win') || !!root.closest('.win.active'); }
 
         /* Opens a file by path: switches to it if it is open already. */
         async function openPath(path) {
@@ -554,8 +571,24 @@
                 },
                 say: function (m, isError) { if (m) { say(m, isError); } }
             });
-            showExplorer(explorerWanted());
+            showExplorer(explorerWanted(settings));
             markExplorer();
+        }
+
+        /* The settings, as last read or changed, and a change arriving from
+           elsewhere: another Editor, another tab, or the file edited. */
+        var settings = Object.assign({}, SETTINGS), unConfig = null;
+        function applySettings(s) {
+            settings = Object.assign({}, SETTINGS, s);
+            if (el.wrap.checked !== !!settings.wrap) {
+                el.wrap.checked = !!settings.wrap;
+                if (view) { view.dispatch({ effects: wrapComp.reconfigure(el.wrap.checked ? CM.EditorView.lineWrapping : []) }); }
+            }
+            if (explorer && typeof settings.explorer === 'boolean' && el.explorer.hidden === settings.explorer) { showExplorer(settings.explorer); }
+        }
+        function saveSetting(changes) {
+            Object.assign(settings, changes);
+            loadConfig().then(function (c) { return c.set('editor', changes); }).catch(function () { });
         }
 
         function showExplorer(on) {
@@ -718,13 +751,14 @@
                     if (!explorer) { break; }
                     var on = el.explorer.hidden;
                     showExplorer(on);
-                    try { localStorage.setItem(EXPLORER_KEY, on ? '1' : '0'); } catch (err) { }
+                    saveSetting({ explorer: on });
                     break;
                 }
             }
         });
         el.wrap.addEventListener('change', function () {
             if (view) { view.dispatch({ effects: wrapComp.reconfigure(el.wrap.checked ? CM.EditorView.lineWrapping : []) }); }
+            saveSetting({ wrap: el.wrap.checked });
         });
 
         /* === Start ======================================================== */
@@ -733,6 +767,14 @@
             if (destroyed) { return; }
             CM = res[0];
             FB = res[2];
+            /* Settings that can't be read leave the defaults in place. */
+            var config = await loadConfig().catch(function () { return null; });
+            if (config) {
+                settings = Object.assign({}, SETTINGS, await config.load('editor', SETTINGS).catch(function () { return SETTINGS; }));
+                unConfig = config.onChange('editor', applySettings);
+            }
+            if (destroyed) { return; }
+            el.wrap.checked = !!settings.wrap;
             setupExplorer();
             wrapComp = new CM.Compartment(); langComp = new CM.Compartment(); lintComp = new CM.Compartment(); roComp = new CM.Compartment();
             view = new CM.EditorView({ parent: el.surface });
@@ -753,6 +795,7 @@
             destroy: function () {
                 destroyed = true;
                 if (unsubscribe) { unsubscribe(); }
+                if (unConfig) { unConfig(); }
                 window.removeEventListener('beforeunload', onBeforeUnload);
                 if (win) { win.removeEventListener('pudl:window-closing', onWindowClosing); }
                 if (el.dialog.open) { el.dialog.close(); }

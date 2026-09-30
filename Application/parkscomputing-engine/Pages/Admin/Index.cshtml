@@ -7,20 +7,24 @@
     ViewData["Desktop"] = true;
 
     // The tools, as windows made from the templates below. A numbered
-    // terminal (terminal-2) is PUDL's copy of the terminal's template.
+    // terminal (terminal-2) is PUDL's copy of the terminal's template. They
+    // open floating; Settings can make new windows open maximized.
     var tools = new[] {
-        new WindowViewModel { Key = "terminal", Title = "Terminal", PageUrl = "/admin/terminal", Mode = "maximized",
+        new WindowViewModel { Key = "terminal", Title = "Terminal", PageUrl = "/admin/terminal",
             BodyHtml = "<div data-applet=\"terminal\" role=\"application\" aria-label=\"Terminal\"></div>" },
-        new WindowViewModel { Key = "editor", Title = "Editor", PageUrl = "/admin/editor", Mode = "maximized",
+        new WindowViewModel { Key = "editor", Title = "Editor", PageUrl = "/admin/editor",
             BodyHtml = "<div data-applet=\"editor\" role=\"application\" aria-label=\"Editor\"></div>" },
-        new WindowViewModel { Key = "files", Title = "Files", PageUrl = "/admin/files", Mode = "maximized",
-            BodyHtml = "<div data-applet=\"files\" role=\"application\" aria-label=\"Files\"></div>" }
+        new WindowViewModel { Key = "files", Title = "Files", PageUrl = "/admin/files",
+            BodyHtml = "<div data-applet=\"files\" role=\"application\" aria-label=\"Files\"></div>" },
+        new WindowViewModel { Key = "settings", Title = "Settings", PageUrl = "/admin/settings",
+            BodyHtml = "<div data-applet=\"settings\" aria-label=\"Settings\"></div>" }
     };
     var taskbar = new TaskbarModel {
         Entries = new[] {
             new TaskbarEntry("New terminal", "/admin/terminal", "script", Request: "shell"),
             new TaskbarEntry("Editor", "/admin/editor", "document", Window: "editor"),
-            new TaskbarEntry("Files", "/admin/files", "folder", Window: "files")
+            new TaskbarEntry("Files", "/admin/files", "folder", Window: "files"),
+            new TaskbarEntry("Settings", "/admin/settings", "gear", Window: "settings")
         }
     };
 }

@@ -42,6 +42,45 @@
     var HISTORY_KEY = 'pc-terminal-history';
     var HISTORY_MAX = 200;
 
+    /* The command history, shared by every terminal on the page. On the
+       edit origin it is the file ~/.history in the admin's home on the
+       server, so it follows the admin, as a shell's does; on the public
+       site it stays in this browser's storage, where it has always been.
+       Another tab's lines reach this one when it next adds a line (the
+       browser's copy) or when the page loads (the file). */
+    var History = (function () {
+        var lines = [], file = false, ready = null, timer = 0;
+        function fromStorage() {
+            try { var h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); return Array.isArray(h) ? h : []; } catch (err) { return []; }
+        }
+        function save() {
+            lines = lines.slice(-HISTORY_MAX);
+            if (!file) { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(lines)); } catch (err) { } return; }
+            clearTimeout(timer);
+            timer = setTimeout(function () { F.write(F.home(), '~/.history', lines.join('\n') + (lines.length ? '\n' : ''), false); }, 800);
+        }
+        return {
+            load: function () {
+                if (!ready) {
+                    file = !!F.mounted;
+                    ready = !file ? Promise.resolve(lines = fromStorage()) : (function () {
+                        var n = F.resolve(F.home(), '~/.history');
+                        return (n ? F.read(n) : Promise.resolve('')).then(function (text) {
+                            lines = String(text || '').split('\n').filter(Boolean).slice(-HISTORY_MAX);
+                        }, function () { lines = []; });
+                    })();
+                }
+                return ready;
+            },
+            list: function () { return lines; },
+            add: function (text) {
+                if (!file) { lines = fromStorage(); }
+                if (lines[lines.length - 1] !== text) { lines.push(text); save(); }
+            },
+            clear: function () { lines = []; save(); }
+        };
+    })();
+
     /* ANSI styling. Output that goes into a pipe is stripped of it. */
     var C = {
         reset: '\x1b[0m', bold: '\x1b[1m', dim: '\x1b[2m', inverse: '\x1b[7m',
@@ -75,6 +114,21 @@
         }
         return siteFsReady;
     }
+
+    /* The settings files (js/config.js), from the address js/applets.js names. */
+    var configReady = null;
+    function loadConfig() {
+        if (window.pcConfig) { return Promise.resolve(window.pcConfig); }
+        if (!configReady) {
+            configReady = loadScript(window.pcConfigSrc || beside('config.js'))
+                .then(function () { return window.pcConfig; })
+                .catch(function (err) { configReady = null; throw err; });
+        }
+        return configReady;
+    }
+    var SETTINGS = { fontSize: 14 };
+    var FONT_SIZES = [11, 12, 13, 14, 15, 16, 18, 20, 22];
+    var instanceCount = 0;
 
     function pathOf(n) { return F.pathOf(n); }
     function displayPath(n) { return F.displayPath(n); }
@@ -309,17 +363,17 @@
 
     command('ls', {
         summary: 'list a directory',
-        help: 'ls [-l] [path...]\n\nLists a directory, or the current one. Directories end in /, applets in *, and links to other sites in @.\n\n  -l   one entry per line, with its date, kind, and title or size',
+        help: 'ls [-l] [-a] [path...]\n\nLists a directory, or the current one. Directories end in /, applets and commands in *, and links to other sites in @. Names starting with a dot, such as ~/.config, are hidden unless you ask for them.\n\n  -l   one entry per line, with its date, kind, and title or size\n  -a   show the hidden entries too',
         complete: 'path',
         run: function (args, io) {
-            var long = false, paths = [];
-            args.forEach(function (a) { if (/^-[a-z]+$/.test(a)) { if (a.indexOf('l') >= 0) { long = true; } } else { paths.push(a); } });
+            var long = false, all = false, paths = [];
+            args.forEach(function (a) { if (/^-[a-z]+$/.test(a)) { if (a.indexOf('l') >= 0) { long = true; } if (a.indexOf('a') >= 0) { all = true; } } else { paths.push(a); } });
             if (!paths.length) { paths.push('.'); }
             var status = 0;
             paths.forEach(function (p, idx) {
                 var n = needNode(io, p, 'ls: ' + p);
                 if (!n) { status = 1; return; }
-                var list = n.children || [n];
+                var list = n.children ? n.children.filter(function (c) { return all || c.name.charAt(0) !== '.'; }) : [n];
                 if (paths.length > 1) { io.out((idx ? '\n' : '') + p + ':\n'); }
                 if (long) {
                     list.forEach(function (c) {
@@ -923,8 +977,43 @@
         opts = opts || {};
         root.classList.add('pc-terminal');
         if (opts.fit === 'fill') { root.classList.add('pc-terminal-fill'); }
-        root.innerHTML = '<div class="pc-terminal-screen" data-role="screen"></div>';
+        /* The terminal's own settings, behind a gear in its corner, kept in
+           ~/.config/terminal.json. */
+        var setId = 'pc-term-settings-' + (++instanceCount);
+        root.innerHTML = '<div class="pc-terminal-screen" data-role="screen"></div>' +
+            '<button type="button" class="icon-btn pc-terminal-gear" data-role="gear" aria-haspopup="dialog" aria-label="Terminal settings" title="Terminal settings">' +
+              '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg></button>' +
+            '<dialog class="dialog pc-terminal-settings" data-role="settings" aria-labelledby="' + setId + '-title">' +
+              '<form method="dialog">' +
+                '<h3 class="dialog-title" id="' + setId + '-title">Terminal settings</h3>' +
+                '<div class="dialog-body">' +
+                  '<div class="form-group"><label class="form-label" for="' + setId + '-font">Text size</label>' +
+                    '<select class="form-select" id="' + setId + '-font" data-role="font-size">' +
+                      FONT_SIZES.map(function (n) { return '<option value="' + n + '">' + n + ' px</option>'; }).join('') +
+                    '</select></div>' +
+                  '<p class="form-help">These apply to every terminal, and are kept in ~/.config/terminal.json.</p>' +
+                '</div>' +
+                '<div class="dialog-actions"><button type="submit" class="btn btn-primary">Done</button></div>' +
+              '</form>' +
+            '</dialog>';
         var screen = root.querySelector('[data-role="screen"]');
+        var fontSel = root.querySelector('[data-role="font-size"]');
+        var setDialog = root.querySelector('[data-role="settings"]');
+        root.querySelector('[data-role="gear"]').addEventListener('click', function () { setDialog.showModal(); fontSel.focus(); });
+        setDialog.addEventListener('close', function () { if (term) { term.focus(); } });
+        var settings = Object.assign({}, SETTINGS), unConfig = null;
+        function fontSize() { var n = +settings.fontSize; return FONT_SIZES.indexOf(n) >= 0 ? n : SETTINGS.fontSize; }
+        function applySettings(s) {
+            settings = Object.assign({}, SETTINGS, s);
+            fontSel.value = String(fontSize());
+            if (term && term.options.fontSize !== fontSize()) {
+                term.options.fontSize = fontSize();
+                try { fit.fit(); } catch (err) { }
+            }
+        }
+        fontSel.addEventListener('change', function () {
+            loadConfig().then(function (c) { return c.set('terminal', { fontSize: +fontSel.value }); });
+        });
 
         var destroyed = false;
         var term = null, fit = null, fs = null, cwd = null, ro = null;
@@ -953,12 +1042,6 @@
             if (opts.changed) { opts.changed(s); }
         }
 
-        /* History, kept per browser and shared by every terminal in it. */
-        function loadHistory() {
-            try { var h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); return Array.isArray(h) ? h : []; } catch (err) { return []; }
-        }
-        var hist = loadHistory();
-        function saveHistory() { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(hist.slice(-HISTORY_MAX))); } catch (err) { } }
 
         /* === Line editing ============================================= */
 
@@ -1097,6 +1180,7 @@
             redraw();
         }
         function historyStep(d) {
+            var hist = History.list();
             if (!hist.length) { return; }
             if (histPos === -1) { if (d > 0) { return; } draft = line; histPos = hist.length; }
             histPos += d;
@@ -1110,10 +1194,7 @@
             var text = line.trim();
             write('\n');
             if (text) {
-                /* Other terminals share the history, so read what they
-                   added before adding to it. */
-                hist = loadHistory();
-                if (hist[hist.length - 1] !== text) { hist.push(text); saveHistory(); }
+                History.add(text);
                 busy = true;
                 interrupted = false;
                 try { await execute(text); } catch (err) { if (!interrupted) { write(paint('red', 'error: ' + err.message) + '\n'); } }
@@ -1209,8 +1290,8 @@
                 upload: upload,
                 clear: function () { term.clear(); },
                 history: {
-                    list: function () { return hist.slice(); },
-                    clear: function () { hist = []; saveHistory(); }
+                    list: function () { return History.list().slice(); },
+                    clear: function () { History.clear(); }
                 },
                 pager: pager
             };
@@ -1556,9 +1637,17 @@
             term.focus();
         }
 
-        var boot = Promise.all([loadXterm(), loadSiteFs().then(function (fsApi) { return fsApi.load(); }), loadExtras()]).then(function (results) {
+        var boot = Promise.all([loadXterm(), loadSiteFs().then(function (fsApi) { return fsApi.load(); }), loadExtras()]).then(async function (results) {
             if (destroyed) { return; }
             fs = results[1];
+            await History.load();
+            /* Settings that can't be read leave the defaults in place. */
+            var config = await loadConfig().catch(function () { return null; });
+            if (config) {
+                applySettings(await config.load('terminal', SETTINGS).catch(function () { return SETTINGS; }));
+                unConfig = config.onChange('terminal', applySettings);
+            } else { applySettings(SETTINGS); }
+            if (destroyed) { return; }
             /* /bin lists the commands, which live here rather than in the
                filesystem. */
             F.defineCommands(Object.keys(COMMANDS).map(function (k) { return { name: k, summary: COMMANDS[k].summary }; }));
@@ -1567,7 +1656,7 @@
             term = new window.Terminal({
                 cursorBlink: true,
                 fontFamily: getComputedStyle(root).getPropertyValue('--mono').trim() || 'ui-monospace, "Cascadia Mono", Consolas, monospace',
-                fontSize: 14,
+                fontSize: fontSize(),
                 scrollback: 2000,
                 theme: themeColors(root),
                 allowProposedApi: false
@@ -1597,6 +1686,7 @@
             setState: takeState,
             destroy: function () {
                 destroyed = true;
+                if (unConfig) { unConfig(); }
                 document.removeEventListener('pudl:theme-change', applyTheme);
                 if (ro) { ro.disconnect(); }
                 if (term) { term.dispose(); }

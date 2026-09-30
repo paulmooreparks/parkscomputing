@@ -1,0 +1,47 @@
+/* Settings (js/settings.js): cards of PUDL controls in a column that
+   scrolls, whether it fills a window or a page. */
+
+.pc-settings { display: flex; flex-direction: column; gap: var(--space-3); max-width: 720px; font-size: var(--text-sm); }
+.pc-settings-fill { flex: 1 1 auto; min-height: 0; overflow-y: auto; max-width: none; padding: var(--space-3); }
+.pc-settings .pc-set-card { margin: 0; }
+.pc-settings .card-title { margin-bottom: var(--space-2); }
+.pc-settings .pc-set-group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pc-settings .pc-set-group legend { margin-bottom: 6px; }
+.pc-settings .check { display: flex; margin: 4px 0; }
+.pc-settings-loading, .pc-settings-failed { color: var(--text-muted); padding: var(--space-4); }
+
+/* Background: the preview beside its controls. */
+.pc-set-bg { display: flex; gap: var(--space-4); align-items: flex-start; flex-wrap: wrap; }
+.pc-set-preview {
+  flex: none; width: 176px; height: 110px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg); box-shadow: var(--recess-shadow);
+}
+.pc-set-bg-controls { flex: 1 1 260px; display: flex; flex-direction: column; gap: var(--space-3); }
+.pc-set-swatches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pc-set-swatches[hidden], .pc-set-image[hidden] { display: none; }
+.pc-set-swatch {
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  border: 2px solid var(--border);
+}
+.pc-set-swatch[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--focus-ring); }
+.pc-set-swatch:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
+.pc-set-custom { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); }
+.pc-set-custom input { width: 36px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; }
+.pc-set-image { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pc-set-image-name { color: var(--text-muted); overflow-wrap: anywhere; }
+.pc-set-fit-label { margin: 0 0 0 8px; }
+
+/* Timeouts. */
+.pc-set-field { margin-bottom: var(--space-3); }
+.pc-set-num { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pc-set-num .form-input { width: 90px; }
+.pc-set-limits { color: var(--text-muted); font-size: var(--text-xs); }
+.pc-set-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pc-set-status { margin: var(--space-2) 0 0; min-height: 1.4em; color: var(--text-muted); }
+.pc-set-status.form-error { color: var(--danger); }
+
+/* Filling a window: the column scrolls inside the window's body. */
+.win-body:has(.pc-settings-fill) { display: flex; flex-direction: column; overflow: hidden; }
+.win-body:has(.pc-settings-fill) .post-content { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; max-width: none; margin: 0; padding: 0; }
+.win-body:has(.pc-settings-fill) .post-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }

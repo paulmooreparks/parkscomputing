@@ -20,3 +20,4 @@ public sealed class DesktopModel : WorkspaceModel { }
 public sealed class FilesModel : WorkspaceModel { }
 public sealed class TerminalModel : WorkspaceModel { }
 public sealed class EditorModel : WorkspaceModel { }
+public sealed class SettingsModel : WorkspaceModel { }

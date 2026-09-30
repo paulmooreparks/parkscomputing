@@ -68,7 +68,9 @@ public partial class Startup {
             o.Cookie.SecurePolicy = cookieSecurity;
             o.Cookie.SameSite = SameSiteMode.Strict;
             o.Cookie.IsEssential = true;
-            o.ExpireTimeSpan = TimeSpan.FromMinutes(admin.IdleMinutes);
+            // The cookie lasts as long as the longest idle limit an admin may
+            // choose; each admin's own limit is kept per session (A14).
+            o.ExpireTimeSpan = TimeSpan.FromMinutes(admin.IdleMinutesMax);
             o.SlidingExpiration = true;
             o.LoginPath = "/admin/signin";
             o.LogoutPath = "/admin/signout";
@@ -76,10 +78,12 @@ public partial class Startup {
             // An API call without a session is answered, not redirected.
             o.Events.OnRedirectToLogin = ctx => ApiOrRedirect(ctx, StatusCodes.Status401Unauthorized);
             o.Events.OnRedirectToAccessDenied = ctx => ApiOrRedirect(ctx, StatusCodes.Status403Forbidden);
-            // Identity's own check, then the session's absolute lifetime.
+            // Identity's own check, then the session's absolute lifetime and
+            // its admin's idle limit.
             o.Events.OnValidatePrincipal = async ctx => {
                 await SecurityStampValidator.ValidatePrincipalAsync(ctx);
-                if (ctx.Principal is not null && AdminSessions.Expired(ctx.Principal, admin)) {
+                var policy = ctx.HttpContext.RequestServices.GetRequiredService<SessionPolicy>();
+                if (ctx.Principal is not null && await AdminSessions.ExpiredAsync(ctx.Principal, policy)) {
                     ctx.RejectPrincipal();
                     await ctx.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
                 }
@@ -110,6 +114,7 @@ public partial class Startup {
         services.AddHttpClient(ResendMailer.ClientName, c => c.Timeout = TimeSpan.FromSeconds(15));
         services.AddScoped<ResendMailer>();
         services.AddScoped<AdminSessions>();
+        services.AddSingleton<SessionPolicy>();
         services.AddSingleton<ServerFiles>();
         services.AddHostedService<HistoryPruner>();
         services.AddMemoryCache();
