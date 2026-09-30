@@ -1,5 +1,7 @@
 # Proposal to PUDL: a splitter
 
+**Shipped in PUDL 0.31.0**, and the site has adopted it (`pudl-adoption.md`, D45). What follows is the proposal as it was sent.
+
 From parkscomputing.com, 2026-09-30. PUDL's master-detail layout has a divider that resizes its sidebar (`pudl-md.js`), but nothing for two panes inside a component: a folder tree beside a file list, or an editor's file pane beside its text. The site's Files and Editor applets both needed one, and Paul asked for them to be resizable, so the site built one in the shape it expects PUDL would want. It runs today as `window.pcSplit` in `wwwroot/js/filebrowser.js`.
 
 ## Behavior

@@ -978,8 +978,8 @@
         root.classList.add('pc-terminal');
         if (opts.fit === 'fill') { root.classList.add('pc-terminal-fill'); }
         /* The terminal's own settings, kept in ~/.config/terminal.json, in a
-           dialog its menu opens (js/window-menu.js): the window's menu in a
-           window, a small menu button on its own page. */
+           dialog its commands open: from the window menu in a window, and
+           from PUDL's Commands menu on its own page. */
         var setId = 'pc-term-settings-' + (++instanceCount);
         root.innerHTML = '<div class="pc-terminal-screen" data-role="screen"></div>' +
             '<dialog class="dialog pc-terminal-settings" data-role="settings" aria-labelledby="' + setId + '-title">' +
@@ -1000,16 +1000,18 @@
         var setDialog = root.querySelector('[data-role="settings"]');
         setDialog.addEventListener('close', function () { if (term) { term.focus(); } });
 
-        /* The terminal's commands, for its menu. */
-        function onMenu(e) {
-            e.detail.add('Settings…', function () { setDialog.showModal(); fontSel.focus(); });
-            e.detail.add('Clear the screen', function () { if (term) { term.clear(); term.focus(); } });
+        /* The terminal's commands, for PUDL's window menu, and on its own
+           page for the Commands menu PUDL puts above it (0.32.0). */
+        function commands() {
+            var list = [
+                { label: 'Settings…', run: function () { setDialog.showModal(); fontSel.focus(); } },
+                { label: 'Clear the screen', run: function () { if (term) { term.clear(); term.focus(); } } }
+            ];
             if (window.pudlApplets && window.pudlApplets.can && window.pudlApplets.can('shell')) {
-                e.detail.add('New terminal here', function () { window.pudlApplets.request('shell', { path: cwd ? pathOf(cwd) : '/' }, root); });
+                list.push({ label: 'New terminal here', run: function () { window.pudlApplets.request('shell', { path: cwd ? pathOf(cwd) : '/' }, root); } });
             }
+            return list;
         }
-        root.addEventListener('pc:window-menu', onMenu);
-        root.dispatchEvent(new CustomEvent('pc:applet-commands', { bubbles: true }));
         var settings = Object.assign({}, SETTINGS), unConfig = null;
         function fontSize() { var n = +settings.fontSize; return FONT_SIZES.indexOf(n) >= 0 ? n : SETTINGS.fontSize; }
         function applySettings(s) {
@@ -1693,10 +1695,10 @@
         return {
             state: stateString,
             setState: takeState,
+            commands: commands,
             destroy: function () {
                 destroyed = true;
                 if (unConfig) { unConfig(); }
-                root.removeEventListener('pc:window-menu', onMenu);
                 document.removeEventListener('pudl:theme-change', applyTheme);
                 if (ro) { ro.disconnect(); }
                 if (term) { term.dispose(); }

@@ -24,7 +24,10 @@
    (0.26.0); only their place in the layout is set here. */
 .pc-editor .ed-tabs { min-height: 34px; }
 .pc-editor .ed-ro-mark { font-weight: 400; color: var(--text-muted); }
-.pc-editor .ed-panes { flex: 1 1 auto; min-height: 0; display: flex; gap: 6px; }
+/* The panes are PUDL's split: the Explorer, its handle, and the work,
+   which is the text with the preview beside it. */
+.pc-editor .ed-panes { flex: 1 1 auto; min-height: 0; }
+.pc-editor .ed-work { display: flex; gap: 6px; overflow: hidden; }
 .pc-editor .ed-surface { flex: 1 1 0; min-width: 0; min-height: 0; overflow: hidden; }
 .pc-editor .ed-surface .cm-editor { height: 100%; }
 /* The preview, beside the text on a wide screen and under it on a narrow
@@ -34,7 +37,7 @@
   border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg);
 }
 .pc-editor .ed-preview[hidden] { display: none; }
-@media (max-width: 800px) { .pc-editor.ed-previewing .ed-panes { flex-direction: column; } }
+@media (max-width: 800px) { .pc-editor.ed-previewing .ed-work { flex-direction: column; } }
 .pc-editor .ed-view { font-size: var(--text-sm); }
 .pc-editor .ed-view[hidden] { display: none; }
 
@@ -51,19 +54,12 @@
 
 /* The Explorer: the shared file browser's tree beside the text. A narrow
    screen has no room for it, so it gives way there whatever was chosen. */
-.pc-editor .ed-explorer { flex: 0 0 var(--ed-explorer-w, 240px); min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.pc-editor .ed-panes > .ed-explorer { width: var(--split-a, 240px); display: flex; flex-direction: column; overflow: hidden; }
 .pc-editor .ed-explorer[hidden] { display: none; }
 .pc-editor .ed-explorer .fm-body { height: 100%; }
-/* The Explorer's divider (pcSplit, in js/filebrowser.js), in the gap
-   between it and the text. */
-.pc-editor .ed-split { flex: 0 0 8px; margin: 0 -7px 0 -6px; position: relative; cursor: col-resize; touch-action: none; z-index: 1; }
+/* PUDL's handle, standing in the gap between the Explorer and the text. */
+.pc-editor .ed-panes > .ed-split { width: 6px; margin: 0; }
 .pc-editor .ed-split[hidden] { display: none; }
-.pc-editor .ed-split::before {
-  content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; border-radius: 1px;
-  background: transparent; transition: background .12s;
-}
-.pc-editor .ed-split:hover::before, .pc-editor .ed-split.dragging::before, .pc-editor .ed-split:focus-visible::before { background: var(--accent); }
-.pc-editor .ed-split:focus-visible { outline: none; }
 @media (max-width: 700px) { .pc-editor .ed-explorer, .pc-editor .ed-split { display: none; } }
 @media (max-width: 700px) { .pc-editor [data-action="explorer"] { display: none; } }
 

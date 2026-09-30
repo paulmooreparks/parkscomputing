@@ -1,5 +1,7 @@
 # Proposal to PUDL: snap zones
 
+**Shipped in PUDL 0.33.0**, and the site has adopted it (`pudl-adoption.md`, D45). What follows is the proposal as it was sent.
+
 From parkscomputing.com, 2026-09-30. The site's admin desktop runs terminals, an editor and a file browser side by side, and the public site's Window view is used the same way on a wide screen. PUDL windows today can float, fill the layer, or take the left or right half. Paul wants more snap targets on both sites, and he has ruled out tiling for now, so this proposal adds snap targets and nothing that arranges windows on its own.
 
 ## The problem

@@ -146,15 +146,18 @@
               '<span class="ed-readonly" data-role="readonly" hidden><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Read-only</span>' +
             '</div>' +
             '<div class="tablist doc-tabs ed-tabs" role="tablist" aria-label="Open files" data-role="tabs"></div>' +
-            '<div class="ed-panes" data-role="panes">' +
+            /* PUDL's splitter divides the Explorer from the work. */
+            '<div class="ed-panes split" data-role="panes">' +
               /* The Explorer: the shared file browser's tree, files and all
                  (js/filebrowser.js), filled once the filesystem loads. */
-              '<nav class="ed-explorer" data-role="explorer" aria-label="Files" hidden></nav>' +
-              '<div class="ed-split" data-role="explorer-split" aria-label="Resize the files" hidden></div>' +
-              '<div class="code-surface ed-surface" data-role="surface"></div>' +
-              /* The preview is the public site's own page for the draft, so
-                 an article's scripts run there and never here (A11). */
-              '<iframe class="ed-preview" data-role="preview" title="Preview of the unsaved page" hidden></iframe>' +
+              '<nav class="ed-explorer split-pane" data-role="explorer" aria-label="Files" hidden></nav>' +
+              '<div class="split-handle ed-split" data-role="explorer-split" aria-label="Resize the files" data-split-min="160" data-split-max="50%" hidden></div>' +
+              '<div class="ed-work split-pane">' +
+                '<div class="code-surface ed-surface" data-role="surface"></div>' +
+                /* The preview is the public site's own page for the draft, so
+                   an article's scripts run there and never here (A11). */
+                '<iframe class="ed-preview" data-role="preview" title="Preview of the unsaved page" hidden></iframe>' +
+              '</div>' +
             '</div>' +
             '<div class="ed-status" data-role="status-bar">' +
               '<span data-role="where"></span><span data-role="lang"></span><span data-role="pos"></span>' +
@@ -594,12 +597,8 @@
         var explorerSplit = null;
         function setupExplorerSplit() {
             if (!window.pcSplit) { return; }
-            explorerSplit = window.pcSplit.attach(el.explorerSplit, {
-                target: root, prop: '--ed-explorer-w', pane: el.explorer, min: 160,
-                max: function () { return Math.max(200, el.panes.getBoundingClientRect().width * 0.5); },
-                width: typeof settings.explorerWidth === 'number' ? settings.explorerWidth : null,
-                onChange: function (w) { saveSetting({ explorerWidth: w }); }
-            });
+            explorerSplit = window.pcSplit.of(el.explorerSplit, function (w) { saveSetting({ explorerWidth: w }); });
+            explorerSplit.set(typeof settings.explorerWidth === 'number' ? settings.explorerWidth : null);
         }
         function saveSetting(changes) {
             Object.assign(settings, changes);
@@ -609,6 +608,7 @@
         function showExplorer(on) {
             el.explorer.hidden = !on;
             el.explorerSplit.hidden = !on;
+            if (on && window.pudlSplit) { window.pudlSplit.refresh(); }
             el.explorerBtn.setAttribute('aria-pressed', String(on));
             el.explorerBtn.setAttribute('aria-label', on ? 'Hide the files' : 'Show the files');
             el.explorerBtn.title = on ? 'Hide the files' : 'Show the files';
@@ -772,19 +772,20 @@
                 }
             }
         });
-        /* The Editor's commands, for its menu (js/window-menu.js). The
-           toolbar has them too; the menu is where every tool's are. */
-        function onMenu(e) {
-            if (!CM || !view) { return; }
-            e.detail.add('New', newTab);
-            e.detail.add('Open…', openDialog);
-            e.detail.add('Save as…', saveAs, { disabled: !current() });
-            e.detail.add('Show the files', function () { el.explorerBtn.click(); }, { checked: !el.explorer.hidden });
-            e.detail.add('Wrap lines', function () { el.wrap.click(); }, { checked: el.wrap.checked });
+        /* The Editor's commands, for PUDL's window menu (0.32.0). The
+           toolbar has them too; the menu is where every tool's are. On its
+           own page the toolbar is enough, so it offers them only in a
+           window, and PUDL adds no Commands button above it there. */
+        function commands() {
+            if (!CM || !view) { return []; }
+            return [
+                { label: 'New', run: newTab },
+                { label: 'Open…', run: openDialog },
+                { label: 'Save as…', run: saveAs, disabled: !current() },
+                { label: 'Show the files', run: function () { el.explorerBtn.click(); }, checked: !el.explorer.hidden },
+                { label: 'Wrap lines', run: function () { el.wrap.click(); }, checked: el.wrap.checked }
+            ];
         }
-        /* On its own page the toolbar holds these, so it asks for no
-           menu button there. */
-        root.addEventListener('pc:window-menu', onMenu);
 
         el.wrap.addEventListener('change', function () {
             if (view) { view.dispatch({ effects: wrapComp.reconfigure(el.wrap.checked ? CM.EditorView.lineWrapping : []) }); }
@@ -823,11 +824,11 @@
         return {
             state: function () { return stateString() || null; },
             setState: takeFile,
+            commands: root.closest('.win') ? commands : undefined,
             destroy: function () {
                 destroyed = true;
                 if (unsubscribe) { unsubscribe(); }
                 if (unConfig) { unConfig(); }
-                root.removeEventListener('pc:window-menu', onMenu);
                 window.removeEventListener('beforeunload', onBeforeUnload);
                 if (win) { win.removeEventListener('pudl:window-closing', onWindowClosing); }
                 if (el.dialog.open) { el.dialog.close(); }

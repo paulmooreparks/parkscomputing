@@ -1,0 +1,33 @@
+/* === The window bar (Pages/Shared/_WindowBar.cshtml, js/window-bar.js) ====
+   On a page of windows, in either site's top bar: PUDL's dock of open
+   windows, then minimise-all or restore-all and close-all. The dock is the
+   elastic part and scrolls when the windows outnumber the room. A rule
+   after it parts the bar's own controls at the right. PUDL's top bar
+   wraps an item that doesn't fit (0.29.1), so the bar starts from no
+   width and grows into the room left, rather than asking for the width of
+   every open window and going to a line of its own. */
+.win-bar { display: flex; align-items: center; gap: 6px; flex: 1 1 0; min-width: 0; margin: 0 var(--space-3); --ctl-h: 30px; }
+.win-bar-dock { flex: 1 1 auto; min-width: 0; overflow-x: auto; flex-wrap: nowrap; }
+.win-bar .icon-btn { flex: none; color: var(--tb-chrome-fg, currentColor); }
+.win-bar .icon-btn svg { width: 15px; height: 15px; }
+.win-bar .icon-btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+.win-bar .is-disabled { opacity: .45; pointer-events: none; }
+/* Minimise-all and restore-all share one place: restore shows only when it
+   is the useful one, every window minimised (minimise-all disabled and
+   restore-all not); otherwise minimise-all shows, disabled when nothing is
+   open. PUDL keeps both links' aria-disabled current. */
+.win-bar .restore-all[aria-disabled="true"],
+.win-bar:has(.min-all:not([aria-disabled="true"])) .restore-all { display: none; }
+.win-bar:has(.min-all[aria-disabled="true"]):has(.restore-all:not([aria-disabled="true"])) .min-all { display: none; }
+
+/* The rule before what sits at the bar's far right. With no window bar
+   before it, the rule itself takes the slack. */
+.topbar-rule {
+  flex: none; width: 1px; height: 22px; margin: 0 var(--space-3) 0 auto;
+  background: var(--tb-border, var(--border));
+}
+.win-bar + .topbar-rule { margin-left: 0; }
+@media (max-width: 560px) {
+  .win-bar { margin: 0 8px; }
+  .topbar-rule { margin-right: 8px; }
+}

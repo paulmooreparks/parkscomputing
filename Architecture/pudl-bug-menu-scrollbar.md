@@ -1,5 +1,7 @@
 # PUDL bug: menus show a scrollbar they don't need
 
+**Fixed in PUDL 0.30.1**, and the site has dropped its workaround (`pudl-adoption.md`, D45). What follows is the report as it was sent.
+
 From parkscomputing.com, 2026-09-30, found by Paul on the site menu, the Categories and Tags filters, and a window's tag menu.
 
 **What happens.** Every menu panel opened by `pudl-menu.js` shows a vertical scrollbar, even when all its rows fit, and can be scrolled by 2px.

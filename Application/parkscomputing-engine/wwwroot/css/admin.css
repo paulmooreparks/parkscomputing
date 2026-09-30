@@ -5,7 +5,7 @@
 .admin { min-height: 100svh; background: var(--bg); color: var(--text); }
 
 /* The bar: the logo menu at the left, the desktop's window bar beside it
-   (css/window-menu.css), and who is signed in at the far right after a
+   (css/window-bar.css), and who is signed in at the far right after a
    rule, as on the public site's top bar. */
 .admin-bar {
   display: flex; align-items: center; gap: var(--space-2);
@@ -37,9 +37,6 @@
 
 .admin-main { max-width: 640px; margin: 0 auto; padding: var(--space-5) 16px var(--space-6); }
 
-/* The public stylesheet's workaround for PUDL's menu height, which leaves
-   out the panel's border (Architecture/pudl-bug-menu-scrollbar.md). */
-.menu-panel { border-width: 0; outline: 1px solid var(--border); }
 
 /* === The desktop (A12) ===================================================
    PUDL's master-detail layout: the file tree in the sidebar, the windows

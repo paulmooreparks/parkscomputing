@@ -54,7 +54,7 @@ body.desktop .site-header { position: static; flex: none; }
 
 /* === The top bar ==========================================================
    The site menu at the left, the window view's window bar beside it
-   (css/window-menu.css), and the view switcher at the far right after a
+   (css/window-bar.css), and the view switcher at the far right after a
    rule. The switcher's options are links (each view is a URL), which
    PUDL's seg styles cover natively since 0.16.0 (aria-current). */
 .topbar { position: relative; justify-content: flex-start; }
@@ -336,12 +336,6 @@ body.desktop .site-header { position: static; flex: none; }
   .site-filters .md-filter { flex: 1; width: auto; }
 }
 
-/* PUDL's menu script sets a panel's maximum height to its content's
-   height, which leaves out the panel's 1px border, so every menu showed a
-   scrollbar for 2px (Architecture/pudl-bug-menu-scrollbar.md). Drawing the
-   line as an outline, which takes no room, gives the same look without
-   it. The admin origin's stylesheet carries the same rule. */
-.menu-panel { border-width: 0; outline: 1px solid var(--border); }
 
 /* The site menu: the logo and name as a raised chip on the topbar,
    opening Home, the applets and Settings. Each row carries the entry's

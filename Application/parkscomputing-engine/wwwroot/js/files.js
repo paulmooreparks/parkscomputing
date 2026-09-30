@@ -439,10 +439,13 @@
 
         var showHidden = false, unConfig = null;
 
-        /* Files' commands, for its menu (js/window-menu.js). */
-        function onMenu(e) {
-            e.detail.add('Show hidden files', function () { act('hidden'); }, { checked: showHidden });
-            if (canOpen('shell')) { e.detail.add('Open a terminal here', function () { act('terminal'); }); }
+        /* Files' commands, for PUDL's window menu (0.32.0). On its own page
+           its Actions menu already holds them, so it offers them only in a
+           window, and PUDL adds no Commands button above it there. */
+        function commands() {
+            var list = [{ label: 'Show hidden files', run: function () { act('hidden'); }, checked: showHidden }];
+            if (canOpen('shell')) { list.push({ label: 'Open a terminal here', run: function () { act('terminal'); } }); }
+            return list;
         }
         function setHidden(on) { showHidden = !!on; if (b) { b.showHidden(showHidden); renderMenu(); } }
 
@@ -462,9 +465,6 @@
             if (destroyed) { return; }
             build();
             root.addEventListener('click', onClick);
-            /* Its commands join a window's menu; on its own page its
-               Actions menu already holds them, so it asks for no other. */
-            root.addEventListener('pc:window-menu', onMenu);
             el.fileInput.addEventListener('change', function () { if (el.fileInput.files && el.fileInput.files.length) { uploadFiles(Array.prototype.slice.call(el.fileInput.files)); } });
             b = FB.create(root, F, {
                 start: F.upgradePath(startPath),
@@ -495,10 +495,10 @@
             state: function () { return b && F ? stateString() : null; },
             /* A folder handed over, by a browse request or a preset. */
             setState: function (s) { var p = pathFrom(s); if (b && p) { if (b.goPath(F.upgradePath(p))) { b.focusList(); } } },
+            commands: root.closest('.win') ? commands : undefined,
             destroy: function () {
                 destroyed = true;
                 if (unConfig) { unConfig(); }
-                root.removeEventListener('pc:window-menu', onMenu);
                 if (b) { b.destroy(); }
                 root.removeEventListener('click', onClick);
                 if (el && el.dialog.open) { el.dialog.close(); }

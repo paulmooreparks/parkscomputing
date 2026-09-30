@@ -108,7 +108,7 @@ Tabs don't work for the admin workspace (Paul, 2026-09-30). Each tab is its own 
 - **The top bar** has the logo menu at the left and, at the far right after a rule, the admin's name as a label. A session opened by an emailed link or a recovery code says so beside the name, where it is always seen. What the name's menu used to hold (the account, and signing out) is in the logo menu now. The account page is at `/admin/account`, and opens in a new tab from the desktop so the desktop stays as it is.
 - **On a phone** the desktop works, though it is a poor fit, for urgent edits and comment moderation. PUDL's master-detail layout shows the tree or the windows, one at a time, with a back link from the windows to the tree.
 - **Each tool keeps a page of its own** at `/admin/terminal`, `/admin/files` and `/admin/editor`, for a link or a browser tab, and a window's "open as a page" button leads there.
-- **Shared with the public site.** Both sites render the same window bar (`Pages/Shared/_WindowBar.cshtml`, with `WindowBarModel`), styled in `css/window-menu.css`, and close-all and "New terminal" run in `js/window-menu.js`, all with no admin knowledge in them. Applet continuity, the tools' kept state, moved out of `js/site.js` into `js/continuity.js`, which both sites load.
+- **Shared with the public site.** Both sites render the same window bar (`Pages/Shared/_WindowBar.cshtml`, with `WindowBarModel`), styled in `css/window-bar.css`, and close-all and "New terminal" run in `js/window-bar.js`, all with no admin knowledge in them. Applet continuity, the tools' kept state, moved out of `js/site.js` into `js/continuity.js`, which both sites load.
 
 ### A14. Settings, and timeouts each admin sets
 

@@ -67,11 +67,13 @@
         body: function (o) {
             o = o || {};
             var tree = o.tree !== false, list = o.list !== false;
-            return '<div class="fm-body' + (list ? '' : ' fm-body-tree') + (tree ? '' : ' fm-body-list') + '">' +
-                (tree ? '<div class="fm-tree-pane" data-fb="tree-pane"><ul class="tree fm-tree" data-fb="tree" aria-label="' + esc(o.treeLabel || 'Folders') + '"></ul></div>' : '') +
-                (tree && list ? '<div class="fm-split" data-fb="split" aria-label="Resize the folders"></div>' : '') +
+            /* With both, PUDL's splitter divides them (pudl-split.js). */
+            var both = tree && list;
+            return '<div class="fm-body' + (both ? ' split' : '') + (list ? '' : ' fm-body-tree') + (tree ? '' : ' fm-body-list') + '">' +
+                (tree ? '<div class="fm-tree-pane' + (both ? ' split-pane' : '') + '" data-fb="tree-pane"><ul class="tree fm-tree" data-fb="tree" aria-label="' + esc(o.treeLabel || 'Folders') + '"></ul></div>' : '') +
+                (both ? '<div class="split-handle fm-split" data-fb="split" aria-label="Resize the folders" data-split-min="140" data-split-max="60%"></div>' : '') +
                 (list
-                    ? '<div class="fm-main' + (o.drop ? ' drop-zone' : '') + '" data-fb="main">' +
+                    ? '<div class="fm-main' + (both ? ' split-pane' : '') + (o.drop ? ' drop-zone' : '') + '" data-fb="main">' +
                         '<table class="data-table fm-list" data-fb="list" role="grid" aria-label="Contents">' +
                           '<thead><tr><th scope="col" class="fm-c-name">Name</th><th scope="col" class="fm-c-kind">Kind</th><th scope="col" class="fm-c-date">Date</th><th scope="col" class="fm-c-size num">Size</th></tr></thead>' +
                           '<tbody data-fb="rows"></tbody>' +
@@ -89,15 +91,12 @@
         var q = function (sel) { return root.querySelector(sel); };
         var el = { crumbs: q('[data-fb="crumbs"]'), tree: q('[data-fb="tree"]'), list: q('[data-fb="list"]'), rows: q('[data-fb="rows"]'), empty: q('[data-fb="empty"]'), main: q('[data-fb="main"]') };
 
-        /* The divider between the tree and the list. */
+        /* The divider between the tree and the list is PUDL's; the host
+           keeps the width, which is set on the split as --split-a. */
         var splitHandle = q('[data-fb="split"]'), splitter = null;
         if (splitHandle) {
-            var body = splitHandle.parentElement;
-            splitter = attachSplit(splitHandle, {
-                target: body, prop: '--fb-tree-w', pane: q('[data-fb="tree-pane"]'), min: 140,
-                max: function () { return Math.max(180, body.getBoundingClientRect().width * 0.6); },
-                width: o.treeWidth, onChange: o.onResize
-            });
+            splitter = splitOf(splitHandle, o.onResize);
+            splitter.set(o.treeWidth);
         }
         var cwd = null, selected = null, expanded = {}, currentPath = null, destroyed = false;
         var say = o.say || function () { };
@@ -636,75 +635,30 @@
 
     /* === Splitters =========================================================
 
-       A divider between two panes, dragged with the pointer or moved with
-       the keys, that sets the first pane's width as a CSS property on an
-       element the host names. It is the site's until PUDL has a splitter of
-       its own (Architecture/pudl-proposal-splitter.md), and lives here
-       because the file browser and the Editor are its hosts.
+       The file browser and the Editor divide their panes with PUDL's
+       splitter (pudl-split.js, 0.31.0), which keeps no state. This is the
+       little a host needs on top: a stored width set on the split, and a
+       callback when the reader changes it, with null after a reset.
 
-         pcSplit.attach(handle, {
-           target     the element the width is set on
-           prop       the property, such as '--fb-tree-w'
-           pane       the pane whose width it is, measured at the start
-           min, max   the limits in px; max may be a function
-           width      a width to start at, or null for the stylesheet's
-           onChange(width)  after a drag or a key; width is null on a reset
-         })
-
-       The handle is a focusable separator: Left and Right move it by 16px
-       (64 with Shift), Home and End go to the limits, and a double-click or
-       Enter returns the stylesheet's width. */
-    function attachSplit(handle, o) {
-        var min = o.min || 120;
-        function max() { return typeof o.max === 'function' ? o.max() : (o.max || 600); }
-        function clamp(w) { return Math.round(Math.max(min, Math.min(max(), w))); }
-        function current() { return o.pane.getBoundingClientRect().width; }
-        function set(w, tell) {
-            if (w == null) { o.target.style.removeProperty(o.prop); }
-            else { o.target.style.setProperty(o.prop, clamp(w) + 'px'); }
-            handle.setAttribute('aria-valuenow', String(Math.round(current())));
-            if (tell && o.onChange) { o.onChange(w == null ? null : clamp(w)); }
+         pcSplit.of(handle, onChange) -> { set(width or null) } */
+    function splitOf(handle, onChange) {
+        var split = handle.parentElement;
+        if (onChange) {
+            handle.addEventListener('pudl:split', function (e) { onChange(e.detail ? e.detail.size : null); });
         }
-        handle.setAttribute('role', 'separator');
-        handle.setAttribute('aria-orientation', 'vertical');
-        handle.tabIndex = 0;
-        handle.setAttribute('aria-valuemin', String(min));
-        if (o.width != null) { set(o.width, false); }
-
-        handle.addEventListener('pointerdown', function (e) {
-            if (e.button !== 0) { return; }
-            e.preventDefault();
-            var startX = e.clientX, startW = current(), rtl = getComputedStyle(handle).direction === 'rtl';
-            handle.setPointerCapture(e.pointerId);
-            handle.classList.add('dragging');
-            function move(ev) { set(startW + (rtl ? -1 : 1) * (ev.clientX - startX), false); }
-            function up() {
-                handle.releasePointerCapture(e.pointerId);
-                handle.classList.remove('dragging');
-                handle.removeEventListener('pointermove', move);
-                handle.removeEventListener('pointerup', up);
-                handle.removeEventListener('pointercancel', up);
-                set(current(), true);
+        function refresh() { if (window.pudlSplit) { window.pudlSplit.refresh(); } }
+        /* The markup is made by script after PUDL's first look, so it is
+           asked to look again once the handle is in the document. */
+        setTimeout(refresh, 0);
+        return {
+            set: function (w) {
+                if (typeof w === 'number') { split.style.setProperty('--split-a', Math.round(w) + 'px'); }
+                else { split.style.removeProperty('--split-a'); }
+                refresh();
             }
-            handle.addEventListener('pointermove', move);
-            handle.addEventListener('pointerup', up);
-            handle.addEventListener('pointercancel', up);
-        });
-        handle.addEventListener('dblclick', function () { set(null, true); });
-        handle.addEventListener('keydown', function (e) {
-            var step = e.shiftKey ? 64 : 16, w = current(), next = null;
-            if (e.key === 'ArrowLeft') { next = w - step; }
-            else if (e.key === 'ArrowRight') { next = w + step; }
-            else if (e.key === 'Home') { next = min; }
-            else if (e.key === 'End') { next = max(); }
-            else if (e.key === 'Enter') { e.preventDefault(); set(null, true); return; }
-            else { return; }
-            e.preventDefault();
-            set(next, true);
-        });
-        return { set: function (w) { set(w, false); } };
+        };
     }
-    window.pcSplit = { attach: attachSplit };
+    window.pcSplit = { of: splitOf };
 
     window.pcFileBrowser = {
         create: create,

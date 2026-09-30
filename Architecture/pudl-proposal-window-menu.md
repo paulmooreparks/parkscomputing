@@ -1,5 +1,7 @@
 # Proposal to PUDL: the window menu
 
+**Shipped in PUDL 0.32.0**, and the site has adopted it (`pudl-adoption.md`, D45). What follows is the proposal as it was sent.
+
 From parkscomputing.com, 2026-09-30. An applet in a PUDL window has had nowhere to put commands of its own, so the site's terminal grew a settings gear inside its screen, which Paul found out of place. His answer, after Andoneer's cards, is a menu on each window: the window's own commands first, and below a separator the commands of what the window holds. It runs on the site today, in `wwwroot/js/window-menu.js` and `wwwroot/css/window-menu.css`, with its markup in the site's window partial.
 
 ## Behavior

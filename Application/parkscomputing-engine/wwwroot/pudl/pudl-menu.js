@@ -22,8 +22,15 @@
   var NARROW = 640;     // at or below this window width the panel is a sheet
   var ITEMS = 'a.md-item, .menu-action, .md-filter';
 
+  /* The element a panel is placed against: the button that opens it, or,
+     for a panel a script opens from an element that cannot carry
+     popovertarget, such as a link, the element its data-menu-anchor names
+     by id. */
   function invokerOf(panel) {
-    return panel.id ? document.querySelector('[popovertarget="' + CSS.escape(panel.id) + '"]') : null;
+    var btn = panel.id ? document.querySelector('[popovertarget="' + CSS.escape(panel.id) + '"]') : null;
+    if (btn) return btn;
+    var anchor = panel.getAttribute('data-menu-anchor');
+    return anchor ? document.getElementById(anchor) : null;
   }
 
   function isOpen(panel) { return panel.matches(':popover-open'); }
@@ -47,8 +54,12 @@
 
     var below = vh - r.bottom - GAP - EDGE;
     var above = r.top - GAP - EDGE;
+    /* The panel's natural height is its whole rectangle, borders included
+       and unrounded, rounded up: scrollHeight leaves out the border and
+       rounds down, which left a panel a fraction short of its content and
+       showing a scrollbar it did not need. */
     panel.style.maxHeight = '';
-    var natural = panel.scrollHeight;
+    var natural = Math.ceil(panel.getBoundingClientRect().height);
     var down = narrow || below >= natural || below >= above;
     panel.style.maxHeight = Math.max(120, Math.min(natural, down ? below : above)) + 'px';
 

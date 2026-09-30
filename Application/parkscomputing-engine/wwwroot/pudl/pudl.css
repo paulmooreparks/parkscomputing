@@ -1,6 +1,6 @@
 /* ==========================================================================
    PUDL, the Pleasantly Usable Design Language (pronounced "puddle").
-   Version 0.29.0.
+   Version 0.33.0.
 
    PUDL gives every affordance one visual representation, so that somebody
    who has learned it once can use any application built with it on sight.
@@ -168,9 +168,15 @@
   --glyph-script: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='1.5' y='2.5' width='13' height='11' rx='1.5'/%3E%3Cpath d='M4.5 6.5l2 1.75-2 1.75'/%3E%3Cpath d='M8 11h3.5'/%3E%3C/svg%3E");
   --glyph-link: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 3H3.5a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1H12a1 1 0 0 0 1-1V9'/%3E%3Cpath d='M9.5 2.5h4v4M13.5 2.5l-6 6'/%3E%3C/svg%3E");
   --glyph-home: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7.5l6-5 6 5'/%3E%3Cpath d='M3.5 6.5v7h3.5v-4h2v4h3.5v-7'/%3E%3C/svg%3E");
+  /* Docking a window at the layer's foot, and floating it again. */
+  --glyph-dock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='2.25' y='2.75' width='11.5' height='10.5' rx='1.5' fill='none' stroke='black' stroke-width='1.5'/%3E%3Crect x='2.25' y='9' width='11.5' height='4.25' rx='1'/%3E%3C/svg%3E");
+  --glyph-undock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.25' y='2.75' width='11.5' height='10.5' rx='1.5'/%3E%3Cpath d='M5.5 9.5L8 7l2.5 2.5'/%3E%3C/svg%3E");
   /* Copying and downloading, as a code block's actions do. */
   --glyph-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linejoin='round'%3E%3Crect x='5.5' y='5.5' width='8' height='8.5' rx='1.5'/%3E%3Cpath d='M10.5 5.5V3.5a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3.5V9A1.5 1.5 0 0 0 4 10.5h1.5'/%3E%3C/svg%3E");
   --glyph-download: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2.5v8M4.5 7.5L8 11l3.5-3.5'/%3E%3Cpath d='M2.5 11.5v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-1.5'/%3E%3C/svg%3E");
+  /* Settings, and the mark on a menu command that is switched on. */
+  --glyph-gear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.4' stroke-linejoin='round'%3E%3Cpath d='M6.9 1.5h2.2l.4 1.9 1.1.6 1.8-.7 1.1 1.9-1.4 1.3v1.2l1.4 1.3-1.1 1.9-1.8-.7-1.1.6-.4 1.9H6.9l-.4-1.9-1.1-.6-1.8.7-1.1-1.9 1.4-1.3V7.4L2.5 6.1l1.1-1.9 1.8.7 1.1-.6z'/%3E%3Ccircle cx='8' cy='8' r='2'/%3E%3C/svg%3E");
+  --glyph-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3.2 3.2L13 4.8' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   /* The separator between the places in a path bar. */
   --glyph-slash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M10.5 2.5l-5 11' stroke='black' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
   --glyph-stop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5.4 1.8h5.2l3.6 3.6v5.2l-3.6 3.6H5.4l-3.6-3.6V5.4z' fill='none' stroke='black' stroke-width='1.6' stroke-linejoin='round'/%3E%3Cpath d='M8 4.8v4' stroke='black' stroke-width='1.8' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='11' r='1'/%3E%3C/svg%3E");
@@ -352,8 +358,12 @@ table, input, select, textarea, time, data, output, code, kbd, samp, .num,
 }
 
 /* === Topbar / brand chrome ============================================== */
+/* The topbar wraps rather than widening the page: on a screen too narrow
+   for the brand and its chrome on one line, the chrome moves to a second
+   line, at the end, and wraps within itself if it must. */
 .topbar {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--space-2);
   padding: 10px 20px;
   background: var(--tb-grad);
   border-bottom: 1px solid var(--tb-border);
@@ -371,7 +381,8 @@ table, input, select, textarea, time, data, output, code, kbd, samp, .num,
 .topbar a:not([class]) { color: var(--tb-chrome-fg); }
 .brand:hover, .topbar a:not([class]):hover { color: var(--tb-link-hover); }
 .topbar-chrome {
-  display: inline-flex; align-items: center; gap: var(--space-2);
+  display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2);
+  min-width: 0; margin-inline-start: auto;
 }
 /* A topbar pill is raised, so it is always a link or a button, never a label. */
 .topbar-pill {
@@ -383,6 +394,29 @@ table, input, select, textarea, time, data, output, code, kbd, samp, .num,
   text-decoration: none;
 }
 .topbar-pill:hover { color: var(--tb-chrome-hover-fg); }
+/* A pill may carry a glyph with its words in a .topbar-pill-label. On a
+   phone the words are then heard but not shown, and the pill is its
+   glyph, so a topbar with several pills still fits on one line. */
+/* The pill for the page the reader is on, marked aria-current, is pressed
+   in, as the current tab of a dock or a segmented control is. */
+.topbar-pill[aria-current]:not([aria-current="false"]) {
+  color: var(--tb-fg);
+  background: color-mix(in srgb, #000 24%, var(--tb-bg));
+  box-shadow: inset 0 1px 3px color-mix(in srgb, #000 50%, transparent);
+}
+/* A menu button on the topbar may hold its words in a .menu-btn-label,
+   which a phone then cuts short with an ellipsis rather than letting the
+   button widen the chrome. */
+.menu-btn-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 640px) {
+  .topbar { padding: 8px 12px; }
+  .topbar .menu-btn:has(> .menu-btn-label) { max-width: 10rem; }
+  .topbar-pill:has(> .glyph) { position: relative; padding-inline: 8px; }
+  .topbar-pill:has(> .glyph) > .topbar-pill-label {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+}
 /* The theme toggle shares the chip styling on the topbar chrome. */
 .theme-toggle {
   display: inline-flex; align-items: center; justify-content: center;
@@ -1061,6 +1095,35 @@ body:has(> .md-layout) {
 .md-resize.dragging::before { background: var(--accent); }
 .md-resize:focus-visible { outline: none; }
 .md-resize:focus-visible::before { background: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
+
+/* === Splitters ===========================================================
+   Two panes inside a component, a folder tree beside a file list or an
+   editor above a terminal, with a handle between them that resizes the
+   first. The first pane's size is a custom property on the .split, by
+   default --split-a, which a server may render from a stored preference
+   and pudl-split.js sets as the handle moves; the stylesheet does the
+   layout. .stacked puts the panes one above the other. The handle is
+   drawn as the master-detail divider is, a rule that takes the accent
+   while it is hovered, dragged or focused. */
+.split { display: flex; min-width: 0; min-height: 0; }
+.split.stacked { flex-direction: column; }
+.split > .split-pane { min-width: 0; min-height: 0; overflow: auto; }
+.split > .split-pane:first-child { flex: none; width: var(--split-a, 50%); }
+.split.stacked > .split-pane:first-child { width: auto; height: var(--split-a, 50%); }
+.split > .split-pane:last-child { flex: 1; }
+.split-handle {
+  flex: none; width: 6px; margin: 0 -3px; z-index: 1; cursor: col-resize;
+  position: relative; touch-action: none;
+}
+.split.stacked > .split-handle { width: auto; height: 6px; margin: -3px 0; cursor: row-resize; }
+.split-handle::before {
+  content: ""; position: absolute; inset: 0 2px; border-radius: 2px;
+  background: transparent; transition: background .12s;
+}
+.split.stacked > .split-handle::before { inset: 2px 0; }
+.split-handle:hover::before, .split-handle.dragging::before { background: var(--accent); }
+.split-handle:focus-visible { outline: none; }
+.split-handle:focus-visible::before { background: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
 .md-detail {
   flex: 1; overflow-y: auto; padding: var(--space-5); min-width: 0;
   background: var(--bg);
@@ -1093,15 +1156,17 @@ body:has(> .md-layout) {
   /* The list pane fills the layout, and its rows are touch targets. */
   .md-sidebar { flex: 1; width: auto; border-inline-end: 0; }
   .md-sidebar .md-item, .md-sidebar .tree a { padding-top: 10px; padding-bottom: 10px; }
-  .md-detail { display: none; padding: var(--space-4); }
+  .md-detail { padding: var(--space-4); }
+  .md-layout:not([data-md-pane="detail"]) .md-detail { display: none; }
 
   /* The detail pane: the list, its toolbar and its filters step aside. A
      toolbar of site-wide tools, such as a launcher or a window dock, is
-     marked .md-site-tools and stays in both panes. */
+     marked .md-site-tools and stays in both panes. PUDL only hides the
+     pane it is not showing, and leaves the display of the one it shows
+     alone, so a detail pane a project lays out as a flex column stays one. */
   .md-layout[data-md-pane="detail"] .md-toolbar:not(.md-site-tools),
   .md-layout[data-md-pane="detail"] .md-chips,
   .md-layout[data-md-pane="detail"] .md-sidebar { display: none; }
-  .md-layout[data-md-pane="detail"] .md-detail { display: block; }
 
   .md-back {
     display: inline-flex; align-items: center; gap: var(--space-1);
@@ -1290,6 +1355,31 @@ body:has(> .md-layout) {
 }
 .menu-action:hover { background: var(--surface-alt); }
 .menu-action.danger { color: var(--danger); }
+.menu-action:disabled { color: var(--text-muted); cursor: default; }
+.menu-action:disabled:hover { background: none; }
+/* A command that switches something on and off carries aria-pressed, and
+   a tick when it is on. The tick's column is kept when it is off, so the
+   labels stay in line. */
+.menu-action[aria-pressed]::before {
+  content: ""; flex: none; width: 12px; height: 12px;
+  background: currentColor;
+  -webkit-mask: var(--glyph-tick) center / contain no-repeat;
+  mask: var(--glyph-tick) center / contain no-repeat;
+  visibility: hidden;
+}
+.menu-action[aria-pressed="true"]::before { visibility: visible; }
+/* In a menu with any such command, the other commands leave the tick's
+   column empty, so every label starts in one line. */
+.menu-panel:has(.menu-action[aria-pressed]) .menu-action:not([aria-pressed]) {
+  padding-inline-start: calc(14px + 12px + var(--space-2));
+}
+@media (forced-colors: active) {
+  .menu-action[aria-pressed]::before { forced-color-adjust: none; background: CanvasText; }
+}
+
+/* The commands an applet offers on its own page, where no window menu
+   holds them: a row above the applet with a menu button. */
+.applet-commands { display: flex; justify-content: flex-end; margin-bottom: var(--space-2); }
 
 /* === Data tables =========================================================
    A table of many records, one per row. It sits in a .data-table-wrap,
@@ -1629,7 +1719,8 @@ body:has(> .md-layout) {
   .seg [aria-current]:not([aria-current="false"]), .seg button.active,
   .section-tab[aria-current]:not([aria-current="false"]), .section-tab.active,
   .md-row:has(> [aria-current]:not([aria-current="false"])), .md-row.active,
-  .btn[aria-pressed="true"], .menu:has(> .menu-panel:popover-open) > .menu-btn {
+  .btn[aria-pressed="true"], .menu:has(> .menu-panel:popover-open) > .menu-btn,
+  .topbar-pill[aria-current]:not([aria-current="false"]) {
     forced-color-adjust: none;
     background: Highlight; color: HighlightText; border-color: Highlight;
   }
@@ -1664,6 +1755,9 @@ body:has(> .md-layout) {
   .menu:has(> .menu-panel:popover-open) > .menu-btn::after { background: HighlightText; }
   .md-resize::before { background: CanvasText; inset: 0 2.5px; }
   .md-resize:hover::before, .md-resize.dragging::before, .md-resize:focus-visible::before { background: Highlight; }
+  .split-handle::before { background: CanvasText; inset: 0 2.5px; }
+  .split.stacked > .split-handle::before { inset: 2.5px 0; }
+  .split-handle:hover::before, .split-handle.dragging::before, .split-handle:focus-visible::before { background: Highlight; }
   .badge { border: 1px solid CanvasText; }
   .tree a[aria-current]:not([aria-current="false"]) { forced-color-adjust: none; background: Highlight; color: HighlightText; }
   .tree-toggle { border: 1px solid ButtonText; }
