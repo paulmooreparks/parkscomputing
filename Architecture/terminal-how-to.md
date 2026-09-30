@@ -15,7 +15,7 @@ There are two ways to add a command to the terminal. A **script** is a text file
 #
 # Anything else a reader should know. man shows this whole
 # block, and help shows the first line without "name:".
-ls -l /tags/$1
+ls -l /site/tags/$1
 ```
 
 **What a line can use:**
@@ -34,7 +34,7 @@ ls -l /tags/$1
 - Anything piped into the script goes to its first line.
 - There are no `if`s or loops.
 
-**To go live:** save the file. The terminal's list of files is cached for up to 60 seconds, and after that `help`, `man name` and `cat /bin/name` show it.
+**To go live:** save the file. The terminal's list of files is cached for up to 60 seconds, and after that `help`, `man name` and `cat /site/bin/name` show it.
 
 **To keep it in the repo:** copy it to `Application/parkscomputing-engine/wwwroot/content/bin/` and add it with `git add -f`. The `-f` is needed because `.gitignore` skips every `bin` folder.
 

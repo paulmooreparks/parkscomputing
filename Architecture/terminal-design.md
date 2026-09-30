@@ -4,19 +4,23 @@ The terminal is an applet that shows the public site in terminal mode. To add a 
 
 ## The filesystem
 
-The terminal's filesystem is built from sitenav.xfer and nothing else. The server publishes it as data, and no path in it corresponds to a file on disk.
+The site's part of the filesystem, `/site`, is built from sitenav.xfer and nothing else. The server publishes it as data, and no path in it corresponds to a file on disk. Beside it at the root are `/bin`, which lists the terminal's built-in commands, and `/home`, which holds `~` (`files-editor-design.md` has the whole root). A new terminal starts in `/site`.
 
 ```
 /
-  articles/        every post, newest first
-  applications/    one directory per sitenav section that has children
-  applets/
-  projects/
-  links/
-  tags/<tag>/      virtual: the articles carrying each tag
-  about            top-level leaf entries sit at the root
-  resume-of-paul-m-parks
-  ...
+  bin/             the built-in commands, listed by the terminal when it starts
+  home/guest/      ~, kept in this browser
+  site/
+    articles/      every post, newest first
+    applications/  one directory per sitenav section that has children
+    applets/
+    projects/
+    links/
+    tags/<tag>/    virtual: the articles carrying each tag
+    bin/           the site's scripts, from content/bin
+    about          top-level leaf entries sit at the top of /site
+    resume-of-paul-m-parks
+    ...
 ```
 
 Each entry's name is its slug. An entry is one of three kinds:
@@ -81,7 +85,7 @@ The file commands are `edit` (alias `nano`), `touch`, `mkdir [-p]`, `rm [-r]`, `
 
 ## Scripts
 
-A script is a plain-text file of terminal commands. The site's scripts are files in `content/bin` on the content volume, which appear as `/bin` and are added or changed by saving a file, with no deploy. A reader's own scripts are the files in `~/bin`. `ls` marks both with `*`, and both run by name: after the commands, the terminal looks in the current directory, `/applets`, `/bin` and `~/bin`, in that order, or at a path.
+A script is a plain-text file of terminal commands. The site's scripts are files in `content/bin` on the content volume, which appear as `/site/bin` and are added or changed by saving a file, with no deploy. A reader's own scripts are the files in `~/bin`. `ls` marks both with `*`, and both run by name: after the built-in commands, the terminal looks in the current directory, `/site/applets`, `~/bin` and `/site/bin`, in that order, or at a path. A reader's script therefore takes the place of a site script of the same name, but no script can take a built-in command's. `/bin` lists the built-in commands themselves, so `/bin/ls` is a path to `ls`.
 
 The server reads `content/bin` into the tree: each file up to 16 KB, named in lower case (`[a-z0-9][a-z0-9_-]*`, a `.sh` or `.txt` extension dropped), with its source, so the terminal runs it and shows its help without another request. A script's summary, which `help` lists under "Site scripts" or "Your scripts", is its first comment line less a leading `name:`. `man` prints the comment block at its top, and `cat` its source.
 

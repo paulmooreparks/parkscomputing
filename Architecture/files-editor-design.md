@@ -6,7 +6,8 @@ Two applets join the terminal on the same sandbox: **Files**, a graphical view o
 
 The filesystem that began inside the terminal is its own module, `window.pcSiteFs`. It holds:
 
-- the site tree from `/api/site/tree`, with the virtual `tags` directory and `home/guest`;
+- the root and its siblings, described below;
+- the site tree from `/api/site/tree`, under `/site`, with the virtual `tags` directory;
 - the home directory in `localStorage` (`pc-terminal-home`), with its versioned seed files and its limits (256 KB a file, 2 MB in all);
 - `~/barcode-layouts.json`, the barcode tool's layout library, checked by the barcode engine before it is saved;
 - page text from `/api/site/text` and `/api/site/texts`, cached;
@@ -17,6 +18,23 @@ A page holds one copy. `js/applets.js` names its address, with its version, in `
 Every change to `~` fires `pc:fs-change` on the document: saves made in this page, and changes made in another tab, which reach this one through the `storage` event. A reload from storage replaces the nodes under `~`, so an applet holds paths, not nodes, across a change, and re-resolves them when the event fires.
 
 The module has no user interface and makes no decisions about views; opening a page, an applet or a file is each applet's own business.
+
+### The root
+
+The root holds siblings, each with one meaning and one store (Paul, 2026-09-30). Before this the site's pages sat at the root itself, with `/home` and, on the edit origin, `/wwwroot` grafted onto them.
+
+```
+/
+├── bin/       the terminal's built-in commands, read-only
+├── home/      the home directories: /home/guest in this browser, or /home/<name> on the server
+├── site/      the site as sitenav lists it, read-only (articles, applets, tags, bin, ...)
+└── wwwroot/   the web root on the server, on the edit origin only
+```
+
+- **`/site`** is the published view, and `/wwwroot` the source it is published from. The site's scripts are therefore `/site/bin`, the published view of `/wwwroot/content/bin`.
+- **`/bin`** lists the built-in commands, so `ls /bin` shows them and `/bin/ls` is a path to `ls`. The commands live in `js/terminal.js`, which fills `/bin` through `defineCommands` when a terminal starts, so a page with no terminal shows `/bin` empty. Opening one in Files or the desktop's tree puts `man <name>` at a terminal's prompt.
+- **A new terminal and Files start in `/site`**, since exploring the site is what they are for on the public site.
+- **Old addresses still work.** `upgradePath` reads a path that names nothing, such as `/articles/coincidences`, as the same path under `/site` when that names something. It applies only where an address or kept state is read in (Files' `path`, the Editor's `file`, the terminal's `cwd`), never to what a reader types. A home directory's `README` and `bin/hello`, still exactly as seeded, take the new paths; a copy the reader changed is left alone.
 
 ## Files
 

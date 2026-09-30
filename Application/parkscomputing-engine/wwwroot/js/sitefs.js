@@ -1,7 +1,8 @@
 /* The site filesystem: the sandbox the terminal, the file manager and the
-   editor share (Architecture/files-editor-design.md). It is the site's
-   public structure, as /api/site/tree serves it from sitenav, plus a home
-   directory, ~.
+   editor share (Architecture/files-editor-design.md). Its root holds
+   /site, the site's public structure as /api/site/tree serves it from
+   sitenav; /bin, the terminal's built-in commands; and /home, which holds
+   the home directory, ~.
 
    On the public site ~ is /home/guest, kept in this browser's
    localStorage, and nothing here can reach a file on the server. On the
@@ -81,9 +82,50 @@
 
     function tagSlug(t) { return String(t).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
 
-    /* Wraps the server's tree in nodes that know their parent and path, and
-       adds the virtual tags directory and the home directory. */
+    /* The root holds siblings, each with one meaning and one store
+       (Architecture/files-editor-design.md): /site, the site's pages as
+       sitenav lists them, read-only; /bin, the terminal's built-in commands;
+       /home, the home directories; and on the edit origin /wwwroot, the web
+       root on the server. */
+    var bin = null;
     function buildFs(data) {
+        var top = { name: '', kind: 'dir', title: '/', description: '', parent: null, children: [], virtual: true };
+        var site = buildSite(data, top);
+        site.name = 'site'; site.title = 'The site'; site.description = 'The site\'s pages, as its navigation lists them';
+        bin = { name: 'bin', kind: 'dir', title: 'Commands', description: 'The terminal\'s built-in commands', parent: top, children: [], virtual: true };
+        top.children.push(bin, site);
+        if (!MOUNT) { mountHome(top); }
+        sortKids(top);
+        return top;
+    }
+
+    /* The terminal's built-in commands, as /bin shows them. The terminal
+       names them when it starts, since they live in its script; a page
+       with no terminal shows /bin empty. */
+    function defineCommands(list) {
+        if (!bin) { return; }
+        bin.children = list.map(function (c) {
+            return {
+                name: c.name, kind: 'command', title: c.name, description: c.summary || '', parent: bin, virtual: true,
+                source: c.name + ': a command built into the terminal.\n' + (c.summary ? c.summary + '\n' : '') + 'Type "man ' + c.name + '" in the terminal to read about it.\n'
+            };
+        });
+        sortKids(bin);
+        emit('commands');
+    }
+
+    /* Before the root had siblings, the site's pages sat at the top, so an
+       address or a kept state may still say /articles or /bin/latest. Such
+       a path is read as the same path under /site, where the path as given
+       names nothing. Paths typed in the terminal are taken as they are. */
+    function upgradePath(p) {
+        if (!p || p.charAt(0) !== '/' || !root || resolve(null, p)) { return p; }
+        return resolve(null, '/site' + p) ? '/site' + p : p;
+    }
+
+    /* Wraps the server's tree in nodes that know their parent and path, and
+       adds the virtual tags directory. */
+    function buildSite(data, parent) {
         function wrap(e, parent) {
             var n = {
                 name: e.name, kind: e.kind, title: e.title || e.name, description: e.description || '',
@@ -96,7 +138,7 @@
             }
             return n;
         }
-        var top = wrap(data, null);
+        var top = wrap(data, parent);
         var byTag = {};
         (function walk(n) {
             (n.children || []).forEach(function (c) {
@@ -118,7 +160,6 @@
             tags.children.push(d);
         });
         top.children.push(tags);
-        if (!MOUNT) { mountHome(top); }
         return top;
     }
 
@@ -195,8 +236,8 @@
             '  conway glider.cells',
             '  sudoku puzzle.sudoku',
             '  edit barcode-layouts.json',
-            '  cp /articles/coincidences ~/',
-            '  ls /articles > articles.txt',
+            '  cp /site/articles/coincidences ~/',
+            '  ls /site/articles > articles.txt',
             '  download glider.cells',
             '  upload',
             '  hello                  (a script in ~/bin)',
@@ -211,9 +252,9 @@
             '# Usage: hello [name]',
             '#',
             '# A script is a file of terminal commands, one a line. Scripts in',
-            '# ~/bin run by name, like the site\'s own in /bin. $1 is the first',
-            '# argument, and ${1:-world} gives it a default. Change this one',
-            '# with "edit ~/bin/hello", or copy it to start another:',
+            '# ~/bin run by name, like the site\'s own in /site/bin. $1 is the',
+            '# first argument, and ${1:-world} gives it a default. Change this',
+            '# one with "edit ~/bin/hello", or copy it to start another:',
             '# cp ~/bin/hello ~/bin/mine',
             'echo Hello, ${1:-world}!',
             'echo Your home directory holds:',
@@ -228,6 +269,16 @@
        came with version 1. */
     var SEED_VERSION = 2;
     var SEED_SINCE = { '/bin/hello': 2 };
+
+    /* Seed files whose text named the old paths (/articles, /bin) before
+       the site moved under /site. A copy still exactly as it was seeded
+       takes the new text; one the reader changed is left alone. */
+    var SEED_BEFORE = {
+        '/README': SEED['/README'].replace('cp /site/articles/', 'cp /articles/').replace('ls /site/articles', 'ls /articles'),
+        '/bin/hello': SEED['/bin/hello'].replace(
+            '# ~/bin run by name, like the site\'s own in /site/bin. $1 is the\n# first argument, and ${1:-world} gives it a default. Change this\n# one with "edit ~/bin/hello", or copy it to start another:',
+            '# ~/bin run by name, like the site\'s own in /bin. $1 is the first\n# argument, and ${1:-world} gives it a default. Change this one\n# with "edit ~/bin/hello", or copy it to start another:')
+    };
 
     function mountHome(top) {
         var homes = { name: 'home', kind: 'dir', title: 'Home directories', description: '', parent: top, children: [] };
@@ -269,6 +320,10 @@
            keeps it deleted, and a later seed still reaches an older home. */
         var had = data.seeded === true ? 1 : (+data.seeded || 0);
         var seedNow = had < SEED_VERSION;
+        Object.keys(SEED_BEFORE).forEach(function (p) {
+            var f = data.files[p];
+            if (f && f.t === 'f' && f.c === SEED_BEFORE[p]) { f.c = SEED[p]; seedNow = true; }
+        });
         if (seedNow) {
             Object.keys(SEED).forEach(function (p) {
                 if ((SEED_SINCE[p] || 1) <= had || data.files[p]) { return; }
@@ -400,6 +455,7 @@
         www.title = 'The web root'; www.description = 'The site\'s files, as the server serves them';
         var homes = { name: 'home', kind: 'dir', title: 'Home directories', description: '', parent: top, children: [] };
         top.children.push(www, homes);
+        sortKids(top);
         var got = await Promise.all([listing('wwwroot'), listing('home')]);
         fill(www, 'wwwroot', got[0].entries);
         var mine = serverNode(homes, got[1].home, true, 'home', '', 0, null);
@@ -728,7 +784,7 @@
         var r = realOf(n);
         if (r.server) { return serverRead(r); }
         if (r.home) { return Promise.resolve(readHome(r)); }
-        if (r.kind === 'script') { return Promise.resolve(r.source || ''); }
+        if (r.kind === 'script' || r.kind === 'command') { return Promise.resolve(r.source || ''); }
         if (r.kind === 'link') {
             return Promise.resolve(r.title + '\n' + r.url + '\n' + (r.description ? '\n' + r.description + '\n' : ''));
         }
@@ -736,8 +792,8 @@
     }
 
     /* === Scripts ===========================================================
-       A script is a text file of terminal commands: the site's in /bin, and
-       a reader's own in ~/bin. */
+       A script is a text file of terminal commands: the site's in
+       /site/bin, and a reader's own in ~/bin. */
 
     function userBin() { return home.dir ? childNamed(home.dir, 'bin') : null; }
 
@@ -856,6 +912,8 @@
         isRunnable: isRunnable,
         scriptSource: scriptSource,
         scriptSummary: scriptSummary,
+        defineCommands: defineCommands,
+        upgradePath: upgradePath,
         limits: { file: FILE_MAX, home: HOME_MAX },
         onChange: function (fn) {
             var h = function (e) { fn(e.detail || {}); };

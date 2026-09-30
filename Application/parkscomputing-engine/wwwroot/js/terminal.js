@@ -1,8 +1,9 @@
 /* The terminal applet: the public site in terminal mode
-   (Architecture/terminal-design.md). Its filesystem is the site's
-   structure as sitenav describes it, served read-only by /api/site/tree;
-   nothing here can reach a file on the server. Beside it sits the reader's
-   own home directory, /home/guest or ~, kept in this browser's storage,
+   (Architecture/terminal-design.md). Its filesystem (js/sitefs.js) holds
+   the site's structure as sitenav describes it, in /site, served read-only
+   by /api/site/tree; the built-in commands, listed in /bin; and the
+   reader's own home directory, /home/guest or ~, kept in this browser's
+   storage, which on the public site is all it can write,
    with a small full-screen editor for its files. Commands are plain
    objects with an async run(args, io), and io is the only thing a command
    can touch. xterm.js 6.0.0 (MIT) draws the screen, loaded beside this
@@ -196,9 +197,11 @@
     function fmtSize(n) { return n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB'; }
 
     /* === Scripts ===========================================================
-       A script is a text file of terminal commands: the site's in /bin
-       (content/bin on the server), and a reader's own in ~/bin. Both
-       directories are on the PATH after /applets. Recognising one is
+       A script is a text file of terminal commands: the site's in
+       /site/bin (content/bin on the server), and a reader's own in ~/bin.
+       Both directories are on the PATH after /site/applets, the reader's
+       first, and the built-in commands, which /bin lists, come before
+       them all. Recognising one is
        sitefs.js's job (userBin, isScript, scriptSource, scriptSummary);
        running one is the terminal's. */
 
@@ -235,7 +238,7 @@
     function styledName(n) {
         var k = realOf(n).kind;
         if (n.children) { return paint('blue', C.bold + n.name) + '/'; }
-        if (k === 'app' || isScript(n)) { return paint('green', n.name) + '*'; }
+        if (k === 'app' || k === 'command' || isScript(n)) { return paint('green', n.name) + '*'; }
         if (k === 'link') { return paint('cyan', n.name) + '@'; }
         return n.name;
     }
@@ -272,11 +275,11 @@
         summary: 'list the commands',
         help: 'help\n\nLists every command with a one-line summary. "man <command>" says more about one.',
         run: function (args, io) {
-            io.out(paint('bold', 'This is parkscomputing.com in terminal mode.') + ' The files are the site\'s pages, and ~ is your own.\n');
+            io.out(paint('bold', 'This is parkscomputing.com in terminal mode.') + ' The site\'s pages are in /site, and ~ is your own.\n');
             Object.keys(COMMANDS).sort().forEach(function (k) {
                 io.out('  ' + paint('green', k.padEnd(11)) + COMMANDS[k].summary + '\n');
             });
-            [['Site scripts, in /bin', io.fs.resolve('/bin')], ['Your scripts, in ~/bin', userBin()]].forEach(function (sec) {
+            [['Site scripts, in /site/bin', io.fs.resolve('/site/bin')], ['Your scripts, in ~/bin', userBin()]].forEach(function (sec) {
                 var kids = sec[1] && sec[1].children ? sec[1].children.filter(isScript) : [];
                 if (!kids.length) { return; }
                 io.out('\n' + paint('bold', sec[0]) + '\n');
@@ -321,7 +324,7 @@
                 if (long) {
                     list.forEach(function (c) {
                         var r = realOf(c);
-                        var kind = c.children ? 'dir ' : isScript(c) ? 'script' : r.home ? 'file' : r.kind === 'app' ? 'app ' : r.kind === 'link' ? 'link' : 'page';
+                        var kind = c.children ? 'dir ' : isScript(c) ? 'script' : r.home ? 'file' : r.kind === 'app' ? 'app ' : r.kind === 'link' ? 'link' : r.kind === 'command' ? 'cmd ' : 'page';
                         var extra = r.home ? (c.children ? '' : fmtSize(F.size(r))) : (r.title && r.title !== c.name ? r.title : '');
                         io.out(paint('dim', fmtDate(r.home ? r.mtime : r.date)) + '  ' + kind + '  ' + styledName(c) + (extra ? '  ' + paint('dim', extra) : '') + '\n');
                     });
@@ -432,9 +435,9 @@
 
     command('tags', {
         summary: 'list the tags and how many articles carry each',
-        help: 'tags\n\nLists every tag. Each is a directory under /tags, so "ls /tags/travel" lists the travel articles.',
+        help: 'tags\n\nLists every tag. Each is a directory under /site/tags, so "ls /site/tags/travel" lists the travel articles.',
         run: function (args, io) {
-            var t = io.fs.resolve('/tags');
+            var t = io.fs.resolve('/site/tags');
             (t ? t.children : []).forEach(function (d) {
                 io.out(String(d.children.length).padStart(3) + '  ' + paint('blue', d.name) + (d.title !== d.name ? paint('dim', '  (' + d.title + ')') : '') + '\n');
             });
@@ -655,7 +658,7 @@
         help: 'cp <file> <destination>\n\nCopies a file into your home directory. The file may be one of yours or a page of the site, which is copied as text. The destination may be a directory, such as ~/, or a new name.',
         complete: 'path',
         run: async function (args, io) {
-            if (args.length !== 2) { io.err('cp: give a file and a destination, such as: cp /articles/coincidences ~/'); return 1; }
+            if (args.length !== 2) { io.err('cp: give a file and a destination, such as: cp /site/articles/coincidences ~/'); return 1; }
             var r = readable(io, args[0], 'cp');
             if (!r) { return 1; }
             var res = await F.copy(io.fs.cwd(), r, args[1]);
@@ -716,7 +719,7 @@
 
     /* --- The applets ---------------------------------------------------- */
 
-    /* Each applet runs by the name it has in /applets, where ls marks it
+    /* Each applet runs by the name it has in /site/applets, where ls marks it
        with *. A few also take arguments or have a shorter alias. */
     function alias(name, target) {
         var t = COMMANDS[target];
@@ -826,13 +829,15 @@
     alias('nano', 'edit');
 
     /* The PATH: after the commands, a word may name an applet or a script,
-       by its path, in the current directory, or in /applets, /bin or ~/bin,
-       in that order. */
-    function runnable(n) { return n && !n.children && (realOf(n).kind === 'app' || isScript(n)); }
+       by its path, in the current directory, or in /site/applets, ~/bin or
+       /site/bin, in that order, so a script of the reader's own comes
+       before the site's of the same name. A path into /bin, such as
+       /bin/ls, names a built-in command. */
+    function runnable(n) { return n && !n.children && (realOf(n).kind === 'app' || realOf(n).kind === 'command' || isScript(n)); }
 
     function findProgram(fs, cwd, word) {
         if (word.indexOf('/') >= 0) { var p = resolve(fs, cwd, word); return runnable(p) ? p : null; }
-        var places = [cwd, resolve(fs, fs, '/applets'), resolve(fs, fs, '/bin'), userBin()];
+        var places = [cwd, resolve(fs, fs, '/site/applets'), userBin(), resolve(fs, fs, '/site/bin')];
         for (var i = 0; i < places.length; i++) {
             var n = places[i] ? childNamed(places[i], word) : null;
             if (runnable(n)) { return n; }
@@ -925,7 +930,7 @@
         var term = null, fit = null, fs = null, cwd = null, ro = null;
         /* On its own page the address wins over the state kept for it, as
            the site's continuity expects, so a link to a folder opens there. */
-        var initialCwd = (opts.ownsUrl ? cwdFrom(location.search) : null) || cwdFrom(opts.state) || '/';
+        var initialCwd = (opts.ownsUrl ? cwdFrom(location.search) : null) || cwdFrom(opts.state) || '/site';
         /* A command to put at the prompt, never to run: from the page's own
            address, or handed over by Files' "Run in the terminal". */
         var prefill = (opts.ownsUrl ? (new URLSearchParams(location.search).get('run') || '') : '') ||
@@ -992,7 +997,7 @@
             words = words.filter(function (w) { return typeof w === 'string'; });
             if (!words.length) {
                 var names = Object.keys(COMMANDS);
-                [resolve(fs, fs, '/bin'), userBin()].forEach(function (d) {
+                [resolve(fs, fs, '/site/bin'), userBin()].forEach(function (d) {
                     (d && d.children ? d.children : []).forEach(function (n) { if (isScript(n) && names.indexOf(n.name) < 0) { names.push(n.name); } });
                 });
                 return names.filter(function (k) { return k.indexOf(partial) === 0; }).sort().map(function (k) { return { word: k, done: true }; });
@@ -1542,7 +1547,7 @@
             applyRequest(s);
         }
         function applyRequest(s) {
-            var p = cwdFrom(s), n = p ? resolve(fs, fs, p) : null;
+            var p = cwdFrom(s), n = p ? resolve(fs, fs, F.upgradePath(p)) : null;
             if (n && n.children) { cwd = n; announce(); }
             var run = new URLSearchParams(String(s)).get('run');
             if (run) { line = ''; cursor = 0; }
@@ -1554,7 +1559,10 @@
         var boot = Promise.all([loadXterm(), loadSiteFs().then(function (fsApi) { return fsApi.load(); }), loadExtras()]).then(function (results) {
             if (destroyed) { return; }
             fs = results[1];
-            cwd = resolve(fs, fs, initialCwd);
+            /* /bin lists the commands, which live here rather than in the
+               filesystem. */
+            F.defineCommands(Object.keys(COMMANDS).map(function (k) { return { name: k, summary: COMMANDS[k].summary }; }));
+            cwd = resolve(fs, fs, F.upgradePath(initialCwd));
             if (!cwd || !cwd.children) { cwd = fs; }
             term = new window.Terminal({
                 cursorBlink: true,

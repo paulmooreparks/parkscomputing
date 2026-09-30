@@ -46,7 +46,7 @@
     T.register({
         name: 'head',
         summary: 'show the first lines of text',
-        help: 'head [-n count] [file...]\n\nPrints the first lines, ten unless you say otherwise, of its files or of what is piped into it.\n\nExample: ls -l /articles | head -n 5',
+        help: 'head [-n count] [file...]\n\nPrints the first lines, ten unless you say otherwise, of its files or of what is piped into it.\n\nExample: ls -l /site/articles | head -n 5',
         complete: 'file',
         run: async function (args, io) {
             var o = countOption(args, 10, 'head', io);
@@ -75,7 +75,7 @@
     T.register({
         name: 'wc',
         summary: 'count lines, words and characters',
-        help: 'wc [-l] [-w] [-c] [file...]\n\nCounts the lines, words and characters of its files or of what is piped into it.\n\n  -l   lines only\n  -w   words only\n  -c   characters only\n\nExample: ls /articles | wc -l',
+        help: 'wc [-l] [-w] [-c] [file...]\n\nCounts the lines, words and characters of its files or of what is piped into it.\n\n  -l   lines only\n  -w   words only\n  -c   characters only\n\nExample: ls /site/articles | wc -l',
         complete: 'file',
         run: async function (args, io) {
             var flags = '', files = [];

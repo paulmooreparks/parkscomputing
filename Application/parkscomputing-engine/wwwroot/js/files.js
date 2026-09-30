@@ -56,7 +56,7 @@
         root.innerHTML = '<p class="fm-loading">Loading…</p>';
 
         var F = null, FB = null, b = null, el = null, destroyed = false;
-        var startPath = pathFrom(opts.state) || (opts.ownsUrl ? pathFrom(location.search) : null) || '/';
+        var startPath = pathFrom(opts.state) || (opts.ownsUrl ? pathFrom(location.search) : null) || '/site';
 
         function pathFrom(s) {
             if (!s) { return null; }
@@ -232,6 +232,8 @@
             var r = F.realOf(c), kind = F.kindOf(c);
             if (kind === 'dir') { b.go(c); b.focusList(); return; }
             if (kind === 'link') { window.open(r.url, '_blank', 'noopener'); return; }
+            /* A built-in command, from /bin, is explained in a terminal. */
+            if (kind === 'command') { openTerminal('man ' + r.name); return; }
             /* A picture or any other file an editor can't show: under
                /wwwroot it opens as the public site serves it; elsewhere it
                downloads. */
@@ -423,7 +425,7 @@
             root.addEventListener('click', onClick);
             el.fileInput.addEventListener('change', function () { if (el.fileInput.files && el.fileInput.files.length) { uploadFiles(Array.prototype.slice.call(el.fileInput.files)); } });
             b = FB.create(root, F, {
-                start: startPath,
+                start: F.upgradePath(startPath),
                 linkFor: linkFor,
                 addressOf: addressOf,
                 draggable: true,
@@ -447,7 +449,7 @@
         return {
             state: function () { return b && F ? stateString() : null; },
             /* A folder handed over, by a browse request or a preset. */
-            setState: function (s) { var p = pathFrom(s); if (b && p) { if (b.goPath(p)) { b.focusList(); } } },
+            setState: function (s) { var p = pathFrom(s); if (b && p) { if (b.goPath(F.upgradePath(p))) { b.focusList(); } } },
             destroy: function () {
                 destroyed = true;
                 if (b) { b.destroy(); }

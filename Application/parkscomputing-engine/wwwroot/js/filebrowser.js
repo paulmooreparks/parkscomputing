@@ -51,8 +51,8 @@
 
     /* PUDL's glyph for each kind of entry. The shape says the kind, which
        the list also names in words in its own column. */
-    var GLYPHS = { dir: 'folder', page: 'document', app: 'app', script: 'script', link: 'link', file: 'file', home: 'home', download: 'download' };
-    var KIND_NAMES = { dir: 'Folder', page: 'Page', app: 'Applet', script: 'Script', link: 'Link', file: 'File' };
+    var GLYPHS = { dir: 'folder', page: 'document', app: 'app', script: 'script', link: 'link', file: 'file', home: 'home', download: 'download', command: 'script' };
+    var KIND_NAMES = { dir: 'Folder', page: 'Page', app: 'Applet', script: 'Script', link: 'Link', file: 'File', command: 'Command' };
     function glyph(kind) {
         return '<span class="glyph" style="--glyph: var(--glyph-' + (GLYPHS[kind] || 'file') + ')" aria-hidden="true"></span>';
     }
@@ -134,7 +134,7 @@
             for (var x = cwd; x; x = x.parent) { chain.unshift(x); }
             var h = chain.indexOf(F.home()), start = h >= 0 ? h : 0, html = '';
             for (var i = start; i < chain.length; i++) {
-                var c = chain[i], label = i === start && h >= 0 ? '~' : (c.parent ? c.name : 'site');
+                var c = chain[i], label = i === start && h >= 0 ? '~' : (c.parent ? c.name : '/');
                 html += '<li>' + (i === chain.length - 1 ? '<span aria-current="location">' + esc(label) + '</span>'
                     : '<a href="' + esc(linkFor(c)) + '" data-path="' + esc(F.pathOf(c)) + '">' + esc(label) + '</a>') + '</li>';
             }
@@ -158,11 +158,11 @@
                     (path === currentPath ? ' aria-current="location"' : '') + '>' + glyph(kind) + '<span class="fm-ti-label">' + esc(node.name) + '</span></a></li>';
             }
             var open = !!expanded[path];
-            /* ~ shows twice, as its own root and under the site; only its
+            /* ~ shows twice, as its own root and under /home; only its
                first appearance is marked. */
             var current = !seen[path] && (currentPath != null ? path === currentPath : node === cwd);
             seen[path] = true;
-            var label = !node.parent ? 'Site' : node === F.home() ? 'Home (~)' : node.name;
+            var label = !node.parent ? '/' : node === F.home() ? 'Home (~)' : node.name;
             return '<li><a href="' + esc(linkFor(node)) + '" data-path="' + esc(path) + '"' +
                 (kids.length ? ' aria-expanded="' + open + '"' : '') + (current ? ' aria-current="location"' : '') + '>' +
                 glyph(node === F.home() ? 'home' : 'dir') + '<span class="fm-ti-label">' + esc(label) + '</span></a>' +

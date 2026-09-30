@@ -339,6 +339,9 @@
 
         /* Opens a file by path: switches to it if it is open already. */
         async function openPath(path) {
+            /* An address or kept tab from before the site moved under /site
+               still finds its file. */
+            path = F.upgradePath(path);
             var node = F.resolve(F.home(), path);
             if (!node) { say(path + ': no such file', true); return false; }
             if (node.children) { say(path + ' is a folder', true); return false; }

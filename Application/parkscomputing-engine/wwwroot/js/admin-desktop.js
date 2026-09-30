@@ -35,6 +35,8 @@
     function open(node) {
         var r = F.realOf(node), kind = F.kindOf(node);
         if (kind === 'link') { window.open(r.url, '_blank', 'noopener'); return; }
+        /* A built-in command, from /bin, is explained in a terminal. */
+        if (kind === 'command') { request('shell', { path: F.pathOf(r.parent), run: 'man ' + r.name }); return; }
         if ((kind === 'file' || kind === 'script') && F.isText(r)) {
             if (!request('open', { path: F.displayPath(r), kind: kind })) { say('Nothing here opens ' + r.name + '.'); }
             return;
@@ -78,7 +80,7 @@
         if (!acts.length) { return; }
         menuNode = node;
         menuAt = { x: x, y: y, from: link };
-        menu.innerHTML = '<div class="md-section-label">' + FB.esc(node.name || 'Site') + '</div>' +
+        menu.innerHTML = '<div class="md-section-label">' + FB.esc(node.name || '/') + '</div>' +
             acts.map(function (a) { return '<button type="button" class="menu-action" data-ctx="' + a[0] + '">' + FB.esc(a[1]) + '</button>'; }).join('');
         if (menu.matches(':popover-open')) { menu.hidePopover(); }
         menu.showPopover();

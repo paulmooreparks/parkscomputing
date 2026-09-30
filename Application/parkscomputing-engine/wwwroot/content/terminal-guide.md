@@ -23,10 +23,10 @@ Open the terminal from **Applets**. In the window view it opens as a window you 
 You'll see a greeting and a prompt:
 
 ```text
-guest@parkscomputing:/$
+guest@parkscomputing:/site$
 ```
 
-The part after the colon is where you are, here `/`, the top of the site. Type a command after the `$` and press Enter. A few to try first:
+The part after the colon is where you are, here `/site`, the top of the site. Type a command after the `$` and press Enter. A few to try first:
 
 ```text
 ls
@@ -70,36 +70,38 @@ The prompt keeps the keys you'd expect from a shell.
 
 ## How the site is laid out
 
-The terminal shows the site as a tree of directories and files, built from the site's own navigation. Nothing in it is a file on the server; it's the site's structure, and nothing more.
+The terminal shows the site as a tree of directories and files. The top, `/`, holds three directories side by side. `/site` is the site itself, built from its own navigation; nothing in it is a file on the server, just the site's structure. `/home` holds your home directory, and `/bin` lists the commands the terminal has built in.
 
 ```text
 /
-├── articles/        every article, newest first
-├── applications/    the downloadable applications
-├── applets/         the web applets, and this guide
-├── projects/        my projects
-├── links/           links to other sites
-├── tags/            one directory per tag, holding the articles under it
-├── bin/             the site's scripts
-├── home/guest/      your own home directory, also called ~
-├── about
-└── ...
+├── bin/               the terminal's built-in commands
+├── home/guest/        your own home directory, also called ~
+└── site/
+    ├── articles/      every article, newest first
+    ├── applications/  the downloadable applications
+    ├── applets/       the web applets, and this guide
+    ├── projects/      my projects
+    ├── links/         links to other sites
+    ├── tags/          one directory per tag, holding the articles under it
+    ├── bin/           the site's scripts
+    ├── about
+    └── ...
 ```
 
-A file's name is the last part of its address on the site, so `/articles/coincidences` is the page at `/page/coincidences`.
+A file's name is the last part of its address on the site, so `/site/articles/coincidences` is the page at `/page/coincidences`.
 
 `ls` marks what each entry is:
 
 | Mark | Meaning |
 | --- | --- |
 | `name/` | A directory. `cd` into it, or `ls` it. |
-| `name*` | Something you can run: an applet, or a script. Type its name to run it. |
+| `name*` | Something you can run: an applet, a script, or in `/bin` a command. Type its name to run it. |
 | `name@` | A link to another site. `cat` prints its address, and `open` opens it in a new tab. |
 | `name` | A page, or one of your own files. |
 
-**Paths.** A path starting with `/` begins at the top of the site. Any other path starts from where you are. `..` means the directory above, `.` means the current one, and `~` means your home directory. So from `/articles`, `cat ../about` reads the About page, and `ls ~` lists your own files.
+**Paths.** A path starting with `/` begins at the top. Any other path starts from where you are. `..` means the directory above, `.` means the current one, and `~` means your home directory. So from `/site/articles`, `cat ../about` reads the About page, and `ls ~` lists your own files.
 
-**Tags.** Every tag used on the site is a directory under `/tags`, named in lower case with hyphens, so the articles tagged "web apps" are in `/tags/web-apps`. The `tags` command lists them all with how many articles each has.
+**Tags.** Every tag used on the site is a directory under `/site/tags`, named in lower case with hyphens, so the articles tagged "web apps" are in `/site/tags/web-apps`. The `tags` command lists them all with how many articles each has.
 
 ## Commands
 
@@ -110,7 +112,7 @@ A file's name is the last part of its address on the site, so `/articles/coincid
 | Command | What it does |
 | --- | --- |
 | `ls [-l] [path...]` | List a directory, or the current one. With `-l`, one entry a line with its date, its kind and its title (or, for your own files, its size). When `ls` feeds a pipe it prints one name a line. |
-| `cd [path]` | Move to a directory. With no path, or `~`, it goes to your home directory; `cd /` goes to the top of the site. |
+| `cd [path]` | Move to a directory. With no path, or `~`, it goes to your home directory; `cd /site` goes to the top of the site, and `cd /` to the very top. |
 | `pwd` | Print the full path of where you are. |
 | `tree [path]` | Draw a directory and everything under it. |
 | `find [path] [-name pattern]` | List every path under a directory, or only those whose names match a pattern such as `"*barcode*"`. `*` matches anything and `?` any one character, ignoring case. |
@@ -142,7 +144,7 @@ These work on files you name, or on whatever is piped into them.
 
 ### The applets
 
-Each applet runs by its name, as it appears in `/applets`. Some also take arguments.
+Each applet runs by its name, as it appears in `/site/applets`. Some also take arguments.
 
 | Command | What it does |
 | --- | --- |
@@ -166,12 +168,12 @@ You can have up to four terminals open in the window view, titled Terminal, Term
 | `mkdir [-p] <directory...>` | Make a directory. `-p` makes any missing directories along the way and doesn't complain if it exists. |
 | `rm [-r] <path...>` | Remove files. `-r` removes a directory and everything in it. |
 | `rmdir <directory...>` | Remove an empty directory. |
-| `cp <file> <destination>` | Copy a file into your home directory. The file can be one of yours or any page of the site, which is copied as text: `cp /articles/coincidences ~/`. The destination can be a directory or a new name. |
+| `cp <file> <destination>` | Copy a file into your home directory. The file can be one of yours or any page of the site, which is copied as text: `cp /site/articles/coincidences ~/`. The destination can be a directory or a new name. |
 | `mv <path> <destination>` | Move or rename a file or directory within your home directory. |
 | `download <file>` | Save a file to your computer through the browser's usual download. A page downloads as a `.txt` file. |
 | `upload [directory]` | Choose text files on your computer and copy them into your home directory. A file with the same name is replaced. |
 
-All of these change only your home directory. Anything that would change the site, like `rm /articles/coincidences` or `edit /about`, is refused with a message saying so.
+All of these change only your home directory. Anything that would change the site, like `rm /site/articles/coincidences` or `edit /site/about`, is refused with a message saying so.
 
 ### Everything else
 
@@ -188,17 +190,17 @@ All of these change only your home directory. Anything that would change the sit
 A `|` sends one command's output into the next command, so small commands combine into bigger ones:
 
 ```text
-ls /articles | wc -l                     how many articles are there?
-ls -l /articles | head -n 5              the five newest
-ls -l /articles | less                   every article, a screen at a time
-grep -ril qantas /articles | wc -l       how many mention Qantas?
-cat ~/notes | sort | uniq -c             count the repeated lines in a file
+ls /site/articles | wc -l                 how many articles are there?
+ls -l /site/articles | head -n 5          the five newest
+ls -l /site/articles | less               every article, a screen at a time
+grep -ril qantas /site/articles | wc -l   how many mention Qantas?
+cat ~/notes | sort | uniq -c              count the repeated lines in a file
 ```
 
 A `>` at the end of a line saves the output to a file in your home directory, replacing the file if it exists, and `>>` adds to the end instead:
 
 ```text
-ls /articles > ~/articles.txt
+ls /site/articles > ~/articles.txt
 echo "Read the barbecue one again" >> ~/notes
 ```
 
@@ -289,9 +291,9 @@ OOO
 
 ## Scripts
 
-A script is a file of terminal commands that runs by name, like a command of its own. Anything that `ls` marks with `*` in `/bin` or in your `~/bin` is a script.
+A script is a file of terminal commands that runs by name, like a command of its own. Anything that `ls` marks with `*` in `/site/bin` or in your `~/bin` is a script.
 
-**The site's scripts** live in `/bin`, and `help` lists them under "Site scripts". A few to try:
+**The site's scripts** live in `/site/bin`, and `help` lists them under "Site scripts". A few to try:
 
 ```text
 search qantas        find the articles that mention a word or phrase
@@ -299,9 +301,9 @@ latest 3             the three newest articles
 tagged travel        the articles under a tag
 ```
 
-`cat /bin/latest` shows how a script is written, and `man latest` shows the notes at its top.
+`cat /site/bin/latest` shows how a script is written, and `man latest` shows the notes at its top.
 
-**Your own scripts** go in `~/bin`. Any file there runs by its name, and `help` lists it under "Your scripts". The quickest way to start is to copy the sample:
+**Your own scripts** go in `~/bin`. Any file there runs by its name, and `help` lists it under "Your scripts". A script of yours with the same name as one of the site's runs in its place, though no script can take the name of a built-in command. The quickest way to start is to copy the sample:
 
 ```text
 cp ~/bin/hello ~/bin/mine
@@ -315,7 +317,7 @@ mine
 # travel: list the travel articles, newest first
 #
 # Usage: travel [count]
-ls -l /tags/travel | head -n ${1:-10}
+ls -l /site/tags/travel | head -n ${1:-10}
 ```
 
 Inside a script, these are replaced before each line runs:
@@ -324,7 +326,7 @@ Inside a script, these are replaced before each line runs:
 | --- | --- |
 | `$1` to `$9` | The words given after the script's name. |
 | `${1:-10}` | The first word, or `10` if there isn't one. Any default works, and any of `1` to `9`. |
-| `"$@"` | All the words, as one piece in quotes: `grep -ril "$@" /articles` searches for a whole phrase. Without the quotes they stay separate words. |
+| `"$@"` | All the words, as one piece in quotes: `grep -ril "$@" /site/articles` searches for a whole phrase. Without the quotes they stay separate words. |
 | `$#` | How many words were given. |
 | `$0` | The script's own name. |
 
@@ -338,7 +340,7 @@ A few rules to know:
 
 ## Links that open the terminal
 
-The terminal remembers where you are. On its own page the directory is in the address, as `cwd`, so a link such as `/page/terminal?cwd=/tags/travel` opens it there. In a window, the terminal goes back to where you left it.
+The terminal remembers where you are. On its own page the directory is in the address, as `cwd`, so a link such as `/page/terminal?cwd=/site/tags/travel` opens it there. In a window, the terminal goes back to where you left it.
 
 A link can also suggest a command with `run`: `/page/terminal?run=latest%205` opens the terminal with `latest 5` already typed at the prompt. It never runs by itself; you press Enter if you want it to. That's deliberate, so a link someone sends you can't do anything without your say-so.
 
