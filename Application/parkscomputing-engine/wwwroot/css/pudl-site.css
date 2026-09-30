@@ -46,12 +46,6 @@ body:not(.desktop) .site-main { flex: 1; width: 100%; }
 body.desktop .site-header { position: static; flex: none; }
 .brand img { display: block; width: 24px; height: 24px; }
 
-/* === Primary nav: a section-tab strip below the topbar ====================
-   The classic nav shares PUDL's .app-section-bar band since 0.16.0. The
-   content below it sits on the page background, so the current tab opens
-   into that. */
-.site-nav { --section-current-bg: var(--bg); }
-
 /* === The top bar ==========================================================
    The site menu at the left, the window view's window bar beside it
    (css/window-bar.css), and the view switcher at the far right after a
@@ -66,7 +60,33 @@ body.desktop .site-header { position: static; flex: none; }
   background: var(--tb-chip);
   border-color: var(--tb-border);
   box-shadow: var(--tb-chip-shadow);
-}/* On a narrow screen the bar's padding narrows, so the menu and the
+}
+
+/* The classic view's categories (Pages/Components/Nav, Paul 2026-10-01):
+   pills in the bar where there is room for all of them, otherwise one
+   drop-down. Each starts from no width and grows to its content, because
+   PUDL's top bar wraps an item that asks for more room than is left, and
+   these should shrink instead; the drop-down's label then shortens with an
+   ellipsis before the logo or the switcher gives anything up. */
+.site-cats, .site-cats-menu { flex: 1 1 0; min-width: 0; max-width: max-content; }
+.site-cats { display: flex; align-items: center; gap: 6px; margin-left: var(--space-2); }
+.site-cats .topbar-pill { flex: none; white-space: nowrap; }
+.site-cats-menu { display: none; margin-left: var(--space-2); }
+/* No wider than its share of the bar, which outweighs PUDL's own phone
+   cap of 10rem on a labelled menu button. */
+.topbar .site-cats-menu .menu-btn:has(> .menu-btn-label) { max-width: 100%; }
+/* A topbar pill like the logo beside it, without the menu button's border. */
+.site-cats-menu .menu-btn { border: 0; cursor: pointer; }
+.site-cats-menu .menu-btn-label { flex: 0 1 auto; }
+/* Without the site's name the pills need about 760px; with it, 1000px. */
+@media (max-width: 999px) {
+  .topbar:has(.site-cats) .site-menu-name { display: none; }
+}
+@media (max-width: 759px) {
+  .site-cats { display: none; }
+  .site-cats-menu { display: block; }
+}
+/* On a narrow screen the bar's padding narrows, so the menu and the
    switcher sit at their edges with the room between them. */
 @media (max-width: 560px) {
   .topbar { padding-left: 10px; padding-right: 10px; }

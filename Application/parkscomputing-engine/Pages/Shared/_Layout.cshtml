@@ -125,6 +125,12 @@
             {
                 <partial name="_WindowBar" model="windowBar" />
             }
+            @* The classic view's categories, in the bar itself rather than
+               a band of tabs below it (Pages/Components/Nav). *@
+            @if (!isDesktop)
+            {
+                @await Component.InvokeAsync("Nav")
+            }
             @* The view switcher: one segmented control at the far right,
                after a rule. Each side is a link, because each view is a URL;
                ?view=window bypasses a classic default-view choice. *@
@@ -134,12 +140,6 @@
                 <a href="/home" aria-current="@(isDesktop ? null : "true")">Classic</a>
             </nav>
         </div>
-        @if (!isDesktop)
-        {
-            <nav class="site-nav app-section-bar" aria-label="Site">
-                @await Component.InvokeAsync("Nav")
-            </nav>
-        }
     </header>
     }
 
