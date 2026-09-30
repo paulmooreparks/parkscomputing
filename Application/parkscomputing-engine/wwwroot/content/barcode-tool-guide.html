@@ -63,13 +63,19 @@
         bars as white and would not read them.
     </p>
 
-    <h2 id="downloads">Downloads and links</h2>
+    <h2 id="downloads">Saving and links</h2>
     <p>
-        <strong>Download SVG</strong> saves the barcode sized in millimetres, at the module width you choose. For EAN and
-        UPC codes, 0.33 mm is the nominal size, and the standard allows from 80% to 200% of it. <strong>Download PNG</strong>
-        saves an image at 300 dots per inch. Downloads leave out the highlights unless you tick <strong>Highlights in
-        downloads</strong>, so a downloaded barcode is ready to print and scan. <strong>Copy link</strong> copies an
+        <strong>Save SVG</strong> saves the barcode sized in millimetres, at the module width you choose. For EAN and
+        UPC codes, 0.33 mm is the nominal size, and the standard allows from 80% to 200% of it. <strong>Save PNG</strong>
+        saves an image at 300 dots per inch. Saved barcodes leave out the highlights unless you tick <strong>Highlights in
+        downloads</strong>, so they are ready to print and scan. <strong>Copy link</strong> copies an
         address that reproduces the barcode exactly, layout and field values included.
+    </p>
+    <p>
+        Both open the site's file dialog, which saves into your home directory (~) on this site, the same files the
+        <a href="/page/terminal">terminal</a>, <a href="/page/files">Files</a> and the <a href="/page/editor">Editor</a>
+        see. <strong>Download instead</strong>, beside the dialog's buttons, puts the file on your computer. Your home
+        directory lives in this browser and holds only text, so an SVG can be kept there but a PNG is always downloaded.
     </p>
 
     <h2 id="layouts">Layouts: data inside a barcode</h2>
@@ -202,9 +208,11 @@
     <p>
         The Layout menu holds the tools for your own layouts. <strong>New layout from JSON</strong> opens an editor with
         a starting point, and <strong>Edit this layout as JSON</strong> opens the chosen one; saving checks the layout and
-        lists every problem it finds. <strong>Save this layout as JSON</strong> downloads the chosen layout as a file,
-        and <strong>Export all layouts</strong> downloads every layout, the demonstrations included, as one file.
-        <strong>Import layouts</strong> reads such a file back, skipping the demonstrations it already has.
+        lists every problem it finds. <strong>Save this layout as</strong> saves the chosen layout as a file, and
+        <strong>Save all layouts as</strong> saves every layout, the demonstrations included, as one file.
+        <strong>Open layouts</strong> reads such a file back, skipping the demonstrations it already has. All three
+        use the site's file dialog, with your home directory first; <strong>From your computer</strong> and
+        <strong>Download instead</strong>, beside its buttons, work with files on your own disk.
     </p>
     <p>
         Your layouts are kept in your browser. They stay when you close it, but they belong to that one browser on that
@@ -214,12 +222,12 @@
 
     <h3 id="file">Keeping layouts in a file</h3>
     <p>
-        In Edge and Chrome, the tool can also keep your layouts in a JSON file on your own disk. <strong>Create a layouts
-        file</strong> saves them to a new file, and <strong>Open a layouts file</strong> links an existing one, adding in
+        In Edge and Chrome, the tool can also keep your layouts in a JSON file on your own disk. <strong>Create a linked
+        file</strong> saves them to a new file, and <strong>Link an existing file</strong> links one you have, adding in
         any layouts that were only in the browser. From then on every change is written to that file. Put it in a folder
         that syncs, such as OneDrive, and the same layouts follow you to each computer. After the browser restarts it
         asks once for permission to use the file again; the tool shows a <strong>Reopen</strong> button for that.
-        <strong>Unlink the layouts file</strong> stops writing to it and leaves the file where it is.
+        <strong>Unlink</strong> stops writing to it and leaves the file where it is.
     </p>
     <p>
         When two computers change the same file at once, the last one to save wins, so edit layouts on one machine at a

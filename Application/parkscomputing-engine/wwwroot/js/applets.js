@@ -28,7 +28,7 @@ pudlApplets.define('barcodes', {
     src: '/js/barcode-tool.js',
     css: '/css/barcode-tool.css',
     page: '/page/barcodes',
-    ver: '13'
+    ver: '14'
 });
 
 pudlApplets.define('flashcards', {
@@ -49,11 +49,11 @@ window.pcTerminalCommands = ['/js/terminal-text.js'];
    holds one copy; raise its v on every change to the file. */
 window.pcSiteFsSrc = '/js/sitefs.js?v=2';
 
-/* The file browser Files and the editor share (js/filebrowser.js), with its
+/* The file browser Files, the editor and the barcode tool share (js/filebrowser.js), with its
    stylesheet; like the site filesystem, one copy a page, and a raised v on
    every change to either. */
-window.pcFileBrowserSrc = '/js/filebrowser.js?v=2';
-window.pcFileBrowserCss = '/css/filebrowser.css?v=2';
+window.pcFileBrowserSrc = '/js/filebrowser.js?v=3';
+window.pcFileBrowserCss = '/css/filebrowser.css?v=3';
 
 /* Where the terminal, Files and the editor have their pages: /page/ on the
    public site, and on the edit origin the admin workspace's, which its
@@ -90,6 +90,6 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
-    ver: '7',
+    ver: '8',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } }
 });

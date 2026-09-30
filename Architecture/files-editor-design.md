@@ -44,10 +44,13 @@ Files and the Editor browse with one module, `window.pcFileBrowser`, with its st
 
 The module draws the folder tree, the path bar and the list of a folder's contents from PUDL's tree and grid, follows every change the filesystem reports, and keeps the current folder and the selection by path across a reload. It moves about and shows things; what opening an entry means is left to its host, through callbacks for opening, selecting, navigating, redrawing, keys and messages. A host lays out the parts it wants with the module's markup helpers, so a host can use the tree alone. Dragging entries onto folders and dropping files from the computer are options a host turns on; only Files does.
 
-It has three hosts:
+The module also holds the Open and Save as dialog, `pcFileBrowser.pick`, so every applet that opens or saves a file uses the same one. The dialog only chooses; its host reads or writes. It can limit Open to some extensions, ask the host whether a folder can take the file being saved, and ask before replacing a file by turning its button into Replace. A host can offer the reader's computer beside the dialog's buttons: "From your computer…" when opening, which also takes a file dropped on the dialog, and "Download instead" when saving. That button is always in view rather than tucked into a menu, because files on the reader's own disk are the first thing many readers look for.
+
+It has four hosts:
 
 - **Files** builds its toolbar, action menu, detail line and dialogs around it, and keeps everything that changes `~`.
-- **The Editor's Open and Save as dialog** puts the whole browser in a dialog with a field under it. Open fills the field with the chosen file's path, and a double-click or Enter opens it; a typed path works as well. Save as starts in the folder of the file in front (or in `~` for a read-only page), fills the field with its name, and saves into the folder shown, refusing folders it cannot write. The old text prompt with a list of suggestions is gone.
+- **The Editor's Open and Save as** use the shared dialog. Open fills the field with the chosen file's path, and a double-click or Enter opens it; a typed path works as well. Save as starts in the folder of the file in front (or in `~` for a read-only page), fills the field with its name, and saves into the folder shown, refusing folders it cannot write. A text file opened from the computer becomes an unsaved tab that belongs nowhere until it is saved, and Download instead downloads the tab's text. The old text prompt with a list of suggestions is gone.
+- **The barcode tool** uses the same dialog for its layouts and its SVG and PNG files (`barcode-tool-design.md`).
 - **The Editor's Explorer pane** is the tree alone, with files in it, beside the text. A click on a folder opens or closes it in place, a click on a file opens it in a tab, and a file the Editor cannot show opens on the site in a new tab. The pane marks the file in front and opens its way to it. A toolbar button shows and hides it, the choice is kept per browser, it shows by default on a wide screen, and a narrow screen has no room for it.
 
 ## Handlers: how applets ask each other for things
@@ -83,3 +86,4 @@ Each instance keeps its own continuity, keyed by `detail.instance` on `pudl:appl
 5. The links between the three. Done: Files opens files in the Editor (an open editor takes the file as a new tab), "Run in the terminal" hands the terminal a `run` it only pre-fills, and the terminal has `edit -g` and an `open` that sends a reader's file to the Editor.
 6. Handlers, replacing the direct calls of step 5; numbered terminal windows; the barcode tool following its layouts file. Done. The terminal also gained `files [dir]`, and on its own page it now prefers the folder in its address over the one it kept, which it had the wrong way round.
 7. The shared file browser, taken out of Files and used again for the Editor's Open and Save as dialog and its Explorer pane, on both origins. Done.
+8. The Open and Save as dialog moved into the shared module with a way to the reader's computer, and the barcode tool moved onto it. Done.

@@ -27,6 +27,19 @@
 .fm-title { color: var(--text-muted); font-size: var(--text-xs); }
 .fm-empty { margin: var(--space-4); color: var(--text-muted); }
 
+/* Open and Save as (pcFileBrowser.pick): the browser in a dialog, with
+   the field under it and the computer's way in beside the buttons. */
+.fb-picker { width: min(900px, 94vw); max-width: none; }
+.fb-pick-body { display: flex; flex-direction: column; gap: var(--space-2); }
+.fb-pick-bar { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.fb-pick-bar .icon-btn svg { width: 15px; height: 15px; }
+.fb-pick-browse { height: min(55vh, 520px); display: flex; flex-direction: column; container-type: inline-size; }
+.fb-pick-field { margin: 0; }
+.fb-picker .form-input { width: 100%; }
+.fb-pick-actions { gap: 8px; flex-wrap: wrap; }
+.fb-pick-actions .btn .glyph { margin-right: 6px; }
+.fb-pick-spacer { flex: 1; }
+
 /* Narrow: the tree gives way to the list. */
 @container (max-width: 560px) {
   .fm-body { grid-template-columns: 1fr; }

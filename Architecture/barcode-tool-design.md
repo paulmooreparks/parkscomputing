@@ -28,6 +28,16 @@ The renderer draws a symbol to a canvas at the device pixel ratio with whole dev
 
 The applet (`js/barcode-tool.js`) is the PUDL interface: a toolbar, sunken inputs validated on every keystroke, a flat preview in a white well, and raised controls. Its whole state serializes to the query string, so any barcode it makes is a link.
 
+## Opening and saving files
+
+Every file the tool reads or writes goes through the site's shared Open and Save as dialog, `pcFileBrowser.pick` in `js/filebrowser.js`, which the Editor uses too (`files-editor-design.md`). The Layout menu's **Open layouts**, **Save this layout as** and **Save all layouts as**, and the **Save SVG** and **Save PNG** buttons, all start in the reader's home directory. The dialog keeps the reader's computer one click away beside its buttons: **From your computer** when opening (or a file dropped on the dialog), and **Download instead** when saving. The tool loads the site filesystem and the browser only the first time one of these is used.
+
+The home directory on the public site lives in the browser's local storage and holds text only. SVG and JSON are saved there; a PNG cannot be, so in a folder that cannot hold it the dialog turns Save off, says why, and makes Download instead its main button. Where the site keeps files on its server, a PNG is saved there byte for byte.
+
+Saving to `~` keeps a layout in the reader's browser, so the rule under "Public and private layouts" still holds. The tool is not part of the admin workspace on the edit origin, and it must not be added there without revisiting that rule, because the dialog there can write to `/wwwroot`, which the site publishes.
+
+The linked layouts file (File System Access, in Edge and Chrome) is a separate feature and stays in the Layout menu: it keeps the library in step with a file on the reader's disk, where opening and saving are one-off copies.
+
 ## The layout format
 
 A layout file is JSON. Positions are never written in it, because fields are sequential and each field's length determines where the next begins. The tool shows positions 1-based. Rule lists that number positions from 0 or from 1 must be converted by whoever writes the file, and the converter should check its work against a known sample, since an off-by-one in a price field is the kind of error this tool exists to catch.

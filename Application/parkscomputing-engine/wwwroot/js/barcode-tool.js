@@ -35,6 +35,22 @@
         return engineReady;
     }
 
+    /* The site filesystem and the file browser, for Open and Save as. They
+       load the first time either is used, from the addresses js/applets.js
+       names, so a page that never saves a file never fetches the site tree. */
+    var filesReady = null;
+    function loadFiles() {
+        if (!filesReady) {
+            var fs = window.pcSiteFs ? Promise.resolve() : loadScript(window.pcSiteFsSrc || beside('sitefs.js'));
+            var fb = window.pcFileBrowser ? Promise.resolve() : loadScript(window.pcFileBrowserSrc || beside('filebrowser.js'));
+            filesReady = Promise.all([fs, fb])
+                .then(function () { return window.pcSiteFs.load(); })
+                .then(function () { return { F: window.pcSiteFs, FB: window.pcFileBrowser }; })
+                .catch(function (err) { filesReady = null; throw err; });
+        }
+        return filesReady;
+    }
+
     var LIBRARY_KEY = 'pc-barcode-layouts';
     var GUIDE_URL = '/page/barcode-tool-guide', GUIDE_KEY = 'barcode-tool-guide';
 
@@ -344,8 +360,8 @@
                   MODULE_MM.map(function (m) { return '<option value="' + m[0] + '">' + m[1] + '</option>'; }).join('') +
                 '</select>' +
                 '<label class="check"><input type="checkbox" data-flag="annotate" /> Highlights in downloads</label>' +
-                '<button type="button" class="btn" data-action="svg">Download SVG</button>' +
-                '<button type="button" class="btn" data-action="png">Download PNG</button>' +
+                '<button type="button" class="btn" data-action="svg">Save SVG…</button>' +
+                '<button type="button" class="btn" data-action="png">Save PNG…</button>' +
                 '<button type="button" class="btn" data-action="link">Copy link</button>' +
               '</div>' +
               '</div>' +
@@ -358,7 +374,6 @@
               '</div>' +
               '<div data-role="results"></div>' +
             '</section>' +
-            '<input type="file" accept=".json,application/json" data-role="file" hidden />' +
             '<dialog class="dialog bt-json-dialog" data-role="json-dialog" aria-labelledby="bt-json-title-' + n + '">' +
               '<h3 class="dialog-title" id="bt-json-title-' + n + '">Layout JSON</h3>' +
               '<div class="dialog-body">' +
@@ -382,8 +397,9 @@
                   'the line under the barcode explains the result.</p>' +
                 '<p><strong>Read</strong> works the other way: paste a scanned value and the tool splits it into the fields of ' +
                   'every layout that fits, and checks its check digits and dates.</p>' +
-                '<p>The check boxes mark check digits, guards and fields. <strong>Download SVG</strong> is sized in millimetres ' +
-                  'for printing; downloads leave the highlights out unless you ask for them. <strong>Copy link</strong> ' +
+                '<p>The check boxes mark check digits, guards and fields. <strong>Save SVG</strong> is sized in millimetres ' +
+                  'for printing; saved files leave the highlights out unless you ask for them. Saving puts a file in your ' +
+                  'home directory (~) on this site, or downloads it to your computer if you choose. <strong>Copy link</strong> ' +
                   'reproduces the exact barcode.</p>' +
                 '<p>Your own layouts stay in this browser, or in a file on your disk if you link one from the Layout menu. ' +
                   'This site never receives them.</p>' +
@@ -405,7 +421,7 @@
             symopts: q('[data-role="symopts"]'), canvas: q('[data-role="canvas"]'), well: q('.bt-well'),
             status: q('[data-role="status"]'), legend: q('[data-role="legend"]'), explain: q('[data-role="explain"]'),
             mm: q('[data-role="mm"]'), scan: q('[data-role="scan"]'), results: q('[data-role="results"]'),
-            file: q('[data-role="file"]'), dialog: q('[data-role="json-dialog"]'), json: q('[data-role="json"]'),
+            dialog: q('[data-role="json-dialog"]'), json: q('[data-role="json"]'),
             jsonErrors: q('[data-role="json-errors"]'), jsonFile: q('[data-role="json-file"]'), colorsFlag: q('[data-role="colors-flag"]'),
             helpDialog: q('[data-role="help-dialog"]'), noticeAction: q('[data-role="notice-action"]')
         };
@@ -576,17 +592,19 @@
             html += '<button type="button" class="menu-action" data-action="new-json">New layout from JSON…</button>';
             if (L) {
                 html += '<button type="button" class="menu-action" data-action="edit-json">' + (isDemo(L.id) ? 'Copy this layout as JSON…' : 'Edit this layout as JSON…') + '</button>';
-                html += '<button type="button" class="menu-action" data-action="save-json">Save this layout as JSON</button>';
+                html += '<button type="button" class="menu-action" data-action="save-json">Save this layout as…</button>';
             }
-            html += '<button type="button" class="menu-action" data-action="import">Import layouts…</button>';
-            html += '<button type="button" class="menu-action" data-action="export">Export all layouts</button>';
+            html += '<button type="button" class="menu-action" data-action="import">Open layouts…</button>';
+            html += '<button type="button" class="menu-action" data-action="export">Save all layouts as…</button>';
+            /* A linked file is a different thing from opening and saving:
+               the library kept in step with a file on the reader's disk. */
             if (FILE_API) {
-                html += '<hr class="menu-sep" />';
+                html += '<hr class="menu-sep" /><div class="md-section-label">Kept in step with a file on your computer</div>';
                 if (linked || pendingHandle) {
-                    html += '<button type="button" class="menu-action" data-action="unlink">Unlink the layouts file (' + esc((linked || pendingHandle).name) + ')</button>';
+                    html += '<button type="button" class="menu-action" data-action="unlink">Unlink ' + esc((linked || pendingHandle).name) + '</button>';
                 } else {
-                    html += '<button type="button" class="menu-action" data-action="link-new">Create a layouts file…</button>';
-                    html += '<button type="button" class="menu-action" data-action="link-open">Open a layouts file…</button>';
+                    html += '<button type="button" class="menu-action" data-action="link-new">Create a linked file…</button>';
+                    html += '<button type="button" class="menu-action" data-action="link-open">Link an existing file…</button>';
                 }
             }
             if (L && !isDemo(L.id)) { html += '<hr class="menu-sep" /><button type="button" class="menu-action danger" data-action="remove">Remove this layout</button>'; }
@@ -965,22 +983,72 @@
             el.jsonErrors.hidden = false;
         }
 
-        function importFile(file) {
-            var reader = new FileReader();
-            reader.onload = function () {
-                var obj;
-                try { obj = JSON.parse(reader.result); }
-                catch (err) { notify('That file is not valid JSON.'); return; }
-                var res = B.layouts.validateFile(obj);
-                if (!res.ok) { notify('Nothing imported. ' + res.errors.slice(0, 3).join(' ') + (res.errors.length > 3 ? ' (and ' + (res.errors.length - 3) + ' more)' : '')); return; }
-                var m = mergeLayouts(res.layouts);
-                saveLibrary(library);
-                renderLayoutMenu();
-                notify('Imported ' + m.added + ' layout' + (m.added === 1 ? '' : 's') +
-                    (m.skipped ? ', skipping ' + m.skipped + ' demonstration layout' + (m.skipped === 1 ? '' : 's') + ' the tool already has' : '') +
-                    '. They are kept ' + (linked ? 'in ' + linked.name + ' and this browser.' : 'in this browser.'));
-            };
-            reader.readAsText(file);
+        /* Adds the layouts in a file's text to the library. */
+        function importText(text, name) {
+            var obj;
+            try { obj = JSON.parse(text); }
+            catch (err) { notify(name + ' is not valid JSON.'); return; }
+            var res = B.layouts.validateFile(obj);
+            if (!res.ok) { notify('Nothing imported from ' + name + '. ' + res.errors.slice(0, 3).join(' ') + (res.errors.length > 3 ? ' (and ' + (res.errors.length - 3) + ' more)' : '')); return; }
+            var m = mergeLayouts(res.layouts);
+            saveLibrary(library);
+            renderLayoutMenu();
+            notify('Added ' + m.added + ' layout' + (m.added === 1 ? '' : 's') + ' from ' + name +
+                (m.skipped ? ', skipping ' + m.skipped + ' demonstration layout' + (m.skipped === 1 ? '' : 's') + ' the tool already has' : '') +
+                '. They are kept ' + (linked ? 'in ' + linked.name + ' and this browser.' : 'in this browser.'));
+        }
+
+        /* === Open and Save as ============================================
+           The site's shared dialog (pcFileBrowser.pick): files go to and
+           come from the reader's home directory first, and the dialog
+           offers their computer beside its buttons. */
+
+        var lastDir = '~';
+        function pickFile(options) {
+            return loadFiles().then(function (x) {
+                var o = Object.assign({ host: root, start: lastDir, computer: true }, options);
+                return x.FB.pick(x.F, o).then(function (res) {
+                    if (res && res.path) { lastDir = res.path.slice(0, res.path.lastIndexOf('/')) || '/'; }
+                    return { res: res, F: x.F };
+                });
+            }, function (err) {
+                notify('Files could not be opened: ' + err.message + '.');
+                return { res: null };
+            });
+        }
+
+        function openLayouts() {
+            pickFile({
+                mode: 'open', title: 'Open layouts', accept: ['.json'],
+                check: function (r) { return r.special === 'layouts' ? r.name + ' is this tool\'s own library, which it already has.' : null; }
+            }).then(async function (x) {
+                var res = x.res;
+                if (!res) { return; }
+                if (res.file) { importText(await res.file.text(), res.file.name); return; }
+                try { importText(await x.F.read(res.node), res.node.name); }
+                catch (err) { notify(res.node.name + ' could not be read: ' + err.message); }
+            });
+        }
+
+        /* Saves text, or with picture a PNG, under a suggested name. This
+           browser's ~ holds text only, so a PNG can be saved only where the
+           site keeps files on its server; elsewhere it is downloaded. */
+        function saveFile(name, title, blob, picture) {
+            pickFile({
+                mode: 'save', title: title, name: name,
+                canSaveIn: picture ? function (dir) {
+                    return dir.server ? null : 'Pictures can\'t be kept in ~ in this browser, which holds only text. Download the PNG instead, or save the SVG.';
+                } : null
+            }).then(async function (x) {
+                var res = x.res, out;
+                if (!res) { return; }
+                if (res.download) { download(res.download, blob); return; }
+                var F = x.F, existing = F.childNamed(res.dir, res.name);
+                if (existing && existing.special) { notify(res.name + ' is this tool\'s own library; use Open layouts instead.'); return; }
+                if (picture) { out = await F.upload(res.dir, new File([blob], res.name, { type: blob.type })); }
+                else { out = await F.write(F.home(), res.path, await blob.text(), false); }
+                notify(out && out.error ? 'Not saved: ' + out.error + '.' : 'Saved ' + res.path + '.');
+            });
         }
 
         function download(name, blob) {
@@ -1020,14 +1088,14 @@
                     /* A demonstration saves as a copy under its own id, so it
                        imports as a layout of your own. */
                     if (isDemo(copy.id)) { copy.id = copy.id.replace(/^demo-/, 'my-'); copy.name += ' (copy)'; }
-                    download(copy.id + '.json', new Blob([libraryFile([copy])], { type: 'application/json' }));
+                    saveFile(copy.id + '.json', 'Save this layout as', new Blob([libraryFile([copy])], { type: 'application/json' }));
                     break;
                 }
                 case 'link-new': linkNew(); break;
                 case 'link-open': linkExisting(); break;
                 case 'unlink': unlink(); break;
                 case 'fix': st.data = t.getAttribute('data-fix'); el.data.value = st.data; update(); commit(); break;
-                case 'import': el.file.value = ''; el.file.click(); break;
+                case 'import': openLayouts(); break;
                 case 'new-json': openJson(null); break;
                 case 'edit-json': openJson(findLayout(st.layout)); break;
                 case 'json-cancel': el.dialog.close(); break;
@@ -1041,7 +1109,7 @@
                 case 'export':
                     /* Everything the menu lists, demonstrations included;
                        importing the file back skips those. */
-                    download('barcode-layouts.json', new Blob([libraryFile(DEMOS.concat(library))], { type: 'application/json' }));
+                    saveFile('all-layouts.json', 'Save all layouts as', new Blob([libraryFile(DEMOS.concat(library))], { type: 'application/json' }));
                     break;
                 case 'open-layout': {
                     var vals = JSON.parse(t.getAttribute('data-values'));
@@ -1055,7 +1123,7 @@
                 case 'svg':
                     if (current) {
                         var o = drawOptions(true); o.moduleMM = +st.mm;
-                        download(fileBase() + '.svg', new Blob([B.toSVG(current, o)], { type: 'image/svg+xml' }));
+                        saveFile(fileBase() + '.svg', 'Save SVG', new Blob([B.toSVG(current, o)], { type: 'image/svg+xml' }));
                     }
                     break;
                 case 'png':
@@ -1063,7 +1131,7 @@
                         var c = document.createElement('canvas'), po = drawOptions(true);
                         po.px = Math.max(1, Math.round(+st.mm / 25.4 * 300));
                         B.render(c, current, po);
-                        c.toBlob(function (blob) { download(fileBase() + '.png', blob); }, 'image/png');
+                        c.toBlob(function (blob) { saveFile(fileBase() + '.png', 'Save PNG', blob, true); }, 'image/png');
                     }
                     break;
                 case 'link': {
@@ -1096,7 +1164,6 @@
                 return;
             }
             if (t === el.mm) { st.mm = t.value; commit(); return; }
-            if (t === el.file && t.files && t.files[0]) { importFile(t.files[0]); return; }
             if (t.hasAttribute('data-flag')) { st.flags[t.getAttribute('data-flag')] = t.checked; update(); commit(); return; }
             if (t.hasAttribute('data-opt')) {
                 var k = t.getAttribute('data-opt');

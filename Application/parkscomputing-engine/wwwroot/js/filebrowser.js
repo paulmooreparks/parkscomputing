@@ -25,8 +25,13 @@
      onRender()   after every redraw
      onKey(e, node)  a key on a row the browser doesn't handle; true if taken
      say(msg, isError)  a message for the host to show
+     filter(node) true for the files to show; folders always show
 
-   The browser follows every change to the filesystem by itself. */
+   The browser follows every change to the filesystem by itself.
+
+   pcFileBrowser.pick(F, options) is the Open and Save as dialog built on
+   it, which the Editor and the barcode tool share; its comment says what
+   it takes and gives back. */
 (function () {
     'use strict';
     if (window.pcFileBrowser) { return; }
@@ -46,7 +51,7 @@
 
     /* PUDL's glyph for each kind of entry. The shape says the kind, which
        the list also names in words in its own column. */
-    var GLYPHS = { dir: 'folder', page: 'document', app: 'app', script: 'script', link: 'link', file: 'file', home: 'home' };
+    var GLYPHS = { dir: 'folder', page: 'document', app: 'app', script: 'script', link: 'link', file: 'file', home: 'home', download: 'download' };
     var KIND_NAMES = { dir: 'Folder', page: 'Page', app: 'Applet', script: 'Script', link: 'Link', file: 'File' };
     function glyph(kind) {
         return '<span class="glyph" style="--glyph: var(--glyph-' + (GLYPHS[kind] || 'file') + ')" aria-hidden="true"></span>';
@@ -143,7 +148,7 @@
         function kidsOf(node) {
             var kids = node.children || [];
             var dirs = kids.filter(function (c) { return c.children; });
-            return o.treeFiles ? dirs.concat(kids.filter(function (c) { return !c.children; })) : dirs;
+            return o.treeFiles ? dirs.concat(kids.filter(shownFile)) : dirs;
         }
         function treeNode(node, seen) {
             var path = F.pathOf(node), kids = kidsOf(node);
@@ -192,8 +197,11 @@
             var kids = (cwd.children || []).slice();
             /* Folders first; within each, the order the site gives, which
                for articles is newest first. */
-            return kids.filter(function (c) { return c.children; }).concat(kids.filter(function (c) { return !c.children; }));
+            return kids.filter(function (c) { return c.children; }).concat(kids.filter(shownFile));
         }
+        /* A host may show only some files, such as a dialog that opens
+           layouts; folders always show, to move about in. */
+        function shownFile(c) { return !c.children && (!o.filter || o.filter(c)); }
 
         /* PUDL's grid (pudl-grid.js): the rows are choices, selection
            follows focus, and Enter or a double-click opens a row. A row
@@ -401,8 +409,211 @@
         };
     }
 
+    /* === Open and Save as ================================================
+
+       The browser in a dialog, with a field under it for the path (Open)
+       or the name (Save as), and beside the buttons a way to use the
+       reader's computer instead. It only chooses: the host opens or writes.
+
+         pcFileBrowser.pick(F, {
+           mode       'open' or 'save'
+           title, okLabel
+           host       the element to put the dialog in (default: the body)
+           start      the folder to start in (default ~)
+           name       Save as: the name to suggest
+           current    Save as: the file being saved, which needs no
+                      question before it is replaced
+           accept     extensions, such as ['.json']: Open lists and takes
+                      only those files, and the computer's chooser too
+           check(node)  Open: why this file won't do, or null
+           canSaveIn(dir)  Save as: why nothing can be saved in this
+                      folder, or null; while it answers, Save is off and
+                      Download instead is the main button
+           computer   true for "From your computer…" (Open) or "Download
+                      instead" (Save as)
+         })
+
+       resolves to one of
+         { path, node }        Open: the file chosen
+         { path, dir, name }   Save as: where to write (the dialog has
+                               already asked about replacing a file)
+         { file }              Open: a File from the reader's computer
+         { download: name }    Save as: download it under this name
+         null                  cancelled */
+    var pickCount = 0;
+    function pick(F, o) {
+        o = o || {};
+        var save = o.mode === 'save', id = 'fb-pick-' + (++pickCount);
+        var accept = (o.accept || []).map(function (x) { return x.toLowerCase(); });
+        var fits = function (name) { return !accept.length || accept.some(function (x) { return name.toLowerCase().slice(-x.length) === x; }); };
+        var dlg = document.createElement('dialog');
+        dlg.className = 'dialog fb-picker';
+        dlg.setAttribute('aria-labelledby', id + '-title');
+        dlg.innerHTML =
+            '<form method="dialog" class="fb-pick-form">' +
+              '<h3 class="dialog-title" id="' + id + '-title">' + esc(o.title || (save ? 'Save as' : 'Open')) + '</h3>' +
+              '<div class="dialog-body fb-pick-body">' +
+                '<div class="fb-pick-bar">' +
+                  '<button type="button" class="icon-btn" data-pick="up" aria-label="Up one folder" title="Up one folder"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3.5"/><path d="M4 7.5l4-4 4 4"/></svg></button>' +
+                  '<button type="button" class="icon-btn" data-pick="home" aria-label="Your home directory" title="Your home directory">' + glyph('home') + '</button>' +
+                  markup.pathBar() +
+                '</div>' +
+                '<div class="fb-pick-browse">' + markup.body({}) + '</div>' +
+                '<div class="form-group fb-pick-field">' +
+                  '<label class="form-label" for="' + id + '-input">' + (save ? 'File name' : 'Path') + '</label>' +
+                  '<input class="form-input mono" id="' + id + '-input" data-pick="input" autocomplete="off" spellcheck="false"' +
+                    (save ? '' : ' placeholder="Choose a file, or type a path such as ~/README"') + ' />' +
+                '</div>' +
+                '<p class="form-error" data-pick="error" role="alert" hidden></p>' +
+              '</div>' +
+              '<div class="dialog-actions fb-pick-actions">' +
+                (o.computer ? (save
+                    ? '<button type="button" class="btn" data-pick="download">' + glyph('download') + 'Download instead</button>'
+                    : '<button type="button" class="btn" data-pick="computer">From your computer…</button>' +
+                      '<input type="file" data-pick="chooser" hidden' + (accept.length ? ' accept="' + esc(accept.join(',')) + '"' : '') + ' />') : '') +
+                '<span class="fb-pick-spacer"></span>' +
+                '<button type="button" class="btn" data-pick="cancel">Cancel</button>' +
+                '<button type="submit" class="btn btn-primary" data-pick="ok">' + esc(o.okLabel || (save ? 'Save' : 'Open')) + '</button>' +
+              '</div>' +
+            '</form>';
+        (o.host || document.body).appendChild(dlg);
+        var q = function (s) { return dlg.querySelector('[data-pick="' + s + '"]'); };
+        var input = q('input'), error = q('error'), ok = q('ok'), dl = q('download');
+        var okLabel = ok.textContent, replacing = null, done = null, b = null;
+
+        function say(msg) { error.textContent = msg || ''; error.hidden = !msg; }
+        function realName(v) { return v.indexOf('/') >= 0 ? v.slice(v.lastIndexOf('/') + 1) : v; }
+        function resetReplace() { replacing = null; ok.textContent = okLabel; }
+
+        /* Save as says at once when the folder shown can't take the file,
+           and makes downloading the way forward. */
+        function folderState() {
+            if (!save || !b) { return; }
+            var why = o.canSaveIn ? o.canSaveIn(F.realOf(b.cwd())) : null;
+            ok.disabled = !!why;
+            if (dl) { dl.classList.toggle('btn-primary', !!why); }
+            say(why);
+        }
+
+        function finish(value) {
+            if (!done) { return; }
+            var d = done;
+            done = null;
+            if (dlg.open) { dlg.close(); }
+            if (b) { b.destroy(); }
+            dlg.remove();
+            d(value);
+        }
+
+        function submit() {
+            var v = input.value.trim(), dir = b.cwd();
+            if (!save) {
+                var sel = b.selected();
+                var node = v ? F.resolve(dir, v) : (sel && !sel.children ? sel : null);
+                if (!node) { say(v ? 'There\'s nothing at ' + v + '.' : 'Choose a file.'); return; }
+                if (node.children) { b.go(node); input.value = ''; return; }
+                var r = F.realOf(node);
+                var why = r.kind === 'link' || r.kind === 'app' ? node.name + ' isn\'t a file that can be opened here.'
+                    : !fits(r.name) ? node.name + ' isn\'t a ' + accept.join(' or ') + ' file.'
+                    : o.check ? o.check(r) : null;
+                if (why) { say(why); return; }
+                finish({ path: F.displayPath(r), node: r });
+                return;
+            }
+            if (!v) { say('Give it a name.'); return; }
+            var target = dir, base = v;
+            if (v.indexOf('/') >= 0) {
+                var cut = v.lastIndexOf('/');
+                target = F.resolve(dir, v.slice(0, cut) || '/');
+                base = v.slice(cut + 1);
+                if (!target || !target.children) { say('There\'s no folder at ' + v.slice(0, cut) + '.'); return; }
+            }
+            target = F.realOf(target);
+            if (!target.home) { say('Files can only be saved in your home directory (~)' + (F.mounted ? ' or under /wwwroot' : '') + '.'); return; }
+            var cannot = o.canSaveIn ? o.canSaveIn(target) : null;
+            if (cannot) { say(cannot); return; }
+            if (!F.validName(base)) { say(base + ' isn\'t a valid file name.'); return; }
+            var existing = F.childNamed(target, base);
+            if (existing && existing.children) { say(base + ' is a folder.'); return; }
+            var path = F.displayPath(target).replace(/\/$/, '') + '/' + base;
+            /* Replacing a file takes a second press, on a button that says
+               so; any change to the name asks again. */
+            if (existing && path !== o.current && replacing !== path) {
+                replacing = path;
+                ok.textContent = 'Replace';
+                say(base + ' already exists here. Replace it?');
+                return;
+            }
+            finish({ path: path, dir: target, name: base });
+        }
+
+        return new Promise(function (resolve) {
+            done = resolve;
+            b = create(dlg, F, {
+                start: o.start || F.displayPath(F.home()),
+                filter: accept.length ? function (n) { return fits(n.name); } : null,
+                onOpen: function (node) {
+                    input.value = save ? node.name : F.displayPath(F.realOf(node));
+                    resetReplace();
+                    submit();
+                },
+                onSelect: function (node) {
+                    if (!node || node.children) { return; }
+                    input.value = save ? node.name : F.displayPath(F.realOf(node));
+                    resetReplace();
+                    say('');
+                },
+                onNavigate: function () { resetReplace(); folderState(); },
+                say: function (m) { if (m) { say(m); } }
+            });
+            if (save) { input.value = o.name || ''; }
+            dlg.addEventListener('submit', function (e) { e.preventDefault(); submit(); });
+            dlg.addEventListener('close', function () { finish(null); });
+            input.addEventListener('input', function () { resetReplace(); if (!ok.disabled) { say(''); } });
+            dlg.addEventListener('click', function (e) {
+                var t = e.target.closest('[data-pick]');
+                if (!t) { return; }
+                switch (t.getAttribute('data-pick')) {
+                    case 'cancel': finish(null); break;
+                    case 'up': b.up(); break;
+                    case 'home': b.go(F.home()); break;
+                    case 'computer': q('chooser').value = ''; q('chooser').click(); break;
+                    case 'download': {
+                        var name = realName(input.value.trim());
+                        if (!name) { say('Give it a name.'); input.focus(); break; }
+                        finish({ download: name });
+                        break;
+                    }
+                }
+            });
+            if (o.computer && !save) {
+                q('chooser').addEventListener('change', function () {
+                    var f = this.files && this.files[0];
+                    if (f) { finish({ file: f }); }
+                });
+                /* A file dropped from the computer anywhere on the dialog
+                   is the same as choosing it. */
+                dlg.addEventListener('dragover', function (e) {
+                    if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
+                });
+                dlg.addEventListener('drop', function (e) {
+                    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+                    if (!f) { return; }
+                    e.preventDefault();
+                    if (!fits(f.name)) { say(f.name + ' isn\'t a ' + accept.join(' or ') + ' file.'); return; }
+                    finish({ file: f });
+                });
+            }
+            dlg.showModal();
+            folderState();
+            if (save) { input.focus(); var dot = input.value.lastIndexOf('.'); input.setSelectionRange(0, dot > 0 ? dot : input.value.length); }
+            else { b.focusList(); }
+        });
+    }
+
     window.pcFileBrowser = {
         create: create,
+        pick: pick,
         markup: markup,
         glyph: glyph,
         kindName: function (kind) { return KIND_NAMES[kind]; },
