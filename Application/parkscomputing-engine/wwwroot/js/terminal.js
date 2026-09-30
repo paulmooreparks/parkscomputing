@@ -1687,6 +1687,12 @@
                 fontSize: fontSize(),
                 scrollback: 2000,
                 theme: themeColors(root),
+                /* xterm.js lightens or darkens any text that would fall
+                   below this contrast with its background, so colours a
+                   remote program picks, such as ls's blue on green for a
+                   directory anyone may write to, stay readable in the
+                   site's palette. 4.5 is WCAG AA for body text. */
+                minimumContrastRatio: 4.5,
                 allowProposedApi: false
             });
             fit = new window.FitAddon.FitAddon();
