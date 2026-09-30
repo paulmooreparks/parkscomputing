@@ -71,13 +71,29 @@ The container's published port is bound to `127.0.0.1`, so the only way in from 
 
 ### A7. The `/wwwroot` mount
 
-Once signed in as admin on the edit origin, the terminal and Files show `/wwwroot`: the site's web root, the content volume, writable in full. Everything under it is fair game, scripts and stylesheets included.
+Once signed in as admin on the edit origin, the terminal and Files show `/wwwroot`: the site's web root, the content volume, writable in full. Everything under it is fair game, scripts and stylesheets included. They also show `/home`, described in A10, beside it.
+
+**Two separate users (Paul, 2026-09-30).** An account on the public site and the root account on the edit origin are different users. Someone signed in on the public site, for comments, is a user like any other, with the public sandbox's browser-kept `~`. Root access exists only on the edit origin, and it is what creates and edits pages and, later, moderates comments. The two share nothing, including their home directories.
+
+**What the edit origin's filesystem shows.** It shows the same tree as the public sandbox, with `/articles`, `/applets`, `/tags` and `/bin` read-only as the navigation describes them. Beside them are the two server directories, `/wwwroot` and `/home`, and `~` is the admin's own directory under `/home`. Opening a read-only site page in the Editor offers **Edit the source**, which opens its file under `/wwwroot/content`. Applets other than the terminal, Files and the Editor open on the public site, in a new tab.
+
+**How the listing loads.** The web root holds about 2,700 files in about 200 folders, so the mount loads its whole listing when it opens. Resolving a path stays instant, and only reading, writing, moving and deleting wait for the server. Those operations become asynchronous in `js/sitefs.js` for every tree, which the terminal, Files and the Editor follow.
 
 - **Without admin, there is no mount at all.** It isn't hidden or refused; it doesn't exist. The public origin has no mount endpoints. The edit origin serves the mount's script only to an admin session and answers 404, never 403, to anyone else. The terminal's `mount` command and Files' mounted root come from that script, so a non-admin has nothing to type and nothing to press.
 - **The filesystem API** lists, reads, writes, moves and deletes. Every path is canonicalised and must stay inside the web root, the same check `/src` gained on 2026-09-29. Files may be text or binary, up to 10 MB each. The Editor edits text, and Files uploads and downloads anything. Nothing outside the web root can be read, which keeps configuration, secrets and customer data out of reach.
 - **A safety net.** Before a file is overwritten or deleted, the server keeps its previous version in a history folder outside the web root for 30 days. Files and the terminal can restore from it. OneDrive's own version history remains a second net.
 - **Fresh assets.** A write through the mount clears the server's cached asset-version stamps, so a changed script or stylesheet reaches readers without a container restart.
 - **An audit log** records every write, move and delete, with the account, the path, the time and the file's new hash.
+
+### A10. `/home`: the root's own directories on the server
+
+`/home` is a real directory on the server, a sibling of the web root, holding one directory for each admin (Paul, 2026-09-30). On the host they are `parkscomputing.com/home` beside `parkscomputing.com/wwwroot`, mounted into the container at `/app/home`, so they're on OneDrive with its version history and off-site copy. An admin's directory is named from their account, `/home/paul` for Paul, and it is their `~` wherever they sign in: a toolbox of scripts, notes and drafts that follows them from device to device. The same API serves it as serves `/wwwroot`, with the same checks, history and audit. Nothing under `/home` is ever served to the public; it is outside the web root.
+
+### A11. Preview before publishing
+
+A file under `/wwwroot` is live when it is saved, since the site reads its pages from their files on every request. To see a change before it goes live, the Editor has **Preview** for an article's source (a `.md` or `.html` file under `/wwwroot/content`). Preview sends the unsaved text to the server, which keeps it as a draft under a random 128-bit token for an hour. The Editor then shows `https://parkscomputing.com/preview/<token>` in a pane beside the text, and pressing Preview again refreshes it. **Save** is the publish step.
+
+The preview is rendered on the public origin, not the edit origin, deliberately. An article may bring its own scripts, and on the edit origin they would run with the admin session. On the public origin they run exactly as they will once published, where no admin session exists. The edit origin's Content-Security-Policy allows framing that one public path. The preview page is `noindex` and never cached, and a token names one draft and nothing else. Anyone holding the token can see that one unpublished draft for the hour, which also makes a preview link something Paul can share on purpose.
 
 ### A8. A sliding scale for fresh sign-ins
 
@@ -125,7 +141,14 @@ This is for soon after the mount ships, because the mount is what makes it worth
 2. Bind the site's and SQL Server's ports to `127.0.0.1`, which was done 2026-09-30 (the site answers through the tunnel and refuses a direct connection). Add the edit hostname to the tunnel's ingress and put Access in front of it, which is Paul's to do.
 3. Remove the first attempt, and add Identity with passkeys, recovery codes, email links through Resend, and the Admin role granted from the server. Done 2026-09-30.
 4. Add the edit origin's host routing, session cookie, CSP and antiforgery, and the sign-in pages and elevated state, read-only at first. Done 2026-09-30, without Access verification, which is deferred (A6). A browser suite drives every sign-in path through virtual passkey authenticators against a test copy with its own database. It covers enrollment, passkey sign-in, adding and removing passkeys, the confirmation rule, recovery codes, emailed links, antiforgery and revocation, 30 checks in all.
-5. Build the mount: the filesystem API, history, audit log, asset-stamp clearing and the sliding scale, then the terminal's and Files' mounted root.
+5. Build the mount, in these steps:
+   1. Make the content volume writable, and mount `home` and `history` beside it.
+   2. Add the filesystem API for `/wwwroot` and `/home`, with its path checks, history, audit log, asset-stamp clearing and the sliding scale.
+   3. Make the asynchronous operations in `js/sitefs.js` work across the local and server trees.
+   4. Put the admin workspace on the edit origin, with the account page, Files, Terminal and Editor.
+   5. Add the Editor's Edit the source and View on the site.
+   6. Add the Edit links on public pages.
+   7. Add the preview (A11).
 6. Git in the terminal.
 7. Comments.
 
