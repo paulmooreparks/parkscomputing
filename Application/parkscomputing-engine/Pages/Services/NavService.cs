@@ -51,9 +51,38 @@ namespace ParksComputing.Engine.Pages.Services {
                 var rootNode = ParseRoot(File.ReadAllText(xferPath), xferPath);
                 PostProcess(rootNode);
                 EnrichPostsFromContent(rootNode);
+                ResolveMenu(rootNode, rootNode.Menu);
                 _cached = rootNode;
                 _lastWriteUtc = writeUtc;
                 return rootNode;
+            }
+        }
+
+        /// <summary>
+        /// Fills in the site menu's entries from the entries they name: a menu
+        /// entry that gives only a slug takes the title, description, icon,
+        /// address and window shape of the nav or posts entry of that slug,
+        /// keeping whatever it gives itself. A group (an entry with a nav)
+        /// resolves its own entries the same way. The menu's entries are not
+        /// part of the nav tree, so a slug in both is still found once.
+        /// </summary>
+        private void ResolveMenu(NavNode root, NavNode[]? entries) {
+            if (entries == null) { return; }
+            foreach (var entry in entries) {
+                if (entry.Nav is { Length: > 0 }) { ResolveMenu(root, entry.Nav); continue; }
+                if (string.IsNullOrWhiteSpace(entry.Slug)) { continue; }
+                var twin = Enumerate(root).FirstOrDefault(n => n != root && string.Equals(n.Slug, entry.Slug, StringComparison.OrdinalIgnoreCase))
+                    ?? root.Posts?.FirstOrDefault(p => string.Equals(p.Slug, entry.Slug, StringComparison.OrdinalIgnoreCase));
+                if (twin != null) {
+                    entry.Title ??= twin.Title;
+                    entry.Description ??= twin.Description;
+                    entry.Icon ??= twin.Icon;
+                    entry.Win ??= twin.Win;
+                    entry.Target ??= twin.Target;
+                    if (string.IsNullOrWhiteSpace(entry.Url)) { entry.Url = twin.Url; entry.External = twin.External; entry.DerivedUrl = twin.DerivedUrl; }
+                }
+                if (string.IsNullOrWhiteSpace(entry.Url)) { entry.Url = $"/page/{entry.Slug}"; entry.DerivedUrl = true; }
+                else if (Uri.TryCreate(entry.Url, UriKind.Absolute, out var abs) && (abs.Scheme == Uri.UriSchemeHttp || abs.Scheme == Uri.UriSchemeHttps)) { entry.External = true; }
             }
         }
 

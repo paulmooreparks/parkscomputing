@@ -17,6 +17,21 @@
     // highlighting assets.
     bool needsHighlight = isMarkdown || isDesktop;
 }
+@functions {
+    // A page of this site, which the window view can open as a window.
+    private static bool IsSitePage(NavNode n) =>
+        !n.External && !string.IsNullOrEmpty(n.Slug) && n.Url == $"/page/{n.Slug}";
+}
+@{
+    void RenderMenuItem(NavNode item)
+    {
+        bool page = IsSitePage(item);
+        string href = page && (ViewData["Desktop"] as bool? ?? false) ? $"/?open={item.Slug}&top={item.Slug}" : (item.Url ?? "/");
+        <div class="md-row"><a class="md-item site-menu-item" href="@href" title="@item.Description"
+            @(page && (ViewData["Desktop"] as bool? ?? false) ? Html.Raw($"data-win-open=\"{item.Slug}\"") : null)
+            @(item.External ? Html.Raw("target=\"_blank\" rel=\"noopener\"") : null)>@if (!string.IsNullOrEmpty(item.Icon)) {<img class="site-menu-icon" src="@item.Icon" alt="" />} else {<span class="site-menu-icon" aria-hidden="true"></span>}@(item.Title ?? item.Slug)</a></div>
+    }
+}
 
 <!DOCTYPE html>
 <html>
@@ -76,25 +91,31 @@
         @Html.RenderStaticFile("/content/header-section.html", FileReaderService)
         <div class="topbar">
             @* The site menu: the logo and name are a button, as the Apple
-               menu is, opening Home, the applets and Settings. It is a
-               raised chip on the topbar, since it can be pressed; the
-               applets are the Applets section of sitenav.xfer, each with its
-               icon when it has one. *@
+               menu is. It is a raised chip on the topbar, since it can be
+               pressed. What it holds is the menu array of sitenav.xfer, in
+               its order: an entry is a row, with its icon when it has one,
+               and an entry with a nav of its own is a labelled group. A
+               page of this site opens as a window in the window view. *@
             @{
-                var menuRoot = PaletteNav.GetRoot();
-                var menuApplets = (menuRoot.Nav ?? Array.Empty<NavNode>()).FirstOrDefault(n => n.Slug == "applets")?.Nav ?? Array.Empty<NavNode>();
+                var menuEntries = PaletteNav.GetRoot().Menu ?? Array.Empty<NavNode>();
             }
             <div class="menu site-menu">
                 <button type="button" class="brand topbar-pill menu-btn site-menu-btn" popovertarget="site-menu" aria-label="Parks Computing menu">
                     <img src="~/favicon-32x32.png" alt="" /> <span class="site-menu-name">Parks Computing</span>
                 </button>
                 <nav class="menu-panel site-menu-panel" id="site-menu" popover aria-label="Parks Computing">
-                    <div class="md-row"><a class="md-item site-menu-item" href="/"><span class="site-menu-icon" aria-hidden="true"></span>Home</a></div>
-                    <div class="md-section-label">Applets</div>
-                    @foreach (var app in menuApplets.Where(a => !string.IsNullOrEmpty(a.Slug)))
+                    @if (menuEntries.Length == 0)
                     {
-                        <div class="md-row"><a class="md-item site-menu-item" href="@(isDesktop ? $"/?open={app.Slug}&top={app.Slug}" : $"/page/{app.Slug}")"
-                            @(isDesktop ? Html.Raw($"data-win-open=\"{app.Slug}\"") : null)>@if (!string.IsNullOrEmpty(app.Icon)) {<img class="site-menu-icon" src="@app.Icon" alt="" />} else {<span class="site-menu-icon" aria-hidden="true"></span>}@(app.Title ?? app.Slug)</a></div>
+                        <div class="md-row"><a class="md-item site-menu-item" href="/"><span class="site-menu-icon" aria-hidden="true"></span>Home</a></div>
+                    }
+                    @foreach (var entry in menuEntries)
+                    {
+                        if (entry.Nav is { Length: > 0 })
+                        {
+                            <div class="md-section-label">@(entry.Title ?? entry.Slug)</div>
+                            foreach (var item in entry.Nav) { RenderMenuItem(item); }
+                        }
+                        else { RenderMenuItem(entry); }
                     }
                 </nav>
             </div>

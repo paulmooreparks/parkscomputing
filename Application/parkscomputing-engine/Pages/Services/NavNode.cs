@@ -80,5 +80,12 @@ public class NavNode {
     [XferProperty("posts")]
     public NavNode[]? Posts { get; set; }
 
+    /// <summary>The site menu, the logo's menu in the topbar, on the root
+    /// only. An entry naming only a slug borrows the rest (title, icon,
+    /// address, window shape) from the entry of that slug in nav or posts;
+    /// an entry with a nav of its own is a labelled group of entries.</summary>
+    [XferProperty("menu")]
+    public NavNode[]? Menu { get; set; }
+
     // (Legacy alias properties removed to prevent duplicate key collisions in Xfer deserializer.)
 }
