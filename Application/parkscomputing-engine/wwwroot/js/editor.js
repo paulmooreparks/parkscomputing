@@ -50,10 +50,12 @@
     }
 
     /* Whether the Explorer pane shows, kept per browser; with no choice
-       made, it shows on a wide screen. */
+       made, it shows on a wide screen, unless the page has a file tree of
+       its own at the side (the admin desktop says so in a meta tag). */
     var EXPLORER_KEY = 'pc-editor-explorer';
     function explorerWanted() {
         try { var v = localStorage.getItem(EXPLORER_KEY); if (v != null) { return v === '1'; } } catch (err) { }
+        if (document.querySelector('meta[name="pc-file-sidebar"]')) { return false; }
         return window.matchMedia('(min-width: 900px)').matches;
     }
 

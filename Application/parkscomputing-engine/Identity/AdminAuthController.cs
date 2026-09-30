@@ -127,7 +127,9 @@ public sealed class AdminAuthController : ControllerBase {
             await _users.UpdateSecurityStampAsync(user);
             await _sessions.SignInAsync(user, AdminSessions.Passkey, HttpContext);
         }
-        return Ok(new { ok = true, redirect = "/admin" });
+        // Enrollment lands on the desktop; a passkey added from the account
+        // page reloads that page, to show it in the list.
+        return Ok(new { ok = true, redirect = enrolling ? "/admin" : null });
     }
 
     /// <summary>Removes a passkey, never the last one.</summary>

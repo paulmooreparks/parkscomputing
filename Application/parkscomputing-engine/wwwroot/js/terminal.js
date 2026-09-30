@@ -1292,6 +1292,15 @@
            its own takes a query instead. */
         function openEntry(n, state, pageQuery) {
             if (n.kind === 'link') { window.open(n.url, '_blank', 'noopener'); return; }
+            /* On the edit origin the pages and the other applets live on the
+               public site, so they open there, in a tab of their own, even
+               from a window of the admin desktop. */
+            var q = pageQuery || state;
+            if (F.mounted) {
+                var url = F.publicUrl(n);
+                if (url) { window.open(url + (q ? '?' + q : ''), '_blank', 'noopener'); }
+                return;
+            }
             var inWindows = opts.host === 'window' && window.pudlWindows;
             if (inWindows) {
                 if (state != null) {
@@ -1300,14 +1309,6 @@
                     if ((window.pudlWindows.state().open || []).indexOf(n.name) >= 0) { window.pudlWindows.close(n.name); }
                 }
                 window.pudlWindows.open(n.name);
-                return;
-            }
-            var q = pageQuery || state;
-            /* On the edit origin the pages and the other applets live on the
-               public site, so they open there, in a tab of their own. */
-            if (F.mounted) {
-                var url = F.publicUrl(n);
-                if (url) { window.open(url + (q ? '?' + q : ''), '_blank', 'noopener'); }
                 return;
             }
             location.assign('/page/' + encodeURIComponent(n.name) + (q ? '?' + q : ''));

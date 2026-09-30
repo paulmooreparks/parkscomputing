@@ -15,11 +15,11 @@ namespace ParksComputing.Engine.Pages.Admin;
 
 /// <summary>The admin's own account: passkeys and recovery codes.</summary>
 [Authorize(Roles = AdminOptions.Role)]
-public sealed class IndexModel : PageModel {
+public sealed class AccountModel : PageModel {
     private readonly UserManager<IdentityUser> _users;
     private readonly AdminSessions _sessions;
 
-    public IndexModel(UserManager<IdentityUser> users, AdminSessions sessions) {
+    public AccountModel(UserManager<IdentityUser> users, AdminSessions sessions) {
         _users = users; _sessions = sessions;
     }
 

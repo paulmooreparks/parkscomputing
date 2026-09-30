@@ -1,0 +1,53 @@
+@page
+@model ParksComputing.Engine.Pages.Admin.AccountModel
+@{
+    ViewData["Title"] = "Your account";
+}
+<h1 class="admin-title">Your account</h1>
+
+@if (Model.Fallback)
+{
+    <div class="notice warn" role="status">
+        <div class="notice-content">
+            <p class="notice-title">You signed in with @Model.Method</p>
+            <p class="notice-body">You can edit, but changing how you sign in needs a passkey tap first.</p>
+        </div>
+    </div>
+}
+
+<section class="card admin-card">
+    <h2 class="card-title">Passkeys</h2>
+    <p class="card-desc">Keep at least two, on different devices, so losing one doesn't lock you out.</p>
+    <table class="data-table admin-passkeys" aria-label="Passkeys">
+        <thead><tr><th scope="col">Name</th><th scope="col">Added</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+        <tbody>
+            @foreach (var p in Model.Passkeys)
+            {
+                <tr>
+                    <td>@p.Name</td>
+                    <td><time datetime="@p.Created.ToString("o")">@p.Created.ToString("d MMM yyyy")</time></td>
+                    <td class="num">
+                        @if (Model.Passkeys.Count > 1)
+                        {
+                            <button type="button" class="btn btn-sm" data-passkey-remove="@p.Id" data-name="@p.Name">Remove</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <div class="form-group admin-add">
+        <label class="form-label" for="passkey-name">Add a passkey</label>
+        <input class="form-input" id="passkey-name" maxlength="60" placeholder="Phone, laptop, security key…" data-passkey-name />
+    </div>
+    <button type="button" class="btn" data-passkey-add>Add a passkey</button>
+</section>
+
+<section class="card admin-card">
+    <h2 class="card-title">Recovery codes</h2>
+    <p class="card-desc">@(Model.RecoveryCodesLeft == 0 ? "You have none." : $"{Model.RecoveryCodesLeft} unused.") Each works once, to sign in when no passkey is to hand. Print them and keep them somewhere safe.</p>
+    <button type="button" class="btn" data-recovery-new>Make new recovery codes</button>
+    <ol class="admin-codes mono" data-recovery-codes hidden></ol>
+</section>
+
+<p class="form-error" data-admin-error hidden></p>

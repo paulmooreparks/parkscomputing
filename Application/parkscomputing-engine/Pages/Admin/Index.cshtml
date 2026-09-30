@@ -1,53 +1,53 @@
 @page
-@model ParksComputing.Engine.Pages.Admin.IndexModel
+@model ParksComputing.Engine.Pages.Admin.DesktopModel
+@using ParksComputing.Engine.Pages.Models
 @{
-    ViewData["Title"] = "Your account";
-}
-<h1 class="admin-title">Your account</h1>
+    ViewData["Title"] = "Desktop";
+    ViewData["Workspace"] = true;
+    ViewData["Desktop"] = true;
 
-@if (Model.Fallback)
-{
-    <div class="notice warn" role="status">
-        <div class="notice-content">
-            <p class="notice-title">You signed in with @Model.Method</p>
-            <p class="notice-body">You can edit, but changing how you sign in needs a passkey tap first.</p>
+    // The tools, as windows made from the templates below. A numbered
+    // terminal (terminal-2) is PUDL's copy of the terminal's template.
+    var tools = new[] {
+        new WindowViewModel { Key = "terminal", Title = "Terminal", PageUrl = "/admin/terminal", Mode = "maximized",
+            BodyHtml = "<div data-applet=\"terminal\" role=\"application\" aria-label=\"Terminal\"></div>" },
+        new WindowViewModel { Key = "editor", Title = "Editor", PageUrl = "/admin/editor", Mode = "maximized",
+            BodyHtml = "<div data-applet=\"editor\" role=\"application\" aria-label=\"Editor\"></div>" },
+        new WindowViewModel { Key = "files", Title = "Files", PageUrl = "/admin/files", Mode = "maximized",
+            BodyHtml = "<div data-applet=\"files\" role=\"application\" aria-label=\"Files\"></div>" }
+    };
+    var taskbar = new TaskbarModel {
+        Entries = new[] {
+            new TaskbarEntry("New terminal", "/admin/terminal", "script", Request: "shell"),
+            new TaskbarEntry("Editor", "/admin/editor", "document", Window: "editor"),
+            new TaskbarEntry("Files", "/admin/files", "folder", Window: "files")
+        }
+    };
+}
+@* The admin desktop (Architecture/admin-and-identity-design.md, A12): the
+   file tree at the side, the tools as PUDL windows, and the taskbar along
+   the bottom. PUDL's master-detail layout shows the tree or the windows
+   one at a time on a narrow screen. js/admin-desktop.js fills the tree. *@
+<div class="md-layout admin-desk" data-md-pane="list">
+    <div class="md-body">
+        <nav class="md-sidebar admin-tree" aria-label="Files" data-desk-tree>
+            <p class="admin-tree-note" data-desk-tree-note>Loading the files…</p>
+        </nav>
+        <div class="md-resize" role="separator" aria-orientation="vertical" aria-label="Resize the files"></div>
+        <div class="md-detail admin-stage">
+            <a class="md-back" href="?open=" data-win-back>Files</a>
+            <main class="win-host">
+                <div class="admin-empty">
+                    <p>Open a tool from <strong>Start</strong>, or a file from the tree.</p>
+                    <p>Right-click a file or folder, or press Shift+F10 on it, for more.</p>
+                </div>
+                <div class="win-layer" data-win-layer data-win-src="#win-{key}"></div>
+            </main>
         </div>
     </div>
+</div>
+@foreach (var tool in tools)
+{
+    <template id="win-@tool.Key"><partial name="_Window" model="tool" /></template>
 }
-
-<section class="card admin-card">
-    <h2 class="card-title">Passkeys</h2>
-    <p class="card-desc">Keep at least two, on different devices, so losing one doesn't lock you out.</p>
-    <table class="data-table admin-passkeys" aria-label="Passkeys">
-        <thead><tr><th scope="col">Name</th><th scope="col">Added</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
-        <tbody>
-            @foreach (var p in Model.Passkeys)
-            {
-                <tr>
-                    <td>@p.Name</td>
-                    <td><time datetime="@p.Created.ToString("o")">@p.Created.ToString("d MMM yyyy")</time></td>
-                    <td class="num">
-                        @if (Model.Passkeys.Count > 1)
-                        {
-                            <button type="button" class="btn btn-sm" data-passkey-remove="@p.Id" data-name="@p.Name">Remove</button>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-    <div class="form-group admin-add">
-        <label class="form-label" for="passkey-name">Add a passkey</label>
-        <input class="form-input" id="passkey-name" maxlength="60" placeholder="Phone, laptop, security key…" data-passkey-name />
-    </div>
-    <button type="button" class="btn" data-passkey-add>Add a passkey</button>
-</section>
-
-<section class="card admin-card">
-    <h2 class="card-title">Recovery codes</h2>
-    <p class="card-desc">@(Model.RecoveryCodesLeft == 0 ? "You have none." : $"{Model.RecoveryCodesLeft} unused.") Each works once, to sign in when no passkey is to hand. Print them and keep them somewhere safe.</p>
-    <button type="button" class="btn" data-recovery-new>Make new recovery codes</button>
-    <ol class="admin-codes mono" data-recovery-codes hidden></ol>
-</section>
-
-<p class="form-error" data-admin-error hidden></p>
+<partial name="_Taskbar" model="taskbar" />

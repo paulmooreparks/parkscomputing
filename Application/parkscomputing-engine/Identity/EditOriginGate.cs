@@ -23,7 +23,8 @@ public sealed class EditOriginGate {
        site's read-only listing and page text, which the public site serves
        too. Nothing else of the public site answers here. */
     private static readonly string[] AssetPaths = {
-        "/pudl/", "/favicon", "/css/admin.css", "/js/admin.js",
+        "/pudl/", "/favicon", "/css/admin.css", "/js/admin.js", "/js/admin-desktop.js",
+        "/js/continuity.js", "/js/taskbar.js", "/css/taskbar.css",
         "/js/applets.js", "/js/sitefs.js", "/js/filebrowser.js", "/js/terminal.js", "/js/terminal-text.js", "/js/files.js", "/js/editor.js", "/js/vendor/",
         "/css/terminal.css", "/css/files.css", "/css/filebrowser.css", "/css/editor.css",
         "/api/site/"

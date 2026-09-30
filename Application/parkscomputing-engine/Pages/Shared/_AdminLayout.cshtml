@@ -5,14 +5,15 @@
     // The edit origin's pages (Architecture/admin-and-identity-design.md, A5).
     // No inline script anywhere, so the origin's Content-Security-Policy can
     // allow scripts from itself alone. While signed in, the bar says so on
-    // every page, as a root shell's prompt does (A9), and the workspace's
-    // tabs lead to the account, Files, the terminal and the Editor, which
-    // show the admin mount (A7).
+    // every page, as a root shell's prompt does (A9), and its menu under the
+    // admin's name holds the account and signing out. The desktop at /admin
+    // (A12) is the workspace: the tools as windows over the admin mount
+    // (A7). Each tool also has a page of its own, for a link or a tab.
     bool signedIn = User.IsInRole(AdminOptions.Role);
     string? method = User.FindFirst(AdminSessions.MethodClaim)?.Value;
     bool workspace = signedIn && ViewData["Workspace"] as bool? == true;
-    string here = Context.Request.Path.Value?.TrimEnd('/').ToLowerInvariant() ?? "";
-    (string Href, string Label)[] tabs = { ("/admin", "Account"), ("/admin/files", "Files"), ("/admin/terminal", "Terminal"), ("/admin/editor", "Editor") };
+    bool desktop = workspace && ViewData["Desktop"] as bool? == true;
+    string publicOrigin = AdminConfig.Value.PublicOrigin.TrimEnd('/');
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -29,52 +30,94 @@
            other applets open on the public site. *@
         <meta name="pc-fs-mount" content="/api/admin/fs" />
         <meta name="pc-applet-pages" content="/admin/" />
-        <meta name="pc-public-origin" content="@AdminConfig.Value.PublicOrigin.TrimEnd('/')" />
+        <meta name="pc-public-origin" content="@publicOrigin" />
+    }
+    @if (desktop)
+    {
+        @* The desktop's side holds the file tree, so the Editor's own
+           Explorer pane starts hidden there. *@
+        <meta name="pc-file-sidebar" content="1" />
     }
     <title>@ViewData["Title"] · Editing parkscomputing.com</title>
     <script src="~/pudl/pudl-theme.js" asp-append-version="true"></script>
     <link rel="stylesheet" href="~/pudl/pudl.css" asp-append-version="true" />
+    @if (desktop)
+    {
+        <link rel="stylesheet" href="~/pudl/pudl-windows.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/taskbar.css" asp-append-version="true" />
+    }
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 </head>
-<body class="admin@(signedIn ? " admin-elevated" : null)@(workspace ? " admin-workspace" : null)">
+<body class="admin@(signedIn ? " admin-elevated" : null)@(workspace ? " admin-workspace" : null)@(desktop ? " admin-desktop" : null)">
     <header class="admin-bar">
-        <span class="admin-bar-title">Editing parkscomputing.com</span>
+        @* The site's mark as a label: on the desktop a link home would only
+           reload the page the admin is on. *@
+        <span class="admin-bar-title"><img src="/favicon-32x32.png" alt="" width="20" height="20" /> Parks Computing <span class="admin-bar-tag">editing</span></span>
         @if (signedIn)
         {
-            <span class="admin-bar-who">
-                <span class="glyph" style="--glyph: var(--glyph-warning)" aria-hidden="true"></span>
-                Admin: @User.Identity?.Name, signed in with @AdminSessions.Describe(method)
+            @if (!desktop)
+            {
+                <a class="admin-bar-link" href="/admin">Desktop</a>
+            }
+            <a class="admin-bar-link" href="@publicOrigin" target="_blank" rel="noopener">View the site</a>
+            <span class="menu admin-bar-menu">
+                <button type="button" class="btn btn-sm menu-btn admin-bar-who" popovertarget="admin-menu"
+                        title="Admin: @User.Identity?.Name, signed in with @AdminSessions.Describe(method)">
+                    <span class="glyph" style="--glyph: var(--glyph-warning)" aria-hidden="true"></span>
+                    @User.Identity?.Name
+                    @if (method != AdminSessions.Passkey)
+                    {
+                        @* A fallback session says so where it is always seen,
+                           since it can't change sign-in methods (A8). *@
+                        <span class="admin-bar-fallback">with @AdminSessions.Describe(method)</span>
+                    }
+                </button>
+                <nav class="menu-panel admin-menu" id="admin-menu" popover aria-label="Your account">
+                    <p class="admin-menu-note">Admin: signed in with @AdminSessions.Describe(method)</p>
+                    <div class="md-row"><a class="md-item" href="/admin/account" target="@(desktop ? "_blank" : null)">Account and passkeys</a></div>
+                    <form method="post" asp-page="/Admin/SignOut" class="admin-bar-signout">
+                        <button type="submit" class="md-item admin-menu-signout">Sign out</button>
+                    </form>
+                </nav>
             </span>
-            <form method="post" asp-page="/Admin/SignOut" class="admin-bar-signout">
-                <button type="submit" class="btn btn-sm">Sign out</button>
-            </form>
         }
     </header>
-    @if (signedIn)
+    @if (desktop)
     {
-        <nav class="app-section-bar admin-tabs" aria-label="Workspace">
-            @foreach (var (href, label) in tabs)
-            {
-                <a class="section-tab" href="@href" aria-current="@(here == href ? "page" : null)">@label</a>
-            }
-            <span class="admin-tabs-spacer"></span>
-            <a class="admin-tabs-site" href="@AdminConfig.Value.PublicOrigin" target="_blank" rel="noopener">View the site</a>
-        </nav>
-    }
-    <main class="admin-main">
         @RenderBody()
-    </main>
+    }
+    else
+    {
+        <main class="admin-main">
+            @RenderBody()
+        </main>
+    }
     <p class="visually-hidden" role="status" aria-live="polite" data-admin-status></p>
     <script src="~/js/admin.js" asp-append-version="true" defer></script>
-    @if (workspace)
+    @if (signedIn)
     {
         <script src="~/pudl/pudl-menu.js" defer asp-append-version="true"></script>
+    }
+    @if (workspace)
+    {
+        <script src="~/js/continuity.js" asp-append-version="true"></script>
+        @if (desktop)
+        {
+            <script src="~/pudl/pudl-windows.js" defer asp-append-version="true"></script>
+            <script src="~/pudl/pudl-md.js" defer asp-append-version="true"></script>
+        }
         <script src="~/pudl/pudl-applets.js" defer asp-append-version="true"></script>
         <script src="~/js/applets.js" defer asp-append-version="true"></script>
         <script src="~/pudl/pudl-dialog.js" defer asp-append-version="true"></script>
         <script src="~/pudl/pudl-tabs.js" defer asp-append-version="true"></script>
         <script src="~/pudl/pudl-tree.js" defer asp-append-version="true"></script>
         <script src="~/pudl/pudl-grid.js" defer asp-append-version="true"></script>
+        @if (desktop)
+        {
+            <script src="~/js/taskbar.js" defer asp-append-version="true"></script>
+            <script src="~/js/admin-desktop.js" defer asp-append-version="true"></script>
+        }
     }
 </body>
 </html>

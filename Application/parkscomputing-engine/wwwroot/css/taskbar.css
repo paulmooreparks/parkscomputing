@@ -1,0 +1,27 @@
+/* The taskbar (Pages/Shared/_Taskbar.cshtml): a flat strip along the
+   bottom of a page of windows, with the raised Start button at the left,
+   PUDL's dock of open windows, and the window-wide actions at the right. */
+
+.pc-taskbar {
+  flex: none;
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 6px var(--space-3);
+  background: var(--surface); border-top: 1px solid var(--border);
+  --ctl-h: 30px;
+}
+.pc-start { flex: none; }
+.pc-start-btn { height: var(--ctl-h); font-weight: 700; }
+.pc-start-menu { min-width: 220px; }
+.pc-start-item { display: flex; align-items: center; gap: 8px; }
+.pc-start-item .glyph { --glyph-size: 15px; color: var(--text-muted); }
+
+.pc-taskbar-dock { flex: 1 1 auto; min-width: 0; }
+.pc-taskbar .icon-btn svg { width: 15px; height: 15px; }
+
+/* Minimize-all and restore-all share one place: restore shows only when
+   every window is minimized, and otherwise minimize-all shows, disabled
+   when nothing is open. */
+.pc-taskbar .restore-all[aria-disabled="true"],
+.pc-taskbar:has(.min-all:not([aria-disabled="true"])) .restore-all { display: none; }
+.pc-taskbar:has(.min-all[aria-disabled="true"]):has(.restore-all:not([aria-disabled="true"])) .min-all { display: none; }
+.pc-taskbar .is-disabled { opacity: .45; pointer-events: none; }
