@@ -1,5 +1,7 @@
 # PUDL bug: the window menu's "Open as a page" ignores the link's target
 
+**Fixed in PUDL 0.33.1** (`pudl-adoption.md`, D46). What follows is the report as it was sent.
+
 From parkscomputing.com, 2026-09-30, found reading `pudl-windows.js` 0.33.0 while adopting the window menu.
 
 **What happens.** A window whose title bar carries `<a data-win-action="page" href="…" target="_blank" rel="noopener">` opens its page in a new tab from the title bar's button, as the author asked. The same command in the window menu navigates the current tab instead, and the desktop the reader was on is gone.

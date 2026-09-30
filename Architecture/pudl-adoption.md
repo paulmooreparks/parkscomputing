@@ -96,7 +96,7 @@ The applet rule (Paul, 2026-09-26): a converted app runs in a PUDL window or in 
 
 Found while building this site, in PUDL's own territory rather than ours; each is a candidate for the PUDL repo, and the site adopts the released form when a version ships. Status 2026-09-26: the PUDL agent accepted all four, found three more gaps reading this site's code, and wrote all seven up in the PUDL repo (`docs/proposals/from-parkscomputing.md`). Staging: 0.9.0 takes the small contract-free three (the `[hidden]` fix with a hidden-until-found exception, `aria-pressed` for latched buttons, title-bar tokens with the quiet treatment as the dark default); 0.10.0 takes applets (`pudl-applets.js`, registration via `pudlApplets.register()`), a window-close event, a script interface for windows, and replace-in-place navigation, plus an applet sample. Applet-state-in-URL is deferred until a second applet needs it.
 
-Open upstream as of 2026-09-30: `pudl-bug-menu-page-target.md`, the window menu's "Open as a page" ignoring the link's target. The window menu, splitters, snap zones and the menu scrollbar closed with 0.30.1 to 0.33.0 (D45).
+Open upstream as of 2026-10-01: `pudl-bug-topbar-seg-link.md`, a segmented control of links on the topbar taking the topbar's pale link colour (D46). The menu page-target bug closed with 0.33.1. The window menu, splitters, snap zones and the menu scrollbar closed with 0.30.1 to 0.33.0 (D45).
 
 Nothing was open upstream as of 2026-09-29. That day's findings closed in six releases: the latched primary button and the empty `?q=` with 0.23.1 (D38), wrapping list metadata and restore-all with 0.24.0 (D39), the tree, path bar, grid, glyphs, drop targets, document tabs and syntax colours of `pudl-proposal-tree-crumbs-editor.md` with 0.25.0 and 0.26.0 (D41), applets that declare what they handle, `pudl-proposal-applet-handlers.md`, with 0.27.0 (D42), and copy and download on code blocks, `pudl-proposal-code-actions.md`, with 0.29.0 (D44).
 
@@ -129,6 +129,15 @@ All three proposals from `pudl-proposal-empty-structure.md` shipped as 0.13.0 an
 ### D27. PUDL 0.19.0: the focus miss was a window race, and PUDL has a contract
 
 0.19.0 fixed Paul's palette focus miss, with a sharper diagnosis than the site's bug report guessed: pudl-windows took focus when a window's content arrived from its fetch, so a `/` pressed before a restoring window finished loading had the window steal focus back from the palette filter, which is why it depended on session state and never reproduced in tests that waited for network idle. A window now takes focus only if focus has not moved since it was asked for. The site verified the exact race (window fetches slowed to 1.2s, palette summoned mid-flight, focus checked before and after arrival) and the pin was a three-file sync with no site-side change. Also in 0.19.0: `docs/CONTRACT.md` (what a project may rely on, frozen at 1.0), the test suites in the PUDL repo running three engines in CI, and a menu filter that clears on every open. The 0.14.0 lesson stands confirmed twice now: what looked like a browser-timing mystery was an interaction between two of our own moving parts, and the report that pinned it came from `document.activeElement`, one console line from the person who could reproduce it.
+
+### D46. PUDL 0.34.0 pinned: the grammar kept
+
+0.33.1 fixed the window menu's "Open as a page" (`pudl-bug-menu-page-target.md`), and 0.34.0 (2026-10-01) brought PUDL into line with its new specification: the chosen segment pressed in and the rest raised, fields and switches with borders that reach 3:1, pressed states on every raised control, a grip on splitter handles, and glyphs PUDL draws itself. The site took both at once.
+
+- The filter chips' remove links no longer type `×`; PUDL draws the close glyph, and each link keeps its `aria-label`.
+- The Window/Classic switcher lost its colour overrides, which assumed the segment not chosen sat flat on the bar. It keeps the topbar chip as its track.
+- The window bar's buttons lost the bar's pale foreground, which was unreadable on a light raised button.
+- PUDL's rule for plain links on the topbar outranks a segmented control's own colour, so the switcher's raised segment came out pale in the light theme. The site sets the colour back in a marked workaround, and the bug is written up for PUDL in `pudl-bug-topbar-seg-link.md`.
 
 ### D45. PUDL 0.33.0 pinned: the window menu, splitters and snap zones are PUDL's
 

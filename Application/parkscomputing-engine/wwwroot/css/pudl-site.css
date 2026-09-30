@@ -59,18 +59,18 @@ body.desktop .site-header { position: static; flex: none; }
    PUDL's seg styles cover natively since 0.16.0 (aria-current). */
 .topbar { position: relative; justify-content: flex-start; }
 .view-seg { flex: none; }
-/* On the topbar the seg takes the bar's own palette: the track is the
-   topbar chip, and the option not chosen reads in the bar's foreground,
-   which the page's muted colour does not on a light theme. */
+/* On the topbar the seg's track is the topbar chip. Its segments keep
+   PUDL's own colours: since 0.34.0 the one not chosen is a raised button
+   of its own, so the bar's foreground no longer suits it. */
 .topbar .view-seg {
   background: var(--tb-chip);
   border-color: var(--tb-border);
   box-shadow: var(--tb-chip-shadow);
 }
-.topbar .view-seg a { color: color-mix(in srgb, var(--tb-fg) 72%, transparent); }
-.topbar .view-seg a:hover { color: var(--tb-link-hover); }
-.topbar .view-seg a[aria-current]:not([aria-current="false"]) { color: var(--text); }
-.topbar .view-seg a[aria-current]:not([aria-current="false"]):hover { color: var(--text); }
+/* Workaround for a PUDL 0.34.0 bug (Architecture/pudl-bug-topbar-seg-link.md):
+   its rule for plain links on the topbar outranks the seg's own colour, so
+   the raised segment's words came out in the bar's pale foreground. */
+.topbar .view-seg a { color: var(--text); }
 /* On a narrow screen the bar's padding narrows, so the menu and the
    switcher sit at their edges with the room between them. */
 @media (max-width: 560px) {
