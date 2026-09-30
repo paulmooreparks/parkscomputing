@@ -117,8 +117,16 @@
     window.pcAdmin = {
         confirm: async function () {
             say('Confirm it\'s you with a passkey.');
-            var r = await assert('/api/admin/passkey/confirm');
-            if (!r.ok) { throw new Error('The passkey wasn\'t accepted.'); }
+            /* Each way this can fail says which it was, so a caller can
+               show why rather than only that it failed. */
+            var r;
+            try { r = await assert('/api/admin/passkey/confirm'); }
+            catch (err) {
+                if (cancelled(err)) { throw new Error('the passkey request was cancelled, or timed out'); }
+                if (err instanceof TypeError) { throw new Error('the site could not be reached; it may have been restarting'); }
+                throw new Error(err && err.message ? err.message : 'the passkey request failed');
+            }
+            if (!r.ok) { throw new Error('the server did not accept the passkey (' + r.status + ')'); }
             say('Confirmed.');
         }
     };

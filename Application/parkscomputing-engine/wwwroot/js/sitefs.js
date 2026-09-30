@@ -405,7 +405,12 @@
         if (r.status !== 403 || !window.pcAdmin || !window.pcAdmin.confirm) { return r; }
         var body = await r.clone().json().catch(function () { return {}; });
         if (!body.confirm) { return r; }
-        try { await window.pcAdmin.confirm(); } catch (err) { return r; }
+        try { await window.pcAdmin.confirm(); }
+        catch (err) {
+            /* The refusal stands, with the tap's own reason in place of
+               the server's "confirm it's you". */
+            return new Response(JSON.stringify({ ok: false, error: 'the passkey tap failed: ' + err.message }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+        }
         return api(path, init);
     }
 

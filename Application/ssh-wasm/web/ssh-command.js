@@ -98,7 +98,7 @@
         if (r.status === 403 && window.pcAdmin && window.pcAdmin.confirm) {
             var b = await r.clone().json().catch(function () { return {}; });
             if (b.confirm) {
-                try { await window.pcAdmin.confirm(); } catch (err) { throw new Error('a passkey tap is needed to connect'); }
+                try { await window.pcAdmin.confirm(); } catch (err) { throw new Error('a passkey tap is needed to connect, and it failed: ' + err.message); }
                 r = await ask();
             }
         }

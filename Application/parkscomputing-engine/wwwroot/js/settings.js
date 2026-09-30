@@ -305,7 +305,7 @@
             var body = await r.clone().json().catch(function () { return {}; });
             /* A lengthening asks for a passkey tap, then goes again. */
             if (r.status === 403 && body.confirm && window.pcAdmin && window.pcAdmin.confirm) {
-                try { await window.pcAdmin.confirm(); } catch (err) { tsay('Not saved: the passkey tap didn\'t happen.', true); return; }
+                try { await window.pcAdmin.confirm(); } catch (err) { tsay('Not saved: ' + err.message + '.', true); return; }
                 r = await api('PUT', values);
                 body = await r.json().catch(function () { return {}; });
             }

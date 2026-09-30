@@ -44,9 +44,26 @@ namespace ParksComputing.Engine {
             Host.CreateDefaultBuilder(args)
                 // The SSH destinations (Identity/SshOptions.cs) live in a file
                 // of the server's own, outside anything the admin mount shows,
-                // and an edit to it applies without a restart.
-                .ConfigureAppConfiguration(c => c.AddJsonFile(
-                    Environment.GetEnvironmentVariable("SSH_CONFIG_FILE") ?? "/app/config/ssh.json", optional: true, reloadOnChange: true))
+                // and an edit to it applies without a restart. The file is
+                // looked at every few seconds rather than watched, because a
+                // folder Docker Desktop mounts from Windows passes no change
+                // notices into the container.
+                .ConfigureAppConfiguration(c => {
+                    var file = Environment.GetEnvironmentVariable("SSH_CONFIG_FILE") ?? "/app/config/ssh.json";
+                    var dir = Path.GetDirectoryName(file);
+                    if (dir is null || !Directory.Exists(dir)) {
+                        return;
+                    }
+                    c.AddJsonFile(source => {
+                        source.FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(dir) {
+                            UsePollingFileWatcher = true,
+                            UseActivePolling = true
+                        };
+                        source.Path = Path.GetFileName(file);
+                        source.Optional = true;
+                        source.ReloadOnChange = true;
+                    });
+                })
                 .ConfigureWebHostDefaults(web => web
                     // Bind to provided ASPNETCORE_URLS or fall back to all interfaces on 8080 for container hosting
                     .UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://0.0.0.0:8080")

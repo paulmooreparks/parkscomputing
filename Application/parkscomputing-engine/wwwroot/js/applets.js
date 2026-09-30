@@ -53,7 +53,7 @@ window.pcTerminalCommands = ['/js/terminal-text.js'];
 /* The site filesystem the terminal, the file manager and the editor share
    (js/sitefs.js). Every applet loads it from this one address, so a page
    holds one copy; raise its v on every change to the file. */
-window.pcSiteFsSrc = '/js/sitefs.js?v=5';
+window.pcSiteFsSrc = '/js/sitefs.js?v=6';
 
 /* The file browser Files, the editor and the barcode tool share (js/filebrowser.js), with its
    stylesheet; like the site filesystem, one copy a page, and a raised v on
@@ -112,5 +112,5 @@ pudlApplets.define('settings', {
     src: '/js/settings.js',
     css: '/css/settings.css',
     page: pcWorkspacePages + 'settings',
-    ver: '2'
+    ver: '3'
 });
