@@ -105,12 +105,6 @@
             <input class="md-filter" type="search" name="q" value="@Model.Q"
                    placeholder="Filter the list…" aria-label="Filter the list" />
             <button class="icon-btn md-filter-go" type="submit" aria-label="Apply the filter" title="Apply the filter"></button>
-            @* Clears categories, tags and filter, windows kept. Inside the
-               region, so the server re-renders its state on every swap. *@
-            <a class="icon-btn filter-clear @(Model.ActiveFilterCount == 0 ? "is-disabled" : null)"
-               href="@Model.ClearFiltersUrl"
-               @(Model.ActiveFilterCount == 0 ? Html.Raw("aria-disabled=\"true\" tabindex=\"-1\"") : null)
-               aria-label="Clear all filters" title="Clear all filters"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5.5"/><line x1="4.2" y1="11.8" x2="11.8" y2="4.2"/></svg></a>
         </form>
         @* Multi-select menus, after the Andoneer board's workstream filter:
            the popover stays open across checking (light dismiss closes it
@@ -137,9 +131,16 @@
             </nav>
         </div>
         <span class="md-toolbar-sep" aria-hidden="true"></span>
-        @* Always present, so region swaps always find their counterpart;
-           with no chips the rule before it hides too. *@
+        @* Always present, so region swaps always find their counterpart. It
+           starts with the button that clears every filter (Paul, 2026-10-01),
+           fixed at the left of the chips so it never moves as they come and
+           go, dimmed when there is nothing to clear. It keeps the windows.
+           Its address is the unfiltered list, so it works without script. *@
         <div class="site-chips" data-region="chips">
+        <a class="icon-btn filter-clear @(Model.ActiveFilterCount == 0 ? "is-disabled" : null)"
+           href="@Model.ClearFiltersUrl"
+           @(Model.ActiveFilterCount == 0 ? Html.Raw("aria-disabled=\"true\" tabindex=\"-1\"") : null)
+           aria-label="Clear all filters" title="Clear all filters"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5.5"/><line x1="4.2" y1="11.8" x2="11.8" y2="4.2"/></svg></a>
         @foreach (var cat in Model.SelectedCats)
         {
             <span class="filter-chip"><span class="filter-chip-kind">category</span> @Model.CatTitleOf(cat) <a class="filter-chip-x" href="@Model.RemoveCatUrl(cat)" aria-label="Remove the @Model.CatTitleOf(cat) category filter"></a></span>
@@ -151,10 +152,6 @@
         @if (Model.Q is not null)
         {
             <span class="filter-chip"><span class="filter-chip-kind">filter</span> @Model.Q <a class="filter-chip-x" href="@Model.RemoveQUrl" aria-label="Remove the text filter"></a></span>
-        }
-        @if (Model.ActiveFilterCount > 1)
-        {
-            <a class="md-chips-clear" href="@Model.ClearFiltersUrl">clear</a>
         }
         </div>
     </div>

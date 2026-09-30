@@ -62,30 +62,20 @@ body.desktop .site-header { position: static; flex: none; }
   box-shadow: var(--tb-chip-shadow);
 }
 
-/* The classic view's categories (Pages/Components/Nav, Paul 2026-10-01):
-   pills in the bar where there is room for all of them, otherwise one
-   drop-down. Each starts from no width and grows to its content, because
-   PUDL's top bar wraps an item that asks for more room than is left, and
-   these should shrink instead; the drop-down's label then shortens with an
-   ellipsis before the logo or the switcher gives anything up. */
-.site-cats, .site-cats-menu { flex: 1 1 0; min-width: 0; max-width: max-content; }
-.site-cats { display: flex; align-items: center; gap: 6px; margin-left: var(--space-2); }
-.site-cats .topbar-pill { flex: none; white-space: nowrap; }
-.site-cats-menu { display: none; margin-left: var(--space-2); }
-/* No wider than its share of the bar, which outweighs PUDL's own phone
-   cap of 10rem on a labelled menu button. */
-.topbar .site-cats-menu .menu-btn:has(> .menu-btn-label) { max-width: 100%; }
-/* A topbar pill like the logo beside it, without the menu button's border. */
-.site-cats-menu .menu-btn { border: 0; cursor: pointer; }
-.site-cats-menu .menu-btn-label { flex: 0 1 auto; }
-/* Without the site's name the pills need about 760px; with it, 1000px. */
+/* The classic view's category tabs (PUDL 0.37.0's .topbar-tabs, from
+   Pages/Components/Nav). Beside the logo on a screen wider than a phone,
+   they start from no width and grow to their content, so that where they
+   don't all fit they shrink and scroll sideways rather than wrap the bar,
+   which PUDL's top bar would otherwise do. On a phone PUDL gives them the
+   bar's last row, and these rules stand aside. Below 1000px the logo
+   stands for the site's name to leave them room. */
+@media (min-width: 641px) {
+  .topbar-tabs { flex: 1 1 0; max-width: max-content; margin-left: var(--space-3); }
+}
 @media (max-width: 999px) {
-  .topbar:has(.site-cats) .site-menu-name { display: none; }
+  .topbar:has(.topbar-tabs) .site-menu-name { display: none; }
 }
-@media (max-width: 759px) {
-  .site-cats { display: none; }
-  .site-cats-menu { display: block; }
-}
+
 /* On a narrow screen the bar's padding narrows, so the menu and the
    switcher sit at their edges with the room between them. */
 @media (max-width: 560px) {
@@ -322,13 +312,14 @@ body.desktop .site-header { position: static; flex: none; }
    follows is only this site's stage styling. */
 
 /* The list's bar (Paul, 2026-10-01): PUDL's list toolbar holding the filter
-   controls, a rule, and the filter chips. The chips take the rest of the
-   line and wrap within it; with none, the rule goes too. On a narrow screen
-   PUDL's toolbar wraps and gives the filter box a line of its own. */
+   controls, a rule, then the button that clears every filter, fixed at the
+   start of the chips, and the chips, which take the rest of the line and
+   wrap within it. On a narrow screen PUDL's toolbar wraps and gives the
+   filter box a line of its own. */
 .site-listbar { flex-wrap: wrap; row-gap: 8px; }
 .site-listbar .md-filter { width: 200px; }
 .site-chips { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.site-listbar:not(:has(.filter-chip)) .md-toolbar-sep { display: none; }
+.site-chips .filter-clear { flex: none; }
 
 
 /* The site menu: the logo and name as a raised chip on the topbar,
@@ -372,7 +363,6 @@ body.desktop .md-layout { --md-sidebar-w: 300px; }
 /* The clear-filters control, and any disabled icon button. */
 .filter-clear svg { width: 15px; height: 15px; }
 .icon-btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
-.md-filter-group .filter-clear { margin-left: 6px; }
 .icon-btn.is-disabled { opacity: .45; pointer-events: none; cursor: not-allowed; }
 
 /* Windowed article prose keeps the page's reading measure. */

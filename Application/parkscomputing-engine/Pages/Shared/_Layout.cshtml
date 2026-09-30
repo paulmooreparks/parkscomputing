@@ -135,7 +135,9 @@
                after a rule. Each side is a link, because each view is a URL;
                ?view=window bypasses a classic default-view choice. *@
             <span class="topbar-rule" aria-hidden="true"></span>
-            <nav class="seg view-seg" aria-label="View">
+            @* data-seg-menu: on a phone PUDL folds the switcher into a
+               pop-up button labelled with the current view (0.36.0). *@
+            <nav class="seg view-seg" aria-label="View" data-seg-menu>
                 <a href="/?view=window" aria-current="@(isDesktop ? "true" : null)">Window</a>
                 <a href="/home" aria-current="@(isDesktop ? null : "true")">Classic</a>
             </nav>

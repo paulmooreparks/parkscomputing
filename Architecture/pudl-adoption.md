@@ -130,6 +130,16 @@ All three proposals from `pudl-proposal-empty-structure.md` shipped as 0.13.0 an
 
 0.19.0 fixed Paul's palette focus miss, with a sharper diagnosis than the site's bug report guessed: pudl-windows took focus when a window's content arrived from its fetch, so a `/` pressed before a restoring window finished loading had the window steal focus back from the palette filter, which is why it depended on session state and never reproduced in tests that waited for network idle. A window now takes focus only if focus has not moved since it was asked for. The site verified the exact race (window fetches slowed to 1.2s, palette summoned mid-flight, focus checked before and after arrival) and the pin was a three-file sync with no site-side change. Also in 0.19.0: `docs/CONTRACT.md` (what a project may rely on, frozen at 1.0), the test suites in the PUDL repo running three engines in CI, and a menu filter that clears on every open. The 0.14.0 lesson stands confirmed twice now: what looked like a browser-timing mystery was an interaction between two of our own moving parts, and the report that pinned it came from `document.activeElement`, one console line from the person who could reproduce it.
 
+### D49. PUDL 0.36.0 and 0.37.0 pinned: tabs in the top bar, and a switcher that folds
+
+Both releases came from the site's classic top bar (2026-10-01). Paul found that a row of pills between the logo menu and the switcher gave no sign that its choices exclude one another. A tab whose current one opens into the page does, so PUDL added tabs to the top bar.
+
+- **The classic view's categories are PUDL's `nav.topbar-tabs`** (0.37.0), links between the logo menu and the switcher, the current one marked `aria-current` and opening into the page below. On a phone PUDL gives them the top bar's last row, where they scroll sideways, in place of the drop-down the site had planned. Wider than a phone, the site lets them shrink and scroll rather than wrap the bar, and the logo stands for the site's name below 1000px.
+- **The Window/Classic switcher carries `data-seg-menu`** (0.36.0), so on a phone it folds into one pop-up button labelled with the current view.
+- **The pills and the drop-down the site built the same day are gone.**
+
+The window view's list bar changed with them, at Paul's request: the button that clears every filter moved from beside the search box to the start of the chips, where it stays put as chips come and go and shows dimmed when there is nothing to clear, and the "clear" text link after the chips is gone, since a link reads as going somewhere and this is an action.
+
 ### D48. PUDL 0.35.1 pinned
 
 0.35.1 (2026-10-01) gives a window sized by its content a single hairline in place of the 5px frame band, which read as a border to drag, at Paul's request. A docked window's free edge now shows its grip at rest. Nothing on the site changed with it.
