@@ -411,11 +411,21 @@
                 if (choice === 'cancel' || choice == null) { return; }
                 if (choice === 'save' && !(await save())) { return; }
             }
+            /* The editor's text belongs to the tab in front. Closing another
+               tab leaves it there and only renumbers. Closing the tab in
+               front drops its text with it: active is cleared first, or
+               activate() would keep the closed file's text in whichever tab
+               slid into its place, and a save would write it there. */
+            var wasActive = active;
             tabs.splice(i, 1);
             if (!tabs.length) { active = -1; newTab(); return; }
-            active = Math.min(active, tabs.length - 1);
-            if (i < active) { active--; }
-            activate(Math.max(0, Math.min(i, tabs.length - 1)));
+            if (i !== wasActive) {
+                active = i < wasActive ? wasActive - 1 : wasActive;
+                renderTabs();
+                return;
+            }
+            active = -1;
+            activate(Math.min(i, tabs.length - 1));
         }
 
         /* === Saving ====================================================== */
