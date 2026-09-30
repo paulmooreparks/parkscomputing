@@ -17,6 +17,9 @@
 <section class="win @(Model.Active ? "active" : string.Empty)" data-win="@Model.Key"
          @(Model.Parent is null ? null : Html.Raw($"data-win-parent=\"{Model.Parent}\""))
          data-win-mode="@(Model.Mode ?? "floating")"
+         @(Model.SizeMode is null ? null : Html.Raw($"data-win-size=\"{Model.SizeMode}\""))
+         @(Model.MinSize is null ? null : Html.Raw($"data-win-min=\"{Model.MinSize}\""))
+         @(Model.MaxSize is null ? null : Html.Raw($"data-win-max=\"{Model.MaxSize}\""))
          role="dialog" aria-labelledby="win-@Model.Key-title"
          style="@style" @(Model.Minimized ? Html.Raw("hidden") : null)>
     <header class="win-head">

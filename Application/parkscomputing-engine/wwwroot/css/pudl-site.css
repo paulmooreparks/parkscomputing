@@ -66,12 +66,7 @@ body.desktop .site-header { position: static; flex: none; }
   background: var(--tb-chip);
   border-color: var(--tb-border);
   box-shadow: var(--tb-chip-shadow);
-}
-/* Workaround for a PUDL 0.34.0 bug (Architecture/pudl-bug-topbar-seg-link.md):
-   its rule for plain links on the topbar outranks the seg's own colour, so
-   the raised segment's words came out in the bar's pale foreground. */
-.topbar .view-seg a { color: var(--text); }
-/* On a narrow screen the bar's padding narrows, so the menu and the
+}/* On a narrow screen the bar's padding narrows, so the menu and the
    switcher sit at their edges with the room between them. */
 @media (max-width: 560px) {
   .topbar { padding-left: 10px; padding-right: 10px; }

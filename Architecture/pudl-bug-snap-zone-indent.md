@@ -1,5 +1,7 @@
 # PUDL bug: the snap picker's zones overlap in a window menu with ticked commands
 
+**Fixed in PUDL 0.35.0** (`pudl-adoption.md`, D47). What follows is the text as it was sent.
+
 From parkscomputing.com, 2026-10-01, found by Paul on the site's Editor window with PUDL 0.34.0.
 
 **What happens.** In the window menu of a window whose content offers a command that switches on and off (the Editor's "Show the files" and "Wrap lines"), the layout picker's zones spill past their thumbnails and overlap each other, so the picker can't be read. A window whose menu has no such command, such as the site's Terminal, draws the picker correctly.

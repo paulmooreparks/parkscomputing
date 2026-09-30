@@ -23,6 +23,24 @@ public class WindowViewModel {
         return (0.06, 0.05, w, h);
     }
 
+    /// <summary>A "w,h" size in whole pixels, or null when it does not parse.</summary>
+    public static string? PixelSize(string? s) {
+        var parts = (s ?? string.Empty).Split(',', System.StringSplitOptions.TrimEntries);
+        return parts.Length == 2 && int.TryParse(parts[0], out var w) && int.TryParse(parts[1], out var h) && w > 0 && h > 0
+            ? $"{w},{h}" : null;
+    }
+
+    /// <summary>How the window is sized, from a sitenav node (PUDL 0.35.0):
+    /// "content" when its content sizes it, otherwise null, the reader.</summary>
+    public static string? SizeOf(string? size) =>
+        string.Equals(size?.Trim(), "content", StringComparison.OrdinalIgnoreCase) ? "content" : null;
+
+    /// <summary>"content" for a window its content sizes; null for one the reader sizes.</summary>
+    public string? SizeMode { get; init; }
+    /// <summary>Limits on a window the reader sizes, "w,h" in pixels.</summary>
+    public string? MinSize { get; init; }
+    public string? MaxSize { get; init; }
+
     public required string Key { get; init; }
     public required string Title { get; init; }
     public required string BodyHtml { get; init; }

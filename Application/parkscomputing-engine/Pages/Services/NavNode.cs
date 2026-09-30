@@ -61,6 +61,20 @@ public class NavNode {
     [XferProperty("win")]
     public string? Win { get; set; }
 
+    /// <summary>"content" when the page's window takes its content's size
+    /// and follows it (PUDL 0.35.0), as a dialog does; win is then ignored.
+    /// Anything else, or nothing, leaves the reader sizing the window.</summary>
+    [XferProperty("size")]
+    public string? Size { get; set; }
+
+    /// <summary>The smallest and largest size, "w,h" in pixels, a window
+    /// the reader sizes may take, such as a terminal's usable grid.</summary>
+    [XferProperty("min")]
+    public string? Min { get; set; }
+
+    [XferProperty("max")]
+    public string? Max { get; set; }
+
     [XferProperty("frame")]
     public bool Frame { get; set; }
 

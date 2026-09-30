@@ -1,5 +1,7 @@
 # Proposal to PUDL: windows sized by their content
 
+**Shipped in PUDL 0.35.0** (`pudl-adoption.md`, D47). What follows is the text as it was sent.
+
 From parkscomputing.com, 2026-10-01. A PUDL window's size is a fraction of the layer, and nothing else. That suits a window whose content fills whatever it is given, such as a terminal or an editor. It does not suit an applet laid out at its own size, like a form or a tool with a fixed layout. On Paul's 4K monitor the site's Barcode Tool opens at 58% by 99% of the layer, which is several times the 560 pixels its content uses, and most of the window is empty. A smaller fraction would crop it on a laptop. The tool's height also changes with its settings (a layout with more fields, the guides turned on), so any fixed size has to allow for the largest case, and is too big the rest of the time.
 
 Paul's answer comes from Win32 (2026-10-01). There, a window either has a sizing border and the user sizes it, or it is a dialog that sizes itself to its template and resizes itself when its content changes, as a "Details >>" button does. The content decides which kind of window it wants.

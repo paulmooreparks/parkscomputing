@@ -76,7 +76,10 @@ public class WindowModel : PageModel {
             Tags = article.IsApplet ? Array.Empty<string>() : node?.Tags ?? Array.Empty<string>(),
             Created = article.IsApplet ? null : node?.Date,
             Updated = article.IsApplet ? null : node?.Updated,
-            X = shape?.X, Y = shape?.Y, W = shape?.W, H = shape?.H
+            X = shape?.X, Y = shape?.Y, W = shape?.W, H = shape?.H,
+            SizeMode = WindowViewModel.SizeOf(node?.Size),
+            MinSize = WindowViewModel.PixelSize(node?.Min),
+            MaxSize = WindowViewModel.PixelSize(node?.Max)
         };
         return Page();
     }

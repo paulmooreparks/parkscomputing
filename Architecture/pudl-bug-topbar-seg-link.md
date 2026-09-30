@@ -1,5 +1,7 @@
 # PUDL bug: a segmented control of links on the topbar takes the topbar's link colour
 
+**Fixed in PUDL 0.34.1** (`pudl-adoption.md`, D47). What follows is the text as it was sent.
+
 From parkscomputing.com, 2026-10-01, found adopting PUDL 0.34.0.
 
 **What happens.** The site's Window/Classic switcher is a `.seg` of links on the topbar, as PUDL allows for views that are addresses (aria-current marks the one shown). Since 0.34.0 the segment not chosen is a raised button, drawn light in the light theme, but its words come out in the topbar's pale `--tb-chrome-fg`, so "Classic" is close to invisible. The dark theme hides the problem because the pale words happen to suit a dark button.

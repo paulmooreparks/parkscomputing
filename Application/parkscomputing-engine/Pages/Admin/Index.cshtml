@@ -8,15 +8,17 @@
 
     // The tools, as windows made from the templates below. A numbered
     // terminal (terminal-2) is PUDL's copy of the terminal's template. They
-    // open floating; Settings can make new windows open maximized.
+    // open floating; Settings can make new windows open maximized. Settings
+    // is sized by its content, as a dialog is, and a terminal keeps a
+    // usable grid however small it is dragged (PUDL 0.35.0).
     var tools = new[] {
-        new WindowViewModel { Key = "terminal", Title = "Terminal", PageUrl = "/admin/terminal",
+        new WindowViewModel { Key = "terminal", Title = "Terminal", PageUrl = "/admin/terminal", MinSize = "420,220",
             BodyHtml = "<div data-applet=\"terminal\" role=\"application\" aria-label=\"Terminal\"></div>" },
         new WindowViewModel { Key = "editor", Title = "Editor", PageUrl = "/admin/editor",
             BodyHtml = "<div data-applet=\"editor\" role=\"application\" aria-label=\"Editor\"></div>" },
         new WindowViewModel { Key = "files", Title = "Files", PageUrl = "/admin/files",
             BodyHtml = "<div data-applet=\"files\" role=\"application\" aria-label=\"Files\"></div>" },
-        new WindowViewModel { Key = "settings", Title = "Settings", PageUrl = "/admin/settings",
+        new WindowViewModel { Key = "settings", Title = "Settings", PageUrl = "/admin/settings", SizeMode = "content",
             BodyHtml = "<div data-applet=\"settings\" aria-label=\"Settings\"></div>" }
     };
 }
