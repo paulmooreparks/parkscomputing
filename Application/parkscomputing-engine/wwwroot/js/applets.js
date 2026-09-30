@@ -49,6 +49,12 @@ window.pcTerminalCommands = ['/js/terminal-text.js'];
    holds one copy; raise its v on every change to the file. */
 window.pcSiteFsSrc = '/js/sitefs.js?v=2';
 
+/* The file browser Files and the editor share (js/filebrowser.js), with its
+   stylesheet; like the site filesystem, one copy a page, and a raised v on
+   every change to either. */
+window.pcFileBrowserSrc = '/js/filebrowser.js?v=2';
+window.pcFileBrowserCss = '/css/filebrowser.css?v=2';
+
 /* Where the terminal, Files and the editor have their pages: /page/ on the
    public site, and on the edit origin the admin workspace's, which its
    layout names in <meta name="pc-applet-pages">. */
@@ -75,7 +81,7 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: pcWorkspacePages + 'files',
-    ver: '8',
+    ver: '10',
     handles: { browse: { param: 'path' } }
 });
 
@@ -84,6 +90,6 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
-    ver: '6',
+    ver: '7',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } }
 });

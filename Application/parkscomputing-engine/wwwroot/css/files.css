@@ -1,7 +1,6 @@
-/* Files: the site's sandbox as folders and files. PUDL's own parts carry
-   it: a tree, a path bar, a grid, glyphs and a drop zone (PUDL 0.25.0),
-   and buttons, a menu, a dialog and chips. What is here is only the
-   applet's layout. */
+/* Files: the site's sandbox as folders and files. The browsing itself,
+   tree, path bar and list, is the shared file browser (css/filebrowser.css);
+   PUDL's own parts carry the rest. What is here is only Files' layout. */
 
 .pc-files {
   display: flex; flex-direction: column; gap: var(--space-2);
@@ -13,33 +12,9 @@
 .pc-files .fm-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .pc-files .fm-toolbar .icon-btn svg { width: 15px; height: 15px; }
 .pc-files .fm-toolbar .icon-btn .glyph { --glyph-size: 15px; }
-.pc-files .fm-path { min-width: 0; }
 .pc-files .fm-spacer { flex: 1; }
 .pc-files .fm-home-tools { display: inline-flex; gap: 6px; }
 .pc-files .fm-home-tools[hidden] { display: none; }
-
-/* === Body: the tree and the list ======================================== */
-.pc-files .fm-body {
-  flex: 1 1 auto; min-height: 0;
-  display: grid; grid-template-columns: minmax(170px, 28%) 1fr; gap: var(--space-2);
-}
-.pc-files .fm-tree-pane, .pc-files .fm-main {
-  min-height: 0; overflow: auto;
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-.pc-files .fm-tree-pane { padding: 4px 0; }
-.pc-files .fm-ti-label { overflow: hidden; text-overflow: ellipsis; }
-
-.pc-files .fm-list { width: 100%; margin: 0; border: 0; }
-.pc-files .fm-list th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
-.pc-files .fm-c-name { width: 55%; }
-.pc-files .fm-c-kind, .pc-files .fm-c-date, .pc-files .fm-c-size { color: var(--text-muted); white-space: nowrap; }
-.pc-files .fm-list th, .pc-files .fm-list td { font-size: var(--text-sm); line-height: 1.4; padding: 5px 10px; vertical-align: middle; }
-.pc-files .fm-cell { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.pc-files .fm-name { font-family: var(--mono); }
-.pc-files .fm-title { color: var(--text-muted); font-size: var(--text-xs); }
-.pc-files .fm-empty { margin: var(--space-4); color: var(--text-muted); }
 
 /* === Detail and status ================================================== */
 .pc-files .fm-detail {
@@ -52,20 +27,8 @@
 .pc-files .fm-d-tags { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px; }
 .pc-files .fm-status { margin: 0; min-height: 1.4em; color: var(--text-muted); }
 .pc-files .fm-status-error { color: var(--danger); }
-.pc-files .fm-failed { color: var(--text-muted); padding: var(--space-4); }
+.pc-files .fm-failed, .pc-files .fm-loading { color: var(--text-muted); padding: var(--space-4); }
 .pc-files .fm-dialog .dialog-body .form-input { width: 100%; }
-
-/* === Narrow: the tree gives way to the list ============================== */
-@container (max-width: 560px) {
-  .pc-files .fm-body { grid-template-columns: 1fr; }
-  .pc-files .fm-tree-pane { display: none; }
-  .pc-files .fm-c-kind, .pc-files .fm-c-date { display: none; }
-}
-@media (max-width: 640px) {
-  .pc-files .fm-body { grid-template-columns: 1fr; }
-  .pc-files .fm-tree-pane { display: none; }
-  .pc-files .fm-c-kind, .pc-files .fm-c-date { display: none; }
-}
 
 /* === Filling a window ==================================================== */
 .pc-files-fill { flex: 1 1 auto; height: auto; min-height: 0; container-type: inline-size; }

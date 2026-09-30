@@ -1,0 +1,40 @@
+/* The file browser (js/filebrowser.js), shared by Files and the Editor:
+   PUDL's tree, path bar and grid carry it, and this is only its layout.
+   The tree and the list are flat things to read and choose from. */
+
+.fm-path { min-width: 0; }
+
+.fm-body {
+  flex: 1 1 auto; min-height: 0;
+  display: grid; grid-template-columns: minmax(170px, 28%) 1fr; gap: var(--space-2);
+}
+.fm-body.fm-body-tree, .fm-body.fm-body-list { grid-template-columns: 1fr; }
+.fm-tree-pane, .fm-main {
+  min-height: 0; overflow: auto;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.fm-tree-pane { padding: 4px 0; }
+.fm-ti-label { overflow: hidden; text-overflow: ellipsis; }
+
+.fm-list { width: 100%; margin: 0; border: 0; }
+.fm-list th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+.fm-c-name { width: 55%; }
+.fm-c-kind, .fm-c-date, .fm-c-size { color: var(--text-muted); white-space: nowrap; }
+.fm-list th, .fm-list td { font-size: var(--text-sm); line-height: 1.4; padding: 5px 10px; vertical-align: middle; }
+.fm-cell { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fm-name { font-family: var(--mono); }
+.fm-title { color: var(--text-muted); font-size: var(--text-xs); }
+.fm-empty { margin: var(--space-4); color: var(--text-muted); }
+
+/* Narrow: the tree gives way to the list. */
+@container (max-width: 560px) {
+  .fm-body { grid-template-columns: 1fr; }
+  .fm-body:not(.fm-body-tree) .fm-tree-pane { display: none; }
+  .fm-c-kind, .fm-c-date { display: none; }
+}
+@media (max-width: 640px) {
+  .fm-body { grid-template-columns: 1fr; }
+  .fm-body:not(.fm-body-tree) .fm-tree-pane { display: none; }
+  .fm-c-kind, .fm-c-date { display: none; }
+}

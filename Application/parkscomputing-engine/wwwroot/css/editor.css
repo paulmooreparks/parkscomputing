@@ -49,6 +49,24 @@
 .pc-editor .ed-dialog .form-input { width: 100%; }
 .pc-editor .ed-dialog .dialog-actions { gap: 8px; }
 
+/* The Explorer: the shared file browser's tree beside the text. A narrow
+   screen has no room for it, so it gives way there whatever was chosen. */
+.pc-editor .ed-explorer { flex: 0 0 240px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.pc-editor .ed-explorer[hidden] { display: none; }
+.pc-editor .ed-explorer .fm-body { height: 100%; }
+@media (max-width: 700px) { .pc-editor .ed-explorer { display: none; } }
+@media (max-width: 700px) { .pc-editor [data-action="explorer"] { display: none; } }
+
+/* Open and Save as: the browser in a dialog, with the field under it. */
+.pc-editor .ed-picker { width: min(900px, 94vw); max-width: none; }
+.pc-editor .ed-picker-body { display: flex; flex-direction: column; gap: var(--space-2); }
+.pc-editor .ed-picker-bar { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pc-editor .ed-picker-bar .icon-btn svg { width: 15px; height: 15px; }
+.pc-editor .ed-picker-browse { height: min(55vh, 520px); display: flex; flex-direction: column; container-type: inline-size; }
+.pc-editor .ed-picker-field { margin: 0; }
+.pc-editor .ed-picker .form-input { width: 100%; }
+.pc-editor .ed-picker .dialog-actions { gap: 8px; }
+
 /* === Filling a window ==================================================== */
 .pc-editor-fill { flex: 1 1 auto; height: auto; min-height: 0; }
 .win-body:has(.pc-editor-fill) { display: flex; flex-direction: column; overflow: hidden; }

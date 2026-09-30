@@ -38,6 +38,18 @@ Editor is an applet at `/page/editor` that edits the reader's files.
 - **Checking.** `~/barcode-layouts.json` is checked as the reader types, with the barcode engine's own checks, and it cannot be saved while it fails them.
 - **Integration.** Files opens a reader's file in the Editor. The terminal gains `edit -g <file>` to open the graphical editor instead of nano, and its `open` command opens a reader's file in the Editor where it used to refuse.
 
+## The shared file browser: `js/filebrowser.js`
+
+Files and the Editor browse with one module, `window.pcFileBrowser`, with its stylesheet `css/filebrowser.css`. It is the same code on the public site and on the edit origin; there it browses `/wwwroot` and the admin's `/home/<name>` because sitefs mounts them, and it needs no knowledge of the mount beyond what sitefs tells it. `js/applets.js` names both addresses with their versions, as it does for sitefs.
+
+The module draws the folder tree, the path bar and the list of a folder's contents from PUDL's tree and grid, follows every change the filesystem reports, and keeps the current folder and the selection by path across a reload. It moves about and shows things; what opening an entry means is left to its host, through callbacks for opening, selecting, navigating, redrawing, keys and messages. A host lays out the parts it wants with the module's markup helpers, so a host can use the tree alone. Dragging entries onto folders and dropping files from the computer are options a host turns on; only Files does.
+
+It has three hosts:
+
+- **Files** builds its toolbar, action menu, detail line and dialogs around it, and keeps everything that changes `~`.
+- **The Editor's Open and Save as dialog** puts the whole browser in a dialog with a field under it. Open fills the field with the chosen file's path, and a double-click or Enter opens it; a typed path works as well. Save as starts in the folder of the file in front (or in `~` for a read-only page), fills the field with its name, and saves into the folder shown, refusing folders it cannot write. The old text prompt with a list of suggestions is gone.
+- **The Editor's Explorer pane** is the tree alone, with files in it, beside the text. A click on a folder opens or closes it in place, a click on a file opens it in a tab, and a file the Editor cannot show opens on the site in a new tab. The pane marks the file in front and opens its way to it. A toolbar button shows and hides it, the choice is kept per browser, it shows by default on a wide screen, and a narrow screen has no room for it.
+
 ## Handlers: how applets ask each other for things
 
 Files used to call the Editor and the terminal by name, the terminal did the same with the Editor, and each carried its own copy of the rules for reaching a running one. Handlers replace that with declarations. An applet says what requests it can serve, and a caller asks for the request without knowing which applet will serve it. The idea is the one the Web App Manifest uses for `file_handlers`, scaled down to one site.
@@ -70,3 +82,4 @@ Each instance keeps its own continuity, keyed by `detail.instance` on `pudl:appl
 4. Editor. Done.
 5. The links between the three. Done: Files opens files in the Editor (an open editor takes the file as a new tab), "Run in the terminal" hands the terminal a `run` it only pre-fills, and the terminal has `edit -g` and an `open` that sends a reader's file to the Editor.
 6. Handlers, replacing the direct calls of step 5; numbered terminal windows; the barcode tool following its layouts file. Done. The terminal also gained `files [dir]`, and on its own page it now prefers the folder in its address over the one it kept, which it had the wrong way round.
+7. The shared file browser, taken out of Files and used again for the Editor's Open and Save as dialog and its Explorer pane, on both origins. Done.

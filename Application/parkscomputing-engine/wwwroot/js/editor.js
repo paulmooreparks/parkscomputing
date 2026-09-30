@@ -38,6 +38,24 @@
         }
         return siteFsReady;
     }
+    var browserReady = null;
+    function loadBrowser() {
+        if (window.pcFileBrowser) { return Promise.resolve(window.pcFileBrowser); }
+        if (!browserReady) {
+            browserReady = loadScript(window.pcFileBrowserSrc || beside('filebrowser.js'))
+                .then(function () { return window.pcFileBrowser; })
+                .catch(function (err) { browserReady = null; throw err; });
+        }
+        return browserReady;
+    }
+
+    /* Whether the Explorer pane shows, kept per browser; with no choice
+       made, it shows on a wide screen. */
+    var EXPLORER_KEY = 'pc-editor-explorer';
+    function explorerWanted() {
+        try { var v = localStorage.getItem(EXPLORER_KEY); if (v != null) { return v === '1'; } } catch (err) { }
+        return window.matchMedia('(min-width: 900px)').matches;
+    }
 
     function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
@@ -94,6 +112,7 @@
         if (opts.fit === 'fill') { root.classList.add('pc-editor-fill'); }
         root.innerHTML =
             '<div class="ed-toolbar" role="toolbar" aria-label="Editor">' +
+              '<button type="button" class="icon-btn" data-action="explorer" aria-label="Show the files" title="Show the files" aria-pressed="false"><span class="glyph" style="--glyph: var(--glyph-folder)" aria-hidden="true"></span></button>' +
               '<button type="button" class="btn btn-sm" data-action="new">New</button>' +
               '<button type="button" class="btn btn-sm" data-action="open">Open&#8230;</button>' +
               '<button type="button" class="btn btn-sm btn-primary" data-action="save">Save</button>' +
@@ -113,6 +132,9 @@
             '</div>' +
             '<div class="tablist doc-tabs ed-tabs" role="tablist" aria-label="Open files" data-role="tabs"></div>' +
             '<div class="ed-panes" data-role="panes">' +
+              /* The Explorer: the shared file browser's tree, files and all
+                 (js/filebrowser.js), filled once the filesystem loads. */
+              '<nav class="ed-explorer" data-role="explorer" aria-label="Files" hidden></nav>' +
               '<div class="code-surface ed-surface" data-role="surface"></div>' +
               /* The preview is the public site's own page for the draft, so
                  an article's scripts run there and never here (A11). */
@@ -127,11 +149,34 @@
                 '<h3 class="dialog-title" id="ed-dlg-title-' + n + '" data-role="dialog-title"></h3>' +
                 '<div class="dialog-body">' +
                   '<p data-role="dialog-text"></p>' +
-                  '<input class="form-input" data-role="dialog-input" list="ed-paths-' + n + '" autocomplete="off" spellcheck="false" />' +
-                  '<datalist id="ed-paths-' + n + '" data-role="paths"></datalist>' +
+                  '<input class="form-input" data-role="dialog-input" autocomplete="off" spellcheck="false" />' +
                   '<p class="form-error" data-role="dialog-error" hidden></p>' +
                 '</div>' +
                 '<div class="dialog-actions" data-role="dialog-actions"></div>' +
+              '</form>' +
+            '</dialog>' +
+            /* Open and Save as: the shared file browser in a dialog, with a
+               field for the path or the name. */
+            '<dialog class="dialog ed-picker" data-role="picker" aria-labelledby="ed-pick-title-' + n + '">' +
+              '<form method="dialog" data-role="picker-form">' +
+                '<h3 class="dialog-title" id="ed-pick-title-' + n + '" data-role="picker-title"></h3>' +
+                '<div class="dialog-body ed-picker-body">' +
+                  '<div class="ed-picker-bar">' +
+                    '<button type="button" class="icon-btn" data-pick="up" aria-label="Up one folder" title="Up one folder"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3.5"/><path d="M4 7.5l4-4 4 4"/></svg></button>' +
+                    '<button type="button" class="icon-btn" data-pick="home" aria-label="Your home directory" title="Your home directory"><span class="glyph" style="--glyph: var(--glyph-home)" aria-hidden="true"></span></button>' +
+                    '<span data-role="picker-path"></span>' +
+                  '</div>' +
+                  '<div class="ed-picker-browse" data-role="picker-browse"></div>' +
+                  '<div class="form-group ed-picker-field">' +
+                    '<label class="form-label" for="ed-pick-input-' + n + '" data-role="picker-label"></label>' +
+                    '<input class="form-input mono" id="ed-pick-input-' + n + '" data-role="picker-input" autocomplete="off" spellcheck="false" />' +
+                  '</div>' +
+                  '<p class="form-error" data-role="picker-error" hidden></p>' +
+                '</div>' +
+                '<div class="dialog-actions">' +
+                  '<button type="button" class="btn" data-pick="cancel">Cancel</button>' +
+                  '<button type="submit" class="btn btn-primary" data-role="picker-ok"></button>' +
+                '</div>' +
               '</form>' +
             '</dialog>';
 
@@ -143,8 +188,13 @@
             readonly: q('[data-role="readonly"]'), wrap: q('[data-role="wrap"]'),
             dialog: q('[data-role="dialog"]'), dlgForm: q('[data-role="dialog-form"]'), dlgTitle: q('[data-role="dialog-title"]'),
             dlgText: q('[data-role="dialog-text"]'), dlgInput: q('[data-role="dialog-input"]'), dlgError: q('[data-role="dialog-error"]'),
-            dlgActions: q('[data-role="dialog-actions"]'), paths: q('[data-role="paths"]')
+            dlgActions: q('[data-role="dialog-actions"]'),
+            explorer: q('[data-role="explorer"]'), explorerBtn: q('[data-action="explorer"]'),
+            picker: q('[data-role="picker"]'), pickForm: q('[data-role="picker-form"]'), pickTitle: q('[data-role="picker-title"]'),
+            pickPath: q('[data-role="picker-path"]'), pickBrowse: q('[data-role="picker-browse"]'), pickLabel: q('[data-role="picker-label"]'),
+            pickInput: q('[data-role="picker-input"]'), pickError: q('[data-role="picker-error"]'), pickOk: q('[data-role="picker-ok"]')
         };
+        var FB = null, explorer = null, picker = null;
 
         var CM = null, F = null, view = null, destroyed = false, unsubscribe = null;
         var tabs = [], active = -1, untitled = 0;
@@ -299,6 +349,7 @@
             renderTabs();
             showPos();
             announce();
+            markExplorer();
             say(t.external ? 'This file was changed somewhere else since you opened it.' : '', !!t.external);
         }
 
@@ -400,6 +451,7 @@
             }
             renderTabs();
             announce();
+            markExplorer();
             say('Saved ' + display + '.');
             return true;
         }
@@ -407,19 +459,12 @@
         async function saveAs() {
             var t = current();
             if (!t) { return false; }
-            var suggestion = t.path && !t.readOnly ? t.path : '~/' + (t.readOnly ? t.name + (/\.[a-z0-9]+$/i.test(t.name) ? '' : '.txt') : t.name);
-            var path = await ask(t.readOnly ? 'Save a copy to ~' : 'Save as', 'Where in your home directory (~)? For example ~/notes/today.md', suggestion,
-                [['cancel', 'Cancel'], ['ok', 'Save', true]], function (v) {
-                    if (!v) { return 'Give it a path.'; }
-                    var sp = F.splitPath(v), dir = F.resolve(F.home(), sp.dir);
-                    if (!dir || !dir.children) { return 'There\'s no folder at ' + sp.dir + '.'; }
-                    if (!dir.home) { return 'Files can only be saved in your home directory (~).'; }
-                    if (!F.validName(sp.base)) { return sp.base + ' isn\'t a valid file name.'; }
-                    var existing = F.childNamed(dir, sp.base);
-                    if (existing && existing.children) { return v + ' is a folder.'; }
-                    return null;
-                }, true);
-            if (!path || path === 'cancel') { return false; }
+            /* A file of yours saves beside itself; anything else starts in ~. */
+            var node = t.path ? F.resolve(F.home(), t.path) : null, r = node ? F.realOf(node) : null;
+            var startDir = r && r.home && !t.readOnly ? F.displayPath(r.parent) : '~';
+            var name = t.readOnly ? t.name + (/\.[a-z0-9]+$/i.test(t.name) ? '' : '.txt') : t.name;
+            var path = await pick('save', t.readOnly ? 'Save a copy' : 'Save as', startDir, name);
+            if (!path) { return false; }
             var existing = F.resolve(F.home(), path);
             if (existing && F.displayPath(F.realOf(existing)) !== t.path) {
                 var ok = await ask('Replace ' + F.realOf(existing).name + '?', path + ' already exists. Replace it with this text?', null,
@@ -472,26 +517,139 @@
             });
         }
 
-        /* Every file in ~, for the Open dialog's suggestions. */
-        function homeFiles() {
-            var out = [];
-            (function walk(d) {
-                (d.children || []).forEach(function (c) { if (c.children) { walk(c); } else { out.push(F.displayPath(c)); } });
-            })(F.home());
-            return out;
+        async function openDialog() {
+            var t = current(), node = t && t.path ? F.resolve(F.home(), t.path) : null;
+            /* It opens beside the file in front, or in ~. */
+            var path = await pick('open', 'Open', node ? F.displayPath(F.realOf(node).parent) : '~', '');
+            if (path) { await openPath(path); }
         }
 
-        async function openDialog() {
-            el.paths.innerHTML = homeFiles().map(function (p) { return '<option value="' + esc(p) + '"></option>'; }).join('');
-            var path = await ask('Open', 'A file in your home directory, such as ~/README, or any page of the site, such as /articles/coincidences, which opens read-only.', '~/',
-                [['cancel', 'Cancel'], ['ok', 'Open', true]], function (v) {
-                    var node = v ? F.resolve(F.home(), v) : null;
-                    if (!node) { return 'There\'s nothing at ' + (v || 'that path') + '.'; }
-                    if (node.children) { return v + ' is a folder.'; }
-                    if (F.realOf(node).kind === 'link' || F.realOf(node).kind === 'app') { return v + ' isn\'t a file the editor can open.'; }
-                    return null;
-                }, true);
-            if (path && path !== 'cancel') { await openPath(path); }
+        /* === Open and Save as: the shared file browser in a dialog ========= */
+
+        var pickState = null;
+
+        function pickSay(msg) { el.pickError.textContent = msg || ''; el.pickError.hidden = !msg; }
+
+        /* Resolves to the path chosen, or null. Open wants a file the editor
+           can show; Save as wants a name in a folder that can be written. */
+        function pick(mode, title, startDir, name) {
+            return new Promise(function (done) {
+                var save = mode === 'save';
+                pickState = { save: save, done: done };
+                el.pickTitle.textContent = title;
+                el.pickLabel.textContent = save ? 'File name' : 'Path';
+                el.pickOk.textContent = save ? 'Save' : 'Open';
+                el.pickInput.value = save ? (name || '') : '';
+                el.pickInput.placeholder = save ? '' : 'Choose a file, or type a path such as ~/README';
+                pickSay('');
+                if (!picker) {
+                    el.pickPath.innerHTML = FB.markup.pathBar();
+                    el.pickBrowse.innerHTML = FB.markup.body({});
+                    picker = FB.create(el.picker, F, {
+                        start: startDir,
+                        onOpen: function (node) {
+                            if (!pickState) { return; }
+                            el.pickInput.value = pickState.save ? node.name : F.displayPath(F.realOf(node));
+                            pickSubmit();
+                        },
+                        onSelect: function (node) {
+                            if (!pickState || !node || node.children) { return; }
+                            el.pickInput.value = pickState.save ? node.name : F.displayPath(F.realOf(node));
+                        },
+                        say: pickSay
+                    });
+                } else if (!picker.goPath(startDir)) {
+                    picker.go(F.home());
+                }
+                pickSay('');
+                el.picker.showModal();
+                if (save) { el.pickInput.focus(); el.pickInput.select(); } else { picker.focusList(); }
+            });
+        }
+
+        function pickFinish(value) {
+            var st = pickState;
+            if (!st) { return; }
+            pickState = null;
+            if (el.picker.open) { el.picker.close(); }
+            st.done(value);
+        }
+
+        function pickSubmit() {
+            if (!pickState) { return; }
+            var v = el.pickInput.value.trim(), dir = picker.cwd();
+            if (!pickState.save) {
+                var sel = picker.selected();
+                var node = v ? F.resolve(dir, v) : (sel && !sel.children ? sel : null);
+                if (!node) { pickSay(v ? 'There\'s nothing at ' + v + '.' : 'Choose a file.'); return; }
+                if (node.children) { picker.go(node); el.pickInput.value = ''; return; }
+                var r = F.realOf(node);
+                if (r.kind === 'link' || r.kind === 'app' || !F.isText(r)) { pickSay(node.name + ' isn\'t a file the editor can open.'); return; }
+                pickFinish(F.displayPath(r));
+                return;
+            }
+            if (!v) { pickSay('Give it a name.'); return; }
+            var target = dir, base = v;
+            if (v.indexOf('/') >= 0) {
+                var sp = F.splitPath(v);
+                target = F.resolve(dir, sp.dir);
+                base = sp.base;
+                if (!target || !target.children) { pickSay('There\'s no folder at ' + sp.dir + '.'); return; }
+            }
+            target = F.realOf(target);
+            if (!target.home) { pickSay('Files can only be saved in your home directory (~)' + (F.mounted ? ' or under /wwwroot' : '') + '.'); return; }
+            if (!F.validName(base)) { pickSay(base + ' isn\'t a valid file name.'); return; }
+            var existing = F.childNamed(target, base);
+            if (existing && existing.children) { pickSay(base + ' is a folder.'); return; }
+            pickFinish(F.displayPath(target).replace(/\/$/, '') + '/' + base);
+        }
+
+        el.pickForm.addEventListener('submit', function (e) { e.preventDefault(); pickSubmit(); });
+        el.picker.addEventListener('close', function () { pickFinish(null); });
+        el.picker.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-pick]');
+            if (!b) { return; }
+            var what = b.getAttribute('data-pick');
+            if (what === 'cancel') { pickFinish(null); }
+            else if (what === 'up') { picker.up(); }
+            else if (what === 'home') { picker.go(F.home()); }
+        });
+
+        /* === The Explorer pane ============================================ */
+
+        function setupExplorer() {
+            el.explorer.innerHTML = FB.markup.body({ list: false, treeLabel: 'Files' });
+            explorer = FB.create(el.explorer, F, {
+                treeFiles: true,
+                toggleFolders: true,
+                onOpen: function (node) {
+                    var r = F.realOf(node);
+                    if (r.kind === 'link') { window.open(r.url, '_blank', 'noopener'); return; }
+                    if (r.kind === 'app' || !F.isText(r)) {
+                        var url = F.publicUrl(r);
+                        if (url) { window.open(url, '_blank', 'noopener'); } else { say(node.name + ' isn\'t a file the editor can open.', true); }
+                        return;
+                    }
+                    openPath(F.displayPath(r));
+                },
+                say: function (m, isError) { if (m) { say(m, isError); } }
+            });
+            showExplorer(explorerWanted());
+            markExplorer();
+        }
+
+        function showExplorer(on) {
+            el.explorer.hidden = !on;
+            el.explorerBtn.setAttribute('aria-pressed', String(on));
+            el.explorerBtn.setAttribute('aria-label', on ? 'Hide the files' : 'Show the files');
+            el.explorerBtn.title = on ? 'Hide the files' : 'Show the files';
+        }
+
+        /* The Explorer marks the file in front and opens its way to it. */
+        function markExplorer() {
+            if (!explorer) { return; }
+            var t = current(), node = t && t.path ? F.resolve(F.home(), t.path) : null;
+            explorer.markCurrent(node ? F.pathOf(F.realOf(node)) : null);
         }
 
         /* === Preview (edit origin) ======================================== */
@@ -636,6 +794,13 @@
                     break;
                 }
                 case 'preview': preview(); break;
+                case 'explorer': {
+                    if (!explorer) { break; }
+                    var on = el.explorer.hidden;
+                    showExplorer(on);
+                    try { localStorage.setItem(EXPLORER_KEY, on ? '1' : '0'); } catch (err) { }
+                    break;
+                }
             }
         });
         el.wrap.addEventListener('change', function () {
@@ -644,9 +809,11 @@
 
         /* === Start ======================================================== */
 
-        var boot = Promise.all([loadCodeMirror(), loadSiteFs().then(function (api) { F = api; return F.load(); })]).then(async function (res) {
+        var boot = Promise.all([loadCodeMirror(), loadSiteFs().then(function (api) { F = api; return F.load(); }), loadBrowser()]).then(async function (res) {
             if (destroyed) { return; }
             CM = res[0];
+            FB = res[2];
+            setupExplorer();
             wrapComp = new CM.Compartment(); langComp = new CM.Compartment(); lintComp = new CM.Compartment(); roComp = new CM.Compartment();
             view = new CM.EditorView({ parent: el.surface });
             unsubscribe = F.onChange(onFsChange);
@@ -669,6 +836,9 @@
                 window.removeEventListener('beforeunload', onBeforeUnload);
                 if (win) { win.removeEventListener('pudl:window-closing', onWindowClosing); }
                 if (el.dialog.open) { el.dialog.close(); }
+                if (el.picker.open) { el.picker.close(); }
+                if (explorer) { explorer.destroy(); }
+                if (picker) { picker.destroy(); }
                 if (view) { view.destroy(); }
             },
             ready: boot

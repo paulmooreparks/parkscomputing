@@ -1,0 +1,413 @@
+/* The file browser: the folder tree, the path bar and the list of a
+   folder's contents, over js/sitefs.js (Architecture/files-editor-design.md).
+   Files, the Editor's Open and Save as dialog, and the Editor's Explorer
+   pane all use this one module, on the public site and the edit origin
+   alike, so browsing works the same everywhere. It shows and moves about;
+   what opening an entry means is its host's business.
+
+     var b = pcFileBrowser.create(element, F, options);
+
+   element holds the parts to fill, written with pcFileBrowser.markup:
+   pathBar() and body({ tree, list, drop, hint }). Any part may be left out;
+   the Explorer pane is a tree alone. Options, all optional:
+
+     start        the folder to open at
+     linkFor(n)   a folder's own address, for its links (default: #)
+     addressOf(n) any other entry's address, for its row's link
+     treeFiles    the tree shows files as well as folders
+     toggleFolders  a click on a folder in the tree opens or closes it
+                  instead of going there (the Explorer pane)
+     draggable    entries in ~ can be dragged onto folders there to move them
+     onUpload(files)  files dropped from the computer onto the list, in ~
+     onOpen(node) an entry that isn't a folder is opened
+     onSelect(node)  the selection in the list changed (node may be null)
+     onNavigate(dir) the current folder changed
+     onRender()   after every redraw
+     onKey(e, node)  a key on a row the browser doesn't handle; true if taken
+     say(msg, isError)  a message for the host to show
+
+   The browser follows every change to the filesystem by itself. */
+(function () {
+    'use strict';
+    if (window.pcFileBrowser) { return; }
+
+    /* Its stylesheet comes with it, from the address js/applets.js names. */
+    if (!document.querySelector('link[data-fb-css]')) {
+        var css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = window.pcFileBrowserCss || '/css/filebrowser.css';
+        css.setAttribute('data-fb-css', '');
+        document.head.appendChild(css);
+    }
+
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function fmtDate(d) { return d && !isNaN(d) ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''; }
+    function fmtSize(n) { return n == null ? '' : n < 1024 ? n + ' B' : n < 1024 * 1024 ? (n / 1024).toFixed(1) + ' KB' : (n / 1024 / 1024).toFixed(1) + ' MB'; }
+
+    /* PUDL's glyph for each kind of entry. The shape says the kind, which
+       the list also names in words in its own column. */
+    var GLYPHS = { dir: 'folder', page: 'document', app: 'app', script: 'script', link: 'link', file: 'file', home: 'home' };
+    var KIND_NAMES = { dir: 'Folder', page: 'Page', app: 'Applet', script: 'Script', link: 'Link', file: 'File' };
+    function glyph(kind) {
+        return '<span class="glyph" style="--glyph: var(--glyph-' + (GLYPHS[kind] || 'file') + ')" aria-hidden="true"></span>';
+    }
+
+    var markup = {
+        pathBar: function () { return '<nav class="path mono fm-path" data-fb="crumbs" aria-label="Location"></nav>'; },
+        body: function (o) {
+            o = o || {};
+            var tree = o.tree !== false, list = o.list !== false;
+            return '<div class="fm-body' + (list ? '' : ' fm-body-tree') + (tree ? '' : ' fm-body-list') + '">' +
+                (tree ? '<div class="fm-tree-pane"><ul class="tree fm-tree" data-fb="tree" aria-label="' + esc(o.treeLabel || 'Folders') + '"></ul></div>' : '') +
+                (list
+                    ? '<div class="fm-main' + (o.drop ? ' drop-zone' : '') + '" data-fb="main">' +
+                        '<table class="data-table fm-list" data-fb="list" role="grid" aria-label="Contents">' +
+                          '<thead><tr><th scope="col" class="fm-c-name">Name</th><th scope="col" class="fm-c-kind">Kind</th><th scope="col" class="fm-c-date">Date</th><th scope="col" class="fm-c-size num">Size</th></tr></thead>' +
+                          '<tbody data-fb="rows"></tbody>' +
+                        '</table>' +
+                        '<p class="fm-empty" data-fb="empty" hidden></p>' +
+                        (o.drop ? '<p class="drop-hint">' + esc(o.hint || 'Drop files here to upload them') + '</p>' : '') +
+                      '</div>'
+                    : '') +
+                '</div>';
+        }
+    };
+
+    function create(root, F, o) {
+        o = o || {};
+        var q = function (sel) { return root.querySelector(sel); };
+        var el = { crumbs: q('[data-fb="crumbs"]'), tree: q('[data-fb="tree"]'), list: q('[data-fb="list"]'), rows: q('[data-fb="rows"]'), empty: q('[data-fb="empty"]'), main: q('[data-fb="main"]') };
+        var cwd = null, selected = null, expanded = {}, currentPath = null, destroyed = false;
+        var say = o.say || function () { };
+        var linkFor = o.linkFor || function () { return '#'; };
+
+        function inHome(node) { return !!F.realOf(node).home; }
+
+        /* === Moving about ================================================ */
+
+        function go(node, keepStatus) {
+            if (!node || !node.children) { return; }
+            cwd = node;
+            selected = null;
+            for (var x = node; x; x = x.parent) { expanded[F.pathOf(x)] = true; }
+            if (!keepStatus) { say(''); }
+            render();
+            if (o.onNavigate) { o.onNavigate(cwd); }
+        }
+
+        function goPath(path) {
+            var node = F.resolve(null, path);
+            if (node && node.children) { go(node); return true; }
+            say(path + ': no such folder', true);
+            return false;
+        }
+
+        /* After a change, the current folder and the selection are found
+           again by path, since a reload replaces the nodes it covers. */
+        function refresh() {
+            if (!cwd) { return; }
+            var path = F.pathOf(cwd), sel = selected ? selected.name : null;
+            var node = F.resolve(null, path);
+            while (!node && path !== '/') { path = path.slice(0, path.lastIndexOf('/')) || '/'; node = F.resolve(null, path); }
+            cwd = node || F.root();
+            selected = sel ? F.childNamed(cwd, sel) : null;
+            render();
+        }
+
+        /* === Drawing ===================================================== */
+
+        function render() {
+            if (el.crumbs) { renderCrumbs(); }
+            if (el.tree) { renderTree(); }
+            if (el.rows) { renderList(); }
+            if (o.onRender) { o.onRender(); }
+        }
+
+        /* PUDL's path bar: the folders above this one, each an address. */
+        function renderCrumbs() {
+            var chain = [];
+            for (var x = cwd; x; x = x.parent) { chain.unshift(x); }
+            var h = chain.indexOf(F.home()), start = h >= 0 ? h : 0, html = '';
+            for (var i = start; i < chain.length; i++) {
+                var c = chain[i], label = i === start && h >= 0 ? '~' : (c.parent ? c.name : 'site');
+                html += '<li>' + (i === chain.length - 1 ? '<span aria-current="location">' + esc(label) + '</span>'
+                    : '<a href="' + esc(linkFor(c)) + '" data-path="' + esc(F.pathOf(c)) + '">' + esc(label) + '</a>') + '</li>';
+            }
+            el.crumbs.innerHTML = '<ol>' + html + '</ol>';
+        }
+
+        /* PUDL's tree (pudl-tree.js): nested lists of links. A closed
+           folder's branch is drawn the first time it opens. The tree marks
+           the current folder, or with treeFiles the current file, which the
+           host names with markCurrent. */
+        function kidsOf(node) {
+            var kids = node.children || [];
+            var dirs = kids.filter(function (c) { return c.children; });
+            return o.treeFiles ? dirs.concat(kids.filter(function (c) { return !c.children; })) : dirs;
+        }
+        function treeNode(node, seen) {
+            var path = F.pathOf(node), kids = kidsOf(node);
+            if (!node.children) {
+                var kind = F.kindOf(node);
+                return '<li><a href="' + esc((o.addressOf && o.addressOf(node)) || '#') + '" data-path="' + esc(path) + '" data-file' +
+                    (path === currentPath ? ' aria-current="location"' : '') + '>' + glyph(kind) + '<span class="fm-ti-label">' + esc(node.name) + '</span></a></li>';
+            }
+            var open = !!expanded[path];
+            /* ~ shows twice, as its own root and under the site; only its
+               first appearance is marked. */
+            var current = !seen[path] && (currentPath != null ? path === currentPath : node === cwd);
+            seen[path] = true;
+            var label = !node.parent ? 'Site' : node === F.home() ? 'Home (~)' : node.name;
+            return '<li><a href="' + esc(linkFor(node)) + '" data-path="' + esc(path) + '"' +
+                (kids.length ? ' aria-expanded="' + open + '"' : '') + (current ? ' aria-current="location"' : '') + '>' +
+                glyph(node === F.home() ? 'home' : 'dir') + '<span class="fm-ti-label">' + esc(label) + '</span></a>' +
+                (kids.length && open ? branch(kids, seen) : '') + '</li>';
+        }
+        function branch(kids, seen) { return '<ul>' + kids.map(function (d) { return treeNode(d, seen); }).join('') + '</ul>'; }
+
+        function renderTree() {
+            var focusPath = document.activeElement && el.tree.contains(document.activeElement) ? document.activeElement.getAttribute('data-path') : null;
+            var seen = {};
+            /* The home directory is a root of its own, first, since it is
+               where the changes happen; the site follows. */
+            el.tree.innerHTML = treeNode(F.home(), seen) + treeNode(F.root(), seen);
+            if (window.pudlTree) { window.pudlTree.enhance(el.tree); }
+            if (focusPath) {
+                var f = el.tree.querySelector('a[data-path="' + CSS.escape(focusPath) + '"]');
+                if (f) { el.tree.querySelectorAll('a[tabindex="0"]').forEach(function (a) { a.tabIndex = -1; }); f.tabIndex = 0; f.focus(); }
+            }
+        }
+
+        function onToggle(e) {
+            var a = e.target, path = a.getAttribute('data-path');
+            expanded[path] = !!(e.detail && e.detail.open);
+            var drawn = a.nextElementSibling && a.nextElementSibling.tagName === 'UL';
+            if (!expanded[path] || drawn) { return; }
+            var node = F.resolve(null, path);
+            a.insertAdjacentHTML('afterend', branch(node ? kidsOf(node) : [], {}));
+            window.pudlTree.enhance(el.tree);
+        }
+
+        function entries() {
+            var kids = (cwd.children || []).slice();
+            /* Folders first; within each, the order the site gives, which
+               for articles is newest first. */
+            return kids.filter(function (c) { return c.children; }).concat(kids.filter(function (c) { return !c.children; }));
+        }
+
+        /* PUDL's grid (pudl-grid.js): the rows are choices, selection
+           follows focus, and Enter or a double-click opens a row. A row
+           whose entry has an address of its own links to it; the rest open
+           through pudl:row-open. */
+        function renderList() {
+            var list = entries(), html = '';
+            list.forEach(function (c) {
+                var r = F.realOf(c), kind = F.kindOf(c);
+                var date = r.home ? r.mtime : r.date;
+                var sel = selected === c;
+                var href = kind === 'dir' ? linkFor(c) : (o.addressOf ? o.addressOf(c) : null);
+                var name = esc(c.name) + (kind === 'dir' ? '/' : '');
+                html += '<tr class="fm-row" data-name="' + esc(c.name) + '" aria-selected="' + sel + '" tabindex="' + (sel || (!selected && c === list[0]) ? '0' : '-1') + '"' +
+                    (o.draggable && inHome(c) && !r.special ? ' draggable="true"' : '') + '>' +
+                    '<td class="fm-c-name"><span class="fm-cell">' + glyph(kind) +
+                    (href ? '<a class="fm-name" href="' + esc(href) + '">' + name + '</a>' : '<span class="fm-name">' + name + '</span>') +
+                    (r.title && r.title !== c.name && !r.home ? '<span class="fm-title">' + esc(r.title) + '</span>' : '') + '</span></td>' +
+                    '<td class="fm-c-kind">' + KIND_NAMES[kind] + '</td>' +
+                    '<td class="fm-c-date">' + esc(fmtDate(date)) + '</td>' +
+                    '<td class="fm-c-size num">' + esc(fmtSize(F.size(c))) + '</td></tr>';
+            });
+            el.rows.innerHTML = html;
+            if (window.pudlGrid) { window.pudlGrid.enhance(el.list); }
+            el.empty.hidden = list.length > 0;
+            el.empty.textContent = o.emptyText ? o.emptyText(cwd) : 'This folder is empty.';
+        }
+
+        /* === Selection =================================================== */
+
+        function rowFor(name) { return el.rows ? el.rows.querySelector('tr[data-name="' + CSS.escape(name) + '"]') : null; }
+        function select(name, focus) {
+            selected = name ? F.childNamed(cwd, name) : null;
+            if (el.rows) {
+                el.rows.querySelectorAll('tr').forEach(function (tr) {
+                    var on = tr.getAttribute('data-name') === name;
+                    tr.setAttribute('aria-selected', String(on));
+                    tr.tabIndex = on ? 0 : -1;
+                });
+            }
+            if (o.onSelect) { o.onSelect(selected); }
+            if (focus !== false && name) { var r = rowFor(name); if (r) { r.focus(); } }
+        }
+        function focusList() {
+            if (!el.rows) { return; }
+            var r = el.rows.querySelector('tr[tabindex="0"]') || el.rows.querySelector('tr');
+            if (r) { r.focus(); }
+        }
+
+        /* Names the entry the host is showing, such as the Editor's open
+           file, for the tree to mark and open its way to. */
+        function markCurrent(path) {
+            currentPath = path || null;
+            if (currentPath) {
+                var node = F.resolve(null, currentPath);
+                for (var x = node && node.parent; x; x = x.parent) { expanded[F.pathOf(x)] = true; }
+            }
+            if (el.tree) { renderTree(); }
+        }
+
+        function open(node) {
+            if (!node) { return; }
+            if (F.kindOf(node) === 'dir') { go(node); focusList(); return; }
+            if (o.onOpen) { o.onOpen(node); }
+        }
+
+        /* === Clicks and keys ============================================= */
+
+        function onClick(e) {
+            /* Links in the tree, the path bar and the rows are addresses of
+               their own, which a modified click opens as the browser would;
+               a plain one is handled here. The tree's toggles are
+               pudl-tree.js's. */
+            var link = e.target.closest('a[href]');
+            if (!link || !root.contains(link) || e.target.closest('.tree-toggle')) { return; }
+            if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) { return; }
+            if (link.hasAttribute('data-path')) {
+                e.preventDefault();
+                var path = link.getAttribute('data-path');
+                if (link.hasAttribute('data-file')) { open(F.resolve(null, path)); return; }
+                /* In the Explorer pane a folder opens and closes where it is. */
+                if (o.toggleFolders && el.tree && el.tree.contains(link)) {
+                    var t = link.querySelector('.tree-toggle');
+                    if (t) { t.click(); }
+                    return;
+                }
+                /* Enter on a folder in the tree moves on to its contents;
+                   asked before going there, which redraws the tree. */
+                var fromTree = e.detail === 0 && el.tree && el.tree.contains(link);
+                goPath(path);
+                if (fromTree) { focusList(); }
+                return;
+            }
+            var tr = link.closest('tr.fm-row');
+            if (tr) {
+                e.preventDefault();
+                select(tr.getAttribute('data-name'), false);
+                open(selected);
+            }
+        }
+
+        function onRowSelect(e) { selected = F.childNamed(cwd, e.target.getAttribute('data-name')); if (o.onSelect) { o.onSelect(selected); } }
+        function onRowOpen(e) { var c = F.childNamed(cwd, e.target.getAttribute('data-name')); if (c) { selected = c; open(c); } }
+        function onRowKey(e) {
+            if (e.target.tagName !== 'TR') { return; }
+            if (e.key === 'Backspace') { up(); e.preventDefault(); return; }
+            if (o.onKey && o.onKey(e, selected)) { e.preventDefault(); }
+        }
+
+        function up() { if (cwd && cwd.parent) { var from = cwd; go(cwd.parent); select(from.name); } }
+
+        /* === Dragging ==================================================== */
+
+        var dragName = null;
+        function clearDropMarks() {
+            root.querySelectorAll('[data-drop-target]').forEach(function (x) { x.removeAttribute('data-drop-target'); });
+            if (el.main) { el.main.removeAttribute('data-drop-over'); }
+        }
+        /* A folder in ~ (a row or a tree node) takes a dragged entry; the
+           list itself, in ~, takes files dropped from the computer. */
+        function folderTarget(e) {
+            var t = e.target.closest('tr.fm-row, .fm-tree a[data-path]');
+            if (!t) { return null; }
+            var node = t.hasAttribute('data-path') ? F.resolve(null, t.getAttribute('data-path')) : F.childNamed(cwd, t.getAttribute('data-name'));
+            return node && node.children && inHome(node) ? { el: t, node: node } : null;
+        }
+        function isFiles(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0; }
+        function onDragStart(e) {
+            var tr = e.target.closest('tr.fm-row');
+            if (!tr || !o.draggable) { return; }
+            dragName = tr.getAttribute('data-name');
+            e.dataTransfer.setData('application/x-pc-files', F.pathOf(F.childNamed(cwd, dragName)));
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        function onDragEnd() { dragName = null; clearDropMarks(); }
+        function onDragOver(e) {
+            if (dragName) {
+                var t = folderTarget(e);
+                clearDropMarks();
+                if (t && F.pathOf(t.node) !== F.pathOf(F.childNamed(cwd, dragName) || cwd)) { t.el.setAttribute('data-drop-target', ''); e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+                return;
+            }
+            if (o.onUpload && isFiles(e) && inHome(cwd) && el.main && el.main.contains(e.target)) { el.main.setAttribute('data-drop-over', ''); e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
+        }
+        function onDragLeave(e) { if (!root.contains(e.relatedTarget)) { clearDropMarks(); } }
+        async function onDrop(e) {
+            if (dragName) {
+                var t = folderTarget(e), moving = F.childNamed(cwd, dragName);
+                clearDropMarks();
+                if (!t || !moving) { return; }
+                e.preventDefault();
+                var err = await F.move(cwd, moving, F.displayPath(t.node));
+                dragName = null;
+                if (err) { say(err, true); } else { refresh(); say('Moved ' + moving.name + ' to ' + F.displayPath(t.node) + '.'); }
+                return;
+            }
+            if (o.onUpload && isFiles(e) && inHome(cwd)) {
+                e.preventDefault();
+                clearDropMarks();
+                o.onUpload(Array.prototype.slice.call(e.dataTransfer.files || []));
+            }
+        }
+
+        root.addEventListener('click', onClick);
+        root.addEventListener('dragover', onDragOver);
+        root.addEventListener('dragleave', onDragLeave);
+        root.addEventListener('drop', onDrop);
+        if (el.tree) { el.tree.addEventListener('pudl:tree-toggle', onToggle); }
+        if (el.rows) {
+            el.rows.addEventListener('pudl:row-select', onRowSelect);
+            el.rows.addEventListener('pudl:row-open', onRowOpen);
+            el.rows.addEventListener('keydown', onRowKey);
+            el.rows.addEventListener('dragstart', onDragStart);
+            el.rows.addEventListener('dragend', onDragEnd);
+        }
+        var unsubscribe = F.onChange(function () { if (!destroyed) { refresh(); } });
+
+        /* === Start ======================================================= */
+
+        var start = o.start ? F.resolve(null, o.start) : null;
+        cwd = start && start.children ? start : F.root();
+        for (var x = cwd; x; x = x.parent) { expanded[F.pathOf(x)] = true; }
+        expanded[F.pathOf(F.home())] = true;
+        render();
+
+        return {
+            cwd: function () { return cwd; },
+            selected: function () { return selected; },
+            go: go,
+            goPath: goPath,
+            up: up,
+            refresh: refresh,
+            render: render,
+            select: select,
+            focusList: focusList,
+            markCurrent: markCurrent,
+            destroy: function () {
+                destroyed = true;
+                if (unsubscribe) { unsubscribe(); }
+                root.removeEventListener('click', onClick);
+                root.removeEventListener('dragover', onDragOver);
+                root.removeEventListener('dragleave', onDragLeave);
+                root.removeEventListener('drop', onDrop);
+            }
+        };
+    }
+
+    window.pcFileBrowser = {
+        create: create,
+        markup: markup,
+        glyph: glyph,
+        kindName: function (kind) { return KIND_NAMES[kind]; },
+        esc: esc,
+        fmtDate: fmtDate,
+        fmtSize: fmtSize
+    };
+})();
