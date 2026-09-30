@@ -104,10 +104,20 @@
               '<button type="button" class="icon-btn" data-action="find" aria-label="Find and replace" title="Find and replace (Ctrl+F)"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></button>' +
               '<label class="check ed-wrap"><input type="checkbox" data-role="wrap" checked /> Wrap lines</label>' +
               '<span class="ed-spacer"></span>' +
+              /* On the edit origin: a site page's source, a file's place on
+                 the public site, and a preview of unsaved text. */
+              '<button type="button" class="btn btn-sm" data-action="source" hidden>Edit the source</button>' +
+              '<button type="button" class="btn btn-sm" data-action="preview" hidden>Preview</button>' +
+              '<a class="ed-view" data-role="view" target="_blank" rel="noopener" hidden>View on the site</a>' +
               '<span class="ed-readonly" data-role="readonly" hidden><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Read-only</span>' +
             '</div>' +
             '<div class="tablist doc-tabs ed-tabs" role="tablist" aria-label="Open files" data-role="tabs"></div>' +
-            '<div class="code-surface ed-surface" data-role="surface"></div>' +
+            '<div class="ed-panes" data-role="panes">' +
+              '<div class="code-surface ed-surface" data-role="surface"></div>' +
+              /* The preview is the public site's own page for the draft, so
+                 an article's scripts run there and never here (A11). */
+              '<iframe class="ed-preview" data-role="preview" title="Preview of the unsaved page" hidden></iframe>' +
+            '</div>' +
             '<div class="ed-status" data-role="status-bar">' +
               '<span data-role="where"></span><span data-role="lang"></span><span data-role="pos"></span>' +
               '<span class="ed-message" data-role="message" role="status" aria-live="polite"></span>' +
@@ -128,6 +138,7 @@
         var q = function (sel) { return root.querySelector(sel); };
         var el = {
             tabs: q('[data-role="tabs"]'), surface: q('[data-role="surface"]'), where: q('[data-role="where"]'),
+            panes: q('[data-role="panes"]'), preview: q('[data-role="preview"]'),
             lang: q('[data-role="lang"]'), pos: q('[data-role="pos"]'), message: q('[data-role="message"]'),
             readonly: q('[data-role="readonly"]'), wrap: q('[data-role="wrap"]'),
             dialog: q('[data-role="dialog"]'), dlgForm: q('[data-role="dialog-form"]'), dlgTitle: q('[data-role="dialog-title"]'),
@@ -255,6 +266,19 @@
             q('[data-action="save"]').textContent = t && t.readOnly ? 'Save' : 'Save';
             q('[data-action="save-as"]').textContent = t && t.readOnly ? 'Save a copy to ~…' : 'Save as…';
             q('[data-action="save-as"]').disabled = !t;
+            var node = t && t.path && F ? F.resolve(F.home(), t.path) : null;
+            q('[data-action="source"]').hidden = !(F && F.mounted && node && t.readOnly && F.sourceOf(node));
+            q('[data-action="preview"]').hidden = !(F && F.mounted && node && previewable(node));
+            var url = node && F.mounted ? F.publicUrl(node) : null;
+            var viewLink = q('[data-role="view"]');
+            viewLink.hidden = !url;
+            if (url) { viewLink.href = url; } else { viewLink.removeAttribute('href'); }
+        }
+
+        /* An article's source under /wwwroot/content can be previewed (A11). */
+        function previewable(node) {
+            var r = F.realOf(node);
+            return r.server === 'wwwroot' && /^content\/[A-Za-z0-9_-]+\.(md|html)$/.test(r.rel);
         }
 
         function showPos() {
@@ -266,6 +290,8 @@
         function activate(i) {
             var prev = current();
             if (prev && view) { prev.state = view.state; }
+            /* A preview belongs to the file it was made for. */
+            if (i !== active) { hidePreview(); }
             active = i;
             var t = current();
             if (!t) { view.setState(CM.EditorState.create({ doc: '' })); renderTabs(); announce(); return; }
@@ -292,11 +318,17 @@
             if (node.children) { say(path + ' is a folder', true); return false; }
             var r = F.realOf(node), display = F.displayPath(r);
             for (var i = 0; i < tabs.length; i++) { if (tabs[i].path === display) { activate(i); view.focus(); return true; } }
+            if (!F.isText(r)) { say(display + ' isn\'t a text file, so the editor can\'t open it.', true); return false; }
             var text;
             try { text = await F.read(r); } catch (err) { say(err.message, true); return false; }
             var readOnly = !r.home;
-            addTab({ path: display, name: r.name, lang: languageFor(display), readOnly: readOnly }, text);
-            say(readOnly ? 'This is part of the site, so it opens read-only. "Save a copy to ~" keeps an editable copy.' : '');
+            /* A server file remembers its time, which tells a change made
+               elsewhere from this tab's own save. */
+            addTab({ path: display, name: r.name, lang: languageFor(display), readOnly: readOnly, mtime: r.server ? +r.mtime : null }, text);
+            say(readOnly
+                ? (F.mounted && F.sourceOf(r) ? 'This is the page as the site shows it, read-only. "Edit the source" opens the file it\'s made from.'
+                    : 'This is part of the site, so it opens read-only. "Save a copy to ~" keeps an editable copy.')
+                : '');
             return true;
         }
 
@@ -355,6 +387,7 @@
             t.path = display;
             t.name = res.node.name;
             t.saved = text;
+            t.mtime = res.node.server ? +res.node.mtime : null;
             t.modified = false;
             t.external = false;
             t.fresh = false;
@@ -461,6 +494,38 @@
             if (path && path !== 'cancel') { await openPath(path); }
         }
 
+        /* === Preview (edit origin) ======================================== */
+
+        /* Sends the unsaved text to the server as a draft, and shows the
+           public site's page for it beside the text. Pressing Preview again
+           shows the latest text; Save publishes (A11). */
+        async function preview() {
+            var t = current(), node = t && F.resolve(F.home(), t.path);
+            if (!node || !previewable(node)) { return; }
+            var token = (document.querySelector('meta[name="request-verification-token"]') || {}).content || '';
+            say('Making a preview…');
+            var r;
+            try {
+                r = await fetch('/api/admin/preview', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json', RequestVerificationToken: token },
+                    body: JSON.stringify({ path: F.realOf(node).rel, text: view.state.doc.toString() })
+                });
+            } catch (err) { say('The preview could not be made: ' + err.message, true); return; }
+            var body = await r.json().catch(function () { return {}; });
+            if (!r.ok || !body.url) { say('The preview could not be made' + (body.error ? ': ' + body.error : '.'), true); return; }
+            el.preview.src = body.url;
+            el.preview.hidden = false;
+            root.classList.add('ed-previewing');
+            say('This preview is the unsaved text as the site would show it. It works for an hour; Save publishes.');
+        }
+
+        function hidePreview() {
+            el.preview.hidden = true;
+            el.preview.removeAttribute('src');
+            root.classList.remove('ed-previewing');
+        }
+
         /* === Changes made elsewhere ======================================= */
 
         /* A file saved by the terminal, Files or another tab: an open tab
@@ -472,19 +537,30 @@
                 var node = F.resolve(F.home(), t.path);
                 if (!node && t.fresh) { return; }
                 if (!node) { t.external = true; if (i === active) { say(t.path + ' was deleted or moved somewhere else. Save to keep this text.', true); } return; }
-                var text = F.readHome(F.realOf(node));
-                if (text === t.saved) { return; }
-                var edited = (i === active ? view.state.doc.toString() : t.state.doc.toString()) !== t.saved;
-                if (!edited) {
-                    t.saved = text;
-                    if (i === active) { view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } }); t.modified = false; }
-                    else { t.state = stateFor(t, text); }
-                } else {
-                    t.external = true;
-                    if (i === active) { say(t.path + ' was changed somewhere else. Saving will replace that version with yours.', true); }
+                var r = F.realOf(node);
+                /* A server file changed elsewhere shows a new time; only then
+                   is its text fetched. */
+                if (r.server) {
+                    if (t.mtime != null && +r.mtime === t.mtime) { return; }
+                    F.read(r).then(function (text) { t.mtime = +r.mtime; takeOutside(t, tabs.indexOf(t), text); renderTabs(); }).catch(function () { });
+                    return;
                 }
+                takeOutside(t, i, F.readHome(r));
             });
             renderTabs();
+        }
+
+        function takeOutside(t, i, text) {
+            if (i < 0 || text === t.saved) { return; }
+            var edited = (i === active ? view.state.doc.toString() : t.state.doc.toString()) !== t.saved;
+            if (!edited) {
+                t.saved = text;
+                if (i === active) { view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } }); t.modified = false; }
+                else { t.state = stateFor(t, text); }
+            } else {
+                t.external = true;
+                if (i === active) { say(t.path + ' was changed somewhere else. Saving will replace that version with yours.', true); }
+            }
         }
 
         /* A file handed to a running editor, by an open request
@@ -554,6 +630,12 @@
                 case 'undo': CM.undo(view); view.focus(); break;
                 case 'redo': CM.redo(view); view.focus(); break;
                 case 'find': CM.openSearchPanel(view); break;
+                case 'source': {
+                    var cur = current(), node = cur && F.resolve(F.home(), cur.path), src = node && F.sourceOf(node);
+                    if (src) { openPath(F.displayPath(src)); }
+                    break;
+                }
+                case 'preview': preview(); break;
             }
         });
         el.wrap.addEventListener('change', function () {

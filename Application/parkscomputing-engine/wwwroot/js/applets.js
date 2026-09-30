@@ -47,7 +47,12 @@ window.pcTerminalCommands = ['/js/terminal-text.js'];
 /* The site filesystem the terminal, the file manager and the editor share
    (js/sitefs.js). Every applet loads it from this one address, so a page
    holds one copy; raise its v on every change to the file. */
-window.pcSiteFsSrc = '/js/sitefs.js?v=1';
+window.pcSiteFsSrc = '/js/sitefs.js?v=2';
+
+/* Where the terminal, Files and the editor have their pages: /page/ on the
+   public site, and on the edit origin the admin workspace's, which its
+   layout names in <meta name="pc-applet-pages">. */
+var pcWorkspacePages = (document.querySelector('meta[name="pc-applet-pages"]') || {}).content || '/page/';
 
 /* The terminal, Files and the editor ask each other for things through
    PUDL's requests (0.27.0), never by name: open a file, browse a folder,
@@ -59,8 +64,8 @@ window.pcSiteFsSrc = '/js/sitefs.js?v=1';
 pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
-    page: '/page/terminal',
-    ver: '19',
+    page: pcWorkspacePages + 'terminal',
+    ver: '20',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
     instances: 4
 });
@@ -69,8 +74,8 @@ pudlApplets.define('terminal', {
 pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
-    page: '/page/files',
-    ver: '7',
+    page: pcWorkspacePages + 'files',
+    ver: '8',
     handles: { browse: { param: 'path' } }
 });
 
@@ -78,7 +83,7 @@ pudlApplets.define('files', {
 pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
-    page: '/page/editor',
-    ver: '5',
+    page: pcWorkspacePages + 'editor',
+    ver: '6',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } }
 });

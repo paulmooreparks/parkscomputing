@@ -110,6 +110,10 @@ public partial class Startup {
         services.AddHttpClient(ResendMailer.ClientName, c => c.Timeout = TimeSpan.FromSeconds(15));
         services.AddScoped<ResendMailer>();
         services.AddScoped<AdminSessions>();
+        services.AddSingleton<ServerFiles>();
+        services.AddHostedService<HistoryPruner>();
+        services.AddMemoryCache();
+        services.AddSingleton<PreviewDrafts>();
     }
 
     private static Task ApiOrRedirect(Microsoft.AspNetCore.Authentication.RedirectContext<Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions> ctx, int status) {

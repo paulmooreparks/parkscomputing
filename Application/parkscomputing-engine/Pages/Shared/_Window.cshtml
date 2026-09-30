@@ -1,5 +1,6 @@
 @model ParksComputing.Engine.Pages.Models.WindowViewModel
 @inject ParksComputing.Engine.Pages.Services.INavService TagNav
+@inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AdminOptions> AdminConfig
 @{
     // The button hrefs are placeholders here; pudl-windows.js rewrites each
     // one to the URL of the state it produces. Without script the window is
@@ -91,6 +92,7 @@
                         {
                             <span class="updated-on">&nbsp;· Updated <time datetime="@Model.Updated?.ToString("yyyy-MM-dd")">@Model.Updated?.ToLongDateString()</time></span>
                         }
+                        <a class="post-edit" href="@(AdminConfig.Value.EditOrigin.TrimEnd('/'))/admin/source?slug=@Uri.EscapeDataString(Model.Key)" target="_blank" rel="nofollow noopener">Edit</a>
                     </div>
                 }
                 <div class="post-body">

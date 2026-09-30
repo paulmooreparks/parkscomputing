@@ -106,9 +106,23 @@ namespace ParksComputing.Engine {
             // Readers are told apart by Cloudflare's CF-Connecting-IP, since every
             // request arrives through the tunnel from the same local address.
             services.AddRateLimiter(o => {
-                o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx => RateLimitPartition.GetFixedWindowLimiter(
-                    partitionKey: ctx.User?.Identity?.Name ?? ParksComputing.Engine.Identity.AdminOptions.ClientIp(ctx),
-                    factory: _ => new FixedWindowRateLimiterOptions { AutoReplenishment = true, PermitLimit = 600, QueueLimit = 0, Window = TimeSpan.FromMinutes(1) }));
+                // A signed-in admin is held by the admin policies below, not
+                // this one, since working through the mount (a grep -r over
+                // /wwwroot, say) is many requests.
+                o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+                    ctx.User.IsInRole(ParksComputing.Engine.Identity.AdminOptions.Role)
+                        ? RateLimitPartition.GetNoLimiter("admin")
+                        : RateLimitPartition.GetFixedWindowLimiter(
+                            partitionKey: ctx.User?.Identity?.Name ?? ParksComputing.Engine.Identity.AdminOptions.ClientIp(ctx),
+                            factory: _ => new FixedWindowRateLimiterOptions { AutoReplenishment = true, PermitLimit = 600, QueueLimit = 0, Window = TimeSpan.FromMinutes(1) }));
+                // The mount's filesystem: an admin gets 1,200 calls a minute;
+                // anyone else gets a 404 from it, and 30 a minute to get it.
+                o.AddPolicy(ParksComputing.Engine.Identity.AdminFsController.RateLimitPolicy, ctx => {
+                    bool admin = ctx.User.IsInRole(ParksComputing.Engine.Identity.AdminOptions.Role);
+                    return RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: admin ? "fs:" + ctx.User.Identity!.Name : "fs-ip:" + ParksComputing.Engine.Identity.AdminOptions.ClientIp(ctx),
+                        factory: _ => new FixedWindowRateLimiterOptions { AutoReplenishment = true, PermitLimit = admin ? 1200 : 30, QueueLimit = 0, Window = TimeSpan.FromMinutes(1) });
+                });
                 // Sign-in and the passkey ceremonies. A stranger gets 30 calls a
                 // minute per address, which is plenty to sign in and too few to
                 // guess at recovery codes; a signed-in admin gets 120 a minute.

@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 using Markdig;
 using ParksComputing.Engine.Api;
 
@@ -76,6 +77,21 @@ namespace ParksComputing.Engine.Pages {
             CommentPosted = bool.Parse(commentPosted);
             HttpContext.Session.SetString("CommentPosted", "False");
 
+            // /preview/{token}: an unpublished draft from the edit origin's
+            // Editor, rendered as the page it would become
+            // (Architecture/admin-and-identity-design.md, A11). Never indexed
+            // or cached; an unknown or expired token names nothing.
+            if (string.Equals(sectionObject?.ToString(), "preview", StringComparison.OrdinalIgnoreCase) && slugObject is not null) {
+                var draft = HttpContext.RequestServices.GetService<ParksComputing.Engine.Identity.PreviewDrafts>()?.Find(slug);
+                if (draft is null) {
+                    return Task.FromResult<IActionResult>(NotFound());
+                }
+                Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
+                Response.Headers.CacheControl = "no-store";
+                ViewData["PageId"] = draft.Slug;
+                return RetrievePage(draft.Slug, draft);
+            }
+
             return RetrievePage(slug);
         }
 
@@ -111,9 +127,20 @@ namespace ParksComputing.Engine.Pages {
             return response;
         }
 
-        protected Task<IActionResult> RetrievePage(string slug) {
+        protected Task<IActionResult> RetrievePage(string slug, ParksComputing.Engine.Identity.PreviewDrafts.Draft? draft = null) {
             try {
                 var baseDir = $"{Environment.WebRootPath}/content";
+                // A draft stands in for its file, which may not exist yet.
+                if (draft is not null) {
+                    var draftPath = Path.Combine(baseDir, slug + draft.Extension);
+                    if (draft.Extension == ".md") {
+                        return LoadMarkdownAndRender(draftPath, slug, draft.Text);
+                    }
+                    var draftDoc = new HtmlDocument();
+                    draftDoc.LoadHtml(draft.Text);
+                    return ExtractAndRender(draftDoc, slug);
+                }
+
                 // Prefer markdown first
                 var mdPath = Path.Combine(baseDir, slug + ".md");
                 if (System.IO.File.Exists(mdPath)) {
@@ -135,9 +162,9 @@ namespace ParksComputing.Engine.Pages {
             }
         }
 
-        private Task<IActionResult> LoadMarkdownAndRender(string mdPath, string slug) {
+        private Task<IActionResult> LoadMarkdownAndRender(string mdPath, string slug, string? text = null) {
             try {
-                string raw = System.IO.File.ReadAllText(mdPath);
+                string raw = text ?? System.IO.File.ReadAllText(mdPath);
                 var (frontMatter, body) = SplitFrontMatter(raw);
                 var metadata = ParseFrontMatter(frontMatter, mdPath);
 

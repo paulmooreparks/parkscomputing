@@ -113,7 +113,7 @@ The windows are settings, to be tuned with use.
 - An admin session times out after 30 minutes idle and ends after 12 hours whatever happens.
 - Every write carries an antiforgery token.
 - Sign-in endpoints are rate-limited per account and per client.
-- Every admin sign-in, fallback sign-in and tier-3 action is emailed to Paul through Resend.
+- Every admin sign-in, fallback sign-in and change of sign-in method is emailed to Paul through Resend. File changes go to the audit log instead (see step 5 below).
 - While a session is elevated, the site shows it everywhere on the edit origin, in the way a root shell's prompt shows it. That state is a candidate for a PUDL proposal: a standard look for "you have elevated privileges".
 
 ## Phase 2: comments
@@ -149,6 +149,16 @@ This is for soon after the mount ships, because the mount is what makes it worth
    5. Add the Editor's Edit the source and View on the site.
    6. Add the Edit links on public pages.
    7. Add the preview (A11).
+
+   Done 2026-09-30, all seven. Some choices were settled in the build:
+   - The workspace is four tabs on the edit origin: Account, Files, Terminal and Editor. Each applet page names the mount in a meta tag, and `js/sitefs.js` loads `/wwwroot` and `/home` only there.
+   - The terminal's prompt there is `<name>@edit.parkscomputing:<dir>#`.
+   - Pages, and applets other than the three, open on the public site in a new tab.
+   - Files uploads any file into a server directory, pictures included, and downloads server files byte for byte. `cp` copies server files byte for byte as well. A file that isn't text opens as the public site serves it instead of in the Editor.
+   - A public page's Edit link goes to `/admin/source?slug=`, which opens the page's source in the Editor, after signing in if need be.
+   - The file API has its own rate limit, 1,200 calls a minute per admin, because a `grep -r` over `/wwwroot` is many reads. Signed-in admins are exempt from the site-wide limit.
+   - File changes are recorded in the audit log, not emailed; sign-ins are still emailed. An email for every delete or script edit would bury the notices that matter, so this narrows A9.
+   - A browser suite drives the mount end to end on a test copy with its own web root, homes, history and database. It covers the terminal, Files, the Editor, preview and publish, the history, the audit log, the passkey tap before a fallback session deletes, a picture uploaded byte for byte, a stylesheet change reaching readers without a restart, and the Edit link.
 6. Git in the terminal.
 7. Comments.
 

@@ -46,6 +46,8 @@
     function init(root, opts) {
         opts = opts || {};
         var n = ++uid;
+        /* On the edit origin, with the admin mount, uploads take any file. */
+        var mounted = !!document.querySelector('meta[name="pc-fs-mount"]');
         root.classList.add('pc-files');
         if (opts.fit === 'fill') { root.classList.add('pc-files-fill'); }
         root.innerHTML =
@@ -72,7 +74,7 @@
                   '<tbody data-role="rows"></tbody>' +
                 '</table>' +
                 '<p class="fm-empty" data-role="empty" hidden></p>' +
-                '<p class="drop-hint">Drop text files here to upload them</p>' +
+                '<p class="drop-hint">' + (mounted ? 'Drop files here to upload them' : 'Drop text files here to upload them') + '</p>' +
               '</div>' +
             '</div>' +
             '<div class="fm-detail" data-role="detail" aria-live="polite"></div>' +
@@ -91,7 +93,7 @@
                 '</div>' +
               '</form>' +
             '</dialog>' +
-            '<input type="file" multiple hidden data-role="file-input" accept=".txt,.md,.json,.cells,.sudoku,.csv,.xfer,.sh,text/*" />';
+            '<input type="file" multiple hidden data-role="file-input"' + (mounted ? '' : ' accept=".txt,.md,.json,.cells,.sudoku,.csv,.xfer,.sh,text/*"') + ' />';
 
         var q = function (sel) { return root.querySelector(sel); };
         var el = {
@@ -245,7 +247,7 @@
            has none, so its row opens through pudl:row-open instead. */
         function addressOf(c, r, kind) {
             if (kind === 'dir') { return linkFor(c); }
-            if (kind === 'page' || kind === 'app') { return '/page/' + encodeURIComponent(r.name); }
+            if (kind === 'page' || kind === 'app') { return F.mounted ? F.publicUrl(r) : '/page/' + encodeURIComponent(r.name); }
             if (kind === 'link') { return r.url; }
             return null;
         }
@@ -351,7 +353,16 @@
             var r = F.realOf(c), kind = F.kindOf(c);
             if (kind === 'dir') { go(c); focusList(); return; }
             if (kind === 'link') { window.open(r.url, '_blank', 'noopener'); return; }
+            /* A picture or any other file an editor can't show: under
+               /wwwroot it opens as the public site serves it; elsewhere it
+               downloads. */
+            if ((kind === 'file' || kind === 'script') && !F.isText(r)) {
+                var seen = F.publicUrl(r);
+                if (seen) { window.open(seen, '_blank', 'noopener'); } else { download(c); }
+                return;
+            }
             if (kind === 'file' || kind === 'script') { openInEditor(c); return; }
+            if (F.mounted) { var url = F.publicUrl(r); if (url) { window.open(url, '_blank', 'noopener'); } return; }
             if (inWindows()) { window.pudlWindows.open(r.name); return; }
             location.assign('/page/' + encodeURIComponent(r.name));
         }
@@ -430,7 +441,7 @@
                 case 'new-folder': {
                     var dname = await prompt('New folder', 'In ' + F.displayPath(cwd), '', 'Create', nameCheck);
                     if (dname == null) { return; }
-                    var e1 = F.mkdir(cwd, dname, false);
+                    var e1 = await F.mkdir(cwd, dname, false);
                     if (e1) { say(e1, true); return; }
                     refresh(); select(dname); say('Made ' + dname + '/.');
                     return;
@@ -440,7 +451,7 @@
                     if (!c) { return; }
                     var nn = await prompt('Rename', 'Rename ' + c.name + ' to:', c.name, 'Rename', function (v) { return v === c.name ? null : nameCheck(v); });
                     if (nn == null || nn === c.name) { return; }
-                    var e2 = F.move(cwd, c, nn);
+                    var e2 = await F.move(cwd, c, nn);
                     if (e2) { say(e2, true); return; }
                     refresh(); select(nn); say('Renamed to ' + nn + '.');
                     return;
@@ -454,7 +465,7 @@
                         return null;
                     });
                     if (dest == null) { return; }
-                    var e3 = F.move(cwd, c, dest);
+                    var e3 = await F.move(cwd, c, dest);
                     if (e3) { say(e3, true); return; }
                     refresh(); say('Moved ' + c.name + ' to ' + dest + '.');
                     return;
@@ -464,7 +475,7 @@
                     var many = c.children ? ' and everything in it (' + c.children.length + (c.children.length === 1 ? ' item' : ' items') + ')' : '';
                     var ok = await prompt('Delete ' + c.name + '?', 'This deletes ' + F.displayPath(c) + many + ' from this browser. It can\'t be undone.', '', 'Delete', null, false);
                     if (!ok) { return; }
-                    var e4 = F.remove(c, true);
+                    var e4 = await F.remove(c, true);
                     if (e4) { say(e4, true); return; }
                     selected = null; refresh(); say('Deleted ' + c.name + '.');
                     return;
@@ -473,10 +484,14 @@
         }
 
         async function download(c) {
-            var r = F.realOf(c), text;
-            try { text = await F.read(r); } catch (err) { say(err.message, true); return; }
+            var r = F.realOf(c), blob;
+            /* A server file downloads byte for byte; anything else as its text. */
+            try {
+                blob = r.server ? new Blob([await F.readBytes(r)], { type: 'application/octet-stream' })
+                    : new Blob([await F.read(r)], { type: 'text/plain;charset=utf-8' });
+            } catch (err) { say(err.message, true); return; }
             var name = r.home ? r.name : r.name + '.txt';
-            var url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+            var url = URL.createObjectURL(blob);
             var a = document.createElement('a');
             a.href = url; a.download = name;
             document.body.appendChild(a); a.click(); a.remove();
@@ -493,14 +508,10 @@
         }
 
         async function uploadFiles(files) {
-            if (!inHome(cwd)) { say('Files can only go into your home directory (~).', true); return; }
+            if (!inHome(cwd)) { say('Files can only go into your home directory (~)' + (F.mounted ? ' or under /wwwroot.' : '.'), true); return; }
             var done = 0, errors = [];
             for (var i = 0; i < files.length; i++) {
-                var f = files[i];
-                if (f.size > F.limits.file) { errors.push(f.name + ' is larger than 256 KB'); continue; }
-                var text = await f.text();
-                if (text.indexOf('\0') >= 0) { errors.push(f.name + ' is not a text file'); continue; }
-                var res = await F.write(cwd, f.name, text, false);
+                var res = await F.upload(cwd, files[i]);
                 if (res.error) { errors.push(res.error); } else { done++; }
             }
             refresh();
@@ -617,13 +628,13 @@
             if (isFiles(e) && inHome(cwd) && el.drop.contains(e.target)) { el.drop.setAttribute('data-drop-over', ''); e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
         });
         root.addEventListener('dragleave', function (e) { if (!root.contains(e.relatedTarget)) { clearDropMarks(); } });
-        root.addEventListener('drop', function (e) {
+        root.addEventListener('drop', async function (e) {
             if (dragName) {
                 var t = folderTarget(e), moving = F.childNamed(cwd, dragName);
                 clearDropMarks();
                 if (!t || !moving) { return; }
                 e.preventDefault();
-                var err = F.move(cwd, moving, F.displayPath(t.node));
+                var err = await F.move(cwd, moving, F.displayPath(t.node));
                 dragName = null;
                 if (err) { say(err, true); } else { refresh(); say('Moved ' + moving.name + ' to ' + F.displayPath(t.node) + '.'); }
                 return;

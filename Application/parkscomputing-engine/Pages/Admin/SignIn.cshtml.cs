@@ -35,7 +35,14 @@ public sealed class SignInModel : PageModel {
     public string? Message { get; private set; }
     public bool IsError { get; private set; }
 
-    public IActionResult OnGet() => User.IsInRole(AdminOptions.Role) ? Redirect("/admin") : Page();
+    public IActionResult OnGet(string? returnUrl) {
+        if (!User.IsInRole(AdminOptions.Role)) {
+            return Page();
+        }
+        // Already signed in: straight on to the admin page that asked.
+        bool local = !string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith("/admin", StringComparison.OrdinalIgnoreCase) && !returnUrl.StartsWith("//") && !returnUrl.Contains('\\');
+        return Redirect(local ? returnUrl! : "/admin");
+    }
 
     public async Task<IActionResult> OnPostEmailAsync() {
         var email = (Email ?? "").Trim();

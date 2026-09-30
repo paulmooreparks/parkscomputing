@@ -17,6 +17,19 @@
 .admin-bar-signout { margin: 0; }
 
 .admin-main { max-width: 640px; margin: 0 auto; padding: var(--space-5) 16px var(--space-6); }
+
+/* The workspace's tabs, under the bar. */
+.admin-tabs { align-items: flex-end; }
+.admin-tabs-spacer { flex: 1; }
+.admin-tabs-site { align-self: center; font-size: var(--text-sm); margin-bottom: 4px; }
+
+/* A workspace page gives its applet the rest of the screen. */
+.admin-workspace { height: 100svh; display: flex; flex-direction: column; overflow: hidden; }
+.admin-workspace .admin-main {
+  flex: 1 1 auto; min-height: 0; max-width: none; width: 100%; margin: 0;
+  padding: var(--space-3) 16px; display: flex; flex-direction: column;
+}
+.admin-workspace .admin-applet { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .admin-title { margin: 0 0 var(--space-4); font-family: var(--font-display); }
 .admin-card { margin-bottom: var(--space-4); }
 .admin-card > .btn { margin-top: var(--space-2); }

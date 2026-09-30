@@ -1,12 +1,18 @@
 @using ParksComputing.Engine.Identity
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Xsrf
+@inject Microsoft.Extensions.Options.IOptions<AdminOptions> AdminConfig
 @{
     // The edit origin's pages (Architecture/admin-and-identity-design.md, A5).
     // No inline script anywhere, so the origin's Content-Security-Policy can
     // allow scripts from itself alone. While signed in, the bar says so on
-    // every page, as a root shell's prompt does (A9).
+    // every page, as a root shell's prompt does (A9), and the workspace's
+    // tabs lead to the account, Files, the terminal and the Editor, which
+    // show the admin mount (A7).
     bool signedIn = User.IsInRole(AdminOptions.Role);
     string? method = User.FindFirst(AdminSessions.MethodClaim)?.Value;
+    bool workspace = signedIn && ViewData["Workspace"] as bool? == true;
+    string here = Context.Request.Path.Value?.TrimEnd('/').ToLowerInvariant() ?? "";
+    (string Href, string Label)[] tabs = { ("/admin", "Account"), ("/admin/files", "Files"), ("/admin/terminal", "Terminal"), ("/admin/editor", "Editor") };
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -16,12 +22,21 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="request-verification-token" content="@Xsrf.GetAndStoreTokens(Context).RequestToken" />
+    @if (workspace)
+    {
+        @* js/sitefs.js mounts /wwwroot and /home from this API; js/applets.js
+           points the workspace applets at their pages here; pages and the
+           other applets open on the public site. *@
+        <meta name="pc-fs-mount" content="/api/admin/fs" />
+        <meta name="pc-applet-pages" content="/admin/" />
+        <meta name="pc-public-origin" content="@AdminConfig.Value.PublicOrigin.TrimEnd('/')" />
+    }
     <title>@ViewData["Title"] · Editing parkscomputing.com</title>
     <script src="~/pudl/pudl-theme.js" asp-append-version="true"></script>
     <link rel="stylesheet" href="~/pudl/pudl.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
 </head>
-<body class="admin@(signedIn ? " admin-elevated" : null)">
+<body class="admin@(signedIn ? " admin-elevated" : null)@(workspace ? " admin-workspace" : null)">
     <header class="admin-bar">
         <span class="admin-bar-title">Editing parkscomputing.com</span>
         @if (signedIn)
@@ -35,10 +50,31 @@
             </form>
         }
     </header>
+    @if (signedIn)
+    {
+        <nav class="app-section-bar admin-tabs" aria-label="Workspace">
+            @foreach (var (href, label) in tabs)
+            {
+                <a class="section-tab" href="@href" aria-current="@(here == href ? "page" : null)">@label</a>
+            }
+            <span class="admin-tabs-spacer"></span>
+            <a class="admin-tabs-site" href="@AdminConfig.Value.PublicOrigin" target="_blank" rel="noopener">View the site</a>
+        </nav>
+    }
     <main class="admin-main">
         @RenderBody()
     </main>
     <p class="visually-hidden" role="status" aria-live="polite" data-admin-status></p>
     <script src="~/js/admin.js" asp-append-version="true" defer></script>
+    @if (workspace)
+    {
+        <script src="~/pudl/pudl-menu.js" defer asp-append-version="true"></script>
+        <script src="~/pudl/pudl-applets.js" defer asp-append-version="true"></script>
+        <script src="~/js/applets.js" defer asp-append-version="true"></script>
+        <script src="~/pudl/pudl-dialog.js" defer asp-append-version="true"></script>
+        <script src="~/pudl/pudl-tabs.js" defer asp-append-version="true"></script>
+        <script src="~/pudl/pudl-tree.js" defer asp-append-version="true"></script>
+        <script src="~/pudl/pudl-grid.js" defer asp-append-version="true"></script>
+    }
 </body>
 </html>

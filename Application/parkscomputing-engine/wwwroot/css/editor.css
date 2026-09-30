@@ -24,8 +24,19 @@
    (0.26.0); only their place in the layout is set here. */
 .pc-editor .ed-tabs { min-height: 34px; }
 .pc-editor .ed-ro-mark { font-weight: 400; color: var(--text-muted); }
-.pc-editor .ed-surface { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.pc-editor .ed-panes { flex: 1 1 auto; min-height: 0; display: flex; gap: 6px; }
+.pc-editor .ed-surface { flex: 1 1 0; min-width: 0; min-height: 0; overflow: hidden; }
 .pc-editor .ed-surface .cm-editor { height: 100%; }
+/* The preview, beside the text on a wide screen and under it on a narrow
+   one: the public page, flat, for reading. */
+.pc-editor .ed-preview {
+  flex: 1 1 0; min-width: 0; min-height: 0;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg);
+}
+.pc-editor .ed-preview[hidden] { display: none; }
+@media (max-width: 800px) { .pc-editor.ed-previewing .ed-panes { flex-direction: column; } }
+.pc-editor .ed-view { font-size: var(--text-sm); }
+.pc-editor .ed-view[hidden] { display: none; }
 
 .pc-editor .ed-status {
   display: flex; flex-wrap: wrap; gap: 4px var(--space-4);

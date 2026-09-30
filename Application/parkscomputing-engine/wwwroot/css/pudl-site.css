@@ -106,6 +106,9 @@ body.desktop .site-header { position: static; flex: none; }
   margin: 0 0 .6rem;
 }
 .post-meta { font-size: .85rem; color: var(--text-muted); }
+/* The quiet link to a page's source on the edit origin. */
+.post-meta .post-edit { margin-left: .75em; color: var(--text-muted); }
+.post-meta .post-edit:hover { color: var(--accent); }
 .post-body { font-size: 1.04rem; line-height: 1.65; }
 .post-body p { margin-bottom: 1.1rem; }
 .post-body h1, .post-body h2, .post-body h3, .post-body h4 {

@@ -1,5 +1,6 @@
 ﻿@page "/{section}/{**slug}"
 @model ParksComputing.Engine.Pages.PageLoaderModel
+@inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AdminOptions> AdminConfig
 @{
     Layout = "_Layout";
     ViewData["Title"] = Html.Raw(Model.Title);
@@ -86,6 +87,12 @@
                 @if (Model.CreatedGmt != Model.ModifiedGmt)
                 {
                     <span class="updated-on">&nbsp;· Updated <time datetime="@Model.ModifiedGmt">@Model.Modified</time></span>
+                }
+                @* The page's source on the edit origin, which asks for sign-in
+                   (Architecture/admin-and-identity-design.md). Not in a preview. *@
+                @if (!framed && ViewData["PageId"] is string editSlug)
+                {
+                    <a class="post-edit" href="@(AdminConfig.Value.EditOrigin.TrimEnd('/'))/admin/source?slug=@Uri.EscapeDataString(editSlug)" rel="nofollow">Edit</a>
                 }
             </div>
         }

@@ -35,7 +35,7 @@ public sealed class AdminAuthController : ControllerBase {
         _signIn = signIn; _users = users; _sessions = sessions;
     }
 
-    public sealed record CeremonyRequest(JsonElement? Credential, string? Uid, string? Token, string? Name, string? Id);
+    public sealed record CeremonyRequest(JsonElement? Credential, string? Uid, string? Token, string? Name, string? Id, string? ReturnUrl = null);
 
     private static readonly object Refused = new { ok = false, error = "That didn't work. Try again, or use another way to sign in." };
     private static readonly object NeedsConfirm = new { ok = false, confirm = true, error = "Confirm it's you with a passkey first." };
@@ -61,8 +61,13 @@ public sealed class AdminAuthController : ControllerBase {
         }
         await _users.AddOrUpdatePasskeyAsync(user, result.Passkey);
         await _sessions.SignInAsync(user, AdminSessions.Passkey, HttpContext);
-        return Ok(new { ok = true, redirect = "/admin" });
+        return Ok(new { ok = true, redirect = ReturnTo(body.ReturnUrl) });
     }
+
+    /* Back to where sign-in was asked for, if that was an admin page here. */
+    private static string ReturnTo(string? url) =>
+        !string.IsNullOrEmpty(url) && url.StartsWith("/admin", StringComparison.OrdinalIgnoreCase) && !url.StartsWith("//") && !url.Contains('\\')
+            ? url : "/admin";
 
     /// <summary>A fresh passkey tap for the signed-in admin, for the actions that need one.</summary>
     [HttpPost("passkey/confirm")]

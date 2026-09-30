@@ -25,6 +25,24 @@ public sealed class AdminOptions {
     /// <summary>Changing sign-in methods needs a passkey tap this recent.</summary>
     public int ConfirmMinutes { get; set; } = 5;
 
+    /// <summary>Deleting, or changing js/, css/ or pudl/, needs a passkey tap this recent (A8).</summary>
+    public int DestructiveConfirmMinutes { get; set; } = 15;
+
+    /// <summary>The public site, where pages are viewed and previews shown.</summary>
+    public string PublicOrigin { get; set; } = "https://parkscomputing.com";
+
+    /// <summary>The admins' home directories on the server, one each, outside the web root (A10).</summary>
+    public string HomeRoot { get; set; } = "/app/home";
+
+    /// <summary>Previous versions of changed files, and the audit log, outside the web root (A7).</summary>
+    public string HistoryRoot { get; set; } = "/app/history";
+
+    /// <summary>Previous versions are kept this long.</summary>
+    public int HistoryDays { get; set; } = 30;
+
+    /// <summary>The largest file the mount writes.</summary>
+    public long MaxFileBytes { get; set; } = 10 * 1024 * 1024;
+
     public string EditHost => new Uri(EditOrigin).Host;
 
     public string EditScheme => new Uri(EditOrigin).Scheme;

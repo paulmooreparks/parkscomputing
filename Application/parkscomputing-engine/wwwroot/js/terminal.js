@@ -322,7 +322,7 @@
                     list.forEach(function (c) {
                         var r = realOf(c);
                         var kind = c.children ? 'dir ' : isScript(c) ? 'script' : r.home ? 'file' : r.kind === 'app' ? 'app ' : r.kind === 'link' ? 'link' : 'page';
-                        var extra = r.home ? (c.children ? '' : fmtSize(readHome(r).length)) : (r.title && r.title !== c.name ? r.title : '');
+                        var extra = r.home ? (c.children ? '' : fmtSize(F.size(r))) : (r.title && r.title !== c.name ? r.title : '');
                         io.out(paint('dim', fmtDate(r.home ? r.mtime : r.date)) + '  ' + kind + '  ' + styledName(c) + (extra ? '  ' + paint('dim', extra) : '') + '\n');
                     });
                 } else if (list.length && !io.interactive) {
@@ -583,7 +583,9 @@
             for (var i = 0; i < args.length; i++) {
                 var n = io.fs.resolve(args[i]);
                 if (n && realOf(n).home && !n.children) {
-                    if (!n.special) { n.mtime = new Date(); var e = io.fs.save(); if (e) { io.err('touch: ' + e); status = 1; } }
+                    /* A server file keeps its time: rewriting it would only
+                       file an identical copy in its history. */
+                    if (!n.special && !realOf(n).server) { n.mtime = new Date(); var e = io.fs.save(); if (e) { io.err('touch: ' + e); status = 1; } }
                     continue;
                 }
                 var r = await io.fs.write(args[i], '', false);
@@ -597,12 +599,15 @@
         summary: 'make a directory',
         help: 'mkdir [-p] <directory...>\n\nMakes directories in your home directory.\n\n  -p   make any missing parent directories too, and don\'t complain if it exists',
         complete: 'dir',
-        run: function (args, io) {
+        run: async function (args, io) {
             var parents = false, paths = [];
             args.forEach(function (a) { if (a === '-p') { parents = true; } else { paths.push(a); } });
             if (!paths.length) { io.err('mkdir: which directory?'); return 1; }
             var status = 0;
-            paths.forEach(function (p) { var e = io.fs.mkdir(p, parents); if (e) { io.err('mkdir: ' + e); status = 1; } });
+            for (var i = 0; i < paths.length; i++) {
+                var e = await io.fs.mkdir(paths[i], parents);
+                if (e) { io.err('mkdir: ' + e); status = 1; }
+            }
             return status;
         }
     });
@@ -611,17 +616,17 @@
         summary: 'remove a file',
         help: 'rm [-r] <path...>\n\nRemoves files from your home directory.\n\n  -r   remove a directory and everything in it',
         complete: 'path',
-        run: function (args, io) {
+        run: async function (args, io) {
             var recursive = false, paths = [];
             args.forEach(function (a) { if (/^-[rRf]+$/.test(a)) { if (/[rR]/.test(a)) { recursive = true; } } else { paths.push(a); } });
             if (!paths.length) { io.err('rm: which file?'); return 1; }
             var status = 0;
-            paths.forEach(function (p) {
-                var n = needNode(io, p, 'rm: ' + p);
-                if (!n) { status = 1; return; }
-                var e = io.fs.remove(n, recursive, p);
+            for (var i = 0; i < paths.length; i++) {
+                var n = needNode(io, paths[i], 'rm: ' + paths[i]);
+                if (!n) { status = 1; continue; }
+                var e = await io.fs.remove(n, recursive, paths[i]);
                 if (e) { io.err('rm: ' + e); status = 1; }
-            });
+            }
             return status;
         }
     });
@@ -630,17 +635,17 @@
         summary: 'remove an empty directory',
         help: 'rmdir <directory...>\n\nRemoves empty directories from your home directory.',
         complete: 'dir',
-        run: function (args, io) {
+        run: async function (args, io) {
             if (!args.length) { io.err('rmdir: which directory?'); return 1; }
             var status = 0;
-            args.forEach(function (p) {
-                var n = needNode(io, p, 'rmdir: ' + p);
-                if (!n) { status = 1; return; }
-                if (!n.children) { io.err('rmdir: ' + p + ': not a directory'); status = 1; return; }
-                if (n.children.length) { io.err('rmdir: ' + p + ': not empty'); status = 1; return; }
-                var e = io.fs.remove(n, true, p);
+            for (var i = 0; i < args.length; i++) {
+                var p = args[i], n = needNode(io, p, 'rmdir: ' + p);
+                if (!n) { status = 1; continue; }
+                if (!n.children) { io.err('rmdir: ' + p + ': not a directory'); status = 1; continue; }
+                if (n.children.length) { io.err('rmdir: ' + p + ': not empty'); status = 1; continue; }
+                var e = await io.fs.remove(n, true, p);
                 if (e) { io.err('rmdir: ' + e); status = 1; }
-            });
+            }
             return status;
         }
     });
@@ -653,11 +658,7 @@
             if (args.length !== 2) { io.err('cp: give a file and a destination, such as: cp /articles/coincidences ~/'); return 1; }
             var r = readable(io, args[0], 'cp');
             if (!r) { return 1; }
-            var text;
-            try { text = await textOf(r); } catch (err) { io.err('cp: ' + args[0] + ': ' + err.message); return 1; }
-            var dest = args[1], d = io.fs.resolve(dest);
-            if (d && d.children) { dest = dest.replace(/\/+$/, '') + '/' + r.name; }
-            var res = await io.fs.write(dest, text, false);
+            var res = await F.copy(io.fs.cwd(), r, args[1]);
             if (res.error) { io.err('cp: ' + res.error); return 1; }
         }
     });
@@ -666,11 +667,11 @@
         summary: 'move or rename a file',
         help: 'mv <path> <destination>\n\nMoves or renames a file or directory within your home directory. The destination may be a directory, such as ~/patterns/, or a new name.',
         complete: 'path',
-        run: function (args, io) {
+        run: async function (args, io) {
             if (args.length !== 2) { io.err('mv: give a path and a destination'); return 1; }
             var n = needNode(io, args[0], 'mv: ' + args[0]);
             if (!n) { return 1; }
-            var e = io.fs.move(n, args[1], args[0]);
+            var e = await io.fs.move(n, args[1], args[0]);
             if (e) { io.err('mv: ' + e); return 1; }
         }
     });
@@ -698,19 +699,16 @@
         run: async function (args, io) {
             var d = io.fs.resolve(args[0] || (io.fs.cwd().home ? '.' : '~'));
             if (!d || !d.children) { io.err('upload: ' + (args[0] || '.') + ': no such directory'); return 1; }
-            if (!d.home) { io.err('upload: files can only go into your home directory (~)'); return 1; }
+            if (!d.home) { io.err('upload: files can only go into your home directory (~)' + (F.mounted ? ' or under /wwwroot' : '')); return 1; }
             io.out('Choose files in the dialog (Ctrl+C cancels).\n');
             var files = await io.upload();
             if (!files || !files.length) { io.out('Nothing uploaded.\n'); return; }
             var status = 0;
             for (var i = 0; i < files.length; i++) {
                 var f = files[i];
-                if (f.size > F.limits.file) { io.err('upload: ' + f.name + ' is larger than 256 KB'); status = 1; continue; }
-                var text = await f.text();
-                if (text.indexOf('\0') >= 0) { io.err('upload: ' + f.name + ' is not a text file'); status = 1; continue; }
                 var target = displayPath(d).replace(/\/$/, '') + '/' + f.name;
-                var res = await io.fs.write(target, text, false);
-                if (res.error) { io.err('upload: ' + res.error); status = 1; } else { io.out('Uploaded ' + target + ' (' + fmtSize(text.length) + ').\n'); }
+                var res = await F.upload(d, f);
+                if (res.error) { io.err('upload: ' + res.error); status = 1; } else { io.out('Uploaded ' + target + ' (' + fmtSize(f.size) + ').\n'); }
             }
             return status;
         }
@@ -963,7 +961,11 @@
 
         function write(s) { if (term) { term.write(String(s).replace(/\r?\n/g, '\r\n')); } }
         function prompt() {
-            return paint('green', 'guest@parkscomputing') + ':' + paint('blue', C.bold + displayPath(cwd)) + '$ ';
+            /* On the edit origin the prompt is the admin's, and ends in #,
+               as a root shell's does. */
+            return F.mounted
+                ? paint('red', F.user() + '@edit.parkscomputing') + ':' + paint('blue', C.bold + displayPath(cwd)) + '# '
+                : paint('green', 'guest@parkscomputing') + ':' + paint('blue', C.bold + displayPath(cwd)) + '$ ';
         }
         function redraw() {
             term.write('\r\x1b[K' + prompt() + line);
@@ -1301,6 +1303,13 @@
                 return;
             }
             var q = pageQuery || state;
+            /* On the edit origin the pages and the other applets live on the
+               public site, so they open there, in a tab of their own. */
+            if (F.mounted) {
+                var url = F.publicUrl(n);
+                if (url) { window.open(url + (q ? '?' + q : ''), '_blank', 'noopener'); }
+                return;
+            }
             location.assign('/page/' + encodeURIComponent(n.name) + (q ? '?' + q : ''));
         }
 
@@ -1344,7 +1353,7 @@
            A small nano-style editor on the alternate screen: a title bar,
            the text, a message line and a line of keys. It edits files in
            the home directory only. Tabs become spaces. */
-        function editor(path) {
+        async function editor(path) {
             var node = resolve(fs, cwd, path);
             if (node) {
                 if (node.children) { write(paint('red', 'edit: ' + path + ': is a directory') + '\n'); return 1; }
@@ -1357,7 +1366,10 @@
                 if (!validName(sp.base)) { write(paint('red', 'edit: ' + sp.base + ' is not a valid file name') + '\n'); return 1; }
             }
             var label = node ? displayPath(node) : path;
-            var text = node ? readHome(node) : '';
+            var text = '';
+            if (node) {
+                try { text = await F.read(node); } catch (err) { write(paint('red', 'edit: ' + err.message) + '\n'); return 1; }
+            }
             /* Like nano, the buffer always ends in an empty line, so there is
                somewhere to move to and paste after the last line of text. */
             var lines = text.replace(/\r\n?/g, '\n').replace(/\t/g, '    ').split('\n');

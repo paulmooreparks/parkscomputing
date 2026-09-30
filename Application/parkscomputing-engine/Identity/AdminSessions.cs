@@ -70,6 +70,9 @@ public sealed class AdminSessions {
     /// <summary>Whether the session tapped a passkey within the confirmation window.</summary>
     public bool RecentlyConfirmed(ClaimsPrincipal p) => Within(p, ConfirmedClaim, TimeSpan.FromMinutes(_options.ConfirmMinutes));
 
+    /// <summary>Whether the session tapped a passkey recently enough for a destructive change (A8).</summary>
+    public bool ConfirmedForDestructive(ClaimsPrincipal p) => Within(p, ConfirmedClaim, TimeSpan.FromMinutes(_options.DestructiveConfirmMinutes));
+
     /// <summary>Whether the session has outlived its absolute lifetime.</summary>
     public static bool Expired(ClaimsPrincipal p, AdminOptions options) =>
         !Within(p, SignedInClaim, TimeSpan.FromHours(options.AbsoluteHours));

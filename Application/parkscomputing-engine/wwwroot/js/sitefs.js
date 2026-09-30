@@ -1,16 +1,28 @@
 /* The site filesystem: the sandbox the terminal, the file manager and the
    editor share (Architecture/files-editor-design.md). It is the site's
-   public structure, as /api/site/tree serves it from sitenav, plus the
-   reader's own home directory, /home/guest or ~, kept in this browser's
-   localStorage. Nothing here can reach a file on the server; the site is
-   read-only and only ~ can change.
+   public structure, as /api/site/tree serves it from sitenav, plus a home
+   directory, ~.
+
+   On the public site ~ is /home/guest, kept in this browser's
+   localStorage, and nothing here can reach a file on the server. On the
+   edit origin, a page that names the admin mount in
+   <meta name="pc-fs-mount"> (Architecture/admin-and-identity-design.md,
+   A7 and A10) gets two server directories instead: /wwwroot, the web root,
+   and /home/<name>, the admin's own directory, which is ~ there. Their
+   listings load with the tree, so a path resolves at once; their files are
+   read, written, moved and deleted on the server. When the server wants a
+   fresh passkey tap for a change, window.pcAdmin.confirm (js/admin.js)
+   asks for one, and the change is tried again.
+
+   Writing, making directories, removing and moving are asynchronous for
+   every tree; each resolves to an error message or null (write to
+   { error } or { node }).
 
    Loaded once per page, from the address js/applets.js names in
    window.pcSiteFsSrc, so every applet shares one copy and one version.
-   Every change to ~ (or to the barcode tool's layouts, which appear as
-   ~/barcode-layouts.json) fires pc:fs-change on the document, whether it
-   was made here or in another tab. A reload from storage replaces the
-   nodes under ~, so an applet keeps paths, not nodes, across changes. */
+   Every change fires pc:fs-change on the document, whether it was made
+   here or in another tab. A reload replaces the nodes it covers, so an
+   applet keeps paths, not nodes, across changes. */
 (function () {
     'use strict';
     if (window.pcSiteFs) { return; }
@@ -42,6 +54,11 @@
     var LAYOUTS_KEY = 'pc-barcode-layouts';
     var FILE_MAX = 256 * 1024;
     var HOME_MAX = 2 * 1024 * 1024;
+    var SERVER_MAX = 10 * 1024 * 1024;
+
+    function meta(name) { var m = document.querySelector('meta[name="' + name + '"]'); return m ? m.getAttribute('content') || '' : ''; }
+    /* The admin mount's API, on the edit origin only. */
+    var MOUNT = meta('pc-fs-mount');
 
     function emit(reason) {
         document.dispatchEvent(new CustomEvent('pc:fs-change', { detail: { reason: reason } }));
@@ -55,7 +72,8 @@
         if (!treeReady) {
             treeReady = fetch('/api/site/tree', { headers: { Accept: 'application/json' } })
                 .then(function (r) { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); })
-                .then(function (data) { root = buildFs(data); return root; })
+                .then(function (data) { root = buildFs(data); return MOUNT ? mountServer(root) : null; })
+                .then(function () { return root; })
                 .catch(function (err) { treeReady = null; throw err; });
         }
         return treeReady;
@@ -100,7 +118,7 @@
             tags.children.push(d);
         });
         top.children.push(tags);
-        mountHome(top);
+        if (!MOUNT) { mountHome(top); }
         return top;
     }
 
@@ -283,6 +301,7 @@
     /* Saves the home directory; on failure the stored copy is reloaded so
        what every applet shows matches what the browser kept. */
     function homeSave() {
+        if (MOUNT) { return null; }
         var s = homeSerialize();
         if (s.length > HOME_MAX) { homeLoad(); emit('home'); return 'your home directory is full (the limit is 2 MB)'; }
         try { localStorage.setItem(HOME_KEY, s); home.raw = s; emit('home'); return null; }
@@ -291,7 +310,7 @@
 
     /* Another tab may have changed the files since this one last looked. */
     function homeSync() {
-        if (!home.dir) { return false; }
+        if (!home.dir || MOUNT) { return false; }
         var raw = null;
         try { raw = localStorage.getItem(HOME_KEY); } catch (err) { }
         if (raw === home.raw) { return false; }
@@ -302,9 +321,159 @@
 
     /* A change in another tab reaches this one through the storage event. */
     window.addEventListener('storage', function (e) {
+        if (MOUNT) { return; }
         if (e.key === HOME_KEY || e.key === null) { homeSync(); }
         else if (e.key === LAYOUTS_KEY) { emit('layouts'); }
     });
+
+    /* === The server directories ===========================================
+       On the edit origin: /wwwroot and /home/<name>, the admin's ~. A node
+       under them carries server (the root, "wwwroot" or "home") and rel (its
+       path under that root), and is writable, so home is true on it as on a
+       local file. Its text is fetched when first read and kept on the node. */
+
+    var TOKEN = meta('request-verification-token');
+    var serverRoots = {};
+    var channel = null;
+
+    function api(path, init) {
+        init = init || {};
+        init.credentials = 'same-origin';
+        init.headers = Object.assign({ Accept: 'application/json', RequestVerificationToken: TOKEN }, init.headers || {});
+        return fetch(MOUNT + path, init);
+    }
+
+    /* A change the server wants a fresh passkey tap for asks for one, then
+       goes again; a refused or failed tap leaves the first answer. */
+    async function call(path, init) {
+        var r = await api(path, init);
+        if (r.status !== 403 || !window.pcAdmin || !window.pcAdmin.confirm) { return r; }
+        var body = await r.clone().json().catch(function () { return {}; });
+        if (!body.confirm) { return r; }
+        try { await window.pcAdmin.confirm(); } catch (err) { return r; }
+        return api(path, init);
+    }
+
+    async function errorOf(r, label) {
+        if (r.ok) { return null; }
+        var body = await r.json().catch(function () { return {}; });
+        var why = body.error || (r.status === 404 ? 'no such file or directory'
+            : r.status === 403 ? 'confirm it\'s you with a passkey first'
+            : r.status === 429 ? 'too many changes at once; wait a minute'
+            : 'the server refused (' + r.status + ')');
+        return (label ? label + ': ' : '') + why;
+    }
+
+    function joinRel(dirRel, name) { return dirRel ? dirRel + '/' + name : name; }
+
+    function serverNode(parent, name, dir, rootName, rel, size, mtime) {
+        var n = { name: name, kind: dir ? 'dir' : 'file', home: true, server: rootName, rel: rel, size: size || 0, mtime: new Date(mtime || Date.now()), parent: parent };
+        if (dir) { n.children = []; }
+        return n;
+    }
+
+    /* Fills a server root's node from the server's listing, keeping the
+       root node itself, so the paths above it stay put. */
+    function fill(top, rootName, entries) {
+        var dirs = { '': top };
+        top.children = [];
+        entries.slice().sort(function (a, b) { return a.p.split('/').length - b.p.split('/').length || (a.p < b.p ? -1 : 1); })
+            .forEach(function (e) {
+                var i = e.p.lastIndexOf('/'), parentRel = i < 0 ? '' : e.p.slice(0, i), name = e.p.slice(i + 1);
+                var parent = dirs[parentRel];
+                if (!parent) { return; }
+                var n = serverNode(parent, name, e.d, rootName, e.p, e.s, e.m);
+                parent.children.push(n);
+                if (e.d) { dirs[e.p] = n; }
+            });
+        (function sortAll(d) { sortKids(d); d.children.forEach(function (c) { if (c.children) { sortAll(c); } }); })(top);
+    }
+
+    async function listing(rootName) {
+        var r = await api('/tree?root=' + rootName);
+        if (!r.ok) { throw new Error('the ' + rootName + ' listing: HTTP ' + r.status); }
+        return r.json();
+    }
+
+    async function mountServer(top) {
+        var www = serverNode(top, 'wwwroot', true, 'wwwroot', '', 0, null);
+        www.title = 'The web root'; www.description = 'The site\'s files, as the server serves them';
+        var homes = { name: 'home', kind: 'dir', title: 'Home directories', description: '', parent: top, children: [] };
+        top.children.push(www, homes);
+        var got = await Promise.all([listing('wwwroot'), listing('home')]);
+        fill(www, 'wwwroot', got[0].entries);
+        var mine = serverNode(homes, got[1].home, true, 'home', '', 0, null);
+        mine.title = 'Your home directory'; mine.description = 'Your own files, on the server';
+        homes.children.push(mine);
+        fill(mine, 'home', got[1].entries);
+        serverRoots = { wwwroot: www, home: mine };
+        home.dir = mine;
+        /* Scripts in ~/bin run by name, and help lists them, so their text
+           comes with the listing. */
+        var ub = userBin();
+        await Promise.all((ub ? ub.children : []).filter(function (c) { return !c.children; }).map(function (c) { return read(c).catch(function () { }); }));
+        if (window.BroadcastChannel && !channel) {
+            channel = new BroadcastChannel('pc-sitefs-server');
+            channel.onmessage = function (e) { if (e.data && serverRoots[e.data.root]) { reload(e.data.root, false); } };
+        }
+    }
+
+    /* Refreshes a server root from the server, and tells other tabs to. */
+    async function reload(rootName, tell) {
+        var top = serverRoots[rootName];
+        if (!top) { return; }
+        try { fill(top, rootName, (await listing(rootName)).entries); } catch (err) { return; }
+        emit('server');
+        if (tell !== false && channel) { channel.postMessage({ root: rootName }); }
+    }
+
+    function changed(rootName) {
+        emit('server');
+        if (channel) { channel.postMessage({ root: rootName }); }
+    }
+
+    async function serverBytes(n) {
+        var r = await api('/file?root=' + n.server + '&path=' + encodeURIComponent(n.rel), { headers: { Accept: 'application/octet-stream' } });
+        if (!r.ok) { throw new Error(displayPath(n) + ': ' + (r.status === 404 ? 'no such file' : 'HTTP ' + r.status)); }
+        return r.arrayBuffer();
+    }
+
+    async function serverRead(n) {
+        if (n.content != null) { return n.content; }
+        var text = new TextDecoder('utf-8').decode(await serverBytes(n));
+        n.content = text;
+        return text;
+    }
+
+    /* Puts bytes at a path under a server directory; resolves to { error } or { node }. */
+    async function serverPut(d, name, body, label, text) {
+        var existing = childNamed(d, name);
+        var rel = existing ? existing.rel : joinRel(d.rel, name);
+        var r = await call('/file?root=' + d.server + '&path=' + encodeURIComponent(rel), {
+            method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: body
+        });
+        var e = await errorOf(r, label);
+        if (e) { return { error: e }; }
+        var entry = (await r.json()).entry;
+        var n = existing;
+        if (!n) {
+            n = serverNode(d, name, false, d.server, rel, entry.s, entry.m);
+            d.children.push(n);
+            sortKids(d);
+        } else {
+            n.size = entry.s;
+            n.mtime = new Date(entry.m);
+        }
+        n.content = text != null ? text : undefined;
+        changed(d.server);
+        return { node: n };
+    }
+
+    /* Fixes the rel of a moved node and everything under it. */
+    function reroot(n, rel) {
+        n.rel = rel;
+        (n.children || []).forEach(function (c) { reroot(c, joinRel(rel, c.name)); });
+    }
 
     function attached(n) {
         for (var x = n; x && x.parent; x = x.parent) { if (x.parent.children.indexOf(x) < 0) { return false; } }
@@ -342,27 +511,46 @@
         return null;
     }
 
-    function readHome(n) { return n.special === 'layouts' ? layoutsText() : n.content; }
+    /* A writable file's text as far as it is known at once: a local file's
+       text, or a server file's once it has been read. read() fetches it. */
+    function readHome(n) {
+        if (n.special === 'layouts') { return layoutsText(); }
+        if (n.server) { return n.content != null ? n.content : ''; }
+        return n.content;
+    }
 
-    /* Writes a file in the home directory, creating it if need be. Resolves
-       to { error } or { node }. */
+    function isServerRoot(n) { return !!n.server && n.rel === ''; }
+    function limitFor(n) { return n && n.server ? SERVER_MAX : FILE_MAX; }
+    function limitText(n) { return n && n.server ? '10 MB' : '256 KB'; }
+
+    /* Writes a file, creating it if need be. Resolves to { error } or { node }. */
     async function write(base, path, content, append) {
         var n = resolve(base, path);
         if (n) { n = realOf(n); }
         if (n && n.children) { return { error: path + ': is a directory' }; }
         if (n && !n.home) { return { error: path + ' is part of the site, which is read-only' }; }
-        var full = append && n ? readHome(n) + content : content;
+        var d = n ? n.parent : null, name = n ? n.name : null;
+        if (!n) {
+            var sp = splitPath(path);
+            d = resolve(base, sp.dir);
+            name = sp.base;
+            if (!d || !d.children) { return { error: sp.dir + ': no such directory' }; }
+            if (!d.home) { return { error: 'files can only be created in your home directory (~)' + (MOUNT ? ' or under /wwwroot' : '') }; }
+            if (!validName(name)) { return { error: name + ' is not a valid file name' }; }
+        }
+        var full = append && n ? (n.server ? await serverRead(n) : readHome(n)) + content : content;
+        if (d.server) {
+            var bytes = new TextEncoder().encode(full);
+            if (bytes.length > SERVER_MAX) { return { error: path + ': too large (the limit is 10 MB)' }; }
+            return serverPut(d, name, bytes, path, full);
+        }
         if (full.length > FILE_MAX) { return { error: path + ': too large (the limit is 256 KB)' }; }
         if (n && n.special) { var e = await writeLayouts(full); return e ? { error: path + ': ' + e } : { node: n }; }
         if (n) {
             n.content = full;
             n.mtime = new Date();
         } else {
-            var sp = splitPath(path), d = resolve(base, sp.dir);
-            if (!d || !d.children) { return { error: sp.dir + ': no such directory' }; }
-            if (!d.home) { return { error: 'files can only be created in your home directory (~)' }; }
-            if (!validName(sp.base)) { return { error: sp.base + ' is not a valid file name' }; }
-            n = { name: sp.base, kind: 'file', home: true, content: full, mtime: new Date(), parent: d };
+            n = { name: name, kind: 'file', home: true, content: full, mtime: new Date(), parent: d };
             d.children.push(n);
             sortKids(d);
         }
@@ -370,9 +558,45 @@
         return err ? { error: err } : { node: n };
     }
 
-    /* Makes a directory in ~; with parents, any missing ones on the way
-       too, and no complaint if it exists. Returns an error or null. */
-    function mkdir(base, path, parents) {
+    /* Puts a file from the computer into a directory. A server directory
+       takes any file as it is, pictures included; ~ in this browser takes
+       text only. Resolves to { error } or { node }. */
+    async function upload(dir, file) {
+        dir = realOf(dir);
+        if (!dir.home || !dir.children) { return { error: 'files can only be uploaded into your home directory (~)' + (MOUNT ? ' or under /wwwroot' : '') }; }
+        if (!validName(file.name)) { return { error: file.name + ' is not a valid file name' }; }
+        if (file.size > limitFor(dir)) { return { error: file.name + ' is larger than ' + limitText(dir) }; }
+        var existing = childNamed(dir, file.name);
+        if (existing && existing.children) { return { error: file.name + ' is a directory here' }; }
+        if (dir.server) { return serverPut(dir, file.name, file, file.name, null); }
+        var text = await file.text();
+        if (text.indexOf('\0') >= 0) { return { error: file.name + ' is not a text file' }; }
+        return write(dir, file.name, text, false);
+    }
+
+    /* Copies a file to a new path or into a directory. A server file goes
+       to a server directory byte for byte, so pictures survive; anything
+       else is copied as its text. Resolves to { error } or { node }. */
+    async function copy(base, n, dest) {
+        var r = realOf(n), target = resolve(base, dest), d, name;
+        if (target && target.children) { d = realOf(target); name = r.name; }
+        else {
+            var sp = splitPath(dest);
+            d = resolve(base, sp.dir);
+            name = sp.base;
+            if (!d || !d.children) { return { error: sp.dir + ': no such directory' }; }
+        }
+        if (!d.home) { return { error: 'files can only be copied into your home directory (~)' + (MOUNT ? ' or under /wwwroot' : '') }; }
+        if (!validName(name)) { return { error: name + ' is not a valid file name' }; }
+        if (r.server && d.server) { return serverPut(d, name, await serverBytes(r), dest, null); }
+        var text;
+        try { text = await read(r); } catch (err) { return { error: err.message }; }
+        return write(d, name, text, false);
+    }
+
+    /* Makes a directory; with parents, any missing ones on the way too, and
+       no complaint if it exists. Resolves to an error or null. */
+    async function mkdir(base, path, parents) {
         var parts = String(path).replace(/\/+$/, '');
         var sp = splitPath(parts), existing = resolve(base, parts);
         if (existing) {
@@ -380,51 +604,95 @@
             return path + ': already exists';
         }
         var parent = resolve(base, sp.dir);
-        if (!parent && parents) { var e = mkdir(base, sp.dir, true); if (e) { return e; } parent = resolve(base, sp.dir); }
+        if (!parent && parents) { var e = await mkdir(base, sp.dir, true); if (e) { return e; } parent = resolve(base, sp.dir); }
         if (!parent || !parent.children) { return sp.dir + ': no such directory'; }
-        if (!parent.home) { return 'directories can only be made in your home directory (~)'; }
+        if (!parent.home) { return 'directories can only be made in your home directory (~)' + (MOUNT ? ' or under /wwwroot' : ''); }
         if (!validName(sp.base)) { return sp.base + ' is not a valid name'; }
+        if (parent.server) {
+            var rel = joinRel(parent.rel, sp.base);
+            var r = await call('/mkdir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ root: parent.server, path: rel }) });
+            var err = await errorOf(r, path);
+            if (err) { return err; }
+            parent.children.push(serverNode(parent, sp.base, true, parent.server, rel, 0, null));
+            sortKids(parent);
+            changed(parent.server);
+            return null;
+        }
         mkDirNode(parent, sp.base);
         return homeSave();
     }
 
-    /* Removes a file, or with recursive a directory, from ~. */
-    function remove(n, recursive, label) {
+    /* Removes a file, or with recursive a directory. What goes from a
+       server directory is kept in its history. Resolves to an error or null. */
+    async function remove(n, recursive, label) {
         n = realOf(n);
         label = label || displayPath(n);
         if (!n.home) { return label + ' is part of the site, which is read-only'; }
-        if (n === home.dir) { return 'your home directory can\'t be removed'; }
+        if (n === home.dir || isServerRoot(n)) { return label + ' can\'t be removed'; }
         if (n.special) { return label + ' belongs to the barcode tool; remove layouts in the file or in the tool instead'; }
         if (n.children && !recursive) { return label + ': is a directory (use rm -r)'; }
+        if (n.server) {
+            var r = await call('/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ root: n.server, path: n.rel, recursive: !!recursive }) });
+            var err = await errorOf(r, label);
+            if (err) { return err; }
+            n.parent.children.splice(n.parent.children.indexOf(n), 1);
+            changed(n.server);
+            return null;
+        }
         n.parent.children.splice(n.parent.children.indexOf(n), 1);
         return homeSave();
     }
 
-    /* Moves or renames a file or directory within ~. dest may be a
-       directory to move into, or a new path. */
-    function move(base, n, dest, label) {
+    /* Moves or renames a file or directory. dest may be a directory to move
+       into, or a new path. Between ~ and a server directory, or between the
+       two server roots, a file is copied and the original removed; a
+       directory can't cross. Resolves to an error or null. */
+    async function move(base, n, dest, label) {
         n = realOf(n);
         label = label || displayPath(n);
         if (!n.home) { return label + ' is part of the site, which is read-only'; }
-        if (n === home.dir) { return 'your home directory can\'t be moved'; }
+        if (n === home.dir || isServerRoot(n)) { return label + ' can\'t be moved'; }
         if (n.special) { return label + ' belongs to the barcode tool and can\'t be moved'; }
         var target = resolve(base, dest), parent, name;
-        if (target && target.children) { parent = target; name = n.name; }
+        if (target && target.children) { parent = realOf(target); name = n.name; }
         else {
             var sp = splitPath(dest);
             parent = resolve(base, sp.dir);
             name = sp.base;
             if (!parent || !parent.children) { return sp.dir + ': no such directory'; }
         }
-        if (!parent.home) { return 'files can only be moved within your home directory (~)'; }
+        if (!parent.home) { return 'files can only be moved within your home directory (~)' + (MOUNT ? ' or /wwwroot' : ''); }
         if (!validName(name)) { return name + ' is not a valid name'; }
         for (var x = parent; x; x = x.parent) { if (x === n) { return 'a directory can\'t be moved into itself'; } }
         var clash = childNamed(parent, name);
         if (clash === n) { return null; }
-        if (clash) {
-            if (clash.children || n.children || clash.special) { return displayPath(parent).replace(/\/$/, '') + '/' + name + ' already exists'; }
-            parent.children.splice(parent.children.indexOf(clash), 1);
+        if (clash && (clash.children || n.children || clash.special)) { return displayPath(parent).replace(/\/$/, '') + '/' + name + ' already exists'; }
+
+        if (n.server && parent.server === n.server) {
+            var to = joinRel(parent.rel, name);
+            var r = await call('/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ root: n.server, path: n.rel, to: to }) });
+            var err = await errorOf(r, label);
+            if (err) { return err; }
+            if (clash) { parent.children.splice(parent.children.indexOf(clash), 1); }
+            n.parent.children.splice(n.parent.children.indexOf(n), 1);
+            n.name = name; n.parent = parent; n.mtime = new Date();
+            reroot(n, to);
+            parent.children.push(n);
+            sortKids(parent);
+            changed(n.server);
+            return null;
         }
+        if (n.server || parent.server) {
+            if (n.children) { return label + ': a directory can\'t be moved between ~ and /wwwroot; move its files one at a time'; }
+            var body = n.server ? await serverBytes(n) : new TextEncoder().encode(readHome(n));
+            var put = parent.server
+                ? await serverPut(parent, name, body, label, null)
+                : await write(parent, name, new TextDecoder('utf-8').decode(body), false);
+            if (put.error) { return put.error; }
+            return remove(n, false, label);
+        }
+
+        if (clash) { parent.children.splice(parent.children.indexOf(clash), 1); }
         n.parent.children.splice(n.parent.children.indexOf(n), 1);
         n.name = name;
         n.parent = parent;
@@ -458,6 +726,7 @@
        address. */
     function read(n) {
         var r = realOf(n);
+        if (r.server) { return serverRead(r); }
         if (r.home) { return Promise.resolve(readHome(r)); }
         if (r.kind === 'script') { return Promise.resolve(r.source || ''); }
         if (r.kind === 'link') {
@@ -507,7 +776,45 @@
         return r.kind;
     }
 
-    function size(n) { var r = realOf(n); return r.home && !r.children ? readHome(r).length : null; }
+    function size(n) {
+        var r = realOf(n);
+        if (r.children) { return null; }
+        if (r.server) { return r.size; }
+        return r.home ? readHome(r).length : null;
+    }
+
+    /* Where a node can be seen on the public site: a page at its own
+       address, and a file under /wwwroot at its path. Null for the rest. */
+    var PUBLIC_ORIGIN = meta('pc-public-origin') || location.origin;
+    function publicUrl(n) {
+        var r = realOf(n);
+        if (r.server === 'wwwroot' && !r.children) {
+            /* An article's source is seen as its page. */
+            var page = /^content\/([A-Za-z0-9_-]+)\.(md|html)$/.exec(r.rel);
+            if (page) { return PUBLIC_ORIGIN + '/page/' + page[1]; }
+            return PUBLIC_ORIGIN + '/' + r.rel.split('/').map(encodeURIComponent).join('/');
+        }
+        if (!r.home && (r.kind === 'page' || r.kind === 'app')) { return PUBLIC_ORIGIN + '/page/' + encodeURIComponent(r.name); }
+        return null;
+    }
+
+    /* Whether a file is text an editor can open. Files in this browser's ~
+       always are; a server file is judged by its extension, and one with
+       none, such as a script, counts as text. */
+    var TEXT_EXT = /\.(txt|md|markdown|json|xfer|xferlang|html?|css|js|mjs|cjs|ts|cs|cshtml|razor|xml|svg|csv|tsv|sh|cells|sudoku|ya?ml|ini|conf|log|webmanifest|py|go|rs|c|h|cpp|hpp|java|sql|ps1|bat|editorconfig|gitignore)$/i;
+    function isText(n) {
+        var r = realOf(n);
+        if (r.children) { return false; }
+        if (!r.server) { return true; }
+        return TEXT_EXT.test(r.name) || r.name.indexOf('.') < 0;
+    }
+
+    /* The file under /wwwroot/content a site page is made from, or null. */
+    function sourceOf(n) {
+        var r = realOf(n), content = serverRoots.wwwroot ? childNamed(serverRoots.wwwroot, 'content') : null;
+        if (!content || r.home || r.kind !== 'page') { return null; }
+        return childNamed(content, r.name + '.md') || childNamed(content, r.name + '.html') || null;
+    }
 
     window.pcSiteFs = {
         load: load,
@@ -526,11 +833,22 @@
         read: read,
         readHome: readHome,
         write: write,
+        upload: upload,
+        copy: copy,
         mkdir: mkdir,
         remove: remove,
         move: move,
         save: homeSave,
         sync: homeSync,
+        /* The admin mount (edit origin only). */
+        mounted: !!MOUNT,
+        user: function () { return home.dir ? home.dir.name : 'guest'; },
+        reload: function (rootName) { return reload(rootName); },
+        publicUrl: publicUrl,
+        sourceOf: sourceOf,
+        isText: isText,
+        readBytes: function (n) { var r = realOf(n); return r.server ? serverBytes(r) : Promise.resolve(new TextEncoder().encode(readHome(r)).buffer); },
+        limitFor: limitFor,
         prefetch: prefetch,
         checkLayouts: checkLayouts,
         userBin: userBin,

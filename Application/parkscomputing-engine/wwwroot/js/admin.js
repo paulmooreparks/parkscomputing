@@ -111,6 +111,18 @@
         return action();
     }
 
+    /* For the workspace's applets (js/sitefs.js): when the server wants a
+       fresh passkey tap for a change, this asks for one. It resolves when
+       the tap is accepted and rejects when it is refused or cancelled. */
+    window.pcAdmin = {
+        confirm: async function () {
+            say('Confirm it\'s you with a passkey.');
+            var r = await assert('/api/admin/passkey/confirm');
+            if (!r.ok) { throw new Error('The passkey wasn\'t accepted.'); }
+            say('Confirmed.');
+        }
+    };
+
     function guard(button, scope, work) {
         button.addEventListener('click', async function () {
             if (!window.PublicKeyCredential) { showError(scope, 'This browser can\'t use passkeys.'); return; }
@@ -138,7 +150,9 @@
 
     document.querySelectorAll('[data-passkey-signin]').forEach(function (b) {
         var scope = b.closest('section') || document;
-        guard(b, scope, async function () { await follow(await assert('/api/admin/passkey/signin'), scope); });
+        /* Back to the admin page that sent here, such as a public page's Edit link. */
+        var back = new URLSearchParams(location.search).get('ReturnUrl') || '';
+        guard(b, scope, async function () { await follow(await assert('/api/admin/passkey/signin', { returnUrl: back }), scope); });
     });
 
     document.querySelectorAll('[data-passkey-enroll]').forEach(function (b) {
