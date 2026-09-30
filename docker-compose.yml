@@ -42,11 +42,15 @@ services:
     # admins' home directories, the edit origin's shared configuration (/etc)
     # and the history of changed files sit beside it, outside what the site
     # serves (Architecture/admin-and-identity-design.md, A7, A10 and A15).
+    # The server's own configuration, the SSH destinations among it (A16),
+    # is read-only and outside the admin mount, so nothing done through the
+    # site can change it.
     volumes:
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\wwwroot:/app/wwwroot
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\home:/app/home
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\etc:/app/etc
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\history:/app/history
+      - C:\Users\paul\OneDrive\Documents\parkscomputing.com\config:/app/config:ro
     depends_on:
       sqlserver:
         condition: service_healthy
