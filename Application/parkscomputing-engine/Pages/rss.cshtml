@@ -10,8 +10,12 @@
     ViewData["PubDate"] = Model.CreateDate.ToString("R");
     ViewData["LastBuildDate"] = Model.ModifiedDate.ToString("R");
 }
-@if (Model.Root != null && Model.Root.Posts != null) {
-@foreach (var post in @Model.Root.Posts) {
+@* The articles, the entries of the sections sitenav.xfer marks feed,
+   newest first, as a feed reader expects, whatever order the site lists
+   them in. *@
+@if (Model.Root != null) {
+@foreach (var post in ParksComputing.Engine.Pages.Services.NavService.Articles(Model.Root)
+    .OrderByDescending(p => ParksComputing.Engine.Pages.Services.NavService.EffectiveDate(p) ?? DateTime.MinValue)) {
     @:<item>
         <title>@post.Title</title>
         @:<link>@post.Url</link>

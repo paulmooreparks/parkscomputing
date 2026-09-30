@@ -42,7 +42,7 @@ public class DesktopModel : PageModel {
     public bool AnyVisible { get; private set; }
 
     /// <summary>The selected categories from repeated ?cat= parameters
-    /// ("articles" or top-level section slugs). Empty means all. A tab
+    /// (top-level section slugs). Empty means all. A tab
     /// selects exactly one; the category menu selects several.</summary>
     public List<string> SelectedCats { get; } = new();
 
@@ -84,11 +84,6 @@ public class DesktopModel : PageModel {
         }
     }
 
-    /// <summary>Posts newest first by effective date (Paul, 2026-09-26).</summary>
-    public IEnumerable<NavNode> SortedPosts =>
-        (Root.Posts ?? Array.Empty<NavNode>())
-            .OrderByDescending(p => NavService.EffectiveDate(p) ?? DateTime.MinValue);
-
     public IActionResult OnGet() {
         // Preference redirects act only on top-level navigations (Fetch
         // Metadata); a region fetch must receive exactly what its address
@@ -123,7 +118,8 @@ public class DesktopModel : PageModel {
         Root = _navService.GetRoot();
         WelcomeHtml = _content.RenderFragment("desktop-welcome");
 
-        if (Root.Posts is { Length: > 0 }) { Categories.Add(("articles", "Articles")); }
+        // Every section is a category, Articles among them, in the file's
+        // order (2026-10-01).
         foreach (var section in Root.Nav ?? Array.Empty<NavNode>()) {
             if (string.IsNullOrEmpty(section.Slug)) { continue; }
             if (section.Nav is { Length: > 0 }) {

@@ -43,12 +43,6 @@
             {
                 if (ViewData[key] is PostsContentModel model && processedContent.Contains(key))
                 {
-                    // A selected category substitutes its entries for the
-                    // marker's default set, so the tabs filter the cards.
-                    if (Model.CardsRoot is not null)
-                    {
-                        model.NavNode = Model.CardsRoot;
-                    }
                     var partialName = model.Format switch
                     {
                         "links" => "_PostsLinks",
@@ -96,9 +90,9 @@
             }
 
             // Legacy support for old RENDER_POSTS_HERE marker
-            if (processedContent.Contains("RENDER_POSTS_HERE") && Model.Root?.Posts != null)
+            if (processedContent.Contains("RENDER_POSTS_HERE"))
             {
-                var legacyModel = new PostsContentModel { NavNode = Model.Root };
+                var legacyModel = new PostsContentModel { Entries = Model.Entries };
                 var postsHtml = await Html.PartialAsync("_PostsPartial", legacyModel);
 
                 using var writer = new StringWriter();

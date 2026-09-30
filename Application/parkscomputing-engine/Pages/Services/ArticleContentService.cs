@@ -104,22 +104,16 @@ public class ArticleContentService {
     /// <summary>The window key that opens a tag's article list.</summary>
     public static string TagKey(string tag) => "tag-" + TagSlug(tag);
 
-    /// <summary>
-    /// A tag window's content ("tag-{slug}" keys): the articles categorized
-    /// under that tag, newest first, each row opening its article. Null
-    /// when the key is not a tag key or no tag matches.
-    /// </summary>
-    /// <summary>The articles under a tag, given its slug, newest first, each
-    /// with the tag as it is spelled on that article. Empty when no article
-    /// carries the tag. The tag window, the tag page and the tag menu in a
-    /// window all list from here.</summary>
+    /// <summary>The entries under a tag, given its slug, in the order
+    /// sitenav.xfer gives them, each once, with the tag as it is spelled on
+    /// that entry. Empty when nothing carries the tag. The tag window, the
+    /// tag page and the tag menu in a window all list from here.</summary>
     public static List<(NavNode Node, string Tag)> TaggedWith(NavNode root, string slug) =>
         TaggableNodes(root)
             .Select(n => (Node: n, Tag: n.Tags!.FirstOrDefault(t => TagSlug(t) == slug)))
             .Where(x => x.Tag is not null)
             .GroupBy(x => x.Node.Slug, StringComparer.OrdinalIgnoreCase)
             .Select(g => (g.First().Node, g.First().Tag!))
-            .OrderByDescending(x => NavService.EffectiveDate(x.Node) ?? DateTime.MinValue)
             .ToList();
 
     /// <summary>The classic page listing a tag's articles.</summary>
@@ -159,9 +153,6 @@ public class ArticleContentService {
             .ToList();
 
     private static IEnumerable<NavNode> TaggableNodes(NavNode root) {
-        foreach (var post in root.Posts ?? Array.Empty<NavNode>()) {
-            if (post.Tags is { Length: > 0 } && !string.IsNullOrEmpty(post.Slug)) { yield return post; }
-        }
         foreach (var node in NavLeaves(root)) {
             if (node.Tags is { Length: > 0 } && !string.IsNullOrEmpty(node.Slug) && !node.External) { yield return node; }
         }

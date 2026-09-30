@@ -19,7 +19,7 @@ public class TagModel : PageModel {
         _navService = navService;
     }
 
-    /// <summary>The tag as the newest article spells it.</summary>
+    /// <summary>The tag as the first entry under it spells it.</summary>
     public string TagName { get; private set; } = string.Empty;
 
     public List<(NavNode Node, string Tag)> Articles { get; private set; } = new();

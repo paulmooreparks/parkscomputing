@@ -301,42 +301,14 @@ body.desktop .site-header { position: static; flex: none; }
    the layout itself (body:has(> .md-layout) fills the viewport); what
    follows is only this site's stage styling. */
 
-/* The tab row: the category tabs on the left and the filter on the right,
-   in one recessed band (PUDL's .app-section-bar). The tabs stand on the
-   band's bottom edge, where the page begins; the filter sits level with
-   them. When the row is too narrow for both, the filter takes a line of
-   its own above the tabs, so the tabs keep the bottom edge, and on a
-   phone the filter takes the whole line and its menus the next. */
-.site-tabrow {
-  container: tabrow / inline-size;
-  flex-wrap: wrap; column-gap: var(--space-3); row-gap: 8px;
-  overflow: visible;
-}
-/* The tabs scroll sideways when they don't fit, and a box that scrolls
-   clips top and bottom too, so the padding gives the current tab, which
-   PUDL raises above the others, room inside the box; the negative margin
-   keeps the row where it was. */
-.site-tabs { display: flex; align-items: flex-end; gap: var(--space-1); flex: 1 1 auto; min-width: 0; overflow-x: auto; padding-top: 8px; margin-top: -8px; }
-.site-filters {
-  display: flex; align-items: center; gap: 8px; flex: none;
-  align-self: center; margin-bottom: 6px;
-  --ctl-h: 30px;
-}
-.site-filters .btn-sm, .site-filters .md-filter, .site-filters .md-filter-group {
-  box-sizing: border-box; height: var(--ctl-h); display: inline-flex; align-items: center;
-}
-/* The group keeps PUDL's stretch: its search button takes its height from
-   the group, and centred it shrank to its glyph. */
-.site-filters .md-filter-group { align-items: stretch; }
-.site-filters .md-filter { padding: 4px 12px; width: 200px; }
-@container tabrow (max-width: 820px) {
-  .site-filters { order: -1; flex: 1 1 100%; justify-content: flex-end; margin-bottom: 0; }
-}
-@container tabrow (max-width: 520px) {
-  .site-filters { flex-wrap: wrap; justify-content: flex-start; }
-  .site-filters .md-filter-group { flex: 1 1 100%; }
-  .site-filters .md-filter { flex: 1; width: auto; }
-}
+/* The list's bar (Paul, 2026-10-01): PUDL's list toolbar holding the filter
+   controls, a rule, and the filter chips. The chips take the rest of the
+   line and wrap within it; with none, the rule goes too. On a narrow screen
+   PUDL's toolbar wraps and gives the filter box a line of its own. */
+.site-listbar { flex-wrap: wrap; row-gap: 8px; }
+.site-listbar .md-filter { width: 200px; }
+.site-chips { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.site-listbar:not(:has(.filter-chip)) .md-toolbar-sep { display: none; }
 
 
 /* The site menu: the logo and name as a raised chip on the topbar,

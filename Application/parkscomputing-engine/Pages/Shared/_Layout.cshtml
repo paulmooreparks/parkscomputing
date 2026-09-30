@@ -231,17 +231,7 @@
                 var paletteRoot = PaletteNav.GetRoot();
                 string PaletteHref(string slug) => isDesktop ? $"/?open={slug}&top={slug}" : $"/page/{slug}";
             }
-            @if (paletteRoot.Posts is { Length: > 0 })
-            {
-                <div class="md-section-label">Articles</div>
-                foreach (var post in paletteRoot.Posts
-                    .Where(p => !string.IsNullOrEmpty(p.Slug))
-                    .OrderByDescending(p => NavService.EffectiveDate(p) ?? DateTime.MinValue))
-                {
-                    <div class="md-row"><a class="md-item" href="@PaletteHref(post.Slug!)"
-                        @(isDesktop ? Html.Raw($"data-win-open=\"{post.Slug}\"") : null)>@(post.Title ?? post.Slug)</a></div>
-                }
-            }
+            @* Every section, Articles among them, in sitenav.xfer's order. *@
             @foreach (var paletteSection in paletteRoot.Nav ?? Array.Empty<NavNode>())
             {
                 if (paletteSection.Nav is not { Length: > 0 }) { continue; }

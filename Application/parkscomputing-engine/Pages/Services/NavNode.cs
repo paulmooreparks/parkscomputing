@@ -91,13 +91,22 @@ public class NavNode {
     [XferProperty("links")]
     public NavNode[]? Links { get => Nav; set { if (value != null) { Nav = value; } } }
 
-    [XferProperty("posts")]
-    public NavNode[]? Posts { get; set; }
+    /// <summary>
+    /// On a section: its entries are articles, dated pieces of writing.
+    /// Their dates, descriptions and excerpts are read from their content
+    /// files where sitenav.xfer leaves them out, and they make up the RSS
+    /// feed, newest first. Other sections' entries take only a title from
+    /// their files. The articles used to be a separate posts array; they
+    /// are an ordinary section now (2026-10-01), in the order the file
+    /// gives, as every section is.
+    /// </summary>
+    [XferProperty("feed")]
+    public bool Feed { get; set; }
 
     /// <summary>The site menu, the logo's menu in the topbar, on the root
     /// only. An entry naming only a slug borrows the rest (title, icon,
-    /// address, window shape) from the entry of that slug in nav or posts;
-    /// an entry with a nav of its own is a labelled group of entries.</summary>
+    /// address, window shape) from the nav entry of that slug; an entry
+    /// with a nav of its own is a labelled group of entries.</summary>
     [XferProperty("menu")]
     public NavNode[]? Menu { get; set; }
 

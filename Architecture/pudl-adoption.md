@@ -130,6 +130,10 @@ All three proposals from `pudl-proposal-empty-structure.md` shipped as 0.13.0 an
 
 0.19.0 fixed Paul's palette focus miss, with a sharper diagnosis than the site's bug report guessed: pudl-windows took focus when a window's content arrived from its fetch, so a `/` pressed before a restoring window finished loading had the window steal focus back from the palette filter, which is why it depended on session state and never reproduced in tests that waited for network idle. A window now takes focus only if focus has not moved since it was asked for. The site verified the exact race (window fetches slowed to 1.2s, palette summoned mid-flight, focus checked before and after arrival) and the pin was a three-file sync with no site-side change. Also in 0.19.0: `docs/CONTRACT.md` (what a project may rely on, frozen at 1.0), the test suites in the PUDL repo running three engines in CI, and a menu filter that clears on every open. The 0.14.0 lesson stands confirmed twice now: what looked like a browser-timing mystery was an interaction between two of our own moving parts, and the report that pinned it came from `document.activeElement`, one console line from the person who could reproduce it.
 
+### D48. PUDL 0.35.1 pinned
+
+0.35.1 (2026-10-01) gives a window sized by its content a single hairline in place of the 5px frame band, which read as a border to drag, at Paul's request. A docked window's free edge now shows its grip at rest. Nothing on the site changed with it.
+
 ### D47. PUDL 0.35.0 pinned: windows sized by their content
 
 0.34.1 (2026-10-01) put segmented controls back as they were, the chosen segment raised in a trough, and fixed the topbar link colour. 0.35.0 the same day shipped `pudl-proposal-window-sizing.md` and fixed `pudl-bug-snap-zone-indent.md`. The site took both at once and removed both workarounds.

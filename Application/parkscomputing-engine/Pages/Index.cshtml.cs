@@ -32,9 +32,15 @@ namespace ParksComputing.Engine.Pages {
         /// which cards the home page shows. Null means all.</summary>
         public string? Cat { get; private set; }
 
-        /// <summary>A synthetic root whose Posts are the selected category's
-        /// entries, substituted into the card markers when Cat is set.</summary>
-        public NavNode? CardsRoot { get; private set; }
+        /// <summary>The cards the page shows: the selected section's entries,
+        /// or with no section every section's, each once, in sitenav.xfer's
+        /// order (Paul, 2026-10-01).</summary>
+        public IReadOnlyList<NavNode> Entries { get; private set; } = new List<NavNode>();
+
+        /// <summary>The words at the top of the list: the selected section's
+        /// description, or with no section the site's own (the root entry's).
+        /// Content files place it with {{HEADING}}.</summary>
+        public string? Heading { get; private set; }
 
         public IndexModel(AppServices services) : base(services) {
         }
@@ -43,17 +49,18 @@ namespace ParksComputing.Engine.Pages {
             Root = NavService.GetRoot();
 
             var cat = HttpContext.Request.Query["cat"].FirstOrDefault();
-            if (cat == "articles" && Root.Posts is { Length: > 0 }) {
+            var section = cat is null ? null : ParksComputing.Engine.Pages.Services.NavService.Sections(Root).FirstOrDefault(n => n.Slug == cat);
+            if (section is not null) {
                 Cat = cat;
-                CardsRoot = new NavNode { Posts = Root.Posts };
+                Entries = section.Nav!.ToList();
+                Heading = section.Description ?? section.Title;
             }
-            else if (cat is not null) {
-                var section = (Root.Nav ?? Array.Empty<NavNode>())
-                    .FirstOrDefault(n => n.Slug == cat && n.Nav is { Length: > 0 });
-                if (section is not null) {
-                    Cat = cat;
-                    CardsRoot = new NavNode { Posts = section.Nav };
-                }
+            else {
+                Entries = ParksComputing.Engine.Pages.Services.NavService.Sections(Root).SelectMany(s => s.Nav!)
+                    .Where(n => !string.IsNullOrEmpty(n.Slug))
+                    .GroupBy(n => n.Slug!, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
+                    .ToList();
+                Heading = Root.Description ?? Root.Title;
             }
 
             ViewData["NavCat"] = Cat;
@@ -66,23 +73,23 @@ namespace ParksComputing.Engine.Pages {
         }
 
         protected override string ProcessContentPlaceholders(string content) {
+            // The heading follows the selected section.
+            content = content.Replace("{{HEADING}}", System.Net.WebUtility.HtmlEncode(Heading ?? string.Empty));
+
             // Handle legacy {{POSTS}} placeholder for backward compatibility
-            if (content.Contains("{{POSTS}}") && Root?.Posts != null) {
+            if (content.Contains("{{POSTS}}")) {
                 content = content.Replace("{{POSTS}}", "<posts-content></posts-content>");
             }
 
-            // Process posts-content elements
+            // Process posts-content elements: the selected section's entries.
             var customElements = CustomElementParser.ParseCustomElements(content);
 
             foreach (var element in customElements.Where(e => e.TagName == "posts-content"))
             {
-                if (Root?.Posts != null)
-                {
-                    var model = PostsContentModel.FromAttributes(element.Attributes, Root);
-                    var marker = $"RENDER_POSTS_{Guid.NewGuid():N}";
-                    ViewData[marker] = model;
-                    content = CustomElementParser.ReplaceCustomElement(content, element, marker);
-                }
+                var model = PostsContentModel.FromAttributes(element.Attributes, Entries);
+                var marker = $"RENDER_POSTS_{Guid.NewGuid():N}";
+                ViewData[marker] = model;
+                content = CustomElementParser.ReplaceCustomElement(content, element, marker);
             }
 
             // Call base method to handle nav-content and other elements

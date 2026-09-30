@@ -33,13 +33,20 @@ namespace ParksComputing.Engine.Pages.Services {
             foreach (var node in Enumerate(root)) {
                 if (string.Equals(node.Slug, slug, StringComparison.OrdinalIgnoreCase)) { return node; }
             }
-            if (root.Posts != null) {
-                foreach (var p in root.Posts) {
-                    if (string.Equals(p.Slug, slug, StringComparison.OrdinalIgnoreCase)) { return p; }
-                }
-            }
             return null;
         }
+
+        /// <summary>The top-level sections: entries with entries of their
+        /// own, in the file's order.</summary>
+        public static IEnumerable<NavNode> Sections(NavNode root) =>
+            (root.Nav ?? Array.Empty<NavNode>()).Where(n => !string.IsNullOrEmpty(n.Slug) && n.Nav is { Length: > 0 });
+
+        /// <summary>Every article: the entries of the sections marked feed,
+        /// in the file's order, each slug once.</summary>
+        public static IEnumerable<NavNode> Articles(NavNode root) =>
+            Sections(root).Where(s => s.Feed).SelectMany(s => s.Nav!)
+                .Where(n => !string.IsNullOrEmpty(n.Slug))
+                .GroupBy(n => n.Slug!, StringComparer.OrdinalIgnoreCase).Select(g => g.First());
 
         public NavNode GetRoot() {
             var xferPath = Path.Combine(Environment.WebRootPath, "sitenav.xfer");
@@ -50,7 +57,8 @@ namespace ParksComputing.Engine.Pages.Services {
                 if (_cached != null && writeUtc == _lastWriteUtc) { return _cached; }
                 var rootNode = ParseRoot(File.ReadAllText(xferPath), xferPath);
                 PostProcess(rootNode);
-                EnrichPostsFromContent(rootNode);
+                EnrichFromContent(rootNode);
+                ShareBetweenTwins(rootNode);
                 ResolveMenu(rootNode, rootNode.Menu);
                 _cached = rootNode;
                 _lastWriteUtc = writeUtc;
@@ -61,7 +69,7 @@ namespace ParksComputing.Engine.Pages.Services {
         /// <summary>
         /// Fills in the site menu's entries from the entries they name: a menu
         /// entry that gives only a slug takes the title, description, icon,
-        /// address and window shape of the nav or posts entry of that slug,
+        /// address and window shape of the nav entry of that slug,
         /// keeping whatever it gives itself. A group (an entry with a nav)
         /// resolves its own entries the same way. The menu's entries are not
         /// part of the nav tree, so a slug in both is still found once.
@@ -71,8 +79,7 @@ namespace ParksComputing.Engine.Pages.Services {
             foreach (var entry in entries) {
                 if (entry.Nav is { Length: > 0 }) { ResolveMenu(root, entry.Nav); continue; }
                 if (string.IsNullOrWhiteSpace(entry.Slug)) { continue; }
-                var twin = Enumerate(root).FirstOrDefault(n => n != root && string.Equals(n.Slug, entry.Slug, StringComparison.OrdinalIgnoreCase))
-                    ?? root.Posts?.FirstOrDefault(p => string.Equals(p.Slug, entry.Slug, StringComparison.OrdinalIgnoreCase));
+                var twin = Enumerate(root).FirstOrDefault(n => n != root && string.Equals(n.Slug, entry.Slug, StringComparison.OrdinalIgnoreCase));
                 if (twin != null) {
                     entry.Title ??= twin.Title;
                     entry.Description ??= twin.Description;
@@ -98,12 +105,9 @@ namespace ParksComputing.Engine.Pages.Services {
         private void PostProcess(NavNode root) {
             if (root == null) { return; }
             AssignDerived(root, isTreeRoot: true);
-            if (root.Posts != null) {
-                foreach (var p in root.Posts) { AssignDerived(p, isTreeRoot: false, isPost: true); }
-            }
         }
 
-        private void AssignDerived(NavNode node, bool isTreeRoot = false, bool isPost = false) {
+        private void AssignDerived(NavNode node, bool isTreeRoot = false) {
             if (node.Slug == null) { return; }
 
             // If explicit URL present, treat as external if absolute (http/https) and skip derivation
@@ -130,7 +134,7 @@ namespace ParksComputing.Engine.Pages.Services {
             try {
                 var docRoot = XferConvert.Deserialize<NavNode>(text);
                 if (docRoot == null) { docRoot = new NavNode { Slug = "root" }; }
-                _logger?.LogInformation("Parsed Xfer navigation navChildren={NavChildren} posts={PostCount} source={Source}", docRoot.Nav?.Length, docRoot.Posts?.Length, sourcePath);
+                _logger?.LogInformation("Parsed Xfer navigation navChildren={NavChildren} source={Source}", docRoot.Nav?.Length, sourcePath);
                 return docRoot;
             } catch (Exception ex) {
                 _logger?.LogError(ex, "Failed XferConvert.Deserialize for {Source}", sourcePath);
@@ -138,9 +142,15 @@ namespace ParksComputing.Engine.Pages.Services {
             }
         }
 
-        private void EnrichPostsFromContent(NavNode root) {
-            if (root?.Posts == null) { return; }
-            foreach (var post in root.Posts) {
+        /* An article (an entry of a feed section) takes whatever sitenav.xfer
+           leaves out from its content file: title, dates, description,
+           excerpt and keywords. Any other entry takes only a title, since
+           a page that is not writing has no date worth showing, and an HTML
+           file's date falls back to when it was last written. */
+        private void EnrichFromContent(NavNode root) {
+            if (root is null) { return; }
+            var articles = Sections(root).Where(s => s.Feed).SelectMany(s => s.Nav!).ToHashSet();
+            foreach (var post in articles) {
                 // Skip enrichment if explicit URL (external or special) was provided
                 if (!post.DerivedUrl) { continue; }
 
@@ -162,23 +172,48 @@ namespace ParksComputing.Engine.Pages.Services {
                     if (!post.Updated.HasValue && post.Date.HasValue) { post.Updated = post.Date; }
                 }
             }
-            // Tags are a property of the content, so a nav entry and a post
-            // for the same slug share them, whichever carried them first.
-            foreach (var navNode in Enumerate(root).Skip(1)) {
-                if (navNode.Tags is { Length: > 0 } || string.IsNullOrEmpty(navNode.Slug)) { continue; }
-                var twin = root.Posts?.FirstOrDefault(p =>
-                    string.Equals(p.Slug, navNode.Slug, StringComparison.OrdinalIgnoreCase) && p.Tags is { Length: > 0 });
-                if (twin is not null) { navNode.Tags = twin.Tags; }
-            }
-
-            // Also enrich navigation tree nodes (excluding root) so header/menu titles can be inferred
+            // Every other entry: a title, if it has none.
             foreach (var navNode in Enumerate(root).Skip(1)) { // Skip the root itself
+                if (articles.Contains(navNode)) { continue; }
                 // Only attempt if title missing (other fields optional for nav nodes) and we have a derived URL
                 if (!navNode.DerivedUrl || !string.IsNullOrWhiteSpace(navNode.Title) || string.IsNullOrWhiteSpace(navNode.Slug)) { continue; }
                 bool enrichedNav = TryEnrichFromMarkdown(navNode) || TryEnrichFromHtml(navNode);
                 if (!enrichedNav || string.IsNullOrWhiteSpace(navNode.Title)) {
                     // Fallback: humanize slug into a title (e.g., "web-apps" => "Web Apps")
                     navNode.Title = HumanizeSlug(navNode.Slug);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Entries for the same slug in different sections, such as Sudoku
+        /// under Articles and under Applets, are one page. Each fills in what
+        /// it leaves out from the others: tags, a title and description, and
+        /// how its window is sized and shown. So a page's window is the same
+        /// whichever section it is opened from, and whichever entry is found
+        /// first. Dates and excerpts are not shared, since they belong to an
+        /// article's listing and not to the page.
+        /// </summary>
+        private void ShareBetweenTwins(NavNode root) {
+            var groups = Enumerate(root).Skip(1)
+                .Where(n => !string.IsNullOrEmpty(n.Slug))
+                .GroupBy(n => n.Slug!, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1);
+            foreach (var g in groups) {
+                var twins = g.ToList();
+                T? First<T>(Func<NavNode, T?> pick) where T : class => twins.Select(pick).FirstOrDefault(v => v is not null);
+                var tags = twins.FirstOrDefault(t => t.Tags is { Length: > 0 })?.Tags;
+                var title = First(t => string.IsNullOrWhiteSpace(t.Title) ? null : t.Title);
+                var description = First(t => string.IsNullOrWhiteSpace(t.Description) ? null : t.Description);
+                var win = First(t => t.Win); var size = First(t => t.Size); var min = First(t => t.Min); var max = First(t => t.Max);
+                var icon = First(t => t.Icon);
+                bool frame = twins.Any(t => t.Frame);
+                foreach (var t in twins) {
+                    if (t.Tags is not { Length: > 0 }) { t.Tags = tags; }
+                    if (string.IsNullOrWhiteSpace(t.Title)) { t.Title = title; }
+                    if (string.IsNullOrWhiteSpace(t.Description)) { t.Description = description; }
+                    t.Win ??= win; t.Size ??= size; t.Min ??= min; t.Max ??= max; t.Icon ??= icon;
+                    t.Frame = t.Frame || frame;
                 }
             }
         }

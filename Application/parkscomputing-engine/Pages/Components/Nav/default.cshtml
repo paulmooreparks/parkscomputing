@@ -8,7 +8,7 @@
     @* The same grammar as the window view: category tabs filter the home
        page's cards, and the brand wordmark is the way home. *@
     <a class="section-tab" aria-current="@(onHome && currentCat is null ? "true" : null)" href="/home">All</a>
-    <a class="section-tab" aria-current="@(currentCat == "articles" ? "true" : null)" href="/home?cat=articles">Articles</a>
+    @* Every section, Articles among them, in sitenav.xfer's order. *@
     @foreach (var link in sections)
     {
         <a class="section-tab" aria-current="@(currentCat == link!.Slug ? "true" : null)"

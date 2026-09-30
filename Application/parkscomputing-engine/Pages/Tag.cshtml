@@ -7,11 +7,11 @@
     ViewData["Title"] = "Tagged " + Model.TagName;
 }
 
-@* The same cards as the classic home page, for the articles under one tag,
-   newest first. *@
+@* The same cards as the classic home page, for the entries under one tag,
+   in the site's order. *@
 <div class="main-container">
     <h1>Tagged <span class="tag-name">@Model.TagName</span></h1>
-    <p class="tag-page-count">@Model.Articles.Count @(Model.Articles.Count == 1 ? "article" : "articles"), newest first.</p>
+    <p class="tag-page-count">@Model.Articles.Count @(Model.Articles.Count == 1 ? "page" : "pages").</p>
 
     <ul class="post-grid list-unstyled">
         @foreach (var (node, _) in Model.Articles)

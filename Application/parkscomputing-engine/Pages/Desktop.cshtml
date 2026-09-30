@@ -75,21 +75,28 @@
     }
 }
 
-@* The tab row: the category tabs on the left and the filter on the right,
-   in one band. The tabs and the filter form are separate regions, each
-   swapped in by pudl-regions.js as before; the row around them only lays
-   them out, one line when there is room and two when there isn't. The
-   sitenav links that used to sit here are in the site menu. *@
-<div class="app-section-bar site-tabrow">
-    <nav class="site-tabs" data-region="sections" aria-label="Categories">
-        <a class="section-tab" aria-current="@(Model.SelectedCats.Count == 0 ? "true" : null)" href="@Model.CategoryUrl(null)">All</a>
-        @foreach (var (slug, title) in Model.Categories)
-        {
-            <a class="section-tab" aria-current="@(Model.SelectedCats.Count == 1 && Model.SelectedCats[0] == slug ? "true" : null)"
-               href="@Model.CategoryUrl(slug)">@title</a>
-        }
-    </nav>
-    <div class="site-filters">
+<div class="md-layout" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
+    @* A stored sidebar width applies before the first paint, per PUDL's
+       0.14.0 pattern; a later script would let the default width flash. *@
+    <script>
+        (function (layout) {
+            try {
+                var w = localStorage.getItem('pc-sidebar-w');
+                if (w) { layout.style.setProperty('--md-sidebar-w', w); }
+                layout.addEventListener('pudl:md-resize', function (e) {
+                    if (e.detail.reset) { localStorage.removeItem('pc-sidebar-w'); }
+                    else { localStorage.setItem('pc-sidebar-w', e.detail.width + 'px'); }
+                });
+            } catch (e) { /* the default width serves */ }
+        })(document.currentScript.parentElement);
+    </script>
+    @* The list's bar (Paul, 2026-10-01): the filter controls at the left,
+       over the list they filter, then a rule, then the filter chips. The
+       category tabs that stood above it are gone; the Categories menu does
+       their job. It is PUDL's list toolbar, which a phone hides with the
+       list while a window shows. The filter form and the chips are separate
+       regions, each swapped in by pudl-regions.js. *@
+    <div class="md-toolbar site-listbar">
         <form class="md-filter-group" data-region="filter" method="get" action="/" role="search">
             @foreach (var kv in Model.FilterFormParams)
             {
@@ -129,27 +136,10 @@
                 }
             </nav>
         </div>
-    </div>
-</div>
-
-<div class="md-layout" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
-    @* A stored sidebar width applies before the first paint, per PUDL's
-       0.14.0 pattern; a later script would let the default width flash. *@
-    <script>
-        (function (layout) {
-            try {
-                var w = localStorage.getItem('pc-sidebar-w');
-                if (w) { layout.style.setProperty('--md-sidebar-w', w); }
-                layout.addEventListener('pudl:md-resize', function (e) {
-                    if (e.detail.reset) { localStorage.removeItem('pc-sidebar-w'); }
-                    else { localStorage.setItem('pc-sidebar-w', e.detail.width + 'px'); }
-                });
-            } catch (e) { /* the default width serves */ }
-        })(document.currentScript.parentElement);
-    </script>
-    @* Always present, so region swaps always find their counterpart;
-       PUDL hides an empty chips row. *@
-    <div class="md-chips" data-region="chips">
+        <span class="md-toolbar-sep" aria-hidden="true"></span>
+        @* Always present, so region swaps always find their counterpart;
+           with no chips the rule before it hides too. *@
+        <div class="site-chips" data-region="chips">
         @foreach (var cat in Model.SelectedCats)
         {
             <span class="filter-chip"><span class="filter-chip-kind">category</span> @Model.CatTitleOf(cat) <a class="filter-chip-x" href="@Model.RemoveCatUrl(cat)" aria-label="Remove the @Model.CatTitleOf(cat) category filter"></a></span>
@@ -166,21 +156,12 @@
         {
             <a class="md-chips-clear" href="@Model.ClearFiltersUrl">clear</a>
         }
+        </div>
     </div>
     <div class="md-body">
         <nav class="md-sidebar" data-region="list" aria-label="Articles and pages">
-            @if (Model.Root.Posts is { Length: > 0 } && Model.ShowSection("articles"))
-            {
-                var visiblePosts = Model.SortedPosts.Where(Model.RowMatches).ToList();
-                if (visiblePosts.Count > 0)
-                {
-                    <div class="md-section-label">Articles</div>
-                    foreach (var post in visiblePosts)
-                    {
-                        RenderRow(post);
-                    }
-                }
-            }
+            @* Every section in sitenav.xfer's order, Articles among them,
+               each row in the order the file gives. *@
             @if (Model.Root.Nav is not null)
             {
                 foreach (var navSection in Model.Root.Nav)

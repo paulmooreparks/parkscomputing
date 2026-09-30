@@ -164,17 +164,9 @@ public class TerminalController : ControllerBase {
     /* === The tree ======================================================= */
 
     private static Entry BuildTree(NavNode root) {
+        // Each section is a folder, articles included, with its entries in
+        // the order sitenav.xfer gives them.
         var children = new List<Entry>();
-
-        var posts = (root.Posts ?? Array.Empty<NavNode>())
-            .Where(p => !string.IsNullOrEmpty(p.Slug))
-            .OrderByDescending(p => NavService.EffectiveDate(p) ?? DateTime.MinValue)
-            .Select(ToEntry)
-            .ToList();
-        if (posts.Count > 0) {
-            children.Add(new Entry("articles", "dir", "Articles", "Every article, newest first", null, null, null, posts));
-        }
-
         foreach (var node in root.Nav ?? Array.Empty<NavNode>()) {
             if (string.IsNullOrEmpty(node.Slug)) { continue; }
             if (node.Nav is { Length: > 0 }) {

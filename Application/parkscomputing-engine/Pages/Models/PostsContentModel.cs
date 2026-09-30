@@ -4,20 +4,26 @@ using ParksComputing.Engine.Pages.Services;
 
 namespace ParksComputing.Engine.Pages.Models
 {
+    /// <summary>
+    /// A &lt;posts-content&gt; list on a content page: the cards, links or
+    /// excerpts of a set of sitenav entries. The entries come in the order
+    /// sitenav.xfer gives them (Paul, 2026-10-01); a page may still ask for
+    /// another order with sort="recent", "popular" or "alphabetical".
+    /// </summary>
     public class PostsContentModel
     {
-        public NavNode? NavNode { get; set; }
+        public IReadOnlyList<NavNode> Entries { get; set; } = new List<NavNode>();
         public string Format { get; set; } = "cards"; // cards, links, excerpts
         public int Limit { get; set; } = int.MaxValue;
         public string Style { get; set; } = "";
         public string Category { get; set; } = "";
-        public string Sort { get; set; } = "recent"; // recent, popular, alphabetical
+        public string Sort { get; set; } = "order"; // order, recent, popular, alphabetical
         public bool ShowDates { get; set; } = true;
         public bool ShowExcerpts { get; set; } = true;
 
-        public static PostsContentModel FromAttributes(Dictionary<string, string> attributes, NavNode? navNode)
+        public static PostsContentModel FromAttributes(Dictionary<string, string> attributes, IReadOnlyList<NavNode> entries)
         {
-            var model = new PostsContentModel { NavNode = navNode };
+            var model = new PostsContentModel { Entries = entries };
 
             if (attributes.TryGetValue("format", out var format))
                 model.Format = format.ToLowerInvariant();
@@ -45,26 +51,21 @@ namespace ParksComputing.Engine.Pages.Models
 
         public IEnumerable<NavNode> GetFilteredPosts()
         {
-            if (NavNode?.Posts == null) return new List<NavNode>();
+            var posts = Entries.AsEnumerable();
 
-            var posts = NavNode.Posts.AsEnumerable();
-
-            // Apply category filter
             if (!string.IsNullOrEmpty(Category))
             {
                 posts = posts.Where(p => p.Description?.Contains(Category, System.StringComparison.OrdinalIgnoreCase) == true);
             }
 
-            // Apply sorting
             posts = Sort switch
             {
-                "recent" => posts.OrderByDescending(p => p.Date ?? System.DateTime.MinValue),
-                "popular" => posts.OrderByDescending(p => p.Order ?? 0), // Use Order as popularity metric
+                "recent" => posts.OrderByDescending(p => NavService.EffectiveDate(p) ?? System.DateTime.MinValue),
+                "popular" => posts.OrderByDescending(p => p.Order ?? 0),
                 "alphabetical" => posts.OrderBy(p => p.Title),
-                _ => posts.OrderByDescending(p => p.Date ?? System.DateTime.MinValue)
+                _ => posts
             };
 
-            // Apply limit
             if (Limit < int.MaxValue)
             {
                 posts = posts.Take(Limit);
