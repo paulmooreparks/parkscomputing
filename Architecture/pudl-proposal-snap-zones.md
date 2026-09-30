@@ -32,6 +32,10 @@ p.editor=zone:0.333,0,0.667,1  the right two-thirds
 
 The mode list, the snapping during a drag, the placement grammar and the flush drawing are all inside `pudl-windows.js` and `pudl-windows.css`. The zone is a small generalization of the halves they already have, and a project can't add it from outside without re-implementing the drag. Every project with windows gets it, and on parkscomputing.com both the public Window view and the admin desktop take it without site code.
 
+## Zones and docked windows
+
+This proposal was written against 0.29 and predates 0.30.0's docked windows. The two fit together without new rules: a zone is a fraction of the inner area the docks leave, as 0.30 already makes every floating and maximised window's fractions, so a zone never covers a docked window and a dock taking or giving back an edge moves the zones with it. Dragging to the foot of the workspace docks a window there, as 0.30 has it, so the bottom corners snap to their quarters only when the drag ends at the corner itself, not along the bottom edge.
+
 ## Left out
 
 Tiling, where windows divide the space among themselves and never overlap, is a larger change with its own questions about what happens when a window opens or closes. Nothing here rules it out later, and a zone is the unit a tiling layout would place windows in.
