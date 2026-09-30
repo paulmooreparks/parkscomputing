@@ -1147,7 +1147,20 @@
         /* While a command runs, Ctrl+C interrupts it and anything else is
            typed ahead, to be replayed at the next prompt. */
         var typeahead = [], interrupted = false;
+        /* A command that has taken the terminal over, such as ssh, gets
+           every key, Ctrl+C included, until it gives it back. */
+        var raw = null;
+        function takeOver(h) {
+            raw = h;
+            var sub = term.onResize(function (size) { if (h.resize) { h.resize(size.cols, size.rows); } });
+            return {
+                cols: term.cols, rows: term.rows,
+                write: function (d) { if (!destroyed) { term.write(d); } },
+                release: function () { if (raw === h) { raw = null; } sub.dispose(); }
+            };
+        }
         function onData(data) {
+            if (raw) { raw.data(data); return; }
             if (keyWaiter) { var k = keyWaiter; keyWaiter = null; k(data); return; }
             if (busy) {
                 if (data === '\x03') { interrupted = true; typeahead = []; write('^C'); if (uploadCancel) { uploadCancel(); } }
@@ -1268,6 +1281,10 @@
                 stdin: stdin,
                 /* A long command checks this between steps and stops. */
                 interrupted: function () { return interrupted; },
+                /* For a command run at the prompt, the whole terminal:
+                   takeOver({ data(keys), resize(cols, rows), close() })
+                   returns { cols, rows, write(text or bytes), release() }. */
+                takeOver: interactive && !ctx ? takeOver : null,
                 out: function (s) {
                     if (interrupted) { return; }
                     if (sink) { sink.push(strip(s)); } else if (ctx) { ctx.out(s); } else { write(s); }
@@ -1698,6 +1715,7 @@
             commands: commands,
             destroy: function () {
                 destroyed = true;
+                if (raw && raw.close) { raw.close(); }
                 if (unConfig) { unConfig(); }
                 document.removeEventListener('pudl:theme-change', applyTheme);
                 if (ro) { ro.disconnect(); }

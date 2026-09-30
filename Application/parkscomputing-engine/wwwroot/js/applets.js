@@ -43,6 +43,12 @@ pudlApplets.define('flashcards', {
    version, so a change to one of them bumps the terminal's ver. Scripts
    (files of commands) need no listing: they live in content/bin. */
 window.pcTerminalCommands = ['/js/terminal-text.js'];
+/* On the edit origin the page names ssh and ssh-key as well, which the
+   server sends to a signed-in admin only (A16); elsewhere they don't exist. */
+(function () {
+    var ssh = document.querySelector('meta[name="pc-ssh-commands"]');
+    if (ssh && ssh.content) { window.pcTerminalCommands.push(ssh.content); }
+})();
 
 /* The site filesystem the terminal, the file manager and the editor share
    (js/sitefs.js). Every applet loads it from this one address, so a page
@@ -75,7 +81,7 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: pcWorkspacePages + 'terminal',
-    ver: '25',
+    ver: '26',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
     instances: 4
 });

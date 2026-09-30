@@ -129,6 +129,23 @@ The admin site's logo menu is configurable in the same way as the public site's 
 - **A mistake can't lock the admin out.** A file that doesn't parse is logged and skipped, so the menu falls back to `/etc`'s, then to the built-in default. The menu is read on each page, so an edit shows on the next one.
 - **Off the desktop** the tools in the menu link to their own pages, and a first row leads back to the desktop.
 
+### A16. SSH from the web terminal
+
+The desktop is ephemeral: a reload ends every terminal. Paul weighed a server-side job runner, a real shell in a locked-down container, and chose SSH from the web terminal instead (2026-09-30). It reaches any machine he allows, the server included, and it exposes less. It was built on 2026-10-01.
+
+- **The SSH client runs in the browser.** The site only relays encrypted bytes over a WebSocket to a destination on a list in the server's configuration. It never sees keystrokes or keys, so a stolen admin session is not enough on its own, because the far end's SSH login still stands.
+- **Borrowed, not written.** The client is Go's `golang.org/x/crypto/ssh` (BSD-3) compiled to WebAssembly, over `coder/websocket` (ISC), which wraps the browser's WebSocket as a Go connection. Both are documented for this use. The source is `Application/ssh-wasm/`, about 300 lines of glue. The Docker build compiles it with a pinned Go toolchain (`golang:1.26.8`), with the modules pinned by `go.sum`, and takes Go's own `wasm_exec.js` from the same toolchain. The client is 6.8 MB, sent compressed as 1.9 MB, and it loads the first time `ssh` runs in a page. `c2FmZQ/sshterm` (MIT) builds the same stack and served as a reference.
+- **The key is the browser's own.** `ssh-key` makes an Ed25519 key with WebCrypto as non-extractable, keeps it in IndexedDB, and shows the public half as the line for `~/.ssh/authorized_keys`. The Go client asks the page for each signature, so the private key can be used in that browser profile and never read, copied or sent. The first `ssh` makes the key if there is none and stops there, so the line can be added at the far end. `ssh-key --new` replaces it and `ssh-key --forget` removes it.
+- **Destinations live in the server's own configuration**, `/app/config/ssh.json` (the `Admin:Ssh` section), from a read-only volume outside anything the admin mount shows, so nothing done through the site can point the relay somewhere new. Each destination has a name, host, port, usual login, and its pinned host keys. The browser's client offers only the pinned keys' algorithms and stops the handshake if the server presents any other key. An edit to the file applies without a restart.
+- **Opening a connection takes two steps.** A POST for a ticket needs the antiforgery token and a passkey tap within the admin's confirmation window, the same rule as changing sign-in methods. The ticket is good once, for 30 seconds, for that session and destination. The WebSocket then opens with it, only from a page on the edit origin. The ticket exists because a browser's WebSocket carries no antiforgery header and tells the page nothing about why it was refused.
+- **A relay lasts only as long as the session behind it.** Signing out ends the session's relays at once. Every 30 seconds the relay checks the session's absolute limit, its idle limit, and that the account is still an admin, so revoking an admin from the server's command line ends their relays within half a minute. Typing into a session counts as using it. One admin may have eight relays open.
+- **Every connection is audited**, opened and closed, with the destination, the duration, the bytes each way and why it ended. Connections are not emailed, for the reason file changes aren't: sign-ins are emailed, and the far end keeps its own log.
+- **Only the edit origin has any of it.** The client, its loader and the `ssh` and `ssh-key` commands are served from outside the web root, at `/admin/ssh/`, to a signed-in admin only; the public origin answers 404 for all of it, and its terminal has no `ssh` command. The edit origin's CSP gains `'wasm-unsafe-eval'`, which allows WebAssembly and not `eval`. Go's `wasm_exec.js` uses no `eval`, which was checked before building.
+- **The terminal lends itself out.** A command run at the prompt may take the terminal over, getting every key (Ctrl+C included) and every resize until it gives it back. `ssh` is the first to use it; it lives in `wwwroot/js/terminal.js` as `io.takeOver`.
+- **Persistence comes from the far end.** A session survives a reload by running `tmux` there and attaching again.
+- **Rejected.** Microsoft's `dev-tunnels-ssh` runs in browsers but has no Ed25519 yet, and handing it a non-extractable key would lean on its undocumented internals. OpenSSH compiled to WebAssembly (`wassh`) reaches WebSockets only through Google's own relay protocols. Using a passkey as the SSH key rests on OpenSSH behavior found in its code but not in its documentation, so it is out under the rule against undocumented behavior.
+- **Tested** by a browser suite against a disposable OpenSSH server on the Docker network. It covers the public origin having none of it, the key being non-extractable, a session end to end with its pty size and a resize, a wrongly pinned host key refused, another origin refused, a ticket used twice, signing out ending a session, and the audit log.
+
 ### A13. More snap targets, on both sites
 
 PUDL windows can float, fill the layer, or snap to the left or right half. The desktop wants terminals and the Editor side by side in more shapes than that, so the site proposes more snap targets to PUDL in `pudl-proposal-snap-zones.md`, and both sites get them from PUDL rather than from site code.
@@ -171,18 +188,8 @@ isomorphic-git is a JavaScript implementation of git, MIT-licensed, that runs in
 - **Where the repositories would live.** A repository in `~` would live in the browser. One under the `/wwwroot` mount would live on the server, through the mount's API.
 - **Talking to servers.** Cloning from or pushing to a server needs that server to allow cross-origin requests. GitHub doesn't, so it needs a small proxy, which isomorphic-git's project provides. The Gitea already running on the Docker host can be configured to allow them.
 
-This is for soon after the mount ships, because the mount is what makes it worth having. SSH (below) may make it unnecessary, since `git` would run on whatever machine the terminal reaches.
+This is for soon after the mount ships, because the mount is what makes it worth having. SSH (A16) may make it unnecessary, since `git` would run on whatever machine the terminal reaches.
 
-## Pinned: SSH from the web terminal
-
-The desktop is ephemeral: a reload ends every terminal. Paul weighed a server-side job runner, a real shell in a locked-down container, and chose SSH from the web terminal instead (2026-09-30). It reaches any machine he allows, the server included, and it exposes less.
-
-- **The SSH client runs in the browser.** The site only relays encrypted bytes over a WebSocket to a destination on a list in the server's configuration, each pinned to its host key. It never sees keystrokes or keys, so a stolen admin session is not enough on its own: the far end's SSH login still stands. The relay is admin-only, on the edit origin only, behind a fresh passkey tap, rate-limited and audited, and it is never an open relay.
-- **Persistence comes from the far end.** A session survives a reload by running `tmux` there and attaching again.
-- **Borrowed, not written.** Research on 2026-09-30 found the client worth borrowing is Go's `golang.org/x/crypto/ssh` (BSD-3), compiled to WebAssembly, over `coder/websocket` (ISC), which wraps a browser WebSocket as a Go connection. Both are documented for this use: the SSH client takes any connection, verifies host keys through a callback, and gives a pty and a shell. The key is an Ed25519 key made by WebCrypto as non-extractable, which Chrome, Firefox and Safari support, signing through a custom Go signer so the private key never leaves the browser. `c2FmZQ/sshterm` (MIT) already builds this whole stack and is a reference, though one maintainer is too few to depend on.
-- **What it costs.** The edit origin's CSP gains `'wasm-unsafe-eval'`, the build gains a pinned Go toolchain, and the page loads a few megabytes of WebAssembly when the SSH command first runs. The relay is a documented ASP.NET pattern, a WebSocket and a `TcpClient` pumping bytes each way, with no library needed.
-- **Rejected.** Microsoft's `dev-tunnels-ssh` runs in browsers but has no Ed25519 yet, and handing it a non-extractable key would lean on its undocumented internals. OpenSSH compiled to WebAssembly (`wassh`) reaches WebSockets only through Google's own relay protocols. Using a passkey as the SSH key rests on OpenSSH behavior found in its code but not in its documentation, so it is out under the rule against undocumented behavior.
-- **Before building,** confirm whether Go's `wasm_exec.js` needs anything beyond `'wasm-unsafe-eval'`, and measure the WebAssembly's size.
 
 ## Order of work
 
@@ -209,7 +216,7 @@ The desktop is ephemeral: a reload ends every terminal. Paul weighed a server-si
    - File changes are recorded in the audit log, not emailed; sign-ins are still emailed. An email for every delete or script edit would bury the notices that matter, so this narrows A9.
    - A browser suite drives the mount end to end on a test copy with its own web root, homes, history and database. It covers the terminal, Files, the Editor, preview and publish, the history, the audit log, the passkey tap before a fallback session deletes, a picture uploaded byte for byte, a stylesheet change reaching readers without a restart, and the Edit link.
 6. The admin desktop (A12), with the snap proposal (A13) sent to PUDL alongside. The desktop was done 2026-09-30. A browser suite on a test copy covers the tree, Start and numbered terminals, a file opening in the Editor, a terminal surviving a switch to another window, the entry menu, the window-wide actions, a reload restoring the windows, the account page and signing out, and the phone layout.
-7. SSH from the web terminal, then git in the terminal if SSH hasn't made it unnecessary.
+7. SSH from the web terminal (A16), built 2026-10-01. Then git in the terminal, if SSH hasn't made it unnecessary.
 8. Comments.
 
 ## What's needed from Paul

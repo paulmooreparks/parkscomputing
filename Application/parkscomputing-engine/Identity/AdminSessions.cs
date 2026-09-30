@@ -93,6 +93,10 @@ public sealed class AdminSessions {
         return sid is null || !policy.Touch(sid, t.IdleMinutes);
     }
 
+    /// <summary>Whether the session has outlived its absolute lifetime, without counting as a request.</summary>
+    public static async Task<bool> ExpiredAbsoluteAsync(ClaimsPrincipal p, SessionPolicy policy) =>
+        !Within(p, SignedInClaim, TimeSpan.FromHours((await policy.ForAsync(p)).AbsoluteHours));
+
     private static bool Within(ClaimsPrincipal p, string claim, TimeSpan window) {
         var v = p.FindFirstValue(claim);
         if (!long.TryParse(v, NumberStyles.Integer, CultureInfo.InvariantCulture, out var secs) || secs <= 0) {

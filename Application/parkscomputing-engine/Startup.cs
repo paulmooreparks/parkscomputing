@@ -236,6 +236,9 @@ namespace ParksComputing.Engine {
             app.UseMiddleware<ParksComputing.Engine.Api.ApiNotFoundMiddleware>();
             app.UseMiddleware<ParksComputing.Engine.Api.CachingMiddleware>();
             app.UseAuthorization();
+            // The SSH relay's WebSocket (Identity/SshController.cs, A16); the
+            // controller alone decides who may open one.
+            app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(30) });
 
             app.UseEndpoints(endpoints => {
                 endpoints.MapRazorPages();

@@ -36,8 +36,10 @@ public sealed class EditOriginGate {
 
     public EditOriginGate(RequestDelegate next, IOptions<AdminOptions> options) {
         _next = next; _options = options.Value;
-        // Only the public site's previews may be framed here (A11).
-        _csp = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+        // Only the public site's previews may be framed here (A11). The SSH
+        // client is WebAssembly, which 'wasm-unsafe-eval' lets the page
+        // compile without allowing eval itself (A16).
+        _csp = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
             "font-src 'self'; connect-src 'self'; frame-src " + _options.PublicOrigin.TrimEnd('/') + "; " +
             "form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
     }

@@ -42,6 +42,11 @@ namespace ParksComputing.Engine {
            unchanged. */
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
+                // The SSH destinations (Identity/SshOptions.cs) live in a file
+                // of the server's own, outside anything the admin mount shows,
+                // and an edit to it applies without a restart.
+                .ConfigureAppConfiguration(c => c.AddJsonFile(
+                    Environment.GetEnvironmentVariable("SSH_CONFIG_FILE") ?? "/app/config/ssh.json", optional: true, reloadOnChange: true))
                 .ConfigureWebHostDefaults(web => web
                     // Bind to provided ASPNETCORE_URLS or fall back to all interfaces on 8080 for container hosting
                     .UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://0.0.0.0:8080")

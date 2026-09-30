@@ -19,9 +19,11 @@
     bool desktop = workspace && ViewData["Desktop"] as bool? == true;
     string publicOrigin = AdminConfig.Value.PublicOrigin.TrimEnd('/');
     IReadOnlyList<AdminMenuGroup> menu = Array.Empty<AdminMenuGroup>();
+    string? homeName = null;
     if (signedIn && await Users.GetUserAsync(User) is { } me)
     {
-        menu = AdminMenus.For(ServerFiles.HomeNameOf(me));
+        homeName = ServerFiles.HomeNameOf(me);
+        menu = AdminMenus.For(homeName);
     }
 }
 @functions {
@@ -54,6 +56,10 @@
         <meta name="pc-fs-mount" content="/api/admin/fs" />
         <meta name="pc-applet-pages" content="/admin/" />
         <meta name="pc-public-origin" content="@publicOrigin" />
+        @* The terminal's ssh and ssh-key (A16), which the server sends to an
+           admin only; the name goes in the SSH key's comment. *@
+        <meta name="pc-ssh-commands" content="/admin/ssh/ssh-command.js" />
+        <meta name="pc-admin-name" content="@homeName" />
     }
     @if (desktop)
     {

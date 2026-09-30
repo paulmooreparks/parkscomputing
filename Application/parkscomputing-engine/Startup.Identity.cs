@@ -21,6 +21,9 @@ namespace ParksComputing.Engine;
 public partial class Startup {
     private void ConfigureIdentity(IServiceCollection services, string connectionString) {
         services.Configure<AdminOptions>(Configuration.GetSection("Admin"));
+        // SSH from the web terminal (A16): its destinations, and the relay's bookkeeping.
+        services.Configure<SshOptions>(Configuration.GetSection("Admin:Ssh"));
+        services.AddSingleton<SshRelays>();
         services.Configure<EmailOptions>(o => {
             o.ApiKey = Configuration["RESEND_API_KEY"];
             o.From = Configuration["EMAIL_FROM"];

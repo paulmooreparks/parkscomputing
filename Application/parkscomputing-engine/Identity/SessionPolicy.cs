@@ -101,6 +101,14 @@ public sealed class SessionPolicy {
     /// seen, such as one begun before a restart, counts as seen now; the
     /// cookie's own expiry, at the configured ceiling, still bounds it.
     /// </summary>
+    /// <summary>
+    /// Whether a session has gone idle, without counting this as a request.
+    /// The SSH relay asks it while it runs (A16).
+    /// </summary>
+    public bool Idle(string sessionId, int idleMinutes) =>
+        _cache.TryGetValue("pc-seen:" + sessionId, out DateTimeOffset last)
+        && DateTimeOffset.UtcNow - last > TimeSpan.FromMinutes(idleMinutes);
+
     public bool Touch(string sessionId, int idleMinutes) {
         var key = "pc-seen:" + sessionId;
         var now = DateTimeOffset.UtcNow;
