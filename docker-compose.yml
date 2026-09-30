@@ -39,12 +39,13 @@ services:
     ports:
       - "127.0.0.1:80:8080"
     # The web root is writable, for the admin mount on the edit origin; the
-    # admins' home directories and the history of changed files sit beside
-    # it, outside what the site serves (Architecture/admin-and-identity-design.md,
-    # A7 and A10).
+    # admins' home directories, the edit origin's shared configuration (/etc)
+    # and the history of changed files sit beside it, outside what the site
+    # serves (Architecture/admin-and-identity-design.md, A7, A10 and A15).
     volumes:
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\wwwroot:/app/wwwroot
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\home:/app/home
+      - C:\Users\paul\OneDrive\Documents\parkscomputing.com\etc:/app/etc
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\history:/app/history
     depends_on:
       sqlserver:

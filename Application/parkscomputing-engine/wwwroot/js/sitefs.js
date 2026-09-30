@@ -454,15 +454,20 @@
         var www = serverNode(top, 'wwwroot', true, 'wwwroot', '', 0, null);
         www.title = 'The web root'; www.description = 'The site\'s files, as the server serves them';
         var homes = { name: 'home', kind: 'dir', title: 'Home directories', description: '', parent: top, children: [] };
-        top.children.push(www, homes);
+        /* /etc: the edit origin's shared configuration, such as the admin
+           menu, which an admin's own ~/.config can override. */
+        var etc = serverNode(top, 'etc', true, 'etc', '', 0, null);
+        etc.title = 'Configuration'; etc.description = 'The admin site\'s shared settings, such as its menu';
+        top.children.push(www, homes, etc);
         sortKids(top);
-        var got = await Promise.all([listing('wwwroot'), listing('home')]);
+        var got = await Promise.all([listing('wwwroot'), listing('home'), listing('etc')]);
         fill(www, 'wwwroot', got[0].entries);
+        fill(etc, 'etc', got[2].entries);
         var mine = serverNode(homes, got[1].home, true, 'home', '', 0, null);
         mine.title = 'Your home directory'; mine.description = 'Your own files, on the server';
         homes.children.push(mine);
         fill(mine, 'home', got[1].entries);
-        serverRoots = { wwwroot: www, home: mine };
+        serverRoots = { wwwroot: www, home: mine, etc: etc };
         home.dir = mine;
         /* Scripts in ~/bin run by name, and help lists them, so their text
            comes with the listing. */
@@ -591,7 +596,7 @@
             d = resolve(base, sp.dir);
             name = sp.base;
             if (!d || !d.children) { return { error: sp.dir + ': no such directory' }; }
-            if (!d.home) { return { error: 'files can only be created in your home directory (~)' + (MOUNT ? ' or under /wwwroot' : '') }; }
+            if (!d.home) { return { error: 'files can only be created in your home directory (~)' + (MOUNT ? ', /wwwroot or /etc' : '') }; }
             if (!validName(name)) { return { error: name + ' is not a valid file name' }; }
         }
         var full = append && n ? (n.server ? await serverRead(n) : readHome(n)) + content : content;
@@ -619,7 +624,7 @@
        text only. Resolves to { error } or { node }. */
     async function upload(dir, file) {
         dir = realOf(dir);
-        if (!dir.home || !dir.children) { return { error: 'files can only be uploaded into your home directory (~)' + (MOUNT ? ' or under /wwwroot' : '') }; }
+        if (!dir.home || !dir.children) { return { error: 'files can only be uploaded into your home directory (~)' + (MOUNT ? ', /wwwroot or /etc' : '') }; }
         if (!validName(file.name)) { return { error: file.name + ' is not a valid file name' }; }
         if (file.size > limitFor(dir)) { return { error: file.name + ' is larger than ' + limitText(dir) }; }
         var existing = childNamed(dir, file.name);
@@ -642,7 +647,7 @@
             name = sp.base;
             if (!d || !d.children) { return { error: sp.dir + ': no such directory' }; }
         }
-        if (!d.home) { return { error: 'files can only be copied into your home directory (~)' + (MOUNT ? ' or under /wwwroot' : '') }; }
+        if (!d.home) { return { error: 'files can only be copied into your home directory (~)' + (MOUNT ? ', /wwwroot or /etc' : '') }; }
         if (!validName(name)) { return { error: name + ' is not a valid file name' }; }
         if (r.server && d.server) { return serverPut(d, name, await serverBytes(r), dest, null); }
         var text;
@@ -662,7 +667,7 @@
         var parent = resolve(base, sp.dir);
         if (!parent && parents) { var e = await mkdir(base, sp.dir, true); if (e) { return e; } parent = resolve(base, sp.dir); }
         if (!parent || !parent.children) { return sp.dir + ': no such directory'; }
-        if (!parent.home) { return 'directories can only be made in your home directory (~)' + (MOUNT ? ' or under /wwwroot' : ''); }
+        if (!parent.home) { return 'directories can only be made in your home directory (~)' + (MOUNT ? ', /wwwroot or /etc' : ''); }
         if (!validName(sp.base)) { return sp.base + ' is not a valid name'; }
         if (parent.server) {
             var rel = joinRel(parent.rel, sp.base);

@@ -1,19 +1,42 @@
 @using ParksComputing.Engine.Identity
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Xsrf
 @inject Microsoft.Extensions.Options.IOptions<AdminOptions> AdminConfig
+@inject AdminMenu AdminMenus
+@inject Microsoft.AspNetCore.Identity.UserManager<Microsoft.AspNetCore.Identity.IdentityUser> Users
 @{
     // The edit origin's pages (Architecture/admin-and-identity-design.md, A5).
     // No inline script anywhere, so the origin's Content-Security-Policy can
     // allow scripts from itself alone. While signed in, the bar says so on
-    // every page, as a root shell's prompt does (A9), and its menu under the
-    // admin's name holds the account and signing out. The desktop at /admin
-    // (A12) is the workspace: the tools as windows over the admin mount
-    // (A7). Each tool also has a page of its own, for a link or a tab.
+    // every page, as a root shell's prompt does (A9). The logo is the admin
+    // menu (A15), written in /etc/admin-menu.xfer or the admin's own
+    // ~/.config/admin-menu.xfer. The desktop at /admin (A12) is the
+    // workspace: the tools as windows over the admin mount (A7), with the
+    // window bar beside the menu. Each tool also has a page of its own, for
+    // a link or a tab.
     bool signedIn = User.IsInRole(AdminOptions.Role);
     string? method = User.FindFirst(AdminSessions.MethodClaim)?.Value;
     bool workspace = signedIn && ViewData["Workspace"] as bool? == true;
     bool desktop = workspace && ViewData["Desktop"] as bool? == true;
     string publicOrigin = AdminConfig.Value.PublicOrigin.TrimEnd('/');
+    IReadOnlyList<AdminMenuGroup> menu = Array.Empty<AdminMenuGroup>();
+    if (signedIn && await Users.GetUserAsync(User) is { } me)
+    {
+        menu = AdminMenus.For(ServerFiles.HomeNameOf(me));
+    }
+}
+@functions {
+    /* One row of the admin menu. On the desktop a tool opens as a window
+       (or, for the terminal, a new one); elsewhere every row is a link to
+       its page. Signing out is a form, since it changes state. */
+    private Microsoft.AspNetCore.Html.IHtmlContent Attrs(AdminMenuItem item, bool desktop)
+    {
+        var parts = new List<string>();
+        if (desktop && item.Window is not null) { parts.Add($"data-win-open=\"{System.Net.WebUtility.HtmlEncode(item.Window)}\""); }
+        if (desktop && item.Request is not null) { parts.Add($"data-win-request=\"{System.Net.WebUtility.HtmlEncode(item.Request)}\""); }
+        if (item.External) { parts.Add("target=\"_blank\" rel=\"noopener\""); }
+        else if (item.NewTab && desktop) { parts.Add("target=\"_blank\""); }
+        return Html.Raw(string.Join(" ", parts));
+    }
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -44,7 +67,6 @@
     @if (desktop)
     {
         <link rel="stylesheet" href="~/pudl/pudl-windows.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/taskbar.css" asp-append-version="true" />
     }
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/window-menu.css" asp-append-version="true" />
@@ -52,36 +74,64 @@
 </head>
 <body class="admin@(signedIn ? " admin-elevated" : null)@(workspace ? " admin-workspace" : null)@(desktop ? " admin-desktop" : null)">
     <header class="admin-bar">
-        @* The site's mark as a label: on the desktop a link home would only
-           reload the page the admin is on. *@
-        <span class="admin-bar-title"><img src="/favicon-32x32.png" alt="" width="20" height="20" /> Parks Computing <span class="admin-bar-tag">editing</span></span>
         @if (signedIn)
         {
-            @if (!desktop)
-            {
-                <a class="admin-bar-link" href="/admin">Desktop</a>
-            }
-            <a class="admin-bar-link" href="@publicOrigin" target="_blank" rel="noopener">View the site</a>
-            <span class="menu admin-bar-menu">
-                <button type="button" class="btn btn-sm menu-btn admin-bar-who" popovertarget="admin-menu"
-                        title="Admin: @User.Identity?.Name, signed in with @AdminSessions.Describe(method)">
-                    <span class="glyph" style="--glyph: var(--glyph-warning)" aria-hidden="true"></span>
-                    @User.Identity?.Name
-                    @if (method != AdminSessions.Passkey)
-                    {
-                        @* A fallback session says so where it is always seen,
-                           since it can't change sign-in methods (A8). *@
-                        <span class="admin-bar-fallback">with @AdminSessions.Describe(method)</span>
-                    }
+            @* The logo menu, as on the public site. Off the desktop its
+               first row goes back to it. *@
+            <div class="menu admin-logo">
+                <button type="button" class="brand topbar-pill menu-btn admin-logo-btn" popovertarget="admin-menu" aria-label="Parks Computing Admin menu">
+                    <img src="/favicon-32x32.png" alt="" width="22" height="22" /> <span class="admin-logo-name">Parks Computing Admin</span>
                 </button>
-                <nav class="menu-panel admin-menu" id="admin-menu" popover aria-label="Your account">
-                    <p class="admin-menu-note">Admin: signed in with @AdminSessions.Describe(method)</p>
-                    <div class="md-row"><a class="md-item" href="/admin/account" target="@(desktop ? "_blank" : null)">Account and passkeys</a></div>
-                    <form method="post" asp-page="/Admin/SignOut" class="admin-bar-signout">
-                        <button type="submit" class="md-item admin-menu-signout">Sign out</button>
-                    </form>
+                <nav class="menu-panel admin-menu" id="admin-menu" popover aria-label="Parks Computing Admin">
+                    @if (!desktop)
+                    {
+                        <div class="md-row"><a class="md-item admin-menu-item" href="/admin"><span class="admin-menu-icon" aria-hidden="true"></span>Desktop</a></div>
+                    }
+                    @foreach (var group in menu)
+                    {
+                        if (group.Label is not null)
+                        {
+                            <div class="md-section-label">@group.Label</div>
+                        }
+                        foreach (var item in group.Items)
+                        {
+                            var icon = string.IsNullOrEmpty(item.Icon)
+                                ? Html.Raw("<span class=\"admin-menu-icon\" aria-hidden=\"true\"></span>")
+                                : Html.Raw($"<img class=\"admin-menu-icon\" src=\"{System.Net.WebUtility.HtmlEncode(item.Icon)}\" alt=\"\" />");
+                            if (item.SignOut)
+                            {
+                                <form method="post" asp-page="/Admin/SignOut" class="admin-bar-signout">
+                                    <button type="submit" class="md-item admin-menu-item admin-menu-signout" title="@item.Description">@icon@item.Title</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <div class="md-row"><a class="md-item admin-menu-item" href="@item.Href" title="@item.Description" @Attrs(item, desktop)>@icon@item.Title</a></div>
+                            }
+                        }
+                    }
                 </nav>
+            </div>
+            @if (desktop)
+            {
+                <partial name="_WindowBar" model="new ParksComputing.Engine.Pages.Models.WindowBarModel()" />
+            }
+            <span class="topbar-rule" aria-hidden="true"></span>
+            @* Who is signed in, on every page, as a root prompt shows it. A
+               fallback session says so where it is always seen, since it
+               can't change sign-in methods (A8). *@
+            <span class="admin-bar-who" title="Admin: @User.Identity?.Name, signed in with @AdminSessions.Describe(method)">
+                <span class="glyph" style="--glyph: var(--glyph-warning)" aria-hidden="true"></span>
+                @User.Identity?.Name
+                @if (method != AdminSessions.Passkey)
+                {
+                    <span class="admin-bar-fallback">with @AdminSessions.Describe(method)</span>
+                }
             </span>
+        }
+        else
+        {
+            <span class="brand admin-bar-title"><img src="/favicon-32x32.png" alt="" width="20" height="20" /> Parks Computing Admin</span>
         }
     </header>
     @if (desktop)
@@ -117,7 +167,6 @@
         <script src="~/pudl/pudl-grid.js" defer asp-append-version="true"></script>
         @if (desktop)
         {
-            <script src="~/js/taskbar.js" defer asp-append-version="true"></script>
             <script src="~/js/admin-desktop.js" defer asp-append-version="true"></script>
         }
     }

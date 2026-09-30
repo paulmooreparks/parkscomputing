@@ -52,16 +52,13 @@ body.desktop .site-header { position: static; flex: none; }
    into that. */
 .site-nav { --section-current-bg: var(--bg); }
 
-/* === The view switcher ====================================================
-   One segmented control, centered in the topbar, switching between the
-   window and classic views. Its options are links (each view is a URL),
-   which PUDL's seg styles cover natively since 0.16.0 (aria-current);
-   only the centering is the site's. */
-.topbar { position: relative; }
-.view-seg {
-  position: absolute; left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
-}
+/* === The top bar ==========================================================
+   The site menu at the left, the window view's window bar beside it
+   (css/window-menu.css), and the view switcher at the far right after a
+   rule. The switcher's options are links (each view is a URL), which
+   PUDL's seg styles cover natively since 0.16.0 (aria-current). */
+.topbar { position: relative; justify-content: flex-start; }
+.view-seg { flex: none; }
 /* On the topbar the seg takes the bar's own palette: the track is the
    topbar chip, and the option not chosen reads in the bar's foreground,
    which the page's muted colour does not on a light theme. */
@@ -74,12 +71,12 @@ body.desktop .site-header { position: static; flex: none; }
 .topbar .view-seg a:hover { color: var(--tb-link-hover); }
 .topbar .view-seg a[aria-current]:not([aria-current="false"]) { color: var(--text); }
 .topbar .view-seg a[aria-current]:not([aria-current="false"]):hover { color: var(--text); }
-/* On a narrow screen the switcher leaves the centre for the right edge,
-   the site menu keeps the left, and the bar's padding narrows, so the two
-   sit at their edges with the room between them. */
+/* On a narrow screen the bar's padding narrows, so the menu and the
+   switcher sit at their edges with the room between them. */
 @media (max-width: 560px) {
   .topbar { padding-left: 10px; padding-right: 10px; }
-  .view-seg { position: static; transform: none; margin-left: auto; }
+  /* The window bar needs the room, so the logo stands for the name. */
+  .topbar:has(.win-bar) .site-menu-name { display: none; }
 }
 @media (max-width: 400px) {
   .site-menu-btn { font-size: var(--text-md); }
@@ -308,18 +305,37 @@ body.desktop .site-header { position: static; flex: none; }
    detail pane, after PUDL's samples/article-reader.html. pudl.css sizes
    the layout itself (body:has(> .md-layout) fills the viewport); what
    follows is only this site's stage styling. */
-body.desktop .md-toolbar .md-section-label { padding: 0; }
 
-/* The dock is the toolbar's only elastic element: it grows, shrinks and
-   wraps its tabs internally, so the filter on its left holds its place
-   however many windows are open. */
-body.desktop .md-toolbar { flex-wrap: nowrap; }
-body.desktop .md-toolbar .win-dock { flex: 1 1 auto; min-width: 0; }
-@container md (max-width: 640px) {
-  body.desktop .md-toolbar { flex-wrap: wrap; }
+/* The tab row: the category tabs on the left and the filter on the right,
+   in one recessed band (PUDL's .app-section-bar). The tabs stand on the
+   band's bottom edge, where the page begins; the filter sits level with
+   them. When the row is too narrow for both, the filter takes a line of
+   its own above the tabs, so the tabs keep the bottom edge, and on a
+   phone the filter takes the whole line and its menus the next. */
+.site-tabrow {
+  container: tabrow / inline-size;
+  flex-wrap: wrap; column-gap: var(--space-3); row-gap: 8px;
+  overflow: visible;
+}
+.site-tabs { display: flex; align-items: flex-end; gap: var(--space-1); flex: 1 1 auto; min-width: 0; overflow-x: auto; }
+.site-filters {
+  display: flex; align-items: center; gap: 8px; flex: none;
+  align-self: center; margin-bottom: 6px;
+  --ctl-h: 30px;
+}
+.site-filters .btn-sm, .site-filters .md-filter, .site-filters .md-filter-group {
+  box-sizing: border-box; height: var(--ctl-h); display: inline-flex; align-items: center;
+}
+.site-filters .md-filter { padding: 4px 12px; width: 200px; }
+@container tabrow (max-width: 820px) {
+  .site-filters { order: -1; flex: 1 1 100%; justify-content: flex-end; margin-bottom: 0; }
+}
+@container tabrow (max-width: 520px) {
+  .site-filters { flex-wrap: wrap; justify-content: flex-start; }
+  .site-filters .md-filter-group { flex: 1 1 100%; }
+  .site-filters .md-filter { flex: 1; width: auto; }
 }
 
-/* The settings dialog's fine print. */
 /* PUDL's menu script sets a panel's maximum height to its content's
    height, which leaves out the panel's 1px border, so every menu showed a
    scrollbar for 2px (Architecture/pudl-bug-menu-scrollbar.md). Drawing the
@@ -365,15 +381,8 @@ body.desktop .md-layout { --md-sidebar-w: 300px; }
 }
 .menu-panel .menu-check:hover { background: var(--surface-alt); }
 
-/* The close-all and clear-filters controls, and any disabled icon button. */
-.close-all svg, .filter-clear svg, .min-all svg, .restore-all svg { width: 15px; height: 15px; }
-/* Minimise-all and restore-all share one place: restore shows only when it
-   is the useful one, every window minimised (minimise-all disabled and
-   restore-all not); otherwise minimise-all shows, disabled when nothing is
-   open. PUDL keeps both links' aria-disabled current. */
-.restore-all[aria-disabled="true"],
-.md-site-tools:has(.min-all:not([aria-disabled="true"])) .restore-all { display: none; }
-.md-site-tools:has(.min-all[aria-disabled="true"]):has(.restore-all:not([aria-disabled="true"])) .min-all { display: none; }
+/* The clear-filters control, and any disabled icon button. */
+.filter-clear svg { width: 15px; height: 15px; }
 .icon-btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
 .md-filter-group .filter-clear { margin-left: 6px; }
 .icon-btn.is-disabled { opacity: .45; pointer-events: none; cursor: not-allowed; }
@@ -395,38 +404,6 @@ body.desktop .md-layout { --md-sidebar-w: 300px; }
 /* The active window title bar's quiet dark treatment became PUDL's own
    default in 0.9.0 (with --win-active-* tokens for tuning), so the
    override that prototyped it here is gone. */
-
-/* === The tab bar's link area ==============================================
-   Category tabs sit on the left; bare sitenav links (frequent or
-   high-profile destinations) sit on the right, behind a partial-height
-   separator, so the two jobs read as different. */
-.bar-spacer { flex: 1; }
-.bar-sep {
-  /* Two thirds the height of the 30px tabs and centred on them. The bar
-     aligns its items to the bottom and its content box is shorter than a
-     tab, so neither a % height nor stretching reaches the tabs' height;
-     a fixed size does. */
-  align-self: flex-end;
-  width: 1px; height: 20px;
-  background: var(--border);
-  margin: 0 6px 5px;
-}
-/* The link area holds links, not tabs, so they follow the underline rule
-   and carry none of the raised tab chrome (0.16.0 raises .section-tab). */
-.bar-links { display: flex; align-items: center; }
-.bar-links .section-tab {
-  color: var(--accent);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-  background: none; border: 0; box-shadow: none;
-  padding-top: 5px; padding-bottom: 5px;
-}
-.bar-links .section-tab:hover {
-  color: var(--accent-hover);
-  text-decoration-thickness: 2px;
-  background: none; box-shadow: none; border: 0;
-}
 
 /* === Tag rows and the tag window ========================================== */
 /* The tag row at the very top of a page or window: flat chips, each

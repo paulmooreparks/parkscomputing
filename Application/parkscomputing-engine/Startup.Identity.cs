@@ -115,6 +115,7 @@ public partial class Startup {
         services.AddScoped<ResendMailer>();
         services.AddScoped<AdminSessions>();
         services.AddSingleton<SessionPolicy>();
+        services.AddSingleton<AdminMenu>();
         services.AddSingleton<ServerFiles>();
         services.AddHostedService<HistoryPruner>();
         services.AddMemoryCache();

@@ -2,7 +2,6 @@
 @if (Model?.Nav != null)
 {
     var sections = Model.Nav.Where(n => n?.Nav is { Length: > 0 }).ToArray();
-    var leaves = Model.Nav.Where(n => n is not null && (n.Nav is null || n.Nav.Length == 0)).ToArray();
     var currentCat = ViewData["NavCat"] as string;
     var onHome = ViewData["NavHome"] as bool? ?? false;
 
@@ -16,19 +15,6 @@
            href="/home?cat=@link.Slug" title='@(link.Description ?? link.Title)'>@link.Title</a>
     }
 
-    @* Bare links (no children) live in their own area on the right,
-       behind a partial-height separator, matching the window view. *@
-    if (leaves.Length > 0)
-    {
-        <span class="bar-spacer"></span>
-        <span class="bar-sep" aria-hidden="true"></span>
-        <div class="bar-links">
-            @foreach (var leaf in leaves)
-            {
-                var leafTip = leaf!.Description ?? leaf.Excerpt ?? leaf.Title ?? string.Empty;
-                <a class="section-tab" href='@leaf.Url' title='@leafTip'
-                   @if (!string.IsNullOrEmpty(leaf.Target)) {<text>target='@leaf.Target'</text>}>@leaf.Title</a>
-            }
-        </div>
-    }
+    @* Bare links (no children), such as About, are in the site menu, which
+       sitenav.xfer's menu array fills, in both views. *@
 }

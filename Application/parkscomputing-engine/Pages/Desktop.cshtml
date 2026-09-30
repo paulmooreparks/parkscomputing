@@ -5,6 +5,13 @@
     Layout = "_Layout";
     ViewData["Title"] = "Parks Computing";
     ViewData["Desktop"] = true;
+    // The dock and the window-wide actions sit in the top bar
+    // (Pages/Shared/_WindowBar.cshtml), rendered as the address has them.
+    ViewData["WindowBar"] = new ParksComputing.Engine.Pages.Models.WindowBarModel(
+        AnyShowing: Model.Windows.Any(w => !w.Minimized && w.Parent is null),
+        AnyMinimized: Model.Windows.Any(w => w.Minimized && w.Parent is null),
+        AnyOpen: Model.Windows.Count > 0,
+        MinimizeAllUrl: Model.MinimizeAllUrl, RestoreAllUrl: Model.RestoreAllUrl, CloseAllUrl: Model.ListOnlyUrl);
 }
 
 @functions {
@@ -68,56 +75,21 @@
     }
 }
 
-<nav class="app-section-bar" data-region="sections" aria-label="Categories">
-    <a class="section-tab" aria-current="@(Model.SelectedCats.Count == 0 ? "true" : null)" href="@Model.CategoryUrl(null)">All</a>
-    @foreach (var (slug, title) in Model.Categories)
-    {
-        <a class="section-tab" aria-current="@(Model.SelectedCats.Count == 1 && Model.SelectedCats[0] == slug ? "true" : null)"
-           href="@Model.CategoryUrl(slug)">@title</a>
-    }
-    @* Bare sitenav links (no children) are not categories: they live in
-       their own area on the right, behind a partial-height separator. An
-       internal one opens its window directly; the href is the same state
-       as a real URL, so it works without script. *@
-    <span class="bar-spacer"></span>
-    <span class="bar-sep" aria-hidden="true"></span>
-    <div class="bar-links">
-        @foreach (var leaf in Model.DirectTabs)
+@* The tab row: the category tabs on the left and the filter on the right,
+   in one band. The tabs and the filter form are separate regions, each
+   swapped in by pudl-regions.js as before; the row around them only lays
+   them out, one line when there is room and two when there isn't. The
+   sitenav links that used to sit here are in the site menu. *@
+<div class="app-section-bar site-tabrow">
+    <nav class="site-tabs" data-region="sections" aria-label="Categories">
+        <a class="section-tab" aria-current="@(Model.SelectedCats.Count == 0 ? "true" : null)" href="@Model.CategoryUrl(null)">All</a>
+        @foreach (var (slug, title) in Model.Categories)
         {
-            if (IsInternal(leaf))
-            {
-                @* No active state: the strip's active tab means the selected
-                   category, and the sidebar row shows the front window. *@
-                <a class="section-tab"
-                   href="@Model.OpenWindowUrl(leaf.Slug!)" data-win-open="@leaf.Slug"
-                   title="@leaf.Description">@leaf.Title</a>
-            }
-            else
-            {
-                var extKey = leaf.Frame ? ParksComputing.Engine.Pages.Services.ArticleContentService.ExternalKey(leaf) : null;
-                <a class="section-tab" href="@leaf.Url" target="_blank" rel="noopener" title="@leaf.Description"
-                   @(extKey is null ? null : Html.Raw($"data-win-open=\"{extKey}\""))>@leaf.Title</a>
-            }
+            <a class="section-tab" aria-current="@(Model.SelectedCats.Count == 1 && Model.SelectedCats[0] == slug ? "true" : null)"
+               href="@Model.CategoryUrl(slug)">@title</a>
         }
-    </div>
-</nav>
-
-<div class="md-layout" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
-    @* A stored sidebar width applies before the first paint, per PUDL's
-       0.14.0 pattern; a later script would let the default width flash. *@
-    <script>
-        (function (layout) {
-            try {
-                var w = localStorage.getItem('pc-sidebar-w');
-                if (w) { layout.style.setProperty('--md-sidebar-w', w); }
-                layout.addEventListener('pudl:md-resize', function (e) {
-                    if (e.detail.reset) { localStorage.removeItem('pc-sidebar-w'); }
-                    else { localStorage.setItem('pc-sidebar-w', e.detail.width + 'px'); }
-                });
-            } catch (e) { /* the default width serves */ }
-        })(document.currentScript.parentElement);
-    </script>
-    <div class="md-toolbar md-site-tools">
+    </nav>
+    <div class="site-filters">
         <form class="md-filter-group" data-region="filter" method="get" action="/" role="search">
             @foreach (var kv in Model.FilterFormParams)
             {
@@ -157,33 +129,24 @@
                 }
             </nav>
         </div>
-        <span class="md-toolbar-sep"></span>
-        <span class="md-section-label">Open</span>
-        <nav class="win-dock" data-win-dock aria-label="Open windows"></nav>
-        <span class="md-toolbar-sep"></span>
-        @* Minimise every window, or bring them all back: PUDL's
-           data-win-back and data-win-restore links (0.24.0), which PUDL
-           keeps pointed at the state they produce and marks aria-disabled
-           while they would change nothing. The server renders the same, for
-           no-script. The stylesheet shows one at a time: restore only when
-           every window is minimised. *@
-        @{
-            bool anyShowing = Model.Windows.Any(w => !w.Minimized && w.Parent is null);
-            bool anyMinimized = Model.Windows.Any(w => w.Minimized && w.Parent is null);
-        }
-        <a class="icon-btn min-all" data-win-back href="@Model.MinimizeAllUrl"
-           @(anyShowing ? null : Html.Raw("aria-disabled=\"true\""))
-           aria-label="Minimize all windows" title="Minimize all windows"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="13" height="9" rx="1.5"/><line x1="4.5" y1="14" x2="11.5" y2="14"/><path d="M6 5.5l2 2 2-2"/></svg></a>
-        <a class="icon-btn restore-all" data-win-restore href="@Model.RestoreAllUrl"
-           @(anyMinimized ? null : Html.Raw("aria-disabled=\"true\""))
-           aria-label="Restore all windows" title="Restore all windows"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="13" height="9" rx="1.5"/><line x1="4.5" y1="14" x2="11.5" y2="14"/><path d="M6 7.5l2-2 2 2"/></svg></a>
-        @* Close every window. A real link to the windowless state for
-           no-script; desktop.js intercepts to close in place. *@
-        <a class="icon-btn close-all @(Model.Windows.Count == 0 ? "is-disabled" : null)"
-           data-close-all href="@Model.ListOnlyUrl"
-           @(Model.Windows.Count == 0 ? Html.Raw("aria-disabled=\"true\" tabindex=\"-1\"") : null)
-           aria-label="Close all windows" title="Close all windows"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="4.5" width="9" height="9" rx="1.5"/><path d="M5.5 4V3a1.5 1.5 0 0 1 1.5-1.5h6A1.5 1.5 0 0 1 14.5 3v6A1.5 1.5 0 0 1 13 10.5h-1"/><line x1="4" y1="7" x2="8" y2="11"/><line x1="8" y1="7" x2="4" y2="11"/></svg></a>
     </div>
+</div>
+
+<div class="md-layout" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
+    @* A stored sidebar width applies before the first paint, per PUDL's
+       0.14.0 pattern; a later script would let the default width flash. *@
+    <script>
+        (function (layout) {
+            try {
+                var w = localStorage.getItem('pc-sidebar-w');
+                if (w) { layout.style.setProperty('--md-sidebar-w', w); }
+                layout.addEventListener('pudl:md-resize', function (e) {
+                    if (e.detail.reset) { localStorage.removeItem('pc-sidebar-w'); }
+                    else { localStorage.setItem('pc-sidebar-w', e.detail.width + 'px'); }
+                });
+            } catch (e) { /* the default width serves */ }
+        })(document.currentScript.parentElement);
+    </script>
     @* Always present, so region swaps always find their counterpart;
        PUDL hides an empty chips row. *@
     <div class="md-chips" data-region="chips">

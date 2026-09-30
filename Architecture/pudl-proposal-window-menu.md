@@ -20,4 +20,4 @@ The window's commands are PUDL's already, and the menu is a second way to reach 
 
 ## A small related request
 
-PUDL has no gear glyph. The site draws one for Settings in the same style as PUDL's (`--glyph-gear` in `css/taskbar.css`), and would use PUDL's if it had one.
+PUDL has no gear glyph. The site drew one for a Settings entry in the same style as PUDL's while it had a Start menu, and would use PUDL's for such entries if it had one.

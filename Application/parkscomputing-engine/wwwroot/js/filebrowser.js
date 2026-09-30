@@ -552,7 +552,7 @@
                 if (!target || !target.children) { say('There\'s no folder at ' + v.slice(0, cut) + '.'); return; }
             }
             target = F.realOf(target);
-            if (!target.home) { say('Files can only be saved in your home directory (~)' + (F.mounted ? ' or under /wwwroot' : '') + '.'); return; }
+            if (!target.home) { say('Files can only be saved in your home directory (~)' + (F.mounted ? ', /wwwroot or /etc' : '') + '.'); return; }
             var cannot = o.canSaveIn ? o.canSaveIn(target) : null;
             if (cannot) { say(cannot); return; }
             if (!F.validName(base)) { say(base + ' isn\'t a valid file name.'); return; }

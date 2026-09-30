@@ -19,19 +19,13 @@
         new WindowViewModel { Key = "settings", Title = "Settings", PageUrl = "/admin/settings",
             BodyHtml = "<div data-applet=\"settings\" aria-label=\"Settings\"></div>" }
     };
-    var taskbar = new TaskbarModel {
-        Entries = new[] {
-            new TaskbarEntry("New terminal", "/admin/terminal", "script", Request: "shell"),
-            new TaskbarEntry("Editor", "/admin/editor", "document", Window: "editor"),
-            new TaskbarEntry("Files", "/admin/files", "folder", Window: "files"),
-            new TaskbarEntry("Settings", "/admin/settings", "gear", Window: "settings")
-        }
-    };
 }
 @* The admin desktop (Architecture/admin-and-identity-design.md, A12): the
-   file tree at the side, the tools as PUDL windows, and the taskbar along
-   the bottom. PUDL's master-detail layout shows the tree or the windows
-   one at a time on a narrow screen. js/admin-desktop.js fills the tree. *@
+   file tree at the side and the tools as PUDL windows. The logo menu opens
+   them and the window bar beside it lists them, both in the admin bar
+   (Pages/Shared/_AdminLayout.cshtml). PUDL's master-detail layout shows
+   the tree or the windows one at a time on a narrow screen.
+   js/admin-desktop.js fills the tree. *@
 <div class="md-layout admin-desk" data-md-pane="list">
     <div class="md-body">
         <nav class="md-sidebar admin-tree" aria-label="Files" data-desk-tree>
@@ -42,7 +36,7 @@
             <a class="md-back" href="?open=" data-win-back>Files</a>
             <main class="win-host">
                 <div class="admin-empty">
-                    <p>Open a tool from <strong>Start</strong>, or a file from the tree.</p>
+                    <p>Open a tool from the <strong>Parks Computing Admin</strong> menu, or a file from the tree.</p>
                     <p>Right-click a file or folder, or press Shift+F10 on it, for more.</p>
                 </div>
                 <div class="win-layer" data-win-layer data-win-src="#win-{key}"></div>
@@ -54,4 +48,3 @@
 {
     <template id="win-@tool.Key"><partial name="_Window" model="tool" /></template>
 }
-<partial name="_Taskbar" model="taskbar" />

@@ -31,6 +31,40 @@ namespace ParksComputing.Engine.Identity;
 public sealed class ServerFiles {
     public const string WebRoot = "wwwroot";
     public const string Home = "home";
+    /// <summary>The edit origin's own configuration, shared by every admin
+    /// and never served to the public (A15).</summary>
+    public const string Etc = "etc";
+
+    /// <summary>The admin menu /etc starts with, which an admin's own
+    /// ~/.config/admin-menu.xfer replaces for that admin (A15).</summary>
+    public const string DefaultAdminMenu =
+        "<! document { xferlang \"0.15\" } !>\n" +
+        "</ The admin site's menu, the logo's menu at the top left of edit.parkscomputing.com.\n" +
+        "   Same shape as sitenav.xfer's menu: an entry naming only a slug takes the rest\n" +
+        "   from the admin's own list (terminal, editor, files, settings, account, site,\n" +
+        "   signout), and an entry with a nav is a labelled group. A copy at\n" +
+        "   ~/.config/admin-menu.xfer replaces this one for that admin. /> \n" +
+        "{\n" +
+        "    menu [\n" +
+        "        {\n" +
+        "            title \"Tools\"\n" +
+        "            nav [\n" +
+        "                { slug \"terminal\" }\n" +
+        "                { slug \"editor\" }\n" +
+        "                { slug \"files\" }\n" +
+        "            ]\n" +
+        "        }\n" +
+        "        { slug \"settings\" }\n" +
+        "        { slug \"site\" }\n" +
+        "        {\n" +
+        "            title \"You\"\n" +
+        "            nav [\n" +
+        "                { slug \"account\" }\n" +
+        "                { slug \"signout\" }\n" +
+        "            ]\n" +
+        "        }\n" +
+        "    ]\n" +
+        "}\n";
 
     private static readonly string[] Protected = { "js/", "css/", "pudl/" };
     private static readonly Regex HomeNameChars = new("[^a-z0-9._-]+", RegexOptions.Compiled);
@@ -77,6 +111,13 @@ public sealed class ServerFiles {
                 }
                 return dir;
             }
+            case Etc: {
+                var dir = Path.GetFullPath(_options.EtcRoot);
+                if (!Directory.Exists(dir)) { Directory.CreateDirectory(dir); }
+                var menu = Path.Combine(dir, "admin-menu.xfer");
+                if (!File.Exists(menu)) { File.WriteAllText(menu, DefaultAdminMenu); }
+                return dir;
+            }
             default:
                 return null;
         }
@@ -111,9 +152,10 @@ public sealed class ServerFiles {
 
     public static string Rel(string rootDir, string full) => Path.GetRelativePath(rootDir, full).Replace(Path.DirectorySeparatorChar, '/');
 
-    /// <summary>Whether a change here needs a recent passkey tap: anything in js/, css/ or pudl/ of the web root.</summary>
+    /// <summary>Whether a change here needs a recent passkey tap: anything in js/, css/ or pudl/ of the web root, and anything in /etc.</summary>
     public static bool IsProtected(string root, string rel) =>
-        root == WebRoot && Protected.Any(p => (rel.Replace('\\', '/').Trim('/') + "/").StartsWith(p, StringComparison.OrdinalIgnoreCase));
+        root == Etc ||
+        (root == WebRoot && Protected.Any(p => (rel.Replace('\\', '/').Trim('/') + "/").StartsWith(p, StringComparison.OrdinalIgnoreCase)));
 
     /// <summary>Every file and directory under a root, links left out.</summary>
     public IReadOnlyList<Entry> List(string rootDir) {

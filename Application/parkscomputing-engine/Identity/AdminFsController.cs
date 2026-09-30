@@ -63,7 +63,7 @@ public sealed class AdminFsController : ControllerBase {
         if (full is null) {
             return null;
         }
-        var key = root == ServerFiles.Home ? "home/" + home : ServerFiles.WebRoot;
+        var key = root == ServerFiles.Home ? "home/" + home : root == ServerFiles.Etc ? ServerFiles.Etc : ServerFiles.WebRoot;
         return new Target(root!, key, dir, ServerFiles.Rel(dir, full) == "." ? "" : ServerFiles.Rel(dir, full), full);
     }
 

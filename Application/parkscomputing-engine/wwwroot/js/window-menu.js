@@ -1,5 +1,5 @@
-/* The window menu, and its stand-in on an applet's own page. A window's
-   title bar starts with a menu button (Pages/Shared/_Window.cshtml) whose
+/* The window menu, its stand-in on an applet's own page, and the window
+   bar's commands. A window's title bar starts with a menu button (Pages/Shared/_Window.cshtml) whose
    menu holds the window's commands, which PUDL carries out through their
    data-win-action, and below a separator the commands of the applet in
    the window. The site proposes it to PUDL in
@@ -118,6 +118,49 @@
             mount.classList.add('has-applet-menu');
         }
     });
+
+    /* === The window bar ==================================================
+       The top bar's window-wide commands (Pages/Shared/_WindowBar.cshtml)
+       that PUDL has no attribute for:
+
+       - [data-close-all] closes every top-level window in place, and stays
+         a real link to the windowless state for a click that isn't plain;
+       - [data-win-request="verb"], as in a menu's "New terminal", makes a
+         PUDL applet request, which opens a new instance where a window link
+         would raise the one already open. */
+
+    function plainClick(e) { return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey; }
+
+    function syncCloseAll() {
+        var none = !window.pudlWindows || window.pudlWindows.state().open.length === 0;
+        document.querySelectorAll('[data-close-all]').forEach(function (a) {
+            a.classList.toggle('is-disabled', none);
+            if (none) { a.setAttribute('aria-disabled', 'true'); a.tabIndex = -1; }
+            else { a.removeAttribute('aria-disabled'); a.tabIndex = 0; }
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        var closeAll = e.target.closest('[data-close-all]');
+        if (closeAll && plainClick(e)) {
+            e.preventDefault();
+            if (!window.pudlWindows) { return; }
+            var layer = document.querySelector('[data-win-layer]');
+            window.pudlWindows.state().open.forEach(function (key) {
+                var el = layer && layer.querySelector('.win[data-win="' + key + '"]');
+                if (el && !el.hasAttribute('data-win-parent')) { window.pudlWindows.close(key); }
+            });
+            return;
+        }
+        var req = e.target.closest('[data-win-request]');
+        if (req && plainClick(e) && window.pudlWindows && window.pudlApplets && window.pudlApplets.request) {
+            if (window.pudlApplets.request(req.getAttribute('data-win-request'), {}, req)) { e.preventDefault(); }
+        }
+    });
+
+    document.addEventListener('pudl:windows-change', syncCloseAll);
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', syncCloseAll); }
+    else { syncCloseAll(); }
 
     window.pcWindowMenu = { gather: gather };
 })();

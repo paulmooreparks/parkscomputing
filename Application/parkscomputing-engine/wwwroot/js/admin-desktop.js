@@ -191,7 +191,7 @@
         });
     }
 
-    /* A window opened from outside any window, by Start or the tree, opens
+    /* A window opened from outside any window, by the logo menu or the tree, opens
        as the settings say; one opened from a link inside a window keeps
        its opener's state, which is PUDL's own behavior. */
     var layer = document.querySelector('[data-win-layer]');
@@ -203,7 +203,7 @@
         });
     }
 
-    /* === Start =========================================================== */
+    /* === Loading ========================================================= */
 
     var fs = window.pcSiteFs ? Promise.resolve() : loadScript(window.pcSiteFsSrc || '/js/sitefs.js');
     var fb = window.pcFileBrowser ? Promise.resolve() : loadScript(window.pcFileBrowserSrc || '/js/filebrowser.js');

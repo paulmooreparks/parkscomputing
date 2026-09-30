@@ -46,6 +46,9 @@ public sealed class AdminOptions {
     /// <summary>The admins' home directories on the server, one each, outside the web root (A10).</summary>
     public string HomeRoot { get; set; } = "/app/home";
 
+    /// <summary>The edit origin's shared configuration, /etc in the mount, outside the web root (A15).</summary>
+    public string EtcRoot { get; set; } = "/app/etc";
+
     /// <summary>Previous versions of changed files, and the audit log, outside the web root (A7).</summary>
     public string HistoryRoot { get; set; } = "/app/history";
 

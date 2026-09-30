@@ -1,0 +1,19 @@
+@model ParksComputing.Engine.Pages.Models.WindowBarModel
+@* The window bar, in the top bar of both sites' pages of windows: PUDL's
+   dock of open windows, its minimize-all and restore-all links (data-win-back
+   and data-win-restore, which PUDL keeps pointed at the state they produce
+   and marks aria-disabled while they would change nothing), and close all,
+   which js/window-menu.js carries out and which leads to the windowless
+   state without script. It knows nothing of the page it sits on. *@
+<div class="win-bar">
+    <nav class="win-dock win-bar-dock" data-win-dock aria-label="Open windows"></nav>
+    <a class="icon-btn min-all" data-win-back href="@Model.MinimizeAllUrl"
+       @(Model.AnyShowing ? null : Html.Raw("aria-disabled=\"true\""))
+       aria-label="Minimize all windows" title="Minimize all windows"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="13" height="9" rx="1.5"/><line x1="4.5" y1="14" x2="11.5" y2="14"/><path d="M6 5.5l2 2 2-2"/></svg></a>
+    <a class="icon-btn restore-all" data-win-restore href="@Model.RestoreAllUrl"
+       @(Model.AnyMinimized ? null : Html.Raw("aria-disabled=\"true\""))
+       aria-label="Restore all windows" title="Restore all windows"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="1.5" width="13" height="9" rx="1.5"/><line x1="4.5" y1="14" x2="11.5" y2="14"/><path d="M6 7.5l2-2 2 2"/></svg></a>
+    <a class="icon-btn close-all @(Model.AnyOpen ? null : "is-disabled")" data-close-all href="@Model.CloseAllUrl"
+       @(Model.AnyOpen ? null : Html.Raw("aria-disabled=\"true\" tabindex=\"-1\""))
+       aria-label="Close all windows" title="Close all windows"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1.5" y="4.5" width="9" height="9" rx="1.5"/><path d="M5.5 4V3a1.5 1.5 0 0 1 1.5-1.5h6A1.5 1.5 0 0 1 14.5 3v6A1.5 1.5 0 0 1 13 10.5h-1"/><line x1="4" y1="7" x2="8" y2="11"/><line x1="8" y1="7" x2="4" y2="11"/></svg></a>
+</div>

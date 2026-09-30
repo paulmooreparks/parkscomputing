@@ -119,9 +119,16 @@
                     }
                 </nav>
             </div>
-            @* The view switcher: one segmented control, centered. Each side
-               is a link, because each view is a URL; ?view=window bypasses
-               a classic default-view choice. *@
+            @* The window view's windows: the dock and the window-wide
+               actions, beside the menu (Pages/Shared/_WindowBar.cshtml). *@
+            @if (ViewData["WindowBar"] is ParksComputing.Engine.Pages.Models.WindowBarModel windowBar)
+            {
+                <partial name="_WindowBar" model="windowBar" />
+            }
+            @* The view switcher: one segmented control at the far right,
+               after a rule. Each side is a link, because each view is a URL;
+               ?view=window bypasses a classic default-view choice. *@
+            <span class="topbar-rule" aria-hidden="true"></span>
             <nav class="seg view-seg" aria-label="View">
                 <a href="/?view=window" aria-current="@(isDesktop ? "true" : null)">Window</a>
                 <a href="/home" aria-current="@(isDesktop ? null : "true")">Classic</a>
@@ -286,7 +293,6 @@
         <script src="~/pudl/pudl-windows.js" defer asp-append-version="true"></script>
         <script src="~/pudl/pudl-regions.js" defer asp-append-version="true"></script>
         <script src="~/pudl/pudl-md.js" defer asp-append-version="true"></script>
-        <script src="~/js/taskbar.js" defer asp-append-version="true"></script>
     }
     @* The menu script loads everywhere since 0.17.0: the go palette is a
        key-summoned menu panel on every page. *@

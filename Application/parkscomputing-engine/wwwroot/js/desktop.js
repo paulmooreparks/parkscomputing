@@ -199,7 +199,7 @@
 
         initPrefs(layer);
 
-        /* Close-all is js/taskbar.js's, shared with the admin desktop. */
+        /* Close-all is js/window-menu.js's, shared with the admin desktop. */
     }
 
     restoreWindows();
