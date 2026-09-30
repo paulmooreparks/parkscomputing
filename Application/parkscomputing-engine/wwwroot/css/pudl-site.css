@@ -317,7 +317,11 @@ body.desktop .site-header { position: static; flex: none; }
   flex-wrap: wrap; column-gap: var(--space-3); row-gap: 8px;
   overflow: visible;
 }
-.site-tabs { display: flex; align-items: flex-end; gap: var(--space-1); flex: 1 1 auto; min-width: 0; overflow-x: auto; }
+/* The tabs scroll sideways when they don't fit, and a box that scrolls
+   clips top and bottom too, so the padding gives the current tab, which
+   PUDL raises above the others, room inside the box; the negative margin
+   keeps the row where it was. */
+.site-tabs { display: flex; align-items: flex-end; gap: var(--space-1); flex: 1 1 auto; min-width: 0; overflow-x: auto; padding-top: 8px; margin-top: -8px; }
 .site-filters {
   display: flex; align-items: center; gap: 8px; flex: none;
   align-self: center; margin-bottom: 6px;
@@ -326,6 +330,9 @@ body.desktop .site-header { position: static; flex: none; }
 .site-filters .btn-sm, .site-filters .md-filter, .site-filters .md-filter-group {
   box-sizing: border-box; height: var(--ctl-h); display: inline-flex; align-items: center;
 }
+/* The group keeps PUDL's stretch: its search button takes its height from
+   the group, and centred it shrank to its glyph. */
+.site-filters .md-filter-group { align-items: stretch; }
 .site-filters .md-filter { padding: 4px 12px; width: 200px; }
 @container tabrow (max-width: 820px) {
   .site-filters { order: -1; flex: 1 1 100%; justify-content: flex-end; margin-bottom: 0; }

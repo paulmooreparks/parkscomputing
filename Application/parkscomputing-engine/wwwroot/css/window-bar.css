@@ -31,3 +31,10 @@
   .win-bar { margin: 0 8px; }
   .topbar-rule { margin-right: 8px; }
 }
+
+/* Workaround for a PUDL 0.34.0 bug (Architecture/pudl-bug-snap-zone-indent.md):
+   in a window menu with ticked commands, PUDL indents every other command
+   to line up with the ticks, and the snap picker's zones are commands too,
+   so each zone grew by the indent and they overlapped. The selector
+   repeats PUDL's :has() so it outweighs PUDL's rule. */
+.menu-panel:has(.menu-action[aria-pressed]) .win-snap .win-snap-zone { padding-inline-start: 0; }
