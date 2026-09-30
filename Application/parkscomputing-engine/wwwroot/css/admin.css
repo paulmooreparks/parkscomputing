@@ -24,6 +24,10 @@
 
 .admin-main { max-width: 640px; margin: 0 auto; padding: var(--space-5) 16px var(--space-6); }
 
+/* The public stylesheet's workaround for PUDL's menu height, which leaves
+   out the panel's border (Architecture/pudl-bug-menu-scrollbar.md). */
+.menu-panel { border-width: 0; outline: 1px solid var(--border); }
+
 /* === The desktop (A12) ===================================================
    PUDL's master-detail layout: the file tree in the sidebar, the windows
    over the detail pane, and the taskbar (css/taskbar.css) under both. */

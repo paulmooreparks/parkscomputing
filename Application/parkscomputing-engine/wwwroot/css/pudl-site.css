@@ -74,9 +74,22 @@ body.desktop .site-header { position: static; flex: none; }
 .topbar .view-seg a:hover { color: var(--tb-link-hover); }
 .topbar .view-seg a[aria-current]:not([aria-current="false"]) { color: var(--text); }
 .topbar .view-seg a[aria-current]:not([aria-current="false"]):hover { color: var(--text); }
+/* On a narrow screen the switcher leaves the centre for the right edge,
+   the site menu keeps the left, and the bar's padding narrows, so the two
+   sit at their edges with the room between them. */
 @media (max-width: 560px) {
-  .view-seg { position: static; transform: none; margin-left: auto; margin-right: 8px; }
+  .topbar { padding-left: 10px; padding-right: 10px; }
+  .view-seg { position: static; transform: none; margin-left: auto; }
 }
+@media (max-width: 400px) {
+  .site-menu-btn { font-size: var(--text-md); }
+}
+/* Too narrow for both: the logo stands for the name, which the button's
+   label still carries. */
+@media (max-width: 380px) {
+  .site-menu-name { display: none; }
+}
+.site-menu-btn { white-space: nowrap; }
 
 /* The classic nav is the same category tab strip as the window view;
    the old details-based dropdowns are gone. */
@@ -110,15 +123,18 @@ body.desktop .site-header { position: static; flex: none; }
 .post-meta .post-edit { margin-left: .75em; color: var(--text-muted); }
 .post-meta .post-edit:hover { color: var(--accent); }
 .post-body { font-size: 1.04rem; line-height: 1.65; }
-.post-body p { margin-bottom: 1.1rem; }
-.post-body h1, .post-body h2, .post-body h3, .post-body h4 {
+.post-body p:not([data-applet] *) { margin-bottom: 1.1rem; }
+/* An article's headings. An applet on an article's page, or in a window,
+   keeps PUDL's own headings for its cards and dialogs, so these stop at
+   an applet's mount. */
+.post-body :is(h1, h2, h3, h4):not([data-applet] *) {
   font-family: var(--font-display);
   letter-spacing: -0.01em;
   scroll-margin-top: 6.5rem;
 }
-.post-body h2 { margin-top: 2.4rem; font-size: 1.6rem; }
-.post-body h3 { margin-top: 1.9rem; font-size: 1.3rem; }
-.post-body h4 { margin-top: 1.6rem; font-size: 1.1rem; }
+.post-body h2:not([data-applet] *) { margin-top: 2.4rem; font-size: 1.6rem; }
+.post-body h3:not([data-applet] *) { margin-top: 1.9rem; font-size: 1.3rem; }
+.post-body h4:not([data-applet] *) { margin-top: 1.6rem; font-size: 1.1rem; }
 /* A code block is for reading, so it is flat, as PUDL's pre.code is
    (0.26.0). The articles' Markdown writes a bare pre, so the look is
    matched here rather than by the class. */
@@ -304,6 +320,13 @@ body.desktop .md-toolbar .win-dock { flex: 1 1 auto; min-width: 0; }
 }
 
 /* The settings dialog's fine print. */
+/* PUDL's menu script sets a panel's maximum height to its content's
+   height, which leaves out the panel's 1px border, so every menu showed a
+   scrollbar for 2px (Architecture/pudl-bug-menu-scrollbar.md). Drawing the
+   line as an outline, which takes no room, gives the same look without
+   it. The admin origin's stylesheet carries the same rule. */
+.menu-panel { border-width: 0; outline: 1px solid var(--border); }
+
 /* The site menu: the logo and name as a raised chip on the topbar,
    opening Home, the applets and Settings. Each row carries the entry's
    icon from sitenav.xfer, or an empty square of the same size, so the
