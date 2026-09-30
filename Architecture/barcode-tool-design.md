@@ -34,7 +34,7 @@ Every file the tool reads or writes goes through the site's shared Open and Save
 
 The home directory on the public site lives in the browser's local storage and holds text only. SVG and JSON are saved there; a PNG cannot be, so in a folder that cannot hold it the dialog turns Save off, says why, and makes Download instead its main button. Where the site keeps files on its server, a PNG is saved there byte for byte.
 
-Saving to `~` keeps a layout in the reader's browser, so the rule under "Public and private layouts" still holds. The tool is not part of the admin workspace on the edit origin, and it must not be added there without revisiting that rule, because the dialog there can write to `/wwwroot`, which the site publishes.
+On the public site, saving to `~` keeps a layout in the reader's browser, so the rule under "Public and private layouts" still holds. Signed in as an admin on the edit origin, `~` is the admin's home directory on the server, which is private but not in the browser. The dialog there can also write to `/wwwroot`, as the terminal and the Editor can, and keeping private layouts out of published folders is the admin's own care, whichever tool writes them.
 
 The linked layouts file (File System Access, in Edge and Chrome) is a separate feature and stays in the Layout menu: it keeps the library in step with a file on the reader's disk, where opening and saving are one-off copies.
 
