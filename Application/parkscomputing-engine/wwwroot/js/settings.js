@@ -1,7 +1,9 @@
-/* Settings: the admin desktop's own settings (Architecture/
-   admin-and-identity-design.md, A12 and A14), as an applet, so it opens as
-   a window beside the tools rather than over them. Each tool keeps its own
-   settings behind its own gear; these are the desktop's:
+/* Settings, as an applet, so it opens as a window beside the tools rather
+   than over them, and so it is an ordinary entry in the Applets menu. On
+   the public site it holds that site's settings, all kept in this browser
+   (initPublic, below). On the edit origin it holds the admin desktop's
+   (Architecture/admin-and-identity-design.md, A12 and A14). Each tool keeps
+   its own settings behind its own controls; these are the desktop's:
 
    - how new windows open, floating or maximized;
    - the theme;
@@ -38,8 +40,118 @@
     function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
     function meta(name) { var m = document.querySelector('meta[name="' + name + '"]'); return m ? m.getAttribute('content') || '' : ''; }
 
+    /* === The public site's settings ======================================
+       Everything here lives in this browser: the theme is PUDL's own key,
+       the default view a cookie the server reads, and the window view's two
+       choices keys js/desktop.js reads. They were the Settings dialog's
+       before Settings became an applet in the Applets menu. */
+
+    var FORGET_KEYS = ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku', 'pc-barcodes',
+        'pc-barcode-layouts', 'pc-terminal', 'pc-terminal-history', 'pc-terminal-home'];
+
+    function viewChoice() {
+        var m = document.cookie.match(/(?:^|;\s*)pc-view=([^;]*)/);
+        return m && m[1] === 'classic' ? 'classic' : 'window';
+    }
+    function setView(mode) {
+        document.cookie = mode === 'classic'
+            ? 'pc-view=classic; path=/; max-age=31536000; SameSite=Lax'
+            : 'pc-view=; path=/; max-age=0; SameSite=Lax';
+    }
+    function pref(name, fallback) {
+        try { var v = localStorage.getItem('pc-' + name); return v == null ? fallback : v === '1'; } catch (err) { return fallback; }
+    }
+
+    function initPublic(root, opts, n) {
+        root.classList.add('pc-settings');
+        if (opts.fit === 'fill') { root.classList.add('pc-settings-fill'); }
+        root.innerHTML =
+            '<section class="card pc-set-card">' +
+              '<h2 class="card-title">Theme</h2>' +
+              '<div class="seg" role="group" aria-label="Theme">' +
+                '<button type="button" data-theme-choice="light">Light</button>' +
+                '<button type="button" data-theme-choice="dark">Dark</button>' +
+                '<button type="button" data-theme-choice="system">Follow the system</button>' +
+              '</div>' +
+            '</section>' +
+            '<section class="card pc-set-card">' +
+              '<h2 class="card-title">View</h2>' +
+              '<p class="card-desc">Which view the site opens in when you arrive at its front page.</p>' +
+              '<div class="seg" role="group" aria-label="Default view">' +
+                '<button type="button" data-view-choice="window">Window</button>' +
+                '<button type="button" data-view-choice="classic">Classic</button>' +
+              '</div>' +
+            '</section>' +
+            '<section class="card pc-set-card">' +
+              '<h2 class="card-title">Windows</h2>' +
+              '<label class="check"><input type="checkbox" data-pref="maximize-new" /> Maximize new windows</label>' +
+              '<label class="check"><input type="checkbox" data-pref="resume-windows" data-pref-default="1" /> Reopen last session\'s windows</label>' +
+            '</section>' +
+            '<section class="card pc-set-card">' +
+              '<h2 class="card-title">This browser</h2>' +
+              '<p class="card-desc">These choices, the window arrangement, the applets\' saves and your home directory in the terminal are kept only in this browser. Forgetting erases them all.</p>' +
+              '<button type="button" class="btn btn-danger" data-forget>Forget this browser\'s data</button>' +
+              '<p class="pc-set-status" data-role="status" role="status" aria-live="polite"></p>' +
+            '</section>';
+
+        function mark() {
+            var theme = window.pudlThemePreference ? window.pudlThemePreference() : 'system';
+            root.querySelectorAll('[data-theme-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-choice') === theme)); });
+            root.querySelectorAll('[data-view-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-view-choice') === viewChoice())); });
+            root.querySelectorAll('[data-pref]').forEach(function (box) { box.checked = pref(box.getAttribute('data-pref'), box.getAttribute('data-pref-default') === '1'); });
+        }
+
+        function forget() {
+            FORGET_KEYS.forEach(function (key) { try { localStorage.removeItem(key); } catch (err) { } });
+            /* The continuity of numbered instances, such as pc-terminal:terminal-2. */
+            try {
+                var prefixes = (window.pcContinuity ? window.pcContinuity.keys() : []).map(function (k) { return k + ':'; });
+                Object.keys(localStorage).forEach(function (key) {
+                    if (prefixes.some(function (p) { return key.indexOf(p) === 0; })) { localStorage.removeItem(key); }
+                });
+            } catch (err) { }
+            /* The barcode tool's link to a layouts file on disk; the file
+               itself is the reader's and is left alone. */
+            try { if (window.indexedDB) { indexedDB.deleteDatabase('pc-barcodes'); } } catch (err) { }
+            document.cookie = 'pc-list=; path=/; max-age=0; SameSite=Lax';
+            setView('window');
+            /* Forgetting lands the theme on System: the device decides. */
+            if (window.pudlSetTheme) { window.pudlSetTheme('system'); }
+            mark();
+            root.querySelector('[data-role="status"]').textContent = 'This browser\'s data for this site is erased.';
+        }
+
+        function onClick(e) {
+            var t = e.target.closest('button');
+            if (!t || !root.contains(t)) { return; }
+            if (t.hasAttribute('data-theme-choice') && window.pudlSetTheme) { window.pudlSetTheme(t.getAttribute('data-theme-choice')); }
+            else if (t.hasAttribute('data-view-choice')) { setView(t.getAttribute('data-view-choice')); }
+            else if (t.hasAttribute('data-forget')) { forget(); }
+            mark();
+        }
+        function onChange(e) {
+            var box = e.target.closest('[data-pref]');
+            if (!box) { return; }
+            try { localStorage.setItem('pc-' + box.getAttribute('data-pref'), box.checked ? '1' : '0'); } catch (err) { }
+        }
+        root.addEventListener('click', onClick);
+        root.addEventListener('change', onChange);
+        document.addEventListener('pudl:theme-change', mark);
+        mark();
+        return {
+            destroy: function () {
+                root.removeEventListener('click', onClick);
+                root.removeEventListener('change', onChange);
+                document.removeEventListener('pudl:theme-change', mark);
+            }
+        };
+    }
+
     function init(root, opts) {
         opts = opts || {};
+        /* Off the edit origin there is no mount, and the settings are the
+           public site's, all in this browser. */
+        if (!meta('pc-fs-mount')) { return initPublic(root, opts, ++count); }
         var n = ++count, destroyed = false, F = null, FB = null, C = null, s = Object.assign({}, DEFAULTS), unConfig = null;
         root.classList.add('pc-settings');
         if (opts.fit === 'fill') { root.classList.add('pc-settings-fill'); }

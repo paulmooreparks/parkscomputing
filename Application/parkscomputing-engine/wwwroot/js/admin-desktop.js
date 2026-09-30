@@ -173,6 +173,22 @@
             bgUrl = await paint(stage, s, bgUrl);
         }
         if (browser && !!s.treeHidden !== !!before.treeHidden) { browser.showHidden(!!s.treeHidden); }
+        if (layout && s.sidebarWidth !== before.sidebarWidth) {
+            if (typeof s.sidebarWidth === 'number') { layout.style.setProperty('--md-sidebar-w', s.sidebarWidth + 'px'); }
+            else { layout.style.removeProperty('--md-sidebar-w'); }
+        }
+    }
+
+    /* The sidebar's width, which PUDL's divider sets (pudl-md.js), is kept
+       with the desktop's settings, so it follows the admin too. */
+    var layout = document.querySelector('.admin-desk');
+    if (layout) {
+        layout.addEventListener('pudl:md-resize', function (e) {
+            if (!window.pcConfig) { return; }
+            var w = e.detail && e.detail.reset ? null : Math.round(e.detail.width);
+            settings = Object.assign({}, settings, { sidebarWidth: w });
+            window.pcConfig.set('desktop', { sidebarWidth: w });
+        });
     }
 
     /* A window opened from outside any window, by Start or the tree, opens

@@ -47,6 +47,7 @@
         <link rel="stylesheet" href="~/css/taskbar.css" asp-append-version="true" />
     }
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/window-menu.css" asp-append-version="true" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 </head>
 <body class="admin@(signedIn ? " admin-elevated" : null)@(workspace ? " admin-workspace" : null)@(desktop ? " admin-desktop" : null)">
@@ -102,6 +103,7 @@
     @if (workspace)
     {
         <script src="~/js/continuity.js" asp-append-version="true"></script>
+        <script src="~/js/window-menu.js" asp-append-version="true"></script>
         @if (desktop)
         {
             <script src="~/pudl/pudl-windows.js" defer asp-append-version="true"></script>

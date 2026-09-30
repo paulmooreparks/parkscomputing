@@ -6,9 +6,19 @@
 
 .fm-body {
   flex: 1 1 auto; min-height: 0;
-  display: grid; grid-template-columns: minmax(170px, 28%) 1fr; gap: var(--space-2);
+  display: grid; grid-template-columns: var(--fb-tree-w, minmax(170px, 28%)) 8px 1fr;
 }
 .fm-body.fm-body-tree, .fm-body.fm-body-list { grid-template-columns: 1fr; }
+
+/* The divider between the tree and the list (pcSplit): a thin rule that
+   takes the accent while it is hovered, dragged or focused. */
+.fm-split { position: relative; cursor: col-resize; touch-action: none; }
+.fm-split::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; border-radius: 1px;
+  background: transparent; transition: background .12s;
+}
+.fm-split:hover::before, .fm-split.dragging::before, .fm-split:focus-visible::before { background: var(--accent); }
+.fm-split:focus-visible { outline: none; }
 .fm-tree-pane, .fm-main {
   min-height: 0; overflow: auto;
   border: 1px solid var(--border); border-radius: var(--radius-sm);
@@ -43,11 +53,11 @@
 /* Narrow: the tree gives way to the list. */
 @container (max-width: 560px) {
   .fm-body { grid-template-columns: 1fr; }
-  .fm-body:not(.fm-body-tree) .fm-tree-pane { display: none; }
+  .fm-body:not(.fm-body-tree) .fm-tree-pane, .fm-split { display: none; }
   .fm-c-kind, .fm-c-date { display: none; }
 }
 @media (max-width: 640px) {
   .fm-body { grid-template-columns: 1fr; }
-  .fm-body:not(.fm-body-tree) .fm-tree-pane { display: none; }
+  .fm-body:not(.fm-body-tree) .fm-tree-pane, .fm-split { display: none; }
   .fm-c-kind, .fm-c-date { display: none; }
 }

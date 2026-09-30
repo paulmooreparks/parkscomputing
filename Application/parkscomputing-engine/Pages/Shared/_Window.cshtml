@@ -20,6 +20,9 @@
          role="dialog" aria-labelledby="win-@Model.Key-title"
          style="@style" @(Model.Minimized ? Html.Raw("hidden") : null)>
     <header class="win-head">
+        @* The window menu, at the left of the title bar (js/window-menu.js):
+           the window's own commands, then the applet's below a separator. *@
+        <button type="button" class="win-btn win-menu-btn" popovertarget="win-menu-@Model.Key" aria-label="Window menu" title="Window menu"></button>
         <h2 class="win-title" id="win-@Model.Key-title">@Model.Title</h2>
         <nav class="win-chrome" aria-label="Window">
             @if (Model.Parent is null)
@@ -105,4 +108,21 @@
             @Html.Raw(Model.BodyHtml)
         }
     </div>
+    @* After the body, so the title bar's own buttons stay the first of each
+       action in the window, which PUDL keeps pointed at their states. *@
+    <nav class="menu-panel win-menu" id="win-menu-@Model.Key" popover aria-label="Window">
+        @if (Model.Parent is null && !string.IsNullOrEmpty(Model.PageUrl))
+        {
+            <div class="md-row"><a class="md-item" href="@Model.PageUrl" target="@(Model.FrameUrl is null ? null : "_blank")" rel="@(Model.FrameUrl is null ? null : "noopener")">Open as a page</a></div>
+        }
+        @if (Model.Parent is null)
+        {
+            <button type="button" class="menu-action" data-win-action="minimize">Minimize</button>
+        }
+        <button type="button" class="menu-action" data-win-action="maximize" data-win-menu="maximize">Maximize</button>
+        <div class="menu-sep" role="separator" data-win-menu-sep hidden></div>
+        <div class="win-menu-app" data-win-menu-app></div>
+        <div class="menu-sep" role="separator"></div>
+        <button type="button" class="menu-action" data-win-action="close">Close</button>
+    </nav>
 </section>

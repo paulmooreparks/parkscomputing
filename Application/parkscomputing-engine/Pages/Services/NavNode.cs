@@ -64,6 +64,13 @@ public class NavNode {
     [XferProperty("frame")]
     public bool Frame { get; set; }
 
+    /// <summary>The entry's icon: the address of a full-colour image on
+    /// this site, such as "/images/icons/terminal.svg", shown wherever the
+    /// entry stands for the thing itself (the site menu, a window's title
+    /// bar). Chrome glyphs are the stylesheet's, not the navigation's.</summary>
+    [XferProperty("icon")]
+    public string? Icon { get; set; }
+
     [XferProperty("nav")]
     public NavNode[]? Nav { get; set; }
 

@@ -304,7 +304,15 @@ body.desktop .md-toolbar .win-dock { flex: 1 1 auto; min-width: 0; }
 }
 
 /* The settings dialog's fine print. */
-.settings-note { font-size: 12px; color: var(--text-muted); margin: 14px 0 0; }
+/* The site menu: the logo and name as a raised chip on the topbar,
+   opening Home, the applets and Settings. Each row carries the entry's
+   icon from sitenav.xfer, or an empty square of the same size, so the
+   names line up whether or not an icon is given. */
+.site-menu-btn { font-family: var(--font-display); font-size: var(--text-lg); padding: 4px 10px 4px 8px; border: 0; cursor: pointer; }
+.site-menu-btn img { display: block; width: 22px; height: 22px; }
+.site-menu-panel { min-width: 240px; }
+.site-menu-item { display: flex; align-items: center; gap: 10px; }
+.site-menu-icon { flex: none; width: 20px; height: 20px; border-radius: 4px; object-fit: contain; }
 
 /* The go palette is PUDL's key-summoned menu panel since 0.17.0; its
    look and placement come from pudl.css and pudl-menu.js. */

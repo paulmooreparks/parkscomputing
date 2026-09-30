@@ -93,14 +93,8 @@
         } catch (err) { return fallback; }
     }
 
+    /* The Settings applet (js/settings.js) sets these; this reads them. */
     function initPrefs(layer) {
-        document.querySelectorAll('input[data-pref]').forEach(function (box) {
-            var name = box.getAttribute('data-pref');
-            box.checked = pref(name, box.getAttribute('data-pref-default') === '1');
-            box.addEventListener('change', function () {
-                try { localStorage.setItem('pc-' + name, box.checked ? '1' : '0'); } catch (err) { }
-            });
-        });
 
         /* Opens from outside any window follow the maximize preference;
            a link inside a window inherits that window's state, PUDL's own

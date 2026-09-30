@@ -29,6 +29,8 @@
      showHidden   show entries whose names start with a dot, such as
                   ~/.config, which are hidden otherwise, as in a shell
      expand       paths of folders to open in the tree at the start
+     treeWidth    the tree's width in px, for a host that keeps it
+     onResize(width)  the tree was resized; width is null when reset
 
    The browser follows every change to the filesystem by itself.
 
@@ -66,7 +68,8 @@
             o = o || {};
             var tree = o.tree !== false, list = o.list !== false;
             return '<div class="fm-body' + (list ? '' : ' fm-body-tree') + (tree ? '' : ' fm-body-list') + '">' +
-                (tree ? '<div class="fm-tree-pane"><ul class="tree fm-tree" data-fb="tree" aria-label="' + esc(o.treeLabel || 'Folders') + '"></ul></div>' : '') +
+                (tree ? '<div class="fm-tree-pane" data-fb="tree-pane"><ul class="tree fm-tree" data-fb="tree" aria-label="' + esc(o.treeLabel || 'Folders') + '"></ul></div>' : '') +
+                (tree && list ? '<div class="fm-split" data-fb="split" aria-label="Resize the folders"></div>' : '') +
                 (list
                     ? '<div class="fm-main' + (o.drop ? ' drop-zone' : '') + '" data-fb="main">' +
                         '<table class="data-table fm-list" data-fb="list" role="grid" aria-label="Contents">' +
@@ -85,6 +88,17 @@
         o = o || {};
         var q = function (sel) { return root.querySelector(sel); };
         var el = { crumbs: q('[data-fb="crumbs"]'), tree: q('[data-fb="tree"]'), list: q('[data-fb="list"]'), rows: q('[data-fb="rows"]'), empty: q('[data-fb="empty"]'), main: q('[data-fb="main"]') };
+
+        /* The divider between the tree and the list. */
+        var splitHandle = q('[data-fb="split"]'), splitter = null;
+        if (splitHandle) {
+            var body = splitHandle.parentElement;
+            splitter = attachSplit(splitHandle, {
+                target: body, prop: '--fb-tree-w', pane: q('[data-fb="tree-pane"]'), min: 140,
+                max: function () { return Math.max(180, body.getBoundingClientRect().width * 0.6); },
+                width: o.treeWidth, onChange: o.onResize
+            });
+        }
         var cwd = null, selected = null, expanded = {}, currentPath = null, destroyed = false;
         var say = o.say || function () { };
         var linkFor = o.linkFor || function () { return '#'; };
@@ -405,6 +419,8 @@
             markCurrent: markCurrent,
             /* Shows or hides the entries whose names start with a dot. */
             showHidden: function (on) { o.showHidden = !!on; render(); },
+            /* Sets the tree's width, as when another window changed it. */
+            treeWidth: function (w) { if (splitter) { splitter.set(w); } },
             destroy: function () {
                 destroyed = true;
                 if (unsubscribe) { unsubscribe(); }
@@ -617,6 +633,78 @@
             else { b.focusList(); }
         });
     }
+
+    /* === Splitters =========================================================
+
+       A divider between two panes, dragged with the pointer or moved with
+       the keys, that sets the first pane's width as a CSS property on an
+       element the host names. It is the site's until PUDL has a splitter of
+       its own (Architecture/pudl-proposal-splitter.md), and lives here
+       because the file browser and the Editor are its hosts.
+
+         pcSplit.attach(handle, {
+           target     the element the width is set on
+           prop       the property, such as '--fb-tree-w'
+           pane       the pane whose width it is, measured at the start
+           min, max   the limits in px; max may be a function
+           width      a width to start at, or null for the stylesheet's
+           onChange(width)  after a drag or a key; width is null on a reset
+         })
+
+       The handle is a focusable separator: Left and Right move it by 16px
+       (64 with Shift), Home and End go to the limits, and a double-click or
+       Enter returns the stylesheet's width. */
+    function attachSplit(handle, o) {
+        var min = o.min || 120;
+        function max() { return typeof o.max === 'function' ? o.max() : (o.max || 600); }
+        function clamp(w) { return Math.round(Math.max(min, Math.min(max(), w))); }
+        function current() { return o.pane.getBoundingClientRect().width; }
+        function set(w, tell) {
+            if (w == null) { o.target.style.removeProperty(o.prop); }
+            else { o.target.style.setProperty(o.prop, clamp(w) + 'px'); }
+            handle.setAttribute('aria-valuenow', String(Math.round(current())));
+            if (tell && o.onChange) { o.onChange(w == null ? null : clamp(w)); }
+        }
+        handle.setAttribute('role', 'separator');
+        handle.setAttribute('aria-orientation', 'vertical');
+        handle.tabIndex = 0;
+        handle.setAttribute('aria-valuemin', String(min));
+        if (o.width != null) { set(o.width, false); }
+
+        handle.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0) { return; }
+            e.preventDefault();
+            var startX = e.clientX, startW = current(), rtl = getComputedStyle(handle).direction === 'rtl';
+            handle.setPointerCapture(e.pointerId);
+            handle.classList.add('dragging');
+            function move(ev) { set(startW + (rtl ? -1 : 1) * (ev.clientX - startX), false); }
+            function up() {
+                handle.releasePointerCapture(e.pointerId);
+                handle.classList.remove('dragging');
+                handle.removeEventListener('pointermove', move);
+                handle.removeEventListener('pointerup', up);
+                handle.removeEventListener('pointercancel', up);
+                set(current(), true);
+            }
+            handle.addEventListener('pointermove', move);
+            handle.addEventListener('pointerup', up);
+            handle.addEventListener('pointercancel', up);
+        });
+        handle.addEventListener('dblclick', function () { set(null, true); });
+        handle.addEventListener('keydown', function (e) {
+            var step = e.shiftKey ? 64 : 16, w = current(), next = null;
+            if (e.key === 'ArrowLeft') { next = w - step; }
+            else if (e.key === 'ArrowRight') { next = w + step; }
+            else if (e.key === 'Home') { next = min; }
+            else if (e.key === 'End') { next = max(); }
+            else if (e.key === 'Enter') { e.preventDefault(); set(null, true); return; }
+            else { return; }
+            e.preventDefault();
+            set(next, true);
+        });
+        return { set: function (w) { set(w, false); } };
+    }
+    window.pcSplit = { attach: attachSplit };
 
     window.pcFileBrowser = {
         create: create,

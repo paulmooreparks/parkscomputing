@@ -51,10 +51,20 @@
 
 /* The Explorer: the shared file browser's tree beside the text. A narrow
    screen has no room for it, so it gives way there whatever was chosen. */
-.pc-editor .ed-explorer { flex: 0 0 240px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.pc-editor .ed-explorer { flex: 0 0 var(--ed-explorer-w, 240px); min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .pc-editor .ed-explorer[hidden] { display: none; }
 .pc-editor .ed-explorer .fm-body { height: 100%; }
-@media (max-width: 700px) { .pc-editor .ed-explorer { display: none; } }
+/* The Explorer's divider (pcSplit, in js/filebrowser.js), in the gap
+   between it and the text. */
+.pc-editor .ed-split { flex: 0 0 8px; margin: 0 -7px 0 -6px; position: relative; cursor: col-resize; touch-action: none; z-index: 1; }
+.pc-editor .ed-split[hidden] { display: none; }
+.pc-editor .ed-split::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; border-radius: 1px;
+  background: transparent; transition: background .12s;
+}
+.pc-editor .ed-split:hover::before, .pc-editor .ed-split.dragging::before, .pc-editor .ed-split:focus-visible::before { background: var(--accent); }
+.pc-editor .ed-split:focus-visible { outline: none; }
+@media (max-width: 700px) { .pc-editor .ed-explorer, .pc-editor .ed-split { display: none; } }
 @media (max-width: 700px) { .pc-editor [data-action="explorer"] { display: none; } }
 
 /* === Filling a window ==================================================== */

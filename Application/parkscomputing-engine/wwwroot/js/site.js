@@ -71,92 +71,9 @@
         });
     })();
 
-    /* === The settings dialog ==============================================
-       A native <dialog> per PUDL 0.16.0, opened and closed by the gear's
-       and Close button's command attributes (pudl-dialog.js covers browsers
-       without them), which also gives Escape, focus containment and the
-       backdrop for free. The theme segment writes PUDL's own storage key;
-       the other settings bind themselves elsewhere by their data-pref
-       attributes. State on the segments is marked with aria-pressed. */
-    (function () {
-        var dialog = document.getElementById('settings-dialog');
-        var opener = document.querySelector('[data-settings-open]');
-        if (!dialog) { return; }
-
-        /* The theme is pudl-theme's own since 0.13.0: pudlSetTheme writes
-           the choice, and pudl:theme-change keeps this dialog's marking in
-           step, other tabs included. */
-        function markTheme() {
-            var mode = window.pudlThemePreference ? window.pudlThemePreference() : 'dark';
-            dialog.querySelectorAll('[data-theme-choice]').forEach(function (b) {
-                b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-choice') === mode));
-            });
-        }
-
-        document.addEventListener('pudl:theme-change', markTheme);
-
-        /* The default view lives in a cookie because the server acts on it:
-           a bare / redirects to the classic home when it says classic. It
-           is a functional preference like the rest. */
-        function viewChoice() {
-            var m = document.cookie.match(/(?:^|;\s*)pc-view=([^;]*)/);
-            return m && m[1] === 'classic' ? 'classic' : 'window';
-        }
-
-        function markView() {
-            dialog.querySelectorAll('[data-view-choice]').forEach(function (b) {
-                b.setAttribute('aria-pressed', String(b.getAttribute('data-view-choice') === viewChoice()));
-            });
-        }
-
-        function setView(mode) {
-            document.cookie = mode === 'classic'
-                ? 'pc-view=classic; path=/; max-age=31536000; SameSite=Lax'
-                : 'pc-view=; path=/; max-age=0; SameSite=Lax';
-            markView();
-        }
-
-        /* The command button opens the dialog; this only freshens the
-           marking on the way in. */
-        if (opener) { opener.addEventListener('click', function () { markTheme(); markView(); }); }
-
-        dialog.addEventListener('click', function (e) {
-            /* A click on the backdrop reaches the dialog element itself. */
-            if (e.target === dialog) { dialog.close(); }
-            var choice = e.target.closest('[data-theme-choice]');
-            if (choice && window.pudlSetTheme) { window.pudlSetTheme(choice.getAttribute('data-theme-choice')); }
-            var view = e.target.closest('[data-view-choice]');
-            if (view) { setView(view.getAttribute('data-view-choice')); }
-            if (e.target.closest('[data-settings-close]')) { dialog.close(); }
-            if (e.target.closest('[data-settings-forget]')) {
-                ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku', 'pc-barcodes', 'pc-barcode-layouts', 'pc-terminal', 'pc-terminal-history', 'pc-terminal-home'].forEach(function (key) {
-                    try { localStorage.removeItem(key); } catch (err) { }
-                });
-                /* The continuity of numbered instances, such as
-                   pc-terminal:terminal-2. */
-                try {
-                    var prefixes = (window.pcContinuity ? window.pcContinuity.keys() : []).map(function (k) { return k + ':'; });
-                    Object.keys(localStorage).forEach(function (key) {
-                        if (prefixes.some(function (p) { return key.indexOf(p) === 0; })) { localStorage.removeItem(key); }
-                    });
-                } catch (err) { }
-                /* The barcode tool's link to a layouts file on disk; the
-                   file itself is the reader's and is left alone. */
-                try { if (window.indexedDB) { indexedDB.deleteDatabase('pc-barcodes'); } } catch (err) { }
-                document.cookie = 'pc-list=; path=/; max-age=0; SameSite=Lax';
-                setView('window');
-                /* Forgetting lands the theme on System: the device decides. */
-                if (window.pudlSetTheme) { window.pudlSetTheme('system'); }
-                dialog.querySelectorAll('[data-pref]').forEach(function (box) {
-                    box.checked = box.getAttribute('data-pref-default') === '1';
-                });
-                markTheme();
-            }
-        });
-
-        markTheme();
-        markView();
-    })();
+    /* Settings is an applet (js/settings.js), which holds what the settings
+       dialog here used to: the theme, the default view, the window view's
+       choices and forgetting this browser's data. */
 
     /* The go palette is PUDL's since 0.17.0: a menu panel with
        data-menu-key="/" in the layout, its filter in a GET form that /go

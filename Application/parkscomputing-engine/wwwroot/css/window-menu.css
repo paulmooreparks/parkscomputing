@@ -1,0 +1,43 @@
+/* The window menu (js/window-menu.js): a raised round button at the left
+   of each title bar, like the window's other buttons, drawn with PUDL's
+   caret; and its stand-in on an applet's own page, a small raised button
+   in the applet's top corner. */
+
+.win-menu-btn { margin-left: -5px; }
+.win-menu-btn::before {
+  content: ""; width: 12px; height: 12px;
+  background: currentColor;
+  -webkit-mask: var(--glyph-caret) center / contain no-repeat;
+  mask: var(--glyph-caret) center / contain no-repeat;
+}
+.win-menu { min-width: 220px; }
+.win-menu-app:empty { display: none; }
+/* A command that is on or off carries a check at its end while it is on. */
+.win-menu [aria-checked="true"]::after, .applet-menu [aria-checked="true"]::after {
+  content: "✓"; margin-left: auto; padding-left: 12px; color: var(--accent);
+}
+.win-menu [role="menuitemcheckbox"], .applet-menu [role="menuitemcheckbox"] { display: flex; align-items: center; width: 100%; }
+
+/* On a page: the applet keeps its layout, and the button sits over its
+   top corner. */
+.has-applet-menu { position: relative; }
+.applet-menu-btn {
+  position: absolute; top: 6px; right: 18px; z-index: 3;
+  width: 26px; height: 26px; opacity: .7;
+}
+.applet-menu-btn:hover, .applet-menu-btn:focus-visible { opacity: 1; }
+/* In a toolbar's slot it is one of the toolbar's own buttons. */
+.applet-menu-btn-slotted { position: static; opacity: 1; }
+[data-applet-menu-slot] { display: inline-flex; }
+[data-applet-menu-slot]:empty { display: none; }
+.applet-menu-btn::before {
+  content: ""; width: 12px; height: 12px;
+  background: currentColor;
+  -webkit-mask: var(--glyph-caret) center / contain no-repeat;
+  mask: var(--glyph-caret) center / contain no-repeat;
+}
+.applet-menu { min-width: 200px; }
+
+@media (forced-colors: active) {
+  .win-menu-btn::before, .applet-menu-btn::before { forced-color-adjust: none; background: ButtonText; }
+}

@@ -35,6 +35,7 @@
         <link rel="stylesheet" href="~/pudl/pudl-windows.css" asp-append-version="true" />
     }
     <link rel="stylesheet" href="~/css/pudl-site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/window-menu.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/accessibility.css" />
     <link rel="alternate" type="application/rss+xml" title="RSS Feed for @ViewData["Title"]" href="/rss">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -74,7 +75,29 @@
     <header class="site-header">
         @Html.RenderStaticFile("/content/header-section.html", FileReaderService)
         <div class="topbar">
-            <a class="brand" href="/"><img src="~/favicon-32x32.png" alt="" /> Parks Computing</a>
+            @* The site menu: the logo and name are a button, as the Apple
+               menu is, opening Home, the applets and Settings. It is a
+               raised chip on the topbar, since it can be pressed; the
+               applets are the Applets section of sitenav.xfer, each with its
+               icon when it has one. *@
+            @{
+                var menuRoot = PaletteNav.GetRoot();
+                var menuApplets = (menuRoot.Nav ?? Array.Empty<NavNode>()).FirstOrDefault(n => n.Slug == "applets")?.Nav ?? Array.Empty<NavNode>();
+            }
+            <div class="menu site-menu">
+                <button type="button" class="brand topbar-pill menu-btn site-menu-btn" popovertarget="site-menu" aria-label="Parks Computing menu">
+                    <img src="~/favicon-32x32.png" alt="" /> Parks Computing
+                </button>
+                <nav class="menu-panel site-menu-panel" id="site-menu" popover aria-label="Parks Computing">
+                    <div class="md-row"><a class="md-item site-menu-item" href="/"><span class="site-menu-icon" aria-hidden="true"></span>Home</a></div>
+                    <div class="md-section-label">Applets</div>
+                    @foreach (var app in menuApplets.Where(a => !string.IsNullOrEmpty(a.Slug)))
+                    {
+                        <div class="md-row"><a class="md-item site-menu-item" href="@(isDesktop ? $"/?open={app.Slug}&top={app.Slug}" : $"/page/{app.Slug}")"
+                            @(isDesktop ? Html.Raw($"data-win-open=\"{app.Slug}\"") : null)>@if (!string.IsNullOrEmpty(app.Icon)) {<img class="site-menu-icon" src="@app.Icon" alt="" />} else {<span class="site-menu-icon" aria-hidden="true"></span>}@(app.Title ?? app.Slug)</a></div>
+                    }
+                </nav>
+            </div>
             @* The view switcher: one segmented control, centered. Each side
                is a link, because each view is a URL; ?view=window bypasses
                a classic default-view choice. *@
@@ -82,10 +105,6 @@
                 <a href="/?view=window" aria-current="@(isDesktop ? "true" : null)">Window</a>
                 <a href="/home" aria-current="@(isDesktop ? null : "true")">Classic</a>
             </nav>
-            <div class="topbar-chrome">
-                <button class="theme-toggle" type="button" title="Settings" aria-label="Settings"
-                        data-settings-open command="show-modal" commandfor="settings-dialog">⚙</button>
-            </div>
         </div>
         @if (!isDesktop)
         {
@@ -147,44 +166,8 @@
         </button>
     </dialog>
 
-    @* The settings dialog: a native <dialog> per PUDL 0.16.0, opened by the
-       gear's command button (pudl-dialog.js supplies command in browsers
-       that lack it). Everything in it lives only in this browser's own
-       storage. *@
-    <dialog class="dialog" id="settings-dialog" aria-labelledby="settings-title">
-            <h3 class="dialog-title" id="settings-title">Settings</h3>
-            <div class="dialog-body">
-                <div class="form-group">
-                    <span class="form-label" id="theme-label">Theme</span>
-                    <div class="seg" role="group" aria-labelledby="theme-label">
-                        <button type="button" data-theme-choice="light">Light</button>
-                        <button type="button" data-theme-choice="dark">Dark</button>
-                        <button type="button" data-theme-choice="system">System</button>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <span class="form-label" id="view-label">Default view</span>
-                    <div class="seg" role="group" aria-labelledby="view-label">
-                        <button type="button" data-view-choice="window">Window</button>
-                        <button type="button" data-view-choice="classic">Classic</button>
-                    </div>
-                </div>
-                @if (isDesktop)
-                {
-                    <div class="form-group">
-                        <label class="check"><input type="checkbox" data-pref="maximize-new"> Maximize new windows</label>
-                    </div>
-                    <div class="form-group">
-                        <label class="check"><input type="checkbox" data-pref="resume-windows" data-pref-default="1"> Reopen last session&#8217;s windows</label>
-                    </div>
-                }
-                <p class="settings-note">These choices, and the window arrangement, are kept only in this browser.</p>
-            </div>
-            <div class="dialog-actions">
-                <button class="btn btn-danger" type="button" data-settings-forget>⚠ Forget this browser&#8217;s data</button>
-                <button class="btn btn-primary" type="button" command="close" commandfor="settings-dialog" data-settings-close>Close</button>
-            </div>
-    </dialog>
+    @* Settings is an applet now (js/settings.js), in the site menu and the
+       Applets section, where the dialog that stood here used to be. *@
 
     @if (!isFrame)
     {
@@ -273,6 +256,7 @@
     }
 
     <script src="~/js/continuity.js" asp-append-version="true"></script>
+    <script src="~/js/window-menu.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/lightbox.js" asp-append-version="true"></script>
     @if (isDesktop)

@@ -977,12 +977,11 @@
         opts = opts || {};
         root.classList.add('pc-terminal');
         if (opts.fit === 'fill') { root.classList.add('pc-terminal-fill'); }
-        /* The terminal's own settings, behind a gear in its corner, kept in
-           ~/.config/terminal.json. */
+        /* The terminal's own settings, kept in ~/.config/terminal.json, in a
+           dialog its menu opens (js/window-menu.js): the window's menu in a
+           window, a small menu button on its own page. */
         var setId = 'pc-term-settings-' + (++instanceCount);
         root.innerHTML = '<div class="pc-terminal-screen" data-role="screen"></div>' +
-            '<button type="button" class="icon-btn pc-terminal-gear" data-role="gear" aria-haspopup="dialog" aria-label="Terminal settings" title="Terminal settings">' +
-              '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg></button>' +
             '<dialog class="dialog pc-terminal-settings" data-role="settings" aria-labelledby="' + setId + '-title">' +
               '<form method="dialog">' +
                 '<h3 class="dialog-title" id="' + setId + '-title">Terminal settings</h3>' +
@@ -999,8 +998,18 @@
         var screen = root.querySelector('[data-role="screen"]');
         var fontSel = root.querySelector('[data-role="font-size"]');
         var setDialog = root.querySelector('[data-role="settings"]');
-        root.querySelector('[data-role="gear"]').addEventListener('click', function () { setDialog.showModal(); fontSel.focus(); });
         setDialog.addEventListener('close', function () { if (term) { term.focus(); } });
+
+        /* The terminal's commands, for its menu. */
+        function onMenu(e) {
+            e.detail.add('Settings…', function () { setDialog.showModal(); fontSel.focus(); });
+            e.detail.add('Clear the screen', function () { if (term) { term.clear(); term.focus(); } });
+            if (window.pudlApplets && window.pudlApplets.can && window.pudlApplets.can('shell')) {
+                e.detail.add('New terminal here', function () { window.pudlApplets.request('shell', { path: cwd ? pathOf(cwd) : '/' }, root); });
+            }
+        }
+        root.addEventListener('pc:window-menu', onMenu);
+        root.dispatchEvent(new CustomEvent('pc:applet-commands', { bubbles: true }));
         var settings = Object.assign({}, SETTINGS), unConfig = null;
         function fontSize() { var n = +settings.fontSize; return FONT_SIZES.indexOf(n) >= 0 ? n : SETTINGS.fontSize; }
         function applySettings(s) {
@@ -1687,6 +1696,7 @@
             destroy: function () {
                 destroyed = true;
                 if (unConfig) { unConfig(); }
+                root.removeEventListener('pc:window-menu', onMenu);
                 document.removeEventListener('pudl:theme-change', applyTheme);
                 if (ro) { ro.disconnect(); }
                 if (term) { term.dispose(); }

@@ -55,7 +55,7 @@
     /* The Editor's settings are its own toolbar's Wrap lines and Explorer
        controls, which remember themselves in ~/.config/editor.json
        (js/config.js), so they follow the reader wherever ~ does. */
-    var SETTINGS = { wrap: true, explorer: null };
+    var SETTINGS = { wrap: true, explorer: null, explorerWidth: null };
     var configReady = null;
     function loadConfig() {
         if (window.pcConfig) { return Promise.resolve(window.pcConfig); }
@@ -150,6 +150,7 @@
               /* The Explorer: the shared file browser's tree, files and all
                  (js/filebrowser.js), filled once the filesystem loads. */
               '<nav class="ed-explorer" data-role="explorer" aria-label="Files" hidden></nav>' +
+              '<div class="ed-split" data-role="explorer-split" aria-label="Resize the files" hidden></div>' +
               '<div class="code-surface ed-surface" data-role="surface"></div>' +
               /* The preview is the public site's own page for the draft, so
                  an article's scripts run there and never here (A11). */
@@ -180,7 +181,7 @@
             dialog: q('[data-role="dialog"]'), dlgForm: q('[data-role="dialog-form"]'), dlgTitle: q('[data-role="dialog-title"]'),
             dlgText: q('[data-role="dialog-text"]'), dlgInput: q('[data-role="dialog-input"]'), dlgError: q('[data-role="dialog-error"]'),
             dlgActions: q('[data-role="dialog-actions"]'),
-            explorer: q('[data-role="explorer"]'), explorerBtn: q('[data-action="explorer"]')
+            explorer: q('[data-role="explorer"]'), explorerBtn: q('[data-action="explorer"]'), explorerSplit: q('[data-role="explorer-split"]')
         };
         var FB = null, explorer = null;
 
@@ -585,6 +586,20 @@
                 if (view) { view.dispatch({ effects: wrapComp.reconfigure(el.wrap.checked ? CM.EditorView.lineWrapping : []) }); }
             }
             if (explorer && typeof settings.explorer === 'boolean' && el.explorer.hidden === settings.explorer) { showExplorer(settings.explorer); }
+            if (explorerSplit) { explorerSplit.set(typeof settings.explorerWidth === 'number' ? settings.explorerWidth : null); }
+        }
+
+        /* The Explorer's width, dragged at its divider and kept with the
+           other settings. */
+        var explorerSplit = null;
+        function setupExplorerSplit() {
+            if (!window.pcSplit) { return; }
+            explorerSplit = window.pcSplit.attach(el.explorerSplit, {
+                target: root, prop: '--ed-explorer-w', pane: el.explorer, min: 160,
+                max: function () { return Math.max(200, el.panes.getBoundingClientRect().width * 0.5); },
+                width: typeof settings.explorerWidth === 'number' ? settings.explorerWidth : null,
+                onChange: function (w) { saveSetting({ explorerWidth: w }); }
+            });
         }
         function saveSetting(changes) {
             Object.assign(settings, changes);
@@ -593,6 +608,7 @@
 
         function showExplorer(on) {
             el.explorer.hidden = !on;
+            el.explorerSplit.hidden = !on;
             el.explorerBtn.setAttribute('aria-pressed', String(on));
             el.explorerBtn.setAttribute('aria-label', on ? 'Hide the files' : 'Show the files');
             el.explorerBtn.title = on ? 'Hide the files' : 'Show the files';
@@ -756,6 +772,20 @@
                 }
             }
         });
+        /* The Editor's commands, for its menu (js/window-menu.js). The
+           toolbar has them too; the menu is where every tool's are. */
+        function onMenu(e) {
+            if (!CM || !view) { return; }
+            e.detail.add('New', newTab);
+            e.detail.add('Open…', openDialog);
+            e.detail.add('Save as…', saveAs, { disabled: !current() });
+            e.detail.add('Show the files', function () { el.explorerBtn.click(); }, { checked: !el.explorer.hidden });
+            e.detail.add('Wrap lines', function () { el.wrap.click(); }, { checked: el.wrap.checked });
+        }
+        /* On its own page the toolbar holds these, so it asks for no
+           menu button there. */
+        root.addEventListener('pc:window-menu', onMenu);
+
         el.wrap.addEventListener('change', function () {
             if (view) { view.dispatch({ effects: wrapComp.reconfigure(el.wrap.checked ? CM.EditorView.lineWrapping : []) }); }
             saveSetting({ wrap: el.wrap.checked });
@@ -776,6 +806,7 @@
             if (destroyed) { return; }
             el.wrap.checked = !!settings.wrap;
             setupExplorer();
+            setupExplorerSplit();
             wrapComp = new CM.Compartment(); langComp = new CM.Compartment(); lintComp = new CM.Compartment(); roComp = new CM.Compartment();
             view = new CM.EditorView({ parent: el.surface });
             unsubscribe = F.onChange(onFsChange);
@@ -796,6 +827,7 @@
                 destroyed = true;
                 if (unsubscribe) { unsubscribe(); }
                 if (unConfig) { unConfig(); }
+                root.removeEventListener('pc:window-menu', onMenu);
                 window.removeEventListener('beforeunload', onBeforeUnload);
                 if (win) { win.removeEventListener('pudl:window-closing', onWindowClosing); }
                 if (el.dialog.open) { el.dialog.close(); }

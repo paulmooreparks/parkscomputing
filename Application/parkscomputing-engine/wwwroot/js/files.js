@@ -438,19 +438,33 @@
         /* === Start ======================================================== */
 
         var showHidden = false, unConfig = null;
+
+        /* Files' commands, for its menu (js/window-menu.js). */
+        function onMenu(e) {
+            e.detail.add('Show hidden files', function () { act('hidden'); }, { checked: showHidden });
+            if (canOpen('shell')) { e.detail.add('Open a terminal here', function () { act('terminal'); }); }
+        }
         function setHidden(on) { showHidden = !!on; if (b) { b.showHidden(showHidden); renderMenu(); } }
 
         var boot = Promise.all([loadSiteFs().then(function (api) { F = api; return F.load(); }), loadBrowser()]).then(async function (got) {
             if (destroyed) { return; }
             FB = got[1];
-            var cfg = await loadConfig().catch(function () { return null; });
+            var cfg = await loadConfig().catch(function () { return null; }), treeWidth = null;
             if (cfg) {
-                showHidden = !!(await cfg.load('files', { hidden: false }).catch(function () { return {}; })).hidden;
-                unConfig = cfg.onChange('files', function (s) { if (!!s.hidden !== showHidden) { setHidden(s.hidden); } });
+                var fset = await cfg.load('files', { hidden: false, treeWidth: null }).catch(function () { return {}; });
+                showHidden = !!fset.hidden;
+                treeWidth = typeof fset.treeWidth === 'number' ? fset.treeWidth : null;
+                unConfig = cfg.onChange('files', function (s) {
+                    if (!!s.hidden !== showHidden) { setHidden(s.hidden); }
+                    if (b) { b.treeWidth(typeof s.treeWidth === 'number' ? s.treeWidth : null); }
+                });
             }
             if (destroyed) { return; }
             build();
             root.addEventListener('click', onClick);
+            /* Its commands join a window's menu; on its own page its
+               Actions menu already holds them, so it asks for no other. */
+            root.addEventListener('pc:window-menu', onMenu);
             el.fileInput.addEventListener('change', function () { if (el.fileInput.files && el.fileInput.files.length) { uploadFiles(Array.prototype.slice.call(el.fileInput.files)); } });
             b = FB.create(root, F, {
                 start: F.upgradePath(startPath),
@@ -465,6 +479,8 @@
                 onKey: onKey,
                 say: say,
                 showHidden: showHidden,
+                treeWidth: treeWidth,
+                onResize: function (w) { if (cfg) { cfg.set('files', { treeWidth: w }); } },
                 emptyText: function (dir) { return inHome(dir) ? 'This folder is empty. Make a file or a folder, or drop files here.' : 'This folder is empty.'; }
             });
             afterRender();
@@ -482,6 +498,7 @@
             destroy: function () {
                 destroyed = true;
                 if (unConfig) { unConfig(); }
+                root.removeEventListener('pc:window-menu', onMenu);
                 if (b) { b.destroy(); }
                 root.removeEventListener('click', onClick);
                 if (el && el.dialog.open) { el.dialog.close(); }
