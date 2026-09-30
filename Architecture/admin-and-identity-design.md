@@ -95,6 +95,23 @@ A file under `/wwwroot` is live when it is saved, since the site reads its pages
 
 The preview is rendered on the public origin, not the edit origin, deliberately. An article may bring its own scripts, and on the edit origin they would run with the admin session. On the public origin they run exactly as they will once published, where no admin session exists. The edit origin's Content-Security-Policy allows framing that one public path. The preview page is `noindex` and never cached, and a token names one draft and nothing else. Anyone holding the token can see that one unpublished draft for the hour, which also makes a preview link something Paul can share on purpose.
 
+Paul's own workflow needs little of this (2026-09-30). He edits live, and for a big change he copies the page to an unpublished copy that `sitenav.xfer` doesn't link, and works there. So the admin desktop (A12) gets no Preview window of its own; the Editor's Preview stays as it is inside the Editor.
+
+### A12. The admin desktop
+
+Tabs don't work for the admin workspace (Paul, 2026-09-30). Each tab is its own page, so switching away from the terminal and back restarts it, and nothing can sit side by side. The edit origin instead gets one desktop page at `/admin`, where every tool is a window and keeps running until it is closed. It is a place for making and changing content, not for reading it.
+
+- **Windows.** The desktop uses PUDL's window manager, the one behind the public site's Window view, with the same behavior: a new window opens maximized, and a window can be restored to floating, snapped, minimized and closed. The window layout lives in the address, so a reload or a bookmark brings the same desktop back. A reload does restart the terminals, and each comes back in its own folder with its own history. Tiling is left out; more snap targets come instead (A13).
+- **The sidebar is the file browser.** It is the shared tree from `js/filebrowser.js`, files included, over `~`, `/home` and `/wwwroot`, and it can be resized and collapsed as the public sidebar can. A double-click opens a file in the Editor. A small menu on each entry opens a terminal there, browses the folder in Files, or opens the page on the public site. It reaches the tools through PUDL's requests (open, browse and shell), so it names no tool. The Editor's own Explorer pane stays available but starts hidden on the desktop, since the sidebar does its job.
+- **The taskbar runs along the bottom.** Its Start menu sits at the bottom left, where such menus are expected. The menu lists the tools: Terminal (a new one each time, up to four), Editor, Files, the Barcode Tool and Account. Beside it are the open windows, as the public site's dock shows them, then maximize or restore all, and close all, as the public site has them.
+- **The top bar** shows the site's mark at the left as a label, not a link. On the desktop a link home would only reload the page the admin is already on. At the right are View the site and the admin's name, whose menu holds Account and Sign out.
+- **On a phone** the desktop works, though it is a poor fit, for urgent edits and comment moderation. Every window is maximized there, and the file tree is a drawer.
+- **Portable.** Paul may want the taskbar on the public site too, once it has proved itself on the admin one. So the taskbar is written as a shared piece with no admin knowledge in it. It is a partial and a script that take the Start menu's entries as data and use PUDL's dock, window-wide actions and menu. The public site could adopt it by rendering the partial with its own entries. Anything that suits PUDL itself goes there as a proposal.
+
+### A13. More snap targets, on both sites
+
+PUDL windows can float, fill the layer, or snap to the left or right half. The desktop wants terminals and the Editor side by side in more shapes than that, so the site proposes more snap targets to PUDL in `pudl-proposal-snap-zones.md`, and both sites get them from PUDL rather than from site code.
+
 ### A8. A sliding scale for fresh sign-ins
 
 Each action has a tier. When the last sign-in or passkey tap is older than the tier allows, the action first asks for a passkey tap.
@@ -159,8 +176,9 @@ This is for soon after the mount ships, because the mount is what makes it worth
    - The file API has its own rate limit, 1,200 calls a minute per admin, because a `grep -r` over `/wwwroot` is many reads. Signed-in admins are exempt from the site-wide limit.
    - File changes are recorded in the audit log, not emailed; sign-ins are still emailed. An email for every delete or script edit would bury the notices that matter, so this narrows A9.
    - A browser suite drives the mount end to end on a test copy with its own web root, homes, history and database. It covers the terminal, Files, the Editor, preview and publish, the history, the audit log, the passkey tap before a fallback session deletes, a picture uploaded byte for byte, a stylesheet change reaching readers without a restart, and the Edit link.
-6. Git in the terminal.
-7. Comments.
+6. The admin desktop (A12), with the snap proposal (A13) sent to PUDL alongside.
+7. Git in the terminal.
+8. Comments.
 
 ## What's needed from Paul
 
