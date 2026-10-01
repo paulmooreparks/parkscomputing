@@ -30,9 +30,40 @@ public class ArticleContentService {
     private static readonly Regex SlugPattern = new(@"^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
 
     private readonly IWebHostEnvironment _environment;
+    private readonly BookService _books;
 
-    public ArticleContentService(IWebHostEnvironment environment) {
+    public ArticleContentService(IWebHostEnvironment environment, BookService books) {
         _environment = environment;
+        _books = books;
+    }
+
+    /// <summary>
+    /// A book's window (Architecture/books-design.md): the key is the book's
+    /// slug, or a numbered copy of it ("maize-2"), and the chapter is the
+    /// window's own, from the address's c.{key}, or the main page when it
+    /// names no chapter of the book. The chapter is prepared as any window
+    /// body is, then set inside the book's contents and pager. Null when the
+    /// key names no book.
+    /// </summary>
+    public ArticleWindowContent? LoadBook(string? key, string? chapter) {
+        var baseSlug = BookOf(key);
+        var book = baseSlug is null ? null : _books.Load(baseSlug);
+        if (book is null) { return null; }
+        var path = chapter is not null && book.Find(chapter) is { HasPage: true } ? book.Find(chapter)!.Path : string.Empty;
+        var file = _books.FileOf(book, path);
+        if (file is null) { return null; }
+        var page = LoadMarkdown(file, key!);
+        var body = BookService.Render(book, path, PrepareWindowBody(key!, page.BodyHtml), key!);
+        var n = key == baseSlug ? null : key!.Substring(baseSlug!.Length + 1);
+        return page with { Title = book.Root.Title + (n is null ? string.Empty : " " + n), BodyHtml = body };
+    }
+
+    /// <summary>The book a window key shows, the key itself or the book a
+    /// numbered copy ("maize-2") is of; null when it shows no book.</summary>
+    public string? BookOf(string? key) {
+        if (!SlugPattern.IsMatch(key ?? string.Empty)) { return null; }
+        if (_books.Load(key!) is not null) { return key; }
+        return InstanceBase(key) is { } b && _books.Load(b) is not null ? b : null;
     }
 
     /// <summary>An article prepared for a window: internal links become

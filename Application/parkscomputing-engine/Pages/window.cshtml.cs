@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -52,10 +53,15 @@ public class WindowModel : PageModel {
             return Page();
         }
 
-        // A numbered instance ("terminal-2") is its applet's page again,
-        // with that page's shape and page link.
-        var article = _content.Load(key);
-        var slug = key;
+        // A book's window, or a numbered copy of one ("maize-2"), at the
+        // chapter ?c= names (js/books.js asks with it). A numbered instance
+        // ("terminal-2") is otherwise its applet's page again, with that
+        // page's shape and page link.
+        string? chapter = Request.Query["c"].FirstOrDefault();
+        var article = _content.LoadBook(key, chapter);
+        var bookSlug = article is null ? null : _content.BookOf(key);
+        var slug = bookSlug ?? key;
+        article ??= _content.Load(key);
         if (article is null) {
             article = _content.LoadInstance(key);
             slug = ArticleContentService.InstanceBase(key) ?? key;
@@ -71,11 +77,14 @@ public class WindowModel : PageModel {
             Key = article.Slug,
             Title = article.Title,
             BodyHtml = article.BodyHtml,
-            PageUrl = $"/page/{slug}",
+            // A book's page link follows its chapter, which js/books.js
+            // keeps current as the window turns pages; its dates are the
+            // chapters' own, so the window shows none.
+            PageUrl = bookSlug is not null && !string.IsNullOrEmpty(chapter) && BookService.IsSafePath(chapter) ? $"/page/{slug}/{chapter}" : $"/page/{slug}",
             OwnDocument = article.RequiresOwnDocument,
             Tags = article.IsApplet ? Array.Empty<string>() : node?.Tags ?? Array.Empty<string>(),
-            Created = article.IsApplet ? null : node?.Date,
-            Updated = article.IsApplet ? null : node?.Updated,
+            Created = article.IsApplet || bookSlug is not null ? null : node?.Date,
+            Updated = article.IsApplet || bookSlug is not null ? null : node?.Updated,
             X = shape?.X, Y = shape?.Y, W = shape?.W, H = shape?.H,
             SizeMode = WindowViewModel.SizeOf(node?.Size),
             MinSize = WindowViewModel.PixelSize(node?.Min),

@@ -82,6 +82,7 @@ namespace ParksComputing.Engine {
 
             services.AddSingleton<StaticFileReaderService>();
             services.AddSingleton<ArticleContentService>();
+            services.AddSingleton<BookService>();
             services.AddOptions<ParksComputing.Engine.Api.ContentStorageOptions>();
             services.AddSingleton<ParksComputing.Engine.Api.IContentStorage, ParksComputing.Engine.Api.FileContentStorage>();
 

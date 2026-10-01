@@ -129,6 +129,17 @@ namespace ParksComputing.Engine.Pages {
 
         protected Task<IActionResult> RetrievePage(string slug, ParksComputing.Engine.Identity.PreviewDrafts.Draft? draft = null) {
             try {
+                // A content path is plain names joined by slashes, such as a
+                // book's chapter (maize/version-2/isa), and nothing else, so
+                // it can only name a file inside content/.
+                if (!BookService.IsSafePath(slug)) {
+                    return Task.FromResult<IActionResult>(NotFound());
+                }
+                // A book's main page or chapter shows inside its contents.
+                if (HttpContext.RequestServices.GetService<BookService>()?.Locate(slug) is { } inBook) {
+                    ViewData["Book"] = inBook.Book;
+                    ViewData["BookChapter"] = inBook.ChapterPath;
+                }
                 var baseDir = $"{Environment.WebRootPath}/content";
                 // A draft stands in for its file, which may not exist yet.
                 if (draft is not null) {

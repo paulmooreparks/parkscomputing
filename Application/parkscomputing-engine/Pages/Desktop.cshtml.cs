@@ -90,7 +90,7 @@ public class DesktopModel : PageModel {
         // names, or a mid-swap redirect would fight the reader's action.
         bool topLevel = !Request.Headers.TryGetValue("Sec-Fetch-Mode", out var fetchMode)
                         || fetchMode == "navigate";
-        bool hasWindowState = Request.Query.Keys.Any(k => k == "open" || k == "top" || k == "min" || k.StartsWith("p."));
+        bool hasWindowState = Request.Query.Keys.Any(k => k == "open" || k == "top" || k == "min" || k.StartsWith("p.") || k.StartsWith("c."));
         bool bareArrival = topLevel && !hasWindowState;
 
         // The default-view preference: a reader who chose the classic view
@@ -165,9 +165,14 @@ public class DesktopModel : PageModel {
         foreach (var key in open) {
             var tagList = _content.LoadTagList(key, Root);
             var external = tagList is null ? _content.LoadExternal(key, Root) : null;
-            var article = tagList ?? external ?? _content.Load(key);
+            // A book's window, or a numbered copy of one, at the chapter its
+            // c.{key} names (Architecture/books-design.md).
+            var chapter = Request.Query[$"c.{key}"].FirstOrDefault();
+            var bookWindow = tagList is null && external is null ? _content.LoadBook(key, chapter) : null;
+            var bookSlug = bookWindow is null ? null : _content.BookOf(key);
+            var article = tagList ?? external ?? bookWindow ?? _content.Load(key);
             // A numbered instance ("terminal-2") is its applet's page again.
-            string? instanceOf = null;
+            string? instanceOf = bookSlug is not null && bookSlug != key ? bookSlug : null;
             if (article is null) {
                 article = _content.LoadInstance(key);
                 if (article is not null) { instanceOf = ArticleContentService.InstanceBase(key); }
@@ -196,14 +201,17 @@ public class DesktopModel : PageModel {
                 BodyHtml = article.BodyHtml,
                 // A tag list has no page of its own; an external's page is
                 // the destination itself.
-                PageUrl = external?.FrameUrl ?? (tagList is null ? $"/page/{parent ?? instanceOf ?? key}" : string.Empty),
+                PageUrl = external?.FrameUrl ?? (tagList is null
+                    ? $"/page/{parent ?? instanceOf ?? key}" + (bookSlug is not null && !string.IsNullOrEmpty(chapter) && BookService.IsSafePath(chapter) ? "/" + chapter : string.Empty)
+                    : string.Empty),
                 FrameUrl = external?.FrameUrl,
                 Parent = parent,
                 OwnDocument = article.RequiresOwnDocument,
-                // An applet's window is the app itself: no tag row, no dates.
+                // An applet's window is the app itself: no tag row, no dates;
+                // a book's dates are its chapters', so it shows none either.
                 Tags = article.IsApplet ? Array.Empty<string>() : node?.Tags ?? Array.Empty<string>(),
-                Created = article.IsApplet ? null : node?.Date,
-                Updated = article.IsApplet ? null : node?.Updated,
+                Created = article.IsApplet || bookSlug is not null ? null : node?.Date,
+                Updated = article.IsApplet || bookSlug is not null ? null : node?.Updated,
                 Mode = placement?.Mode ?? "floating",
                 X = placement?.X ?? shape?.X,
                 Y = placement?.Y ?? shape?.Y,

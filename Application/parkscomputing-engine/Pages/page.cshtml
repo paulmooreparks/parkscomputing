@@ -74,6 +74,16 @@
         }
     </nav>
 }
+@{
+    // A book's page sits inside the book: its contents beside it, and the
+    // previous and next chapters below (Pages/Services/BookService.cs).
+    var book = ViewData["Book"] as ParksComputing.Engine.Pages.Services.BookService.Book;
+    var bookChapter = ViewData["BookChapter"] as string ?? string.Empty;
+}
+@if (book is not null)
+{
+    @Html.Raw(ParksComputing.Engine.Pages.Services.BookService.RenderOpen(book, bookChapter))
+}
 <article class="post-content">
     <header class="post-header">
         @if (!hasInnerH1)
@@ -155,3 +165,7 @@
         @Html.Raw(Model.PageContent)
     </div>
 </article>
+@if (book is not null)
+{
+    @Html.Raw(ParksComputing.Engine.Pages.Services.BookService.RenderClose(book, bookChapter))
+}

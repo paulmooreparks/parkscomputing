@@ -11,8 +11,10 @@
 (function () {
     'use strict';
 
+    /* The window parameters, which the remembered arrangement keeps: c.{key}
+       is a book window's chapter (js/books.js). */
     function isWinParam(key) {
-        return key === 'open' || key === 'top' || key === 'min' || key.indexOf('p.') === 0;
+        return key === 'open' || key === 'top' || key === 'min' || key.indexOf('p.') === 0 || key.indexOf('c.') === 0;
     }
 
     /* The go palette's form carries the desktop's state to /go, so the new
@@ -54,6 +56,9 @@
         }
         if (window.pcHydrateSource) { window.pcHydrateSource(win); }
     }
+    /* For content that arrives in a window after it opened, such as a
+       book's next chapter (js/books.js). */
+    window.pcEnhanceWindow = enhance;
 
     /* === The filter, narrowing live ========================================
        The server renders the ?q= filtered list and applying the filter is
@@ -106,7 +111,7 @@
         });
 
         /* The window arrangement, remembered for the next bare visit. */
-        document.addEventListener('pudl:windows-change', function () {
+        function saveWindows() {
             var parts = [];
             new URLSearchParams(location.search).forEach(function (value, key) {
                 if (isWinParam(key)) { parts.push(key + '=' + encodeURIComponent(value)); }
@@ -115,7 +120,10 @@
                 if (parts.length) { localStorage.setItem('pc-windows', parts.join('&')); }
                 else { localStorage.removeItem('pc-windows'); }
             } catch (err) { }
-        });
+        }
+        document.addEventListener('pudl:windows-change', saveWindows);
+        /* A book window turning a page changes only its chapter. */
+        document.addEventListener('pc:book-turn', saveWindows);
 
         /* The list state (category and filter), remembered in a cookie the
            server redirects on for the next bare visit. */
