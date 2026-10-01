@@ -162,6 +162,14 @@
         }
     </header>
     <div class="post-body">
+        @* Every article has a front menu in PUDL's menu bar: what its author
+           declared (PageMenu, or an HTML article's own nav), or else an
+           empty one, which still gives the menu PUDL's first title of the
+           article's name, with Copy the link and Print. *@
+        @if (Model.PageContent?.Contains("data-page-menu", System.StringComparison.Ordinal) != true)
+        {
+            <nav data-page-menu hidden aria-label="Page menu"><ul></ul></nav>
+        }
         @Html.Raw(Model.PageContent)
     </div>
 </article>

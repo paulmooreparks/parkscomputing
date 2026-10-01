@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using ParksComputing.Xfer.Lang;
 using ParksComputing.Xfer.Lang.Attributes;
 
@@ -103,12 +104,45 @@ public class NavNode {
     [XferProperty("feed")]
     public bool Feed { get; set; }
 
-    /// <summary>The site menu, the logo's menu in the topbar, on the root
-    /// only. An entry naming only a slug borrows the rest (title, icon,
-    /// address, window shape) from the nav entry of that slug; an entry
-    /// with a nav of its own is a labelled group of entries.</summary>
+    /// <summary>The site's menu bar, on the root only
+    /// (Architecture/site-menu-design.md). Each entry is a title of the
+    /// logo menu, the first being the logo's own, and its nav holds the
+    /// title's entries: a link (a slug, which borrows the rest from the nav
+    /// entry of that slug, or a url), a command, a submenu (a title with a
+    /// nav), a heading (a heading with a nav), a separator, or a from that
+    /// stands for entries of the nav. The admin site's admin-menu.xfer
+    /// reads the same property in its older shape, a list of the logo's
+    /// entries with groups for headings.</summary>
     [XferProperty("menu")]
     public NavNode[]? Menu { get; set; }
+
+    /// <summary>In the menu: a heading over the entries of this entry's nav.</summary>
+    [XferProperty("heading")]
+    public string? Heading { get; set; }
+
+    /// <summary>In the menu: a separator between the entries around it.</summary>
+    [XferProperty("separator")]
+    public bool Separator { get; set; }
+
+    /// <summary>In the menu: the name of the command this entry carries
+    /// out, one the site knows (Pages/Services/SiteCommands.cs).</summary>
+    [XferProperty("command")]
+    public string? Command { get; set; }
+
+    /// <summary>In the menu: the command's parameters, by name.</summary>
+    [XferProperty("args")]
+    public Dictionary<string, string>? Args { get; set; }
+
+    /// <summary>In the menu: "window" or "classic", for an entry shown in
+    /// that view only.</summary>
+    [XferProperty("when")]
+    public string? When { get; set; }
+
+    /// <summary>In the menu: entries of the nav, in its order, kept in step
+    /// with it: "sections" for every section, or a section's slug for the
+    /// entries of that section.</summary>
+    [XferProperty("from")]
+    public string? From { get; set; }
 
     // (Legacy alias properties removed to prevent duplicate key collisions in Xfer deserializer.)
 }

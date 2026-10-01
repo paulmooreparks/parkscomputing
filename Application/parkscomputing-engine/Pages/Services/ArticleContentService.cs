@@ -305,15 +305,20 @@ public class ArticleContentService {
         string raw = File.ReadAllText(path);
         string body = raw;
         string? title = null;
+        string menu = string.Empty;
 
         if (raw.StartsWith("---")) {
             int second = raw.IndexOf("\n---", 3, StringComparison.Ordinal);
             if (second > -1) {
                 var fm = raw.Substring(3, second - 3);
                 body = raw.Substring(second + 4).TrimStart('\r', '\n');
+                menu = PageMenu.Render(fm);
                 using var reader = new StringReader(fm);
                 string? line;
                 while ((line = reader.ReadLine()) is not null) {
+                    // An indented line belongs to a nested value, such as the
+                    // titles of the article's menu, not to a key here.
+                    if (line.Length > 0 && char.IsWhiteSpace(line[0])) { continue; }
                     int colon = line.IndexOf(':');
                     if (colon > 0 && line.Substring(0, colon).Trim().Equals("title", StringComparison.OrdinalIgnoreCase)) {
                         title = line.Substring(colon + 1).Trim().Trim('"');
@@ -333,7 +338,7 @@ public class ArticleContentService {
             .UseAutoIdentifiers(Markdig.Extensions.AutoIdentifiers.AutoIdentifierOptions.GitHub)
             .UseGenericAttributes()
             .Build();
-        string html = Markdown.ToHtml(body, pipeline);
+        string html = menu + Markdown.ToHtml(body, pipeline);
 
         if (string.IsNullOrWhiteSpace(title)) {
             var temp = new HtmlDocument();

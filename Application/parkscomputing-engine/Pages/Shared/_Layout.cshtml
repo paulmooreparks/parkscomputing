@@ -51,7 +51,7 @@
     }
     <link rel="stylesheet" href="~/css/pudl-site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/window-bar.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/accessibility.css" />
+    <link rel="stylesheet" href="~/css/accessibility.css" asp-append-version="true" />
     <link rel="alternate" type="application/rss+xml" title="RSS Feed for @ViewData["Title"]" href="/rss">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -90,15 +90,21 @@
     <header class="site-header">
         @Html.RenderStaticFile("/content/header-section.html", FileReaderService)
         <div class="topbar">
-            @* The site menu: the logo and name are a button, as the Apple
-               menu is. It is a raised chip on the topbar, since it can be
-               pressed. What it holds is the menu array of sitenav.xfer, in
-               its order: an entry is a row, with its icon when it has one,
-               and an entry with a nav of its own is a labelled group. A
-               page of this site opens as a window in the window view. *@
+            @* The menu bar (PUDL 0.38.0, Architecture/menu-bar-design.md
+               and site-menu-design.md): the host menu is the hidden list in
+               _MenuBar.cshtml, from sitenav.xfer's menu. What shows before
+               PUDL's script has built the bar, and without script, is the
+               logo's button, as the Apple menu is, holding the links of the
+               logo's title in their order: a link is a row, with its icon
+               when it has one, and a heading labels the rows under it. A
+               page of this site opens as a window in the window view. The
+               title's commands need script, so they are left out here. *@
             @{
-                var menuEntries = PaletteNav.GetRoot().Menu ?? Array.Empty<NavNode>();
+                var logoTitle = (PaletteNav.GetRoot().Menu ?? Array.Empty<NavNode>()).FirstOrDefault();
+                var menuEntries = logoTitle?.Nav ?? Array.Empty<NavNode>();
             }
+            <nav class="site-menubar" data-menubar aria-label="Parks Computing">
+            <partial name="_MenuBar" />
             <div class="menu site-menu">
                 <button type="button" class="brand topbar-pill menu-btn site-menu-btn" popovertarget="site-menu" aria-label="Parks Computing menu">
                     <img src="~/favicon-32x32.png" alt="" /> <span class="site-menu-name">Parks Computing</span>
@@ -110,30 +116,21 @@
                     }
                     @foreach (var entry in menuEntries)
                     {
-                        if (entry.Nav is { Length: > 0 })
+                        if (entry.Heading != null)
                         {
-                            <div class="md-section-label">@(entry.Title ?? entry.Slug)</div>
-                            foreach (var item in entry.Nav) { RenderMenuItem(item); }
+                            <div class="md-section-label">@entry.Heading</div>
+                            foreach (var item in (entry.Nav ?? Array.Empty<NavNode>()).Where(n => n.Command == null && n.From == null && !n.Separator && n.Nav is not { Length: > 0 })) { RenderMenuItem(item); }
                         }
-                        else { RenderMenuItem(entry); }
+                        else if (entry.Command == null && entry.From == null && !entry.Separator && entry.Nav is not { Length: > 0 }) { RenderMenuItem(entry); }
                     }
                 </nav>
             </div>
-            @* The window view's windows: the dock and the window-wide
-               actions, beside the menu (Pages/Shared/_WindowBar.cshtml). *@
-            @if (ViewData["WindowBar"] is ParksComputing.Engine.Pages.Models.WindowBarModel windowBar)
-            {
-                <partial name="_WindowBar" model="windowBar" />
-            }
-            @* The classic view's categories, in the bar itself rather than
-               a band of tabs below it (Pages/Components/Nav). *@
-            @if (!isDesktop)
-            {
-                @await Component.InvokeAsync("Nav")
-            }
+            </nav>
             @* The view switcher: one segmented control at the far right,
                after a rule. Each side is a link, because each view is a URL;
-               ?view=window bypasses a classic default-view choice. *@
+               ?view=window bypasses a classic default-view choice. The window
+               view's dock of open windows is not here but at the foot of its
+               window area (Pages/Desktop.cshtml). *@
             <span class="topbar-rule" aria-hidden="true"></span>
             @* data-seg-menu: on a phone PUDL folds the switcher into a
                pop-up button labelled with the current view (0.36.0). *@
@@ -142,6 +139,12 @@
                 <a href="/home" aria-current="@(isDesktop ? null : "true")">Classic</a>
             </nav>
         </div>
+        @* The classic view's categories, on a band of section tabs just below
+           the top bar, at every width (Pages/Components/Nav). *@
+        @if (!isDesktop)
+        {
+            @await Component.InvokeAsync("Nav")
+        }
     </header>
     }
 
@@ -292,6 +295,10 @@
     <script src="~/pudl/pudl-menu.js" defer asp-append-version="true"></script>
     <script src="~/pudl/pudl-applets.js" defer asp-append-version="true"></script>
     <script src="~/js/applets.js" defer asp-append-version="true"></script>
+    @* The menu bar, after the menu, window and applet scripts it uses
+       (PUDL 0.38.0), and the site's commands, which its menu names. *@
+    <script src="~/pudl/pudl-menubar.js" defer asp-append-version="true"></script>
+    <script src="~/js/commands.js" defer asp-append-version="true"></script>
     <script src="~/pudl/pudl-dialog.js" defer asp-append-version="true"></script>
     @* Document tabs, trees and grids, for the Editor and Files applets,
        which can open on any page. *@

@@ -39,28 +39,55 @@ public sealed class ServerFiles {
     /// ~/.config/admin-menu.xfer replaces for that admin (A15).</summary>
     public const string DefaultAdminMenu =
         "<! document { xferlang \"0.15\" } !>\n" +
-        "</ The admin site's menu, the logo's menu at the top left of edit.parkscomputing.com.\n" +
-        "   Same shape as sitenav.xfer's menu: an entry naming only a slug takes the rest\n" +
-        "   from the admin's own list (terminal, editor, files, settings, account, site,\n" +
-        "   signout), and an entry with a nav is a labelled group. A copy at\n" +
-        "   ~/.config/admin-menu.xfer replaces this one for that admin. /> \n" +
+        "</ The admin site's logo menu, in the menu bar at the top left of edit.parkscomputing.com\n" +
+        "   (Architecture/site-menu-design.md). Each entry is a title, the first the logo's own.\n" +
+        "   In a title's nav:\n" +
+        "     { slug \"files\" } or { title \"...\" url \"...\" }   a link; a slug is one of the admin's\n" +
+        "        own: terminal, editor, files, settings, account, site, signout\n" +
+        "     { title \"...\" command \"name\" args { ... } }    a command\n" +
+        "     { title \"...\" nav [ ... ] }                    a submenu\n" +
+        "     { heading \"...\" nav [ ... ] }                  a heading over entries\n" +
+        "     { separator ~true }                            a separator\n" +
+        "   and when \"window\" shows any entry on the desktop only. The commands are theme,\n" +
+        "   windows.minimize-all, windows.restore-all, windows.close-all, open { applet state }\n" +
+        "   and run { script cwd }. A copy at ~/.config/admin-menu.xfer replaces this one for\n" +
+        "   that admin. />\n" +
         "{\n" +
         "    menu [\n" +
         "        {\n" +
-        "            title \"Tools\"\n" +
+        "            title \"Parks Computing Admin\"\n" +
+        "            icon \"/favicon-32x32.png\"\n" +
         "            nav [\n" +
-        "                { slug \"terminal\" }\n" +
-        "                { slug \"editor\" }\n" +
-        "                { slug \"files\" }\n" +
+        "                { heading \"Tools\" nav [\n" +
+        "                    { slug \"terminal\" }\n" +
+        "                    { slug \"editor\" }\n" +
+        "                    { slug \"files\" }\n" +
+        "                ] }\n" +
+        "                { slug \"settings\" }\n" +
+        "                { slug \"site\" }\n" +
+        "                { heading \"You\" nav [\n" +
+        "                    { slug \"account\" }\n" +
+        "                    { slug \"signout\" }\n" +
+        "                ] }\n" +
         "            ]\n" +
         "        }\n" +
-        "        { slug \"settings\" }\n" +
-        "        { slug \"site\" }\n" +
         "        {\n" +
-        "            title \"You\"\n" +
+        "            title \"View\"\n" +
         "            nav [\n" +
-        "                { slug \"account\" }\n" +
-        "                { slug \"signout\" }\n" +
+        "                { title \"Theme\" nav [\n" +
+        "                    { title \"Light\" command \"theme\" args { value \"light\" } }\n" +
+        "                    { title \"Dark\" command \"theme\" args { value \"dark\" } }\n" +
+        "                    { title \"Follow the system\" command \"theme\" args { value \"system\" } }\n" +
+        "                ] }\n" +
+        "            ]\n" +
+        "        }\n" +
+        "        {\n" +
+        "            title \"Window\"\n" +
+        "            when \"window\"\n" +
+        "            nav [\n" +
+        "                { title \"Minimize all\" command \"windows.minimize-all\" }\n" +
+        "                { title \"Restore all\" command \"windows.restore-all\" }\n" +
+        "                { title \"Close all\" command \"windows.close-all\" }\n" +
         "            ]\n" +
         "        }\n" +
         "    ]\n" +

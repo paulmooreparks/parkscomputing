@@ -141,6 +141,9 @@ public sealed class BookService {
         string? line;
         if (first?.Trim() == "---") {
             while ((line = reader.ReadLine()) is not null && line.Trim() != "---") {
+                // An indented line belongs to a nested value, such as the
+                // titles of the page's menu (PageMenu), not to a key here.
+                if (line.Length > 0 && char.IsWhiteSpace(line[0])) { continue; }
                 int colon = line.IndexOf(':');
                 if (colon <= 0) { continue; }
                 var key = line[..colon].Trim().ToLowerInvariant();

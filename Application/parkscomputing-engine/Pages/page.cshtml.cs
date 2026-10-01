@@ -229,7 +229,7 @@ namespace ParksComputing.Engine.Pages {
                                    (string.IsNullOrWhiteSpace(metadata.VideoLink) ? string.Empty : $"<meta name=\"youtube-link\" content=\"{System.Net.WebUtility.HtmlEncode(metadata.VideoLink)}\" />") +
                                    (metadata.ReadingTimeMinutes > 0 ? $"<meta name=\"reading-time\" content=\"{metadata.ReadingTimeMinutes}\" />" : string.Empty) +
                                    (metadata.Keywords.Length > 0 ? $"<meta name=\"keywords\" content=\"{System.Net.WebUtility.HtmlEncode(string.Join(", ", metadata.Keywords))}\" />" : string.Empty) +
-                                   "</head><body>" + htmlBody + bodyHighlight + "</body></html>";
+                                   "</head><body>" + PageMenu.Render(frontMatter) + htmlBody + bodyHighlight + "</body></html>";
 
                 var doc = new HtmlDocument();
                 doc.LoadHtml(synthetic);
@@ -274,6 +274,9 @@ namespace ParksComputing.Engine.Pages {
                 using var reader = new StringReader(fm);
                 string? line;
                 while ((line = reader.ReadLine()) is not null) {
+                    // An indented line belongs to a nested value, such as the
+                    // titles of the article's menu (PageMenu), not to a key here.
+                    if (line.Length > 0 && char.IsWhiteSpace(line[0])) { continue; }
                     line = line.Trim();
                     if (line.Length == 0 || line.StartsWith('#')) { continue; }
                     int colon = line.IndexOf(':');

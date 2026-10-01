@@ -5,9 +5,9 @@
     Layout = "_Layout";
     ViewData["Title"] = "Parks Computing";
     ViewData["Desktop"] = true;
-    // The dock and the window-wide actions sit in the top bar
-    // (Pages/Shared/_WindowBar.cshtml), rendered as the address has them.
-    ViewData["WindowBar"] = new ParksComputing.Engine.Pages.Models.WindowBarModel(
+    // The dock and the window-wide actions stand at the foot of the window
+    // area (Pages/Shared/_WindowBar.cshtml), rendered as the address has them.
+    var windowBar = new ParksComputing.Engine.Pages.Models.WindowBarModel(
         AnyShowing: Model.Windows.Any(w => !w.Minimized && w.Parent is null),
         AnyMinimized: Model.Windows.Any(w => w.Minimized && w.Parent is null),
         AnyOpen: Model.Windows.Count > 0,
@@ -199,6 +199,7 @@
                         }
                     </div>
                 </main>
+                <partial name="_WindowBar" model="windowBar" />
             </div>
         </div>
     </div>

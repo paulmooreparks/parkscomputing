@@ -96,7 +96,7 @@ The applet rule (Paul, 2026-09-26): a converted app runs in a PUDL window or in 
 
 Found while building this site, in PUDL's own territory rather than ours; each is a candidate for the PUDL repo, and the site adopts the released form when a version ships. Status 2026-09-26: the PUDL agent accepted all four, found three more gaps reading this site's code, and wrote all seven up in the PUDL repo (`docs/proposals/from-parkscomputing.md`). Staging: 0.9.0 takes the small contract-free three (the `[hidden]` fix with a hidden-until-found exception, `aria-pressed` for latched buttons, title-bar tokens with the quiet treatment as the dark default); 0.10.0 takes applets (`pudl-applets.js`, registration via `pudlApplets.register()`), a window-close event, a script interface for windows, and replace-in-place navigation, plus an applet sample. Applet-state-in-URL is deferred until a second applet needs it.
 
-Open as of 2026-10-01: reloading an applet's code in a running page (`pudl-proposal-applet-reload.md`), and a bug where raising a window by its title bar leaves the keyboard in the window behind (`pudl-bug-raise-focus.md`). The site's window menu has a Reload that fetches a window's content again, which covers articles, book chapters and applet markup; a changed applet script still needs the page reloaded until PUDL can restart an applet on new code.
+Open as of 2026-10-01: reloading an applet's code in a running page (`pudl-proposal-applet-reload.md`), The menu bar shipped as 0.38.0 (D53). Also open: the window layer can be scrolled by a fragment link or a focused field inside a window that runs past its edge, carrying every window off the screen (`pudl-bug-win-layer-scroll.md`); the site works around it with `overflow: clip` in `css/window-bar.css`. The site's window menu has a Reload that fetches a window's content again, which covers articles, book chapters and applet markup; a changed applet script still needs the page reloaded until PUDL can restart an applet on new code. The raise-focus bug closed with 0.37.1, the reduced-motion menu focus with 0.37.2 (D51), and the dark-theme menu hover with 0.37.3 (D52).
 
 Nothing else was open upstream on 2026-10-01. Window sizing, the snap-zone indent and the topbar link colour closed with 0.34.1 and 0.35.0 (D47).
 
@@ -131,6 +131,39 @@ All three proposals from `pudl-proposal-empty-structure.md` shipped as 0.13.0 an
 ### D27. PUDL 0.19.0: the focus miss was a window race, and PUDL has a contract
 
 0.19.0 fixed Paul's palette focus miss, with a sharper diagnosis than the site's bug report guessed: pudl-windows took focus when a window's content arrived from its fetch, so a `/` pressed before a restoring window finished loading had the window steal focus back from the palette filter, which is why it depended on session state and never reproduced in tests that waited for network idle. A window now takes focus only if focus has not moved since it was asked for. The site verified the exact race (window fetches slowed to 1.2s, palette summoned mid-flight, focus checked before and after arrival) and the pin was a three-file sync with no site-side change. Also in 0.19.0: `docs/CONTRACT.md` (what a project may rely on, frozen at 1.0), the test suites in the PUDL repo running three engines in CI, and a menu filter that clears on every open. The 0.14.0 lesson stands confirmed twice now: what looked like a browser-timing mystery was an interaction between two of our own moving parts, and the report that pinned it came from `document.activeElement`, one console line from the person who could reproduce it.
+
+### D53. PUDL 0.38.0 pinned: PUDL's menu bar replaces the site's
+
+0.38.0 (2026-10-01) ships the menu bar from `pudl-proposal-menu-bar.md` as `pudl-menubar.js`, with four changes the PUDL agent and Paul agreed: the bar is a script of its own, the host menu comes from markup rather than a script's object, shortcuts are written `Mod+S`, and a bar that does not fit collapses straight to one button. The site took it the same day and deleted its own `js/menubar.js` and `css/menubar.css`.
+
+- **The host menu is markup.** `Pages/Shared/_MenuBar.cshtml` renders it as the hidden list PUDL reads, inside a `nav[data-menubar]` in the top bar: the logo and the site's places, View (the two views, and Theme), Window (in the window view), Go (Home, then Find in the list and the applets in the window view, or the sections in the classic view) and Help. The old logo button stays after the list as what shows before the script, and without it. `js/menubar-host.js` carried out the two kinds of button PUDL presses for the reader: the theme choices, which it kept ticked, and Find in the list. The same day the whole menu moved into `sitenav.xfer`, with commands carried out by `js/commands.js` in place of `menubar-host.js` (`site-menu-design.md`).
+- **The admin desktop has the menu bar too** (Paul's request), in `_AdminLayout.cshtml`: the admin menu under the logo, View and Window. Signing out is a button naming a hidden form, since a menu row can't hold a form.
+- **Applets give their menus through `menus()`** on their instance, PUDL's interface: Dice, and the Barcode Tool, which asks `pudlMenubar.refresh()` once its engine has loaded, since the bar was first drawn from its `commands()`. PUDL keeps `commands()` out of the window menu and the Commands row while a menu bar is on the page.
+- **Every article has a front menu.** PUDL gives an article one only when it has a `nav[data-page-menu]`, so the page and the window render an empty one wherever the article declares none. That still gives PUDL's first title of the article's name, with Open as a page, Copy the link, Print and Close.
+
+PUDL refuses a command that appears twice in one panel, and the sitenav menu lists the Terminal Guide under both Applets and Help, so the second is left out with a console warning.
+
+### D52. PUDL 0.37.3 pinned: a hovered menu row shows in the dark theme
+
+0.37.3 (2026-10-01) fixes the second bug in `pudl-bug-menu-focus-reduced-motion.md`: a menu row under the pointer, or with focus, was filled with `--surface-alt`, the dark theme's panel colour, so it did not show. Rows now take `--menu-row-hover`, a shade of the panel's own colour, in both themes. Only `pudl.css` changed. The site took it at once rather than waiting for 0.38.0, since PUDL's own menus on the site (the Barcode Tool's Layout menu, the tag menus in windows) had the bug. The site's menu bar keeps its own row tint, from the text colour, because 0.38.0 is expected to replace the menu bar altogether.
+
+### D51. PUDL 0.37.1 and 0.37.2 pinned: focus follows a raised window, and menus take focus under reduced motion
+
+Both fixes came from the site's reports (2026-10-01), and the site took both releases at once, copying `dist/` from the v0.37.2 tag into both wwwroot copies. Only `pudl-windows.js` and `pudl.css` changed.
+
+- **0.37.1** gives the keyboard to a window the reader raises by its title bar, frame, dock tab, list row or window menu (`pudl-bug-raise-focus.md`).
+- **0.37.2** makes transitions take no time under reduced motion, where they used to take 0.01ms. That short transition had included visibility, so a menu panel was still hidden when PUDL moved focus into it (`pudl-bug-menu-focus-reduced-motion.md`, its first part).
+
+The second fix exposed the same rule in the site's own `accessibility.css`, which loaded after PUDL, set every transition to 0.01ms again, and kept the bug alive on this site. That rule is gone, since reduced motion is PUDL's, and `accessibility.css` now loads with `asp-append-version` like every other stylesheet, so a change to it reaches readers who have it cached. The menu bar's own workarounds for the same bug (`transition-property: none` on its panels, and a focus retried over several frames) are gone too.
+
+### D50. The dock at the foot of the window area, and the classic sections below the top bar
+
+Paul decided both on 2026-10-01, as part of moving the site's menus into the top bar (`menu-bar-design.md`). Each frees the top bar for the menu bar, which needs the room.
+
+- **The window bar stands at the foot of the window area** on both desktops, the public one and the admin one, below the windows rather than in the top bar. `_WindowBar.cshtml` renders after the `win-host` in `Desktop.cshtml` and `Admin/Index.cshtml`, on the window area's own surface, so no window ever covers it. PUDL fills its dock wherever `[data-win-dock]` is, so nothing in PUDL changed.
+- **The classic view's categories are a band of PUDL section tabs** (`nav.app-section-bar` with `a.section-tab`) just below the top bar, at every width, as a phone already showed them under D49. The current tab opens into the page. This undoes the topbar tabs of D49 for the classic view; PUDL keeps `.topbar-tabs` for whoever wants it.
+
+The site rules that only made sense with these in the top bar are gone: the bar's elastic sizing, and hiding the site's name to make room for them.
 
 ### D49. PUDL 0.36.0 and 0.37.0 pinned: tabs in the top bar, and a switcher that folds
 

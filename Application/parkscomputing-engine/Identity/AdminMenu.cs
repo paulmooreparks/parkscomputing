@@ -11,24 +11,25 @@ using ParksComputing.Xfer.Lang;
 
 namespace ParksComputing.Engine.Identity;
 
-/// <summary>One row of the admin menu, resolved: what it says and what it does.</summary>
-public sealed record AdminMenuItem(string Title, string Href, string? Description, string? Icon,
-    string? Window = null, string? Request = null, bool External = false, bool NewTab = false, bool SignOut = false);
-
-/// <summary>A labelled group of rows, or, with no label, rows at the top level.</summary>
-public sealed record AdminMenuGroup(string? Label, IReadOnlyList<AdminMenuItem> Items);
-
 /// <summary>
-/// The admin site's menu, the logo's menu at its top left
-/// (Architecture/admin-and-identity-design.md, A15). It is written in the
-/// shape of sitenav.xfer's menu, in /etc/admin-menu.xfer, which every admin
-/// shares; an admin's own ~/.config/admin-menu.xfer, when there is one,
-/// replaces it for that admin. An entry naming only a slug takes the rest
-/// from the admin site's own list below; an entry with a url is a link; an
-/// entry with a nav is a labelled group. A file that doesn't parse leaves
-/// the menu /etc started with, so a mistake can't lock the admin out of it.
+/// The admin site's logo menu, in its menu bar at the top left
+/// (Architecture/admin-and-identity-design.md, A15, and
+/// site-menu-design.md). It is written in the shape of sitenav.xfer's menu,
+/// a list of titles with links, commands, submenus, headings and
+/// separators, in /etc/admin-menu.xfer, which every admin shares; an
+/// admin's own ~/.config/admin-menu.xfer, when there is one, replaces it for
+/// that admin. A link naming only a slug takes the rest from the admin
+/// site's own list below. A file that doesn't parse leaves the menu /etc
+/// started with, so a mistake can't lock the admin out of it.
+///
+/// A file in the older shape, the logo's entries alone with a labelled
+/// group for each heading, still reads: its entries become the logo's
+/// title, and the default's other titles follow.
 /// </summary>
 public sealed class AdminMenu {
+    public const string LogoTitle = "Parks Computing Admin";
+    public const string LogoIcon = "/favicon-32x32.png";
+
     private readonly AdminOptions _options;
     private readonly ILogger<AdminMenu> _logger;
 
@@ -37,51 +38,61 @@ public sealed class AdminMenu {
     }
 
     /* What each slug means on the admin site. The tools open as windows on
-       the desktop; the terminal makes a new one each time. */
-    private AdminMenuItem? Builtin(string slug) => slug switch {
-        "terminal" => new("New terminal", "/admin/terminal", "A terminal over the site, /wwwroot, /home and /etc", null, Request: "shell"),
-        "editor" => new("Editor", "/admin/editor", "The text editor", null, Window: "editor"),
-        "files" => new("Files", "/admin/files", "The files, as folders", null, Window: "files"),
-        "settings" => new("Settings", "/admin/settings", "The desktop's settings and your timeouts", null, Window: "settings"),
-        "account" => new("Account and passkeys", "/admin/account", "Your passkeys and recovery codes", null, NewTab: true),
-        "site" => new("View the site", _options.PublicOrigin, "The public site, in a tab of its own", null, External: true),
-        "signout" => new("Sign out", "/admin/signout", null, null, SignOut: true),
-        _ => null
-    };
-
-    /// <summary>The menu for an admin whose home directory is named <paramref name="homeName"/>.</summary>
-    public IReadOnlyList<AdminMenuGroup> For(string homeName) {
-        var own = Path.Combine(_options.HomeRoot, homeName, ".config", "admin-menu.xfer");
-        var shared = Path.Combine(_options.EtcRoot, "admin-menu.xfer");
-        var entries = Read(own) ?? Read(shared) ?? Parse(ServerFiles.DefaultAdminMenu, "the default") ?? Array.Empty<NavNode>();
-        var groups = new List<AdminMenuGroup>();
-        var loose = new List<AdminMenuItem>();
-        void FlushLoose() { if (loose.Count > 0) { groups.Add(new AdminMenuGroup(null, loose.ToList())); loose.Clear(); } }
-        foreach (var entry in entries) {
-            if (entry.Nav is { Length: > 0 }) {
-                FlushLoose();
-                var items = entry.Nav.Select(Resolve).Where(i => i is not null).Select(i => i!).ToList();
-                if (items.Count > 0) { groups.Add(new AdminMenuGroup(entry.Title ?? entry.Slug, items)); }
-            } else if (Resolve(entry) is { } item) {
-                loose.Add(item);
-            }
-        }
-        FlushLoose();
-        return groups;
+       the desktop, and the terminal makes a new one each time; elsewhere
+       each is a link to its page. Signing out is a form, since it changes
+       state, so its entry is a button naming the form the layout holds. */
+    private SiteCommands.Rendered? Builtin(string slug, bool desktop) {
+        SiteCommands.Rendered Tool(string href, string? window = null, string? request = null) => desktop && window != null
+            ? MenuBuilder.Link(href, ("data-win-open", window))
+            : desktop && request != null ? MenuBuilder.Link(href, ("data-win-request", request)) : MenuBuilder.Link(href);
+        return slug switch {
+            "terminal" => Tool("/admin/terminal", request: "shell"),
+            "editor" => Tool("/admin/editor", window: "editor"),
+            "files" => Tool("/admin/files", window: "files"),
+            "settings" => Tool("/admin/settings", window: "settings"),
+            "account" => desktop ? MenuBuilder.Link("/admin/account", ("target", "_blank")) : MenuBuilder.Link("/admin/account"),
+            "site" => MenuBuilder.Link(_options.PublicOrigin, ("target", "_blank"), ("rel", "noopener")),
+            "signout" => new SiteCommands.Rendered("button", new List<KeyValuePair<string, string?>> { new("type", "submit"), new("form", "admin-signout") }),
+            _ => null
+        };
     }
 
-    private AdminMenuItem? Resolve(NavNode entry) {
-        var builtin = string.IsNullOrWhiteSpace(entry.Slug) ? null : Builtin(entry.Slug.Trim().ToLowerInvariant());
-        if (builtin is not null) {
-            return builtin with {
-                Title = entry.Title ?? builtin.Title,
-                Description = entry.Description ?? builtin.Description,
-                Icon = entry.Icon ?? builtin.Icon
-            };
+    private (string Title, string? Description) BuiltinText(string slug) => slug switch {
+        "terminal" => ("New terminal", "A terminal over the site, /wwwroot, /home and /etc"),
+        "editor" => ("Editor", "The text editor"),
+        "files" => ("Files", "The files, as folders"),
+        "settings" => ("Settings", "The desktop's settings and your timeouts"),
+        "account" => ("Account and passkeys", "Your passkeys and recovery codes"),
+        "site" => ("View the site", "The public site, in a tab of its own"),
+        _ => ("Sign out", null)
+    };
+
+    /// <summary>The menu for an admin whose home directory is named
+    /// <paramref name="homeName"/>, on the desktop or on a page of its own,
+    /// where the logo's title starts with a way back to the desktop.</summary>
+    public IReadOnlyList<MenuTitle> For(string homeName, bool desktop) {
+        var own = Path.Combine(_options.HomeRoot, homeName, ".config", "admin-menu.xfer");
+        var shared = Path.Combine(_options.EtcRoot, "admin-menu.xfer");
+        var titles = Read(own) ?? Read(shared) ?? Parse(ServerFiles.DefaultAdminMenu, "the default") ?? Array.Empty<NavNode>();
+
+        MenuEntry? Link(NavNode e) {
+            var slug = e.Slug?.Trim().ToLowerInvariant();
+            if (slug != null && Builtin(slug, desktop) is { } el) {
+                var text = BuiltinText(slug);
+                return new(MenuEntryKind.Item, e.Title ?? text.Title, el, Description: e.Description ?? text.Description, Icon: e.Icon);
+            }
+            if (string.IsNullOrWhiteSpace(e.Url)) { return null; }
+            bool external = Uri.TryCreate(e.Url, UriKind.Absolute, out var abs) && (abs.Scheme == Uri.UriSchemeHttp || abs.Scheme == Uri.UriSchemeHttps);
+            var link = external ? MenuBuilder.Link(e.Url, ("target", "_blank"), ("rel", "noopener")) : MenuBuilder.Link(e.Url);
+            return new(MenuEntryKind.Item, e.Title ?? e.Slug ?? e.Url, link, Description: e.Description, Icon: e.Icon);
         }
-        if (string.IsNullOrWhiteSpace(entry.Url)) { return null; }
-        bool external = Uri.TryCreate(entry.Url, UriKind.Absolute, out var abs) && (abs.Scheme == Uri.UriSchemeHttp || abs.Scheme == Uri.UriSchemeHttps);
-        return new AdminMenuItem(entry.Title ?? entry.Slug ?? entry.Url, entry.Url, entry.Description, entry.Icon, External: external);
+
+        var menu = MenuBuilder.Build(titles, desktop, Link, _ => Array.Empty<MenuEntry>()).ToList();
+        if (!desktop && menu.Count > 0) {
+            var logo = menu[0];
+            menu[0] = logo with { Entries = new[] { new MenuEntry(MenuEntryKind.Item, "Desktop", MenuBuilder.Link("/admin")) }.Concat(logo.Entries).ToList() };
+        }
+        return menu;
     }
 
     private NavNode[]? Read(string path) {
@@ -95,10 +106,25 @@ public sealed class AdminMenu {
 
     private NavNode[]? Parse(string text, string source) {
         try {
-            return XferConvert.Deserialize<NavNode>(text)?.Menu;
+            var menu = XferConvert.Deserialize<NavNode>(text)?.Menu;
+            return menu == null ? null : Titled(menu);
         } catch (Exception ex) {
             _logger.LogWarning(ex, "The admin menu {Source} does not parse; using the next one", source);
             return null;
         }
+    }
+
+    /// <summary>A menu in the titled shape. One in the older shape has an
+    /// entry at the top that is not a title, a link with no nav of its own:
+    /// its entries become the logo's title, a labelled group becoming a
+    /// heading, and the default's other titles follow.</summary>
+    private NavNode[] Titled(NavNode[] menu) {
+        if (menu.All(e => e.Nav is { Length: > 0 })) { return menu; }
+        var logo = new NavNode {
+            Title = LogoTitle, Icon = LogoIcon,
+            Nav = menu.Select(e => e.Nav is { Length: > 0 } ? new NavNode { Heading = e.Title ?? e.Slug, Nav = e.Nav } : e).ToArray()
+        };
+        var rest = XferConvert.Deserialize<NavNode>(ServerFiles.DefaultAdminMenu)?.Menu?.Skip(1) ?? Enumerable.Empty<NavNode>();
+        return new[] { logo }.Concat(rest).ToArray();
     }
 }

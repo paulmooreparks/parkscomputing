@@ -18,26 +18,26 @@
     bool workspace = signedIn && ViewData["Workspace"] as bool? == true;
     bool desktop = workspace && ViewData["Desktop"] as bool? == true;
     string publicOrigin = AdminConfig.Value.PublicOrigin.TrimEnd('/');
-    IReadOnlyList<AdminMenuGroup> menu = Array.Empty<AdminMenuGroup>();
+    IReadOnlyList<ParksComputing.Engine.Pages.Services.MenuTitle> menu = Array.Empty<ParksComputing.Engine.Pages.Services.MenuTitle>();
     string? homeName = null;
     if (signedIn && await Users.GetUserAsync(User) is { } me)
     {
         homeName = ServerFiles.HomeNameOf(me);
-        menu = AdminMenus.For(homeName);
+        menu = AdminMenus.For(homeName, desktop);
     }
 }
-@functions {
-    /* One row of the admin menu. On the desktop a tool opens as a window
-       (or, for the terminal, a new one); elsewhere every row is a link to
-       its page. Signing out is a form, since it changes state. */
-    private Microsoft.AspNetCore.Html.IHtmlContent Attrs(AdminMenuItem item, bool desktop)
+@{
+    /* One row of the logo button that shows before the menu bar is built:
+       the entry's own element, which is a link, or for signing out a button
+       naming the form below. */
+    void FallbackRow(ParksComputing.Engine.Pages.Services.MenuEntry item)
     {
-        var parts = new List<string>();
-        if (desktop && item.Window is not null) { parts.Add($"data-win-open=\"{System.Net.WebUtility.HtmlEncode(item.Window)}\""); }
-        if (desktop && item.Request is not null) { parts.Add($"data-win-request=\"{System.Net.WebUtility.HtmlEncode(item.Request)}\""); }
-        if (item.External) { parts.Add("target=\"_blank\" rel=\"noopener\""); }
-        else if (item.NewTab && desktop) { parts.Add("target=\"_blank\""); }
-        return Html.Raw(string.Join(" ", parts));
+        if (item.Element is null) { return; }
+        var icon = string.IsNullOrEmpty(item.Icon)
+            ? Html.Raw("<span class=\"admin-menu-icon\" aria-hidden=\"true\"></span>")
+            : Html.Raw($"<img class=\"admin-menu-icon\" src=\"{System.Net.WebUtility.HtmlEncode(item.Icon)}\" alt=\"\" />");
+        var cls = "md-item admin-menu-item" + (item.Element.Tag == "button" ? " admin-menu-signout" : "");
+        <div class="md-row">@Html.Raw(item.Element.Open(cls, item.Description))@icon@item.Label@Html.Raw(item.Element.Close())</div>
     }
 }
 <!DOCTYPE html>
@@ -82,46 +82,35 @@
     <header class="admin-bar">
         @if (signedIn)
         {
-            @* The logo menu, as on the public site. Off the desktop its
-               first row goes back to it. *@
+            @* The menu bar, as on the public site (PUDL 0.38.0,
+               Architecture/menu-bar-design.md and site-menu-design.md): the
+               host menu is /etc/admin-menu.xfer, or the admin's own
+               ~/.config/admin-menu.xfer, resolved by AdminMenu and written
+               as the hidden list pudl-menubar.js reads. The logo button
+               after it is what shows before the script has built the bar.
+               Off the desktop the logo's first row goes back to it. Signing
+               out is a form, since it changes state, so its row is a button
+               naming the form below. *@
+            <nav class="admin-menubar" data-menubar aria-label="Parks Computing Admin">
+            @Html.Raw(ParksComputing.Engine.Pages.Services.MenuBuilder.ToHtml(menu))
             <div class="menu admin-logo">
                 <button type="button" class="brand topbar-pill menu-btn admin-logo-btn" popovertarget="admin-menu" aria-label="Parks Computing Admin menu">
                     <img src="/favicon-32x32.png" alt="" width="22" height="22" /> <span class="admin-logo-name">Parks Computing Admin</span>
                 </button>
                 <nav class="menu-panel admin-menu" id="admin-menu" popover aria-label="Parks Computing Admin">
-                    @if (!desktop)
+                    @foreach (var entry in menu.FirstOrDefault()?.Entries ?? Array.Empty<ParksComputing.Engine.Pages.Services.MenuEntry>())
                     {
-                        <div class="md-row"><a class="md-item admin-menu-item" href="/admin"><span class="admin-menu-icon" aria-hidden="true"></span>Desktop</a></div>
-                    }
-                    @foreach (var group in menu)
-                    {
-                        if (group.Label is not null)
+                        if (entry.Kind == ParksComputing.Engine.Pages.Services.MenuEntryKind.Heading)
                         {
-                            <div class="md-section-label">@group.Label</div>
+                            <div class="md-section-label">@entry.Label</div>
+                            foreach (var item in entry.Entries ?? Array.Empty<ParksComputing.Engine.Pages.Services.MenuEntry>()) { FallbackRow(item); }
                         }
-                        foreach (var item in group.Items)
-                        {
-                            var icon = string.IsNullOrEmpty(item.Icon)
-                                ? Html.Raw("<span class=\"admin-menu-icon\" aria-hidden=\"true\"></span>")
-                                : Html.Raw($"<img class=\"admin-menu-icon\" src=\"{System.Net.WebUtility.HtmlEncode(item.Icon)}\" alt=\"\" />");
-                            if (item.SignOut)
-                            {
-                                <form method="post" asp-page="/Admin/SignOut" class="admin-bar-signout">
-                                    <button type="submit" class="md-item admin-menu-item admin-menu-signout" title="@item.Description">@icon@item.Title</button>
-                                </form>
-                            }
-                            else
-                            {
-                                <div class="md-row"><a class="md-item admin-menu-item" href="@item.Href" title="@item.Description" @Attrs(item, desktop)>@icon@item.Title</a></div>
-                            }
-                        }
+                        else if (entry.Kind == ParksComputing.Engine.Pages.Services.MenuEntryKind.Item) { FallbackRow(entry); }
                     }
                 </nav>
             </div>
-            @if (desktop)
-            {
-                <partial name="_WindowBar" model="new ParksComputing.Engine.Pages.Models.WindowBarModel()" />
-            }
+            </nav>
+            <form id="admin-signout" method="post" asp-page="/Admin/SignOut" hidden></form>
             <span class="topbar-rule" aria-hidden="true"></span>
             @* Who is signed in, on every page, as a root prompt shows it. A
                fallback session says so where it is always seen, since it
@@ -176,6 +165,12 @@
         {
             <script src="~/js/admin-desktop.js" defer asp-append-version="true"></script>
         }
+    }
+    @if (signedIn)
+    {
+        @* The menu bar, after the scripts it uses (PUDL 0.38.0). *@
+        <script src="~/pudl/pudl-menubar.js" defer asp-append-version="true"></script>
+        <script src="~/js/commands.js" defer asp-append-version="true"></script>
     }
 </body>
 </html>

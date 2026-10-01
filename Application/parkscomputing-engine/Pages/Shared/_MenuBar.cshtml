@@ -1,0 +1,11 @@
+@using ParksComputing.Engine.Pages.Services
+@inject INavService SiteNav
+@* The site's host menu, for PUDL's menu bar (pudl-menubar.js; see
+   Architecture/site-menu-design.md): sitenav.xfer's menu, resolved by
+   SiteMenu and written by MenuBuilder as the hidden nested list PUDL reads
+   into the logo menu. PUDL presses each link or button for the reader, so
+   a page of the site still opens as a window in the window view, and
+   js/commands.js carries out the commands that need script. The front
+   menu, for what the reader is in, is PUDL's to build from the applet or
+   the article. *@
+@Html.Raw(MenuBuilder.ToHtml(SiteMenu.Build(SiteNav.GetRoot(), ViewData["Desktop"] as bool? ?? false)))

@@ -5,17 +5,17 @@
     var currentCat = ViewData["NavCat"] as string;
     var onHome = ViewData["NavHome"] as bool? ?? false;
 
-    @* The classic view's categories as tabs in the top bar (PUDL 0.37.0),
-       between the logo menu and the view switcher: the tab for the category
-       shown stands flat and opens into the page, so it reads as one choice
-       among several. Every section, Articles among them, in sitenav.xfer's
-       order. On a phone PUDL gives the tabs the top bar's last row, where
-       they scroll sideways. *@
-    <nav class="topbar-tabs" aria-label="Categories">
-        <a aria-current="@(onHome && currentCat is null ? "page" : null)" href="/home">All</a>
+    @* The classic view's categories as PUDL section tabs on a band below
+       the top bar (Paul, 2026-10-01), at every width, as a phone already
+       showed them: the tab for the category shown stands flat and opens
+       into the page, so it reads as one choice among several. Every
+       section, Articles among them, in sitenav.xfer's order. Where they
+       don't fit, the band scrolls sideways. *@
+    <nav class="app-section-bar site-sections" aria-label="Categories">
+        <a class="section-tab" aria-current="@(onHome && currentCat is null ? "page" : null)" href="/home">All</a>
         @foreach (var link in sections)
         {
-            <a aria-current="@(currentCat == link!.Slug ? "page" : null)"
+            <a class="section-tab" aria-current="@(currentCat == link!.Slug ? "page" : null)"
                href="/home?cat=@link.Slug" title='@(link.Description ?? link.Title)'>@link.Title</a>
         }
     </nav>

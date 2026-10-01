@@ -39,6 +39,8 @@
 			<PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
 			<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.5.0" />
 			<PackageReference Include="Markdig" Version="0.37.0" />
+			<!-- An article's menu in its front matter (Architecture/menu-bar-design.md) -->
+			<PackageReference Include="YamlDotNet" Version="18.1.0" />
 			<!-- Accounts: Identity with passkeys, and the data-protection keys, in SQL Server -->
 			<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
 			<PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.12" />

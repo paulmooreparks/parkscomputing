@@ -103,6 +103,14 @@
                     </div>
                 }
                 <div class="post-body">
+                    @* As on the page (page.cshtml): an article with no menu of
+                       its own gets an empty one, for PUDL's first title of
+                       its name, with Open as a page, Copy the link, Print and
+                       Close. *@
+                    @if (Model.BodyHtml?.Contains("data-page-menu", System.StringComparison.Ordinal) != true)
+                    {
+                        <nav data-page-menu hidden aria-label="Page menu"><ul></ul></nav>
+                    }
                     @Html.Raw(Model.BodyHtml)
                 </div>
             </div>

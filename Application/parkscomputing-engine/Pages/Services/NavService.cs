@@ -84,18 +84,19 @@ namespace ParksComputing.Engine.Pages.Services {
         }
 
         /// <summary>
-        /// Fills in the site menu's entries from the entries they name: a menu
-        /// entry that gives only a slug takes the title, description, icon,
-        /// address and window shape of the nav entry of that slug,
-        /// keeping whatever it gives itself. A group (an entry with a nav)
-        /// resolves its own entries the same way. The menu's entries are not
-        /// part of the nav tree, so a slug in both is still found once.
+        /// Fills in the menu's links from the entries they name: a link that
+        /// gives only a slug takes the title, description, icon, address and
+        /// window shape of the nav entry of that slug, keeping whatever it
+        /// gives itself. Titles, submenus and headings resolve their own
+        /// entries the same way; commands, separators and froms name no
+        /// page. The menu's entries are not part of the nav tree, so a slug
+        /// in both is still found once.
         /// </summary>
         private void ResolveMenu(NavNode root, NavNode[]? entries) {
             if (entries == null) { return; }
             foreach (var entry in entries) {
                 if (entry.Nav is { Length: > 0 }) { ResolveMenu(root, entry.Nav); continue; }
-                if (string.IsNullOrWhiteSpace(entry.Slug)) { continue; }
+                if (string.IsNullOrWhiteSpace(entry.Slug) || entry.Command != null || entry.From != null || entry.Separator) { continue; }
                 var twin = Enumerate(root).FirstOrDefault(n => n != root && string.Equals(n.Slug, entry.Slug, StringComparison.OrdinalIgnoreCase));
                 if (twin != null) {
                     entry.Title ??= twin.Title;

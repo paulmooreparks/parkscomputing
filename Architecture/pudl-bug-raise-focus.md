@@ -1,5 +1,7 @@
 # Bug report to PUDL: raising a window by its title bar leaves focus in the window behind
 
+**Fixed in PUDL 0.37.1** (`pudl-adoption.md`, D51). What follows is the text as it was sent.
+
 From parkscomputing.com, 2026-10-01, observed by Paul on the admin desktop with PUDL 0.37.0 pinned.
 
 ## What happens
