@@ -135,10 +135,18 @@ namespace ParksComputing.Engine.Pages {
                 if (!BookService.IsSafePath(slug)) {
                     return Task.FromResult<IActionResult>(NotFound());
                 }
-                // A book's main page or chapter shows inside its contents.
-                if (HttpContext.RequestServices.GetService<BookService>()?.Locate(slug) is { } inBook) {
+                // A book's main page or chapter shows inside its contents. A
+                // chapter's file is the one its book names, wherever the
+                // book's front matter put its folder.
+                var books = HttpContext.RequestServices.GetService<BookService>();
+                string? chapterFile = null;
+                if (draft is null && books?.Locate(slug) is { } inBook) {
                     ViewData["Book"] = inBook.Book;
                     ViewData["BookChapter"] = inBook.ChapterPath;
+                    if (inBook.ChapterPath.Length > 0) { chapterFile = books.FileOf(inBook.Book, inBook.ChapterPath); }
+                }
+                if (chapterFile is not null) {
+                    return LoadMarkdownAndRender(chapterFile, slug);
                 }
                 var baseDir = $"{Environment.WebRootPath}/content";
                 // A draft stands in for its file, which may not exist yet.

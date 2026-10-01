@@ -14,13 +14,16 @@ namespace ParksComputing.Engine.Pages.Services;
 
 /// <summary>
 /// Books (Architecture/books-design.md): a main page with chapters under it,
-/// nested as deep as the author likes. A book is content/{slug}.md beside a
-/// folder content/{slug}/; each Markdown file in the folder is a chapter, and
-/// a chapter's own folder (content/{slug}/{chapter}/) holds its chapters.
-/// A chapter's front matter may give its title and its order among its
-/// siblings (order: 2); otherwise its first heading, or its file name, names
-/// it, and chapters without an order follow those with one, by title.
-/// Every chapter has its own address, /page/{slug}/{path}.
+/// nested as deep as the author likes. Nothing is a book by its name: a page
+/// is a book's main page because its front matter says where its chapters
+/// are, chapters: {folder}, a folder relative to the page. Every Markdown
+/// file in that folder is a chapter, and a chapter that has chapters of its
+/// own says so the same way. A chapter's front matter may give its title and
+/// its order among its siblings (order: 2); otherwise its first heading, or
+/// its file name, names it, and chapters without an order follow those with
+/// one, by title. Every chapter has its own address, /page/{slug}/{path},
+/// where the path is the chapters' file names, whatever their folders are
+/// called.
 /// </summary>
 public sealed class BookService {
     private static readonly Regex Segment = new("^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
@@ -42,8 +45,12 @@ public sealed class BookService {
         };
     }
 
-    /// <summary>One chapter, or the book itself at the root (Path empty).</summary>
-    public sealed record Chapter(string Path, string Title, int? Order, bool HasPage, IReadOnlyList<Chapter> Children);
+    /// <summary>One chapter, or the book itself at the root (Path empty), with
+    /// the file it is.</summary>
+    public sealed record Chapter(string Path, string Title, int? Order, bool HasPage, IReadOnlyList<Chapter> Children, string File = "");
+
+    /// <summary>What a page's front matter says about it as a book's page.</summary>
+    private sealed record Described(string Title, int? Order, string? Chapters);
 
     public sealed record Book(string Slug, Chapter Root) {
         /// <summary>Every chapter with a page, in reading order: the main
@@ -77,53 +84,46 @@ public sealed class BookService {
     }
 
     /// <summary>The book whose main page is content/{slug}.md, or null when
-    /// the slug has no folder of chapters beside it.</summary>
+    /// that page names no folder of chapters.</summary>
     public Book? Load(string slug) {
         if (!Segment.IsMatch(slug ?? string.Empty)) { return null; }
         // Kept, as a book or as "not a book", until the main page or
-        // anything under its folder changes. A key is lower case, as the
-        // file system the content lives on ignores case.
+        // anything under its chapters' folder changes. A key is lower case,
+        // as the file system the content lives on ignores case.
         var key = "pc-book:" + slug.ToLowerInvariant();
         if (_cache.TryGetValue(key, out Book? cached)) { return cached; }
-        var token = new Microsoft.Extensions.Primitives.CompositeChangeToken(new[] {
-            _files.Watch(slug + ".md"), _files.Watch(slug + "/**/*")
-        });
-        var book = Read(slug);
-        _cache.Set(key, book, new Microsoft.Extensions.Caching.Memory.MemoryCacheEntryOptions().AddExpirationToken(token));
+        var main = Path.Combine(_content, slug + ".md");
+        var described = File.Exists(main) ? Describe(main, slug) : null;
+        var folder = described?.Chapters is { } c && IsSafePath(c) ? c : null;
+        var tokens = new List<Microsoft.Extensions.Primitives.IChangeToken> { _files.Watch(slug + ".md") };
+        if (folder is not null) { tokens.Add(_files.Watch(folder + "/**/*")); }
+        Book? book = null;
+        if (folder is not null && Directory.Exists(Path.Combine(_content, folder))) {
+            book = new Book(slug, new Chapter(string.Empty, described!.Title, null, true,
+                ChaptersIn(Path.Combine(_content, folder), string.Empty), main));
+        }
+        _cache.Set(key, book, new MemoryCacheEntryOptions().AddExpirationToken(new Microsoft.Extensions.Primitives.CompositeChangeToken(tokens)));
         return book;
     }
 
-    private Book? Read(string slug) {
-        var main = Path.Combine(_content, slug + ".md");
-        var dir = Path.Combine(_content, slug);
-        if (!File.Exists(main) || !Directory.Exists(dir)) { return null; }
-        var (title, _) = Describe(main, slug);
-        return new Book(slug, new Chapter(string.Empty, title, null, true, ChaptersIn(dir, string.Empty)));
-    }
-
     /// <summary>The Markdown file of a chapter, or the main page for "".</summary>
-    public string? FileOf(Book book, string chapterPath) {
-        var rel = string.IsNullOrEmpty(chapterPath) ? book.Slug : book.Slug + "/" + chapterPath;
-        if (!IsSafePath(rel)) { return null; }
-        var file = Path.Combine(_content, rel.Replace('/', Path.DirectorySeparatorChar) + ".md");
-        return File.Exists(file) ? file : null;
-    }
+    public string? FileOf(Book book, string chapterPath) =>
+        book.Find(chapterPath ?? string.Empty) is { File.Length: > 0 } c && File.Exists(c.File) ? c.File : null;
 
+    /// <summary>The chapters in a folder: every Markdown file in it, each
+    /// with its own chapters when its front matter names their folder. A
+    /// folder is always below the page that names it, so a book can't loop
+    /// back on itself.</summary>
     private List<Chapter> ChaptersIn(string dir, string prefix) {
-        var names = Directory.EnumerateFiles(dir, "*.md").Select(f => Path.GetFileNameWithoutExtension(f)!)
-            .Concat(Directory.EnumerateDirectories(dir).Select(d => Path.GetFileName(d)!))
-            .Where(n => Segment.IsMatch(n))
-            .Distinct(StringComparer.OrdinalIgnoreCase);
         var chapters = new List<Chapter>();
-        foreach (var name in names) {
+        foreach (var file in Directory.EnumerateFiles(dir, "*.md")) {
+            var name = Path.GetFileNameWithoutExtension(file)!;
+            if (!Segment.IsMatch(name)) { continue; }
             var path = prefix + name;
-            var file = Path.Combine(dir, name + ".md");
-            var sub = Path.Combine(dir, name);
-            bool hasPage = File.Exists(file);
-            var (title, order) = hasPage ? Describe(file, name) : (Humanize(name), null);
-            var children = Directory.Exists(sub) ? ChaptersIn(sub, path + "/") : new List<Chapter>();
-            if (!hasPage && children.Count == 0) { continue; }
-            chapters.Add(new Chapter(path, title, order, hasPage, children));
+            var d = Describe(file, name);
+            var sub = d.Chapters is { } c && IsSafePath(c) ? Path.Combine(dir, c.Replace('/', Path.DirectorySeparatorChar)) : null;
+            var children = sub is not null && Directory.Exists(sub) ? ChaptersIn(sub, path + "/") : new List<Chapter>();
+            chapters.Add(new Chapter(path, d.Title, d.Order, true, children, file));
         }
         return chapters
             .OrderBy(c => c.Order.HasValue ? 0 : 1).ThenBy(c => c.Order ?? 0)
@@ -131,10 +131,11 @@ public sealed class BookService {
             .ToList();
     }
 
-    /// <summary>A chapter's title and order from its front matter, else its
-    /// first heading, else its name.</summary>
-    private static (string Title, int? Order) Describe(string file, string name) {
-        string? title = null; int? order = null;
+    /// <summary>A page's title, its order among its siblings and the folder
+    /// of its chapters, from its front matter; its title else comes from its
+    /// first heading, else from its name.</summary>
+    private static Described Describe(string file, string name) {
+        string? title = null, chapters = null; int? order = null;
         using var reader = new StreamReader(file);
         var first = reader.ReadLine();
         string? line;
@@ -146,6 +147,7 @@ public sealed class BookService {
                 var val = line[(colon + 1)..].Trim().Trim('"');
                 if (key == "title" && val.Length > 0) { title = val; }
                 else if (key == "order" && int.TryParse(val, NumberStyles.Integer, CultureInfo.InvariantCulture, out var o)) { order = o; }
+                else if (key == "chapters" && val.Length > 0) { chapters = val.Trim('/'); }
             }
         }
         else if (first?.StartsWith("# ") == true) {
@@ -156,7 +158,7 @@ public sealed class BookService {
                 if (line.StartsWith("# ")) { title = line[2..].Trim(); break; }
             }
         }
-        return (title ?? Humanize(name), order);
+        return new Described(title ?? Humanize(name), order, chapters);
     }
 
     private static string Humanize(string name) =>

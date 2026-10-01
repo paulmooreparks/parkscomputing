@@ -4,16 +4,18 @@ Paul wants pages with subordinate pages, nested, for his project pages and some 
 
 ## Writing a book
 
-A book is a main page, `content/{slug}.md`, beside a folder of the same name, `content/{slug}/`. Each Markdown file in the folder is a chapter, and a chapter's own folder holds its chapters, to any depth:
+A page becomes a book only when its front matter says so. The `chapters` key names the folder that holds its chapters, relative to the page's own folder, and each Markdown file in that folder is a chapter. A chapter with chapters of its own declares them the same way, to any depth. Nothing is a book because of how its files are named; Paul rejected that as coding by convention (2026-10-01).
 
 ```
-content/maize.md
-content/maize/version-2.md
+content/maize.md                 chapters: maize
+content/maize/version-2.md       chapters: version-2
 content/maize/version-2/isa.md
 content/maize/details.md
 ```
 
-A chapter is an ordinary Markdown page with front matter. Its `title` names it in the contents, falling back to its first heading and then to its file name. Its `order` places it among its siblings; chapters without one follow those with one, by title. The order lives in each file rather than in a list on the main page, because a list goes stale whenever a file is added or renamed. A folder with chapters but no file of its own shows in the contents as a heading that is not a link.
+The folders may be called anything, and a folder no page declares is ignored. A chapter's address is built from the chapter files' names, so `/page/maize/version-2/isa` stays the same whatever the folders are called.
+
+A chapter is an ordinary Markdown page with front matter. Its `title` names it in the contents, falling back to its first heading and then to its file name. Its `order` places it among its siblings; chapters without one follow those with one, by title. The order lives in each file rather than in a list on the main page, because a list goes stale whenever a file is added or renamed.
 
 The book's main page is listed in `sitenav.xfer` like any page. Its chapters are not; they belong to the book.
 
@@ -44,7 +46,7 @@ node Tools/import-mdbook.mjs C:/Users/paul/source/repos/tela/book \
   https://github.com/paulmooreparks/tela
 ```
 
-It replaces `content/tela/` entirely and leaves `content/tela.md` alone. `SUMMARY.md` gives the structure: each part becomes a folder with a page listing its chapters, and each chapter a file with its title, its place and its source's last commit date in front matter. What mdBook does and this site does not is done once, at import: `{{#include}}` pulls the named lines in, links between chapters become the chapters' addresses here, links to other files of the repository go to GitHub, a link to a file that does not exist keeps its words and loses the link, and images move to `images/books/tela/`. The Leanpub draft in `book/leanpub` is an outline of stubs and is not imported.
+The main page must already exist and declare its chapters' folder (`chapters: tela`); the importer refuses to run otherwise. It replaces that folder entirely and leaves `content/tela.md` alone. `SUMMARY.md` gives the structure: each part becomes a page listing its chapters, declaring a folder that holds them, and each chapter a file with its title, its place and its source's last commit date in front matter. What mdBook does and this site does not is done once, at import: `{{#include}}` pulls the named lines in, links between chapters become the chapters' addresses here, links to other files of the repository go to GitHub, a link to a file that does not exist keeps its words and loses the link, and images move to `images/books/tela/`. The Leanpub draft in `book/leanpub` is an outline of stubs and is not imported.
 
 Headings on every Markdown page now carry ids, in the GitHub style mdBook uses, so a link to `#section` lands on its section, within a page or across chapters. A link to a chapter from anywhere in the window view, in the book's text or in another article, turns an open window of that book to it, or opens one there.
 

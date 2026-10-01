@@ -9,9 +9,10 @@
 //     C:/Users/paul/OneDrive/Documents/parkscomputing.com/wwwroot/images/books/tela \
 //     https://github.com/paulmooreparks/tela
 //
-// The mdBook stays the source of truth; run this again when it changes. It
-// replaces content/<slug>/ entirely and leaves content/<slug>.md, the
-// book's main page, alone, so that page must already exist.
+// The mdBook stays the source of truth; run this again when it changes.
+// content/<slug>.md, the book's main page, must already exist and name its
+// chapters' folder in its front matter (chapters: tela). This replaces that
+// folder entirely and leaves the main page alone.
 //
 // SUMMARY.md gives the structure. A part heading ("# User Guide") becomes a
 // folder with a page of its own listing its chapters; a chapter becomes a
@@ -37,10 +38,19 @@ const src = path.join(bookDir, 'src');
 // Git names the root with forward slashes; path.resolve gives this system's form.
 const repoRoot = path.resolve(execFileSync('git', ['-C', bookDir, 'rev-parse', '--show-toplevel']).toString().trim());
 const imagesUrl = '/' + path.relative(path.join(contentDir, '..'), imagesDir).split(path.sep).join('/');
-if (!fs.existsSync(path.join(contentDir, slug + '.md'))) {
+// The book's main page says where its chapters go, as every page with
+// chapters does (Architecture/books-design.md); nothing is a book by name.
+const mainPage = path.join(contentDir, slug + '.md');
+if (!fs.existsSync(mainPage)) {
   console.error(`content/${slug}.md, the book's main page, must exist first`);
   process.exit(1);
 }
+const declared = (/^---\r?\n[\s\S]*?^chapters:\s*"?([^"\r\n]+?)"?\s*$[\s\S]*?^---/m.exec(fs.readFileSync(mainPage, 'utf8')) || [])[1];
+if (!declared || !/^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/.test(declared.replace(/^\/|\/$/g, ''))) {
+  console.error(`content/${slug}.md must name its chapters' folder in its front matter first, such as:  chapters: ${slug}`);
+  process.exit(1);
+}
+const chaptersFolder = declared.replace(/^\/|\/$/g, '');
 
 const kebab = s => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const yaml = s => '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
@@ -136,13 +146,14 @@ function lastCommit(file) {
   catch { return ''; }
 }
 
-function frontMatter(title, order, date) {
-  return ['---', `title: ${yaml(title)}`, `order: ${order}`, ...(date ? [`date: ${date.slice(0, 19)}`, `lastModified: ${date.slice(0, 19)}`] : []), '---', ''].join('\n');
+function frontMatter(title, order, date, chapters) {
+  return ['---', `title: ${yaml(title)}`, `order: ${order}`, ...(chapters ? [`chapters: ${chapters}`] : []),
+    ...(date ? [`date: ${date.slice(0, 19)}`, `lastModified: ${date.slice(0, 19)}`] : []), '---', ''].join('\n');
 }
 
 /* === Writing ============================================================ */
 
-const out = path.join(contentDir, slug);
+const out = path.join(contentDir, ...chaptersFolder.split('/'));
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 let written = 0;
@@ -164,9 +175,10 @@ top.forEach((item, i) => {
   if (item.kind === 'chapter') { writeChapter(item, order); return; }
   item.chapters.forEach((c, j) => writeChapter(c, j + 1));
   const list = item.chapters.map(c => `- [${c.title}](/page/${slug}/${c.path})`).join('\n');
-  fs.writeFileSync(path.join(out, item.slug + '.md'), frontMatter(item.title, order, '') + `\n# ${item.title}\n\n${list}\n`);
+  // A part's page names its folder, where its chapters are.
+  fs.writeFileSync(path.join(out, item.slug + '.md'), frontMatter(item.title, order, '', item.slug) + `\n# ${item.title}\n\n${list}\n`);
   written++;
 });
 
-console.log(`${written} pages into content/${slug}/, ${copiedImages.size} images into ${imagesUrl}/`);
+console.log(`${written} pages into content/${chaptersFolder}/, ${copiedImages.size} images into ${imagesUrl}/`);
 if (missing.size) { console.log('Links to files that do not exist, kept as plain words: ' + [...missing].join(', ')); }
