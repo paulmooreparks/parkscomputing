@@ -73,7 +73,9 @@ namespace ParksComputing.Engine {
                 options.Cookie.IsEssential = true; // Make sure the cookie is marked as essential
             });
 
-            services.AddTransient<INavService, NavService>();
+            // One for the whole site: it keeps sitenav.xfer, read and filled in, until a
+            // file it comes from changes (Pages/Services/NavService.cs).
+            services.AddSingleton<INavService, NavService>();
             services.AddTransient<ICommentService, CommentService>();
             services.AddHttpClient("commentApi", (serviceProvider, c) => {
                 var config = serviceProvider.GetRequiredService<IOptions<CommentServiceConfig>>().Value;

@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace ParksComputing.Engine.Pages.Services;
 
@@ -24,9 +25,21 @@ namespace ParksComputing.Engine.Pages.Services;
 public sealed class BookService {
     private static readonly Regex Segment = new("^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
     private readonly string _content;
+    private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _cache;
+    private readonly Microsoft.Extensions.FileProviders.PhysicalFileProvider _files;
 
-    public BookService(IWebHostEnvironment env) {
+    public BookService(IWebHostEnvironment env, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) {
         _content = Path.Combine(env.WebRootPath, "content");
+        _cache = cache;
+        /* A book is read once and kept until one of its files changes.
+           The content folder is a Windows folder that Docker Desktop
+           passes into the container without change notices, so the
+           provider looks at the files every few seconds instead of
+           waiting to be told (a documented PhysicalFileProvider mode). */
+        _files = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(_content) {
+            UsePollingFileWatcher = true,
+            UseActivePolling = true
+        };
     }
 
     /// <summary>One chapter, or the book itself at the root (Path empty).</summary>
@@ -67,6 +80,20 @@ public sealed class BookService {
     /// the slug has no folder of chapters beside it.</summary>
     public Book? Load(string slug) {
         if (!Segment.IsMatch(slug ?? string.Empty)) { return null; }
+        // Kept, as a book or as "not a book", until the main page or
+        // anything under its folder changes. A key is lower case, as the
+        // file system the content lives on ignores case.
+        var key = "pc-book:" + slug.ToLowerInvariant();
+        if (_cache.TryGetValue(key, out Book? cached)) { return cached; }
+        var token = new Microsoft.Extensions.Primitives.CompositeChangeToken(new[] {
+            _files.Watch(slug + ".md"), _files.Watch(slug + "/**/*")
+        });
+        var book = Read(slug);
+        _cache.Set(key, book, new Microsoft.Extensions.Caching.Memory.MemoryCacheEntryOptions().AddExpirationToken(token));
+        return book;
+    }
+
+    private Book? Read(string slug) {
         var main = Path.Combine(_content, slug + ".md");
         var dir = Path.Combine(_content, slug);
         if (!File.Exists(main) || !Directory.Exists(dir)) { return null; }

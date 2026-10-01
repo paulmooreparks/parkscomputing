@@ -18,12 +18,25 @@ namespace ParksComputing.Engine.Pages.Services {
     private readonly ILogger<NavService> _logger;
 
         private readonly object _sync = new();
-        private DateTime _lastWriteUtc;
-    private NavNode? _cached;
+        private NavNode? _cached;
+        private Microsoft.Extensions.Primitives.IChangeToken? _changed;
+        private readonly Microsoft.Extensions.FileProviders.PhysicalFileProvider _files;
 
+        /* One service for the whole site (Startup registers it as a
+           singleton). Reading sitenav.xfer fills in every article's title,
+           dates and excerpt from its content file, which is many files, so
+           the result is kept until sitenav.xfer or a top-level content file
+           changes. The content lives in a Windows folder that Docker Desktop
+           passes into the container without change notices, so the files
+           are looked at every few seconds instead (a documented
+           PhysicalFileProvider mode); an edit shows within seconds. */
         public NavService(IWebHostEnvironment environment, ILogger<NavService> logger) {
             Environment = environment;
             _logger = logger;
+            _files = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(environment.WebRootPath) {
+                UsePollingFileWatcher = true,
+                UseActivePolling = true
+            };
         }
 
         public NavNode? GetNavNode(string slug) {
@@ -49,19 +62,23 @@ namespace ParksComputing.Engine.Pages.Services {
                 .GroupBy(n => n.Slug!, StringComparer.OrdinalIgnoreCase).Select(g => g.First());
 
         public NavNode GetRoot() {
-            var xferPath = Path.Combine(Environment.WebRootPath, "sitenav.xfer");
-            if (!File.Exists(xferPath)) { return _cached ?? new NavNode { Slug = "root" }; }
-            DateTime writeUtc = File.GetLastWriteTimeUtc(xferPath);
-            if (_cached != null && writeUtc == _lastWriteUtc) { return _cached; }
+            var cached = _cached;
+            if (cached != null && _changed is { HasChanged: false }) { return cached; }
             lock (_sync) {
-                if (_cached != null && writeUtc == _lastWriteUtc) { return _cached; }
+                if (_cached != null && _changed is { HasChanged: false }) { return _cached; }
+                // Watched from before the reading starts, so a change made
+                // while it runs is not missed.
+                _changed = new Microsoft.Extensions.Primitives.CompositeChangeToken(new[] {
+                    _files.Watch("sitenav.xfer"), _files.Watch("content/*.md"), _files.Watch("content/*.html")
+                });
+                var xferPath = Path.Combine(Environment.WebRootPath, "sitenav.xfer");
+                if (!File.Exists(xferPath)) { return _cached ??= new NavNode { Slug = "root" }; }
                 var rootNode = ParseRoot(File.ReadAllText(xferPath), xferPath);
                 PostProcess(rootNode);
                 EnrichFromContent(rootNode);
                 ShareBetweenTwins(rootNode);
                 ResolveMenu(rootNode, rootNode.Menu);
                 _cached = rootNode;
-                _lastWriteUtc = writeUtc;
                 return rootNode;
             }
         }
