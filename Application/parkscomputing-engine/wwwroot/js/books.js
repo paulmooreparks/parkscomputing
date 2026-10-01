@@ -30,29 +30,13 @@
 
     /* Fetches a chapter into a window, in place. */
     function turn(win, key, chapter, how) {
-        return fetch('/window/' + encodeURIComponent(key) + (chapter ? '?c=' + encodeURIComponent(chapter).replace(/%2F/g, '/') : ''), { credentials: 'same-origin' })
-            .then(function (r) { if (!r.ok) { throw new Error(r.status); } return r.text(); })
-            .then(function (html) {
-                var doc = new DOMParser().parseFromString(html, 'text/html');
-                var fresh = doc.querySelector('.win .win-body'), page = doc.querySelector('.win .win-head [data-win-action="page"]');
-                var body = win.querySelector('.win-body');
-                if (!fresh || !body) { return; }
-                body.innerHTML = fresh.innerHTML;
-                body.scrollTop = 0;
-                var mine = win.querySelector('.win-head [data-win-action="page"]');
-                if (mine && page) { mine.setAttribute('href', page.getAttribute('href')); }
-                if (how === 'push') { history.pushState(history.state, '', addressWith(key, chapter)); }
-                else if (how === 'replace') { history.replaceState(history.state, '', addressWith(key, chapter)); }
-                enhance(win);
-                /* The window view keeps the arrangement, chapters and all. */
-                document.dispatchEvent(new CustomEvent('pc:book-turn'));
-            });
-    }
-
-    function enhance(win) {
-        var tree = win.querySelector('.book-tree');
-        if (tree && window.pudlTree && window.pudlTree.enhance) { window.pudlTree.enhance(tree); }
-        if (window.pcEnhanceWindow) { window.pcEnhanceWindow(win); }
+        if (!window.pcLoadWindow) { return Promise.reject(new Error('no js/desktop.js')); }
+        return window.pcLoadWindow(win, chapter, false).then(function () {
+            if (how === 'push') { history.pushState(history.state, '', addressWith(key, chapter)); }
+            else if (how === 'replace') { history.replaceState(history.state, '', addressWith(key, chapter)); }
+            /* The window view keeps the arrangement, chapters and all. */
+            document.dispatchEvent(new CustomEvent('pc:book-turn'));
+        });
     }
 
     /* Another window of the same book, the first number not in use. */

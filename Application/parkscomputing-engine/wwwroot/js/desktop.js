@@ -60,6 +60,54 @@
        book's next chapter (js/books.js). */
     window.pcEnhanceWindow = enhance;
 
+    /* Fetches a window's content afresh from /window/{key}, the address the
+       layer opens it from, and puts it in place of what the window shows,
+       leaving the window where it is. Applets in the old content are
+       destroyed and those in the new are started, through pudl-applets.js's
+       boot and destroy, which are there for content a project swaps by
+       other means. A book's chapter rides along as ?c=. keepScroll holds
+       the reader's place, as a browser's reload does. The browser's cache
+       is bypassed, so an edit made a moment ago shows. */
+    function loadWindow(win, chapter, keepScroll) {
+        var key = win.getAttribute('data-win');
+        var url = '/window/' + encodeURIComponent(key) + (chapter ? '?c=' + encodeURIComponent(chapter).replace(/%2F/g, '/') : '');
+        return fetch(url, { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'text/html' } })
+            .then(function (r) { if (!r.ok) { throw new Error(url + ' returned ' + r.status); } return r.text(); })
+            .then(function (html) {
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                var fresh = doc.querySelector('.win .win-body'), body = win.querySelector('.win-body');
+                if (!fresh || !body) { throw new Error(url + ' holds no window body'); }
+                var top = body.scrollTop;
+                if (window.pudlApplets) { window.pudlApplets.destroy(body); }
+                body.innerHTML = fresh.innerHTML;
+                body.scrollTop = keepScroll ? top : 0;
+                var page = doc.querySelector('.win .win-head [data-win-action="page"]'), mine = win.querySelector('.win-head [data-win-action="page"]');
+                if (page && mine) { mine.setAttribute('href', page.getAttribute('href')); }
+                var title = doc.querySelector('.win .win-title'), shown = win.querySelector('.win-title');
+                if (title && shown && title.textContent !== shown.textContent && window.pudlWindows) { window.pudlWindows.retitle(key, title.textContent); }
+                /* pudl-tree.js enhances trees as a window opens; these
+                   arrived later. */
+                if (window.pudlTree && window.pudlTree.enhance) { body.querySelectorAll('ul.tree').forEach(window.pudlTree.enhance); }
+                enhance(win);
+                if (window.pudlApplets) { window.pudlApplets.boot(body); }
+            });
+    }
+    window.pcLoadWindow = loadWindow;
+
+    /* The window menu's Reload, for every window, which picks up a change
+       to its article or its applet's markup without reloading the page.
+       An applet's script and stylesheet are loaded once per page by
+       pudl-applets.js, so a change to those still needs the page reloaded. */
+    document.addEventListener('pudl:window-menu', function (e) {
+        var win = e.target;
+        if (!win || !win.matches || !win.matches('.win[data-win]') || !win.closest('[data-win-layer][data-win-src="/window/{key}"]')) { return; }
+        e.detail.add('Reload', function () {
+            var book = win.querySelector('.book');
+            loadWindow(win, book ? book.getAttribute('data-book-current') || '' : '', true)
+                .catch(function (err) { if (window.console) { console.warn('reload:', err); } });
+        });
+    });
+
     /* === The filter, narrowing live ========================================
        The server renders the ?q= filtered list and applying the filter is
        the form's own navigation (a region swap); this only refines the
