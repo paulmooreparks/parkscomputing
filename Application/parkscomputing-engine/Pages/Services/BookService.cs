@@ -151,7 +151,7 @@ public sealed class BookService {
     private static string Href(Book book, Chapter c) => "/page/" + book.Slug + (c.Path.Length > 0 ? "/" + c.Path : string.Empty);
     private static string Enc(string s) => WebUtility.HtmlEncode(s);
     private static string Link(Book book, Chapter c, string cls = "") =>
-        $"<a{(cls.Length > 0 ? $" class=\"{cls}\"" : "")} href=\"{Href(book, c)}\" data-book-chapter=\"{Enc(c.Path)}\"";
+        $"<a{(cls.Length > 0 ? $" class=\"{cls}\"" : "")} href=\"{Href(book, c)}\" data-book-of=\"{Enc(book.Slug)}\" data-book-chapter=\"{Enc(c.Path)}\"";
 
     /// <summary>The book's frame and contents, up to where the chapter goes.</summary>
     public static string RenderOpen(Book book, string current, string windowKey = "") {

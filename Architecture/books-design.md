@@ -33,6 +33,21 @@ Shift+click on a chapter opens it in another window of the same book, `maize-2` 
 
 The code is `Pages/Services/BookService.cs` (the chapter tree and the markup), `ArticleContentService.LoadBook` (a book's window), `wwwroot/js/books.js` (turning pages in a window) and the book rules in `wwwroot/css/pudl-site.css`.
 
+## Books from mdBook
+
+The first real book is the Tela reference, "Tela: The Complete Reference", whose source is the mdBook in the Tela repository (`book/src`, published at telaproject.org/book). It sits under the Tela project page, so `content/tela.md` is its main page (2026-10-01). The Tela repository stays the source of truth, so the book is imported rather than copied, by `Tools/import-mdbook.mjs`, which can be run again whenever the Tela docs change:
+
+```
+node Tools/import-mdbook.mjs C:/Users/paul/source/repos/tela/book \
+  C:/Users/paul/OneDrive/Documents/parkscomputing.com/wwwroot/content tela \
+  C:/Users/paul/OneDrive/Documents/parkscomputing.com/wwwroot/images/books/tela \
+  https://github.com/paulmooreparks/tela
+```
+
+It replaces `content/tela/` entirely and leaves `content/tela.md` alone. `SUMMARY.md` gives the structure: each part becomes a folder with a page listing its chapters, and each chapter a file with its title, its place and its source's last commit date in front matter. What mdBook does and this site does not is done once, at import: `{{#include}}` pulls the named lines in, links between chapters become the chapters' addresses here, links to other files of the repository go to GitHub, a link to a file that does not exist keeps its words and loses the link, and images move to `images/books/tela/`. The Leanpub draft in `book/leanpub` is an outline of stubs and is not imported.
+
+Headings on every Markdown page now carry ids, in the GitHub style mdBook uses, so a link to `#section` lands on its section, within a page or across chapters. A link to a chapter from anywhere in the window view, in the book's text or in another article, turns an open window of that book to it, or opens one there.
+
 ## A fix found on the way
 
 The classic page route takes any path after `/page/` and looked its file up without checking it, so a path holding `..` could name a file outside `content/`. Only `.md` and `.html` files could be read that way, but it was wrong. Every content path is now plain names joined by slashes, or the page is not found.

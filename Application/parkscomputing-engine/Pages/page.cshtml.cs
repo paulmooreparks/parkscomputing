@@ -187,6 +187,8 @@ namespace ParksComputing.Engine.Pages {
                     .UseEmphasisExtras()
                     .UseSmartyPants()
                     .UseMediaLinks()
+                    // Headings get ids, as GitHub and mdBook give them, so a link to #section lands there.
+                    .UseAutoIdentifiers(Markdig.Extensions.AutoIdentifiers.AutoIdentifierOptions.GitHub)
                     .UseGenericAttributes() // enables attribute lists: ![alt](img.png){ width=512 height=512 }
                     .Build();
                 string htmlBody = Markdown.ToHtml(body, pipeline);

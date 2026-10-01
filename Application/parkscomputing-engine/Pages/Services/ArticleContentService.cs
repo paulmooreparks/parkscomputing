@@ -251,14 +251,28 @@ public class ArticleContentService {
         foreach (var anchor in anchors) {
             if (anchor.GetAttributeValue("data-win-open", null) is not null) { continue; }
             if (anchor.GetAttributeValue("data-win-replace", null) is not null) { continue; }
+            if (anchor.GetAttributeValue("data-book-chapter", null) is not null) { continue; }
+            // A link to a book's chapter (/page/{book}/{path}) turns a window
+            // of that book to it, or opens one there (js/books.js).
+            var chapterLink = BookChapterLink.Match(anchor.GetAttributeValue("href", string.Empty));
+            if (chapterLink.Success && BookService.IsSafePath(chapterLink.Groups["path"].Value)
+                && _books.Load(chapterLink.Groups["book"].Value) is { } linked && linked.Find(chapterLink.Groups["path"].Value) is { HasPage: true }) {
+                anchor.SetAttributeValue("data-book-of", linked.Slug);
+                anchor.SetAttributeValue("data-book-chapter", chapterLink.Groups["path"].Value);
+                continue;
+            }
             var slug = InternalSlugOf(anchor.GetAttributeValue("href", string.Empty));
             if (slug is null || !ContentExists(slug)) { continue; }
             anchor.SetAttributeValue("data-win-open", slug);
         }
     }
 
+    private static readonly Regex BookChapterLink = new(@"^(?:https?://(?:www\.)?parkscomputing\.com)?/page/(?<book>[A-Za-z0-9_-]+)/(?<path>[A-Za-z0-9_/-]+?)/?(?:#.*)?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     /// <summary>The article slug an href resolves to, or null when the href
-    /// leaves the site or names nothing slug-shaped.</summary>
+    /// leaves the site or names nothing slug-shaped. A path of more than
+    /// one name under /page/ is a book's chapter, which is not a window of
+    /// its own.</summary>
     private static string? InternalSlugOf(string href) {
         if (string.IsNullOrWhiteSpace(href) || href.StartsWith("#")) { return null; }
         string path;
@@ -276,6 +290,7 @@ public class ArticleContentService {
         }
         var segments = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments.Length == 0) { return null; }
+        if (segments.Length > 2 && segments[0].Equals("page", StringComparison.OrdinalIgnoreCase)) { return null; }
         var candidate = segments[^1];
         return SlugPattern.IsMatch(candidate) ? candidate : null;
     }
@@ -314,6 +329,8 @@ public class ArticleContentService {
             .UseEmphasisExtras()
             .UseSmartyPants()
             .UseMediaLinks()
+            // Headings get ids, as on the page, so a link to #section lands there.
+            .UseAutoIdentifiers(Markdig.Extensions.AutoIdentifiers.AutoIdentifierOptions.GitHub)
             .UseGenericAttributes()
             .Build();
         string html = Markdown.ToHtml(body, pipeline);

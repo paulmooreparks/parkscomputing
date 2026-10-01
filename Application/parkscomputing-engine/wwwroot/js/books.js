@@ -66,20 +66,39 @@
         return true;
     }
 
+    /* A link to a chapter: in its own book's window it turns that window;
+       anywhere else in the window view it turns a window of that book that
+       is open, or opens one at that chapter. */
     document.addEventListener('click', function (e) {
         var a = e.target.closest && e.target.closest('a[data-book-chapter]');
-        if (!a || !plainClick(e)) { return; }
-        var win = a.closest('.win[data-win]');
-        if (!win || !window.pudlWindows) { return; }
-        var key = win.getAttribute('data-win'), chapter = a.getAttribute('data-book-chapter');
+        if (!a || !plainClick(e) || !window.pudlWindows || !document.querySelector('[data-win-layer]')) { return; }
+        var book = a.getAttribute('data-book-of'), chapter = a.getAttribute('data-book-chapter');
+        var here = a.closest('.win[data-win]');
         if (e.shiftKey) {
-            if (openCopy(bookOf(win), chapter)) { e.preventDefault(); }
+            if (openCopy(book, chapter)) { e.preventDefault(); }
             return;
         }
+        var win = here && bookOf(here) === book ? here : windowOf(book);
         e.preventDefault();
+        if (!win) {
+            history.replaceState(history.state, '', addressWith(book, chapter));
+            window.pudlWindows.open(book);
+            return;
+        }
+        if (win !== here) { window.pudlWindows.raise(win.getAttribute('data-win')); }
         if (chapter === chapterIn(win)) { return; }
-        turn(win, key, chapter, 'push').catch(function () { location.href = a.href; });
+        turn(win, win.getAttribute('data-win'), chapter, 'push').catch(function () { location.href = a.href; });
     });
+
+    /* The open window of a book, the first of its copies if several are. */
+    function windowOf(book) {
+        var open = window.pudlWindows.state().open;
+        for (var i = 0; i < open.length; i++) {
+            var w = document.querySelector('.win[data-win="' + open[i] + '"]');
+            if (w && bookOf(w) === book) { return w; }
+        }
+        return null;
+    }
 
     /* A window that opens or comes back with a chapter in the address
        shows that chapter; one whose chapter the address changed (Back,
