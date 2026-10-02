@@ -132,6 +132,12 @@ All three proposals from `pudl-proposal-empty-structure.md` shipped as 0.13.0 an
 
 0.19.0 fixed Paul's palette focus miss, with a sharper diagnosis than the site's bug report guessed: pudl-windows took focus when a window's content arrived from its fetch, so a `/` pressed before a restoring window finished loading had the window steal focus back from the palette filter, which is why it depended on session state and never reproduced in tests that waited for network idle. A window now takes focus only if focus has not moved since it was asked for. The site verified the exact race (window fetches slowed to 1.2s, palette summoned mid-flight, focus checked before and after arrival) and the pin was a three-file sync with no site-side change. Also in 0.19.0: `docs/CONTRACT.md` (what a project may rely on, frozen at 1.0), the test suites in the PUDL repo running three engines in CI, and a menu filter that clears on every open. The 0.14.0 lesson stands confirmed twice now: what looked like a browser-timing mystery was an interaction between two of our own moving parts, and the report that pinned it came from `document.activeElement`, one console line from the person who could reproduce it.
 
+### D54. PUDL 0.39.2 pinned
+
+The site now uses the v0.39.2 tagged distribution in both the repository and the mounted production content folder. This replaces 0.38.0 and includes the 0.39.0 and 0.39.1 changes. Repeated clicks on a menu title or hamburger button now close its open panel, including after hovering between titles and in the collapsed mobile layout. The hamburger is a native button, and an explicit anchor keeps its panel aligned with the title.
+
+The release also adds Copy the link to window menus and lets a window declare its share address with `data-win-href`. Existing windows use their title-bar page link as the fallback; this upgrade does not change the site's window markup. The layouts already use `asp-append-version` for PUDL assets, so the updated files receive new cache keys.
+
 ### D53. PUDL 0.38.0 pinned: PUDL's menu bar replaces the site's
 
 0.38.0 (2026-10-01) ships the menu bar from `pudl-proposal-menu-bar.md` as `pudl-menubar.js`, with four changes the PUDL agent and Paul agreed: the bar is a script of its own, the host menu comes from markup rather than a script's object, shortcuts are written `Mod+S`, and a bar that does not fit collapses straight to one button. The site took it the same day and deleted its own `js/menubar.js` and `css/menubar.css`.
