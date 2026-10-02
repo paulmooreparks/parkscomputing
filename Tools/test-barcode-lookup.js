@@ -1,0 +1,36 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+const root = path.resolve('Application/parkscomputing-engine/wwwroot/js');
+const c = vm.createContext({ URL, URLSearchParams, TextDecoder, Uint8Array, Set, fetch, console });
+for (const f of ['barcode-engine.js','barcode-lookup.js']) vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),c);
+const L=c.pcBarcodeLookup, B=c.pcBarcode;
+function capture(text,format){return {text,format};}
+for(const [text,format] of [['3017620422003','EAN13'],['036000291452','UPCA'],['96385074','EAN8'],['04210007','UPCE']]) assert.equal(L.identify(capture(text,format),B).kind,'gtin');
+assert.equal(L.identify(capture('04210007','UPCE'),B).value,'042000001007');
+for(const [text,format] of [['3017620422004','EAN13'],['301762042200','EAN13'],['2104213003495','EAN13'],['3017620422003',''],['3017620422003','QRCode']]) assert(L.identify(capture(text,format),B).reason);
+assert.equal(L.identify(capture('https://example.test/path?q=1','QRCode'),B).kind,'uri');
+assert(L.identify(capture('https://user:secret@example.test','QRCode'),B).reason);
+assert.throws(()=>L.safeUrl('javascript:alert(1)'));
+const source=JSON.parse(JSON.stringify(L.defaults[0]));source.id='user:test';source.request={transport:'json-get',origin:'https://example.test',path:'/products/{identifier.value}',query:{format:'symbology.endpoint',fields:{literal:'name,brand'}}};source.symbologyMap={ean13:'EAN_13',upca:'UPC_A'};
+L.validate(source,true);
+assert.match(L.request(source,{kind:'gtin',value:'3017620422003',symbology:'ean13'}),/format=EAN_13/);
+assert.throws(()=>L.request(source,{kind:'gtin',value:'96385074',symbology:'ean8'}),/mapping/);
+source.request.query={};assert.match(L.request(source,{kind:'gtin',value:'96385074',symbology:'ean8'}),/96385074/);
+const file={format:'pc-barcode-lookup-sources',version:1,sources:[source]};L.file(file);assert.throws(()=>L.file({...file,sources:[source,source]}),/Duplicate/);
+assert.throws(()=>L.file({...file,version:2}));
+assert.throws(()=>L.validate({...source,script:'alert(1)'},true));
+assert.throws(()=>L.validate({...source,request:{transport:'json-get',origin:'https://example.test',path:'//evil.test/x'}},true));
+assert.throws(()=>L.interpret(source,{found:true,product:{product_name:{bad:true}}}));
+assert.throws(()=>L.interpret(source,{}));
+assert.equal(L.interpret(source,{found:false}).found,false);
+(async()=>{
+ c.fetch=async()=>new Response(JSON.stringify({found:true,product:{product_name:'Tea'}}),{headers:{'Content-Type':'application/json'}});
+ assert.equal((await L.execute(source,{kind:'gtin',value:'3017620422003',symbology:'ean13'})).title,'Tea');
+ c.fetch=async()=>new Response('{}',{status:429,headers:{'Retry-After':'120'}});
+ await assert.rejects(()=>L.execute(source,{kind:'gtin',value:'3017620422003',symbology:'ean13'}),e=>e.retrySeconds===120);
+ c.fetch=async()=>new Response('x'.repeat(2*1024*1024+1),{headers:{'Content-Type':'application/json'}});
+ await assert.rejects(()=>L.execute(source,{kind:'gtin',value:'3017620422003',symbology:'ean13'}),/2 MiB/);
+ console.log('PASS EAN/UPC validation, UPC-E expansion, restrictions, URL safety, source schema, mappings, responses and rate limits');
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -26,7 +26,7 @@
        engine still loads and QR Code says it is unavailable. */
     var engineReady = null;
     function loadEngine() {
-        if (window.pcBarcode) { return Promise.resolve(window.pcBarcode); }
+        if (window.pcBarcode && window.pcBarcode.demos) { return Promise.resolve(window.pcBarcode); }
         if (!engineReady) {
             var qr = window.qrcodegen ? Promise.resolve() : loadScript(beside('vendor/qrcodegen-1.8.0.js')).catch(function () { });
             engineReady = qr.then(function () { return loadScript(beside('barcode-engine.js')); })
@@ -54,107 +54,7 @@
     var LIBRARY_KEY = 'pc-barcode-layouts';
     var GUIDE_URL = '/page/barcode-tool-guide', GUIDE_KEY = 'barcode-tool-guide';
 
-    /* Demonstration layouts. They are generic and invented: nothing here
-       comes from a customer or a real scheme. */
-    var DEMOS = [
-        {
-            id: 'demo-price-embedded', name: 'Price-embedded item', symbology: 'ean13',
-            description: 'An in-store EAN-13 in the restricted-circulation range, carrying an item number and a price.',
-            explain: 'Item {item} at {price}.',
-            fields: [
-                { id: 'prefix', name: 'Prefix', type: 'fixed', values: ['21'], color: 'blue', description: 'Restricted-circulation prefix chosen for priced items' },
-                { id: 'item', name: 'Item', type: 'number', length: 5, color: 'gray' },
-                { id: 'price', name: 'Price', type: 'decimal', length: 5, decimals: 2, color: 'green' }
-            ],
-            sample: { item: '4213', price: '3.49' }
-        },
-        {
-            id: 'demo-price-check5', name: 'Price with a price check digit', symbology: 'ean13',
-            description: 'A variable-measure EAN-13 whose five-digit price is guarded by the GS1 price check digit that stands before it.',
-            explain: 'Item {item} at {price}.',
-            fields: [
-                { id: 'prefix', name: 'Prefix', type: 'fixed', values: ['20'], color: 'blue', description: 'Restricted-circulation prefix chosen for priced items' },
-                { id: 'item', name: 'Item', type: 'number', length: 4, color: 'gray' },
-                { id: 'pcheck', name: 'Price check', type: 'check', algorithm: 'gs1-price5', over: ['price'], color: 'purple' },
-                { id: 'price', name: 'Price', type: 'decimal', length: 5, decimals: 2, color: 'green' }
-            ],
-            sample: { item: '731', price: '146.85' }
-        },
-        {
-            id: 'demo-price-check4', name: 'UPC-A price with a price check digit', symbology: 'upca',
-            description: 'A variable-measure UPC-A, number system 2, with a five-digit item and a four-digit price behind the GS1 price check digit.',
-            explain: 'Item {item} at {price}.',
-            fields: [
-                { id: 'system', name: 'Number system', type: 'fixed', values: ['2'], color: 'blue' },
-                { id: 'item', name: 'Item', type: 'number', length: 5, color: 'gray' },
-                { id: 'pcheck', name: 'Price check', type: 'check', algorithm: 'gs1-price4', over: ['price'], color: 'purple' },
-                { id: 'price', name: 'Price', type: 'decimal', length: 4, decimals: 2, prefix: '$', color: 'green' }
-            ],
-            sample: { item: '4011', price: '28.75' }
-        },
-        {
-            id: 'demo-weight-embedded', name: 'Weight-embedded item', symbology: 'ean13',
-            description: 'An in-store EAN-13 carrying an item number and a net weight in kilograms.',
-            explain: 'Item {item}, weighing {weight}.',
-            fields: [
-                { id: 'prefix', name: 'Prefix', type: 'fixed', values: ['22'], color: 'blue' },
-                { id: 'item', name: 'Item', type: 'number', length: 5, color: 'gray' },
-                { id: 'weight', name: 'Weight', type: 'decimal', length: 5, decimals: 3, suffix: ' kg', color: 'teal' }
-            ],
-            sample: { item: '1102', weight: '1.250' }
-        },
-        {
-            id: 'demo-logistics', name: 'Logistics label', symbology: 'gs1-128',
-            description: 'A case label with its GTIN, expiry date, net weight and batch, as GS1 Application Identifiers.',
-            explain: 'GTIN {gtin:raw}{check:raw}, expires {expiry}, {weight} net, batch {batch}.',
-            fields: [
-                { id: 'gtin', name: 'GTIN', type: 'number', length: 13, ai: '01', color: 'blue' },
-                { id: 'check', name: 'GTIN check', type: 'check', algorithm: 'gs1-mod10', over: ['gtin'], color: 'purple' },
-                { id: 'expiry', name: 'Expiry', type: 'date', format: 'yymmdd', ai: '17', color: 'orange' },
-                { id: 'weight', name: 'Net weight', type: 'decimal', length: 6, decimals: 3, suffix: ' kg', ai: '3103', color: 'teal' },
-                { id: 'batch', name: 'Batch', type: 'text', maxLength: 20, ai: '10', color: 'gray' }
-            ],
-            sample: { gtin: '0950110153000', expiry: '271231', weight: '12.500', batch: 'LOT42A' }
-        },
-        {
-            id: 'demo-receipt', name: 'Receipt lookup', symbology: 'itf',
-            description: 'A receipt footer code for returns: store, register, date and transaction, all numeric.',
-            explain: 'Store {store}, register {register}, {date}, transaction {txn}.',
-            fields: [
-                { id: 'store', name: 'Store', type: 'number', length: 4, color: 'blue' },
-                { id: 'register', name: 'Register', type: 'number', length: 3, color: 'gray' },
-                { id: 'date', name: 'Date', type: 'date', format: 'yymmdd', color: 'orange' },
-                { id: 'txn', name: 'Transaction', type: 'number', length: 5, color: 'green' }
-            ],
-            sample: { store: '17', register: '3', date: '260929', txn: '1234' }
-        },
-        {
-            id: 'demo-membership', name: 'Membership card', symbology: 'codabar',
-            description: 'A Codabar membership card with a tier code, a member number and a Luhn check digit.',
-            options: { start: 'A', stop: 'B' },
-            explain: '{tier:meaning} member {member}.',
-            fields: [
-                { id: 'tier', name: 'Tier', type: 'enum', values: { '10': 'Standard', '20': 'Silver', '30': 'Gold' }, color: 'blue' },
-                { id: 'member', name: 'Member', type: 'number', length: 10, color: 'gray' },
-                { id: 'check', name: 'Check digit', type: 'check', algorithm: 'luhn', color: 'purple' }
-            ],
-            sample: { tier: '20', member: '4410023' }
-        },
-        {
-            id: 'demo-coupon', name: 'Store coupon', symbology: 'code128',
-            description: 'A numeric coupon carrying a campaign, a discount type and value, an expiry date and a check digit.',
-            explain: 'Campaign {campaign}: {type:meaning}, value {value}, valid until {expiry}.',
-            fields: [
-                { id: 'prefix', name: 'Coupon prefix', type: 'fixed', values: ['99'], color: 'blue' },
-                { id: 'campaign', name: 'Campaign', type: 'number', length: 4, color: 'gray' },
-                { id: 'type', name: 'Discount type', type: 'enum', values: { '1': 'percent off one item', '2': 'amount off the transaction', '3': 'free item', '9': 'recorded only, no discount' }, color: 'orange' },
-                { id: 'value', name: 'Value', type: 'number', length: 4, color: 'green' },
-                { id: 'expiry', name: 'Expiry', type: 'date', format: 'yymmdd', color: 'teal' },
-                { id: 'check', name: 'Check digit', type: 'check', algorithm: 'gs1-mod10', color: 'purple' }
-            ],
-            sample: { campaign: '318', type: '1', value: '15', expiry: '261231' }
-        }
-    ];
+
 
     var SYM_GROUPS = [
         ['Retail', ['ean13', 'ean8', 'upca', 'upce']],
@@ -281,6 +181,8 @@
         var n = ++uid;
         var ownUrl = !!opts.ownsUrl;
         var library = loadLibrary();
+
+        var DEMOS = B.demos;
 
         function allLayouts() { return DEMOS.concat(library); }
         function findLayout(id) {

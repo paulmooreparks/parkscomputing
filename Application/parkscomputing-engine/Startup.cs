@@ -66,6 +66,10 @@ namespace ParksComputing.Engine {
             });
 
             services.AddHttpClient();
+            services.AddHttpClient("barcode-open-food-facts")
+                .ConfigurePrimaryHttpMessageHandler(() => new System.Net.Http.HttpClientHandler {
+                    AllowAutoRedirect = false, UseCookies = false
+                });
             services.AddDistributedMemoryCache();
             services.AddSession(options => {
                 options.IdleTimeout = TimeSpan.FromMinutes(30);

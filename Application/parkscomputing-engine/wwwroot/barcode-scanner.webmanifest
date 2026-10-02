@@ -1,0 +1,15 @@
+{
+    "id": "/page/barcode-scanner",
+    "name": "Barcode Scanner",
+    "short_name": "Scanner",
+    "description": "Scan and interpret retail barcodes with your layouts",
+    "start_url": "/page/barcode-scanner?frame",
+    "scope": "/page/barcode-scanner",
+    "display": "standalone",
+    "background_color": "#121417",
+    "theme_color": "#121417",
+    "icons": [
+        { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
+    ]
+}

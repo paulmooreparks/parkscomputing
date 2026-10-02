@@ -28,14 +28,14 @@ pudlApplets.define('barcodes', {
     src: '/js/barcode-tool.js',
     css: '/css/barcode-tool.css',
     page: '/page/barcodes',
-    ver: '14'
+    ver: '29'
 });
 
 pudlApplets.define('flashcards', {
     src: '/js/flashcards.js',
     css: '/css/flashcards.css',
     page: '/page/flashcards',
-    ver: '6'
+    ver: '7'
 });
 
 /* The terminal loads xterm.js from js/vendor beside itself, and the files
@@ -113,4 +113,12 @@ pudlApplets.define('settings', {
     css: '/css/settings.css',
     page: pcWorkspacePages + 'settings',
     ver: '3'
+});
+
+/* The scanner shares the engine and layout library with the Barcode Tool. */
+pudlApplets.define('barcode-scanner', {
+    src: '/js/barcode-scanner.js',
+    css: '/css/barcode-scanner.css',
+    page: '/page/barcode-scanner',
+    ver: '5'
 });

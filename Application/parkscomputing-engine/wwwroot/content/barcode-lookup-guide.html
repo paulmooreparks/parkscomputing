@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <title>Barcode lookup sources</title>
+    <meta http-equiv="date" content="2026-10-02T00:00:00" />
+    <meta http-equiv="last-modified" content="2026-10-02T00:00:00" />
+    <meta name="description" content="Copy and customize lookup sources for the Barcode Scanner." />
+    <meta name="comments-enabled" content="false" />
+</head>
+<body>
+    <p>The <a href="/page/barcode-scanner">Barcode Scanner</a> keeps decoding local. In Lookup, pressing Look up sends the displayed identifier to the selected source. Open Food Facts requests pass through Parks Computing so the server can identify the app and enforce the provider's request limit. Custom HTTPS sources receive requests directly from your browser and must permit cross-origin access.</p>
+    <h2>Customize a source</h2>
+    <ol>
+        <li>Choose Actions, then Lookup sources.</li>
+        <li>Select a default and press Copy as new source.</li>
+        <li>Edit its JSON definition and press Save source. Keep the generated ID.</li>
+        <li>Return to Lookup and select the copy.</li>
+    </ol>
+    <p>Sources stay in this browser. Export downloads an importable JSON file. An exported default receives a user ID so it can be customized. Import validates the complete file and rejects duplicate IDs without changing existing sources. Editing or deleting a copy never changes a bundled default. To replace an existing source, use Edit.</p>
+    <h2>Identifier eligibility</h2>
+    <p>Product sources receive complete, checksum-validated EAN-13, EAN-8, UPC-A or UPC-E identifiers. UPC-E expands to UPC-A before lookup, while the raw capture stays unchanged. Restricted-circulation codes require retailer layouts in Decode. For typed digits, choose the input format in Type or paste. The scanner does not infer a product identifier from arbitrary QR text.</p>
+    <p>Open Food Facts covers food products. A missing record does not make the barcode invalid. Its default excludes book, periodical and coupon ranges. URL preview accepts complete HTTP(S) addresses without embedded credentials, displays the destination, and opens it only when you press Open URL.</p>
+    <h2>Version 1 source definitions</h2>
+    <p>Every definition has an ID beginning with <code>user:</code>, a name, a description, accepted identifier kinds and an execution kind. This release supports <code>gtin</code> and <code>uri</code>. Optional symbology restrictions use <code>ean13</code>, <code>ean8</code>, <code>upca</code>, <code>upce</code> or the other canonical scanner keys shown in the design documentation. An omitted restriction accepts any format carrying an established identifier.</p>
+    <p>A request source uses <code>json-get</code> with a fixed HTTPS origin, or the fixed <code>open-food-facts</code> connector. URL preview uses <code>execution: local</code> and <code>handler: http-url-v1</code>. Other local handlers, POST, credentials, custom headers and scripts are not supported in this release. Unsupported properties are rejected.</p>
+    <p>The path may contain <code>{identifier.value}</code>. Query bindings support <code>identifier.value</code>, <code>identifier.kind</code>, <code>symbology.endpoint</code>, or an object containing a <code>literal</code> string. A required symbology mapping must exist before the request can run. One endpoint can accept multiple symbologies with different mappings, or omit the map if it needs no symbology parameter.</p>
+    <pre><code>{
+  "format": "pc-barcode-lookup-sources",
+  "version": 1,
+  "sources": [{
+    "id": "user:catalogue",
+    "name": "My catalogue",
+    "description": "Look up a product in my catalogue",
+    "execution": "request",
+    "accepts": [{ "kind": "gtin", "symbologies": ["ean13", "upca"] }],
+    "symbologyMap": { "ean13": "EAN_13", "upca": "UPC_A" },
+    "request": {
+      "transport": "json-get",
+      "origin": "https://catalogue.example",
+      "path": "/products/{identifier.value}",
+      "query": { "format": "symbology.endpoint" }
+    },
+    "response": {
+      "adapter": "json-fields-v1",
+      "found": { "pointer": "/found", "equals": true },
+      "notFound": { "pointer": "/found", "equals": false },
+      "title": "/product/name",
+      "fields": [{ "label": "Brand", "pointer": "/product/brand" }]
+    },
+    "attribution": {
+      "name": "My catalogue",
+      "url": "https://catalogue.example",
+      "text": "Data from my catalogue."
+    }
+  }]
+}</code></pre>
+    <p>The example domain is illustrative. Replace it with a documented endpoint that returns JSON such as <code>{"found":true,"product":{"name":"Tea","brand":"Example"}}</code>. For a missing item, return <code>{"found":false}</code>. A generic HTTP 404 reports an endpoint error; the provider-specific Open Food Facts connector handles that provider's documented missing-product response separately.</p>
+    <p>The response adapter reads JSON Pointers. Exactly one found/not-found predicate must match with the same JSON type. Found products need a nonempty title. Optional missing fields are omitted; displayed fields must be strings, numbers or booleans. Responses are limited to 2 MiB and requests time out after 15 seconds. Redirects are rejected, so configure the final endpoint. Requests omit cookies and referrers.</p>
+    <h2>Food data attribution</h2>
+    <p>Food data comes from <a href="https://world.openfoodfacts.org">Open Food Facts contributors</a>. The database is available under the <a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database License</a>, and individual contents under the <a href="https://opendatacommons.org/licenses/dbcl/1-0/">Database Contents License</a>. Product information may be incomplete or inaccurate. The scanner does not download product images.</p>
+</body>
+</html>
