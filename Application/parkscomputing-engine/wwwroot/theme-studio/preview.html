@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- The theme studio's preview (js/theme-studio.js): PUDL's own components,
+     in a document of their own, so a palette set on this document's root
+     reaches every token PUDL derives from it. The studio sets data-theme on
+     the root and writes the palette into the style element below. The
+     components are PUDL's markup as its reference page shows it. -->
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Theme preview</title>
+    <link rel="stylesheet" href="/pudl/pudl.css" />
+    <style id="theme"></style>
+    <!-- Raise this v, and the studio's ver in js/applets.js, when
+         preview.css changes. -->
+    <link rel="stylesheet" href="/theme-studio/preview.css?v=1" />
+</head>
+
+<body>
+    <header class="topbar">
+        <span class="brand">Your product</span>
+        <div class="topbar-chrome">
+            <a class="topbar-pill" href="#preview">Docs</a>
+            <a class="topbar-pill" href="#preview">Sign in</a>
+        </div>
+    </header>
+    <nav class="app-section-bar" aria-label="Sections">
+        <a class="section-tab" href="#preview" aria-current="page">Overview</a>
+        <a class="section-tab" href="#preview">Reports</a>
+        <a class="section-tab" href="#preview">Settings</a>
+    </nav>
+
+    <main class="tp" id="preview">
+        <h1>Quarterly expenses</h1>
+        <p>Body text sits on the page, with <a href="#preview">a link</a> in the accent and
+            <span class="tp-muted">muted words</span> for what matters less.
+        </p>
+
+        <div class="tp-row">
+            <button class="btn btn-primary" type="button">Submit</button>
+            <button class="btn" type="button">Save a draft</button>
+            <button class="btn btn-danger" type="button">Delete</button>
+            <div class="menu">
+                <button class="btn menu-btn" type="button" popovertarget="tp-menu">More</button>
+                <div class="menu-panel" id="tp-menu" popover>
+                    <button class="menu-action" type="button">Duplicate</button>
+                    <button class="menu-action" type="button">Export</button>
+                    <div class="menu-sep"></div>
+                    <button class="menu-action danger" type="button">Archive</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tp-row">
+            <div class="seg"><button type="button" aria-pressed="true">Read</button><button type="button"
+                    aria-pressed="false">Edit</button></div>
+            <button class="switch" type="button" role="switch" aria-checked="true">
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span>Notify me</span>
+            </button>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Makati Garden Hotel</h2>
+            <p class="card-desc">Three nights, billed to the October trip.</p>
+            <div class="tp-row">
+                <span class="badge positive">approved</span>
+                <span class="badge warn">receipt missing</span>
+                <span class="badge danger">over limit</span>
+                <span class="chip">manila-oct</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="tp-amount">Amount</label>
+            <input class="form-input" id="tp-amount" value="150.00" />
+            <p class="form-help">In the currency of the receipt.</p>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="tp-account">Account</label>
+            <select class="form-select" id="tp-account">
+                <option>Billable</option>
+                <option>Internal</option>
+            </select>
+        </div>
+        <label class="check"><input type="checkbox" checked /> Include in the report</label>
+
+        <p class="tp-status"><span class="glyph tp-positive" aria-hidden="true"></span> Saved a minute ago.</p>
+        <p class="tp-status"><span class="glyph tp-warn" aria-hidden="true"></span> Two receipts are still to come.</p>
+        <p class="tp-status"><span class="glyph tp-danger" aria-hidden="true"></span> The amount is over the trip's
+            limit.</p>
+
+        <pre><code><span class="hljs-keyword">const</span> total = <span class="hljs-number">150</span>; <span class="hljs-comment">// in pesos</span></code></pre>
+    </main>
+
+    <script src="/pudl/pudl-menu.js" defer></script>
+</body>
+
+</html>

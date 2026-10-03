@@ -1,0 +1,214 @@
+/* PUDL theme studio (js/theme-studio.js): the tokens to edit at the start,
+   and beside them the two previews, the contrast of each palette, and the
+   theme's CSS. Where the studio has less than 900px, on a narrow screen or
+   in a narrow window, the columns stack; it measures its own width, not
+   the screen's, since a window can be any size. */
+.pc-theme-studio {
+  container-type: inline-size;
+}
+
+.ts-layout {
+  display: grid;
+  grid-template-columns: minmax(19rem, 22rem) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@container (max-width: 900px) {
+  .ts-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* On its page the studio would sit in the article's reading column, too
+   narrow for two previews beside the controls, so it takes the page's
+   full width less the page's own 20px margins, as the Barcode Tool does
+   while it edits a layout. In a window the column gives way to it. */
+.content-body .pc-theme-studio {
+  margin-left: calc(50% - 50vw + 20px);
+  margin-right: calc(50% - 50vw + 20px);
+  max-width: none;
+}
+
+.win-body .post-content:has(.pc-theme-studio) {
+  max-width: none;
+}
+
+.ts-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ts-edit {
+  align-self: start;
+}
+
+.ts-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.ts-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 6.5rem;
+  grid-template-areas: "label pick hex" "name name name";
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+.ts-row .form-label {
+  grid-area: label;
+  margin: 0;
+}
+
+.ts-row input[type="color"] {
+  grid-area: pick;
+  width: 2.5rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.ts-row .ts-hex {
+  grid-area: hex;
+  font-family: var(--mono);
+  font-size: var(--text-sm);
+}
+
+.ts-row input[type="range"] {
+  grid-area: pick;
+  width: 8rem;
+}
+
+.ts-pct {
+  grid-area: hex;
+  font-variant-numeric: tabular-nums;
+}
+
+.ts-row code.ts-name {
+  grid-area: name;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: var(--text-xs) var(--mono);
+  color: var(--text-muted);
+}
+
+.ts-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.ts-previews,
+.ts-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
+  gap: var(--space-3);
+}
+
+.ts-preview {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ts-preview figcaption {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.ts-preview iframe {
+  width: 100%;
+  height: 36rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+/* Named closely enough to win over the site's article tables
+   (pudl-site.css, .post-body table) on the studio's own page. */
+.pc-theme-studio table.ts-contrast {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.ts-contrast caption {
+  text-align: start;
+  font-weight: 600;
+  padding-bottom: var(--space-1);
+}
+
+.pc-theme-studio table.ts-contrast th,
+.pc-theme-studio table.ts-contrast td {
+  text-align: start;
+  padding: 4px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ts-contrast th[scope="row"] {
+  font-weight: 400;
+}
+
+.ts-contrast td:nth-child(2) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status shows as a glyph in its colour beside the word. */
+.ts-verdict {
+  white-space: nowrap;
+}
+
+.ts-verdict .glyph {
+  margin-inline-end: 6px;
+}
+
+.ts-pass .glyph {
+  --glyph: var(--glyph-check);
+  color: var(--positive);
+}
+
+.ts-fail .glyph {
+  --glyph: var(--glyph-warning);
+  color: var(--danger);
+}
+
+.ts-css-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ts-css-head h3 {
+  margin: 0 auto 0 0;
+  font-size: var(--text-md);
+}
+
+.ts-css-text {
+  margin: var(--space-2) 0 0;
+  max-height: 22rem;
+  overflow: auto;
+  font-size: var(--text-xs);
+}
+
+.ts-status {
+  margin: 0;
+  min-height: 1.4em;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.ts-about {
+  max-width: 34rem;
+}

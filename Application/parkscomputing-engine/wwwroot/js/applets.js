@@ -1,3 +1,35 @@
+
+/* Identity actions use PUDL's documented capability snapshots. */
+window.pcAppletIdentity = function (root, entries) {
+    var result = (entries || []).slice(), win = root.closest('[data-win]');
+    if (win && window.pudlWindows) {
+        var commands = window.pudlWindows.menuCommands(win.getAttribute('data-win'));
+        ['page', 'copy-link', 'close'].forEach(function (id) {
+            var command = commands.find(function (c) { return c.id === id; });
+            if (!command) { return; }
+            if (result.length && (id === 'page' || id === 'close')) { result.push('-'); }
+            result.push(Object.assign({}, command, {
+                label: id === 'page' ? 'Open as a page' : id === 'copy-link' ? 'Copy link to this applet' : 'Close window'
+            }));
+        });
+    } else if (navigator.clipboard) {
+        if (result.length) { result.push('-'); }
+        result.push({ label: 'Copy link to this applet', run: function () {
+            return navigator.clipboard.writeText(location.href).catch(function () {
+                window.alert('The link could not be copied. Copy the address from your browser.');
+            });
+        } });
+    }
+    return result;
+};
+
+/* Surface controls and menus share the same availability and action. */
+window.pcAppletAction = function (root, selector, label) {
+    var button = root.querySelector(selector);
+    return { label: label, disabled: !button || button.disabled, run: function () {
+        if (root.isConnected && button && !button.disabled) { button.click(); }
+    } };
+};
 /* The site's applet registry (PUDL 0.20.0): each applet's files are named
    once here, and a mount anywhere on the site needs only
    data-applet="name". Bump ver on EVERY change to an applet's script or
@@ -8,7 +40,7 @@ pudlApplets.define('sudoku', {
     src: '/js/sudoku.js',
     css: '/css/sudoku.css',
     page: '/page/sudoku',
-    ver: '15'
+    ver: '16'
 });
 
 /* Conway's page is its article, so the links shared since 2015 keep
@@ -18,7 +50,7 @@ pudlApplets.define('conway', {
     src: '/js/conway.js',
     css: '/css/conway.css',
     page: '/page/conways-game-of-life',
-    ver: '6'
+    ver: '7'
 });
 
 /* The barcode tool and the flash cards each load barcode-engine.js beside
@@ -28,14 +60,14 @@ pudlApplets.define('barcodes', {
     src: '/js/barcode-tool.js',
     css: '/css/barcode-tool.css',
     page: '/page/barcodes',
-    ver: '29'
+    ver: '30'
 });
 
 pudlApplets.define('flashcards', {
     src: '/js/flashcards.js',
     css: '/css/flashcards.css',
     page: '/page/flashcards',
-    ver: '7'
+    ver: '8'
 });
 
 /* The terminal loads xterm.js from js/vendor beside itself, and the files
@@ -81,7 +113,7 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: pcWorkspacePages + 'terminal',
-    ver: '27',
+    ver: '29',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
     instances: 4
 });
@@ -91,7 +123,7 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: pcWorkspacePages + 'files',
-    ver: '15',
+    ver: '20',
     handles: { browse: { param: 'path' } }
 });
 
@@ -100,7 +132,7 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
-    ver: '15',
+    ver: '17',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } }
 });
 
@@ -112,7 +144,7 @@ pudlApplets.define('settings', {
     src: '/js/settings.js',
     css: '/css/settings.css',
     page: pcWorkspacePages + 'settings',
-    ver: '3'
+    ver: '5'
 });
 
 /* The scanner shares the engine and layout library with the Barcode Tool. */
@@ -120,5 +152,26 @@ pudlApplets.define('barcode-scanner', {
     src: '/js/barcode-scanner.js',
     css: '/css/barcode-scanner.css',
     page: '/page/barcode-scanner',
-    ver: '5'
+    ver: '8'
+});
+
+pudlApplets.define('dice', {
+   src: '/js/dice.js',
+   css: '/css/dice.css',
+   page: '/page/dice',
+   ver: '3'
+});
+
+pudlApplets.define('theme-studio', {
+   src: '/js/theme-studio.js',
+   css: '/css/theme-studio.css',
+   page: '/page/theme-studio',
+   ver: '6'
+});
+
+pudlApplets.define('diff', {
+   src: '/js/diff.js',
+   css: '/css/diff.css',
+   page: '/page/diff',
+   ver: '4'
 });

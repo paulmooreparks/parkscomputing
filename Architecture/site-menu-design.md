@@ -1,5 +1,7 @@
 # The site menu in sitenav.xfer
 
+The current menu placement and PUDL 0.40.0 integration are recorded in [the adoption record](menu-bar-adoption-0.40.md). That record supersedes conflicting placement decisions below; the earlier design discussion is retained as history.
+
 Paul asked on 2026-10-01 for the whole logo menu of the site's menu bar to be configured in `sitenav.xfer`, with entries that carry out commands, with parameters, as well as entries that are links. Until then only the logo's own title came from the file, and View, Window, Go and Help were written into `Pages/Shared/_MenuBar.cshtml`. PUDL's menu bar itself is set out in `menu-bar-design.md`; this document is about where its host menu comes from.
 
 ## The menu array

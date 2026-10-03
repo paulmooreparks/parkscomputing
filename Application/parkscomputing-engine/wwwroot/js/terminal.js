@@ -1719,6 +1719,14 @@
             state: stateString,
             setState: takeState,
             commands: commands,
+            menus: function () {
+                var items = commands(), settingsCommand = items.shift();
+                settingsCommand.label = 'Settings for all terminals…';
+                return { titles: [
+                    { label: 'Terminal', items: window.pcAppletIdentity(root, [settingsCommand]) },
+                    { label: 'Session', items: items }
+                ] };
+            },
             destroy: function () {
                 destroyed = true;
                 if (raw && raw.close) { raw.close(); }

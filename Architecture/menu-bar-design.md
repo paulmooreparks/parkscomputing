@@ -1,5 +1,7 @@
 # The menu bar
 
+The current menu placement and PUDL 0.40.0 integration are recorded in [the adoption record](menu-bar-adoption-0.40.md). That record supersedes conflicting placement decisions below; the earlier design discussion is retained as history.
+
 Paul and I worked this out on 2026-10-01, in a lab on the live site with two small applets, Notes and Dice. The same day it became the site's menu bar on every page (see "On the site" below), and it goes to PUDL as `pudl-proposal-menu-bar.md`.
 
 ## Why

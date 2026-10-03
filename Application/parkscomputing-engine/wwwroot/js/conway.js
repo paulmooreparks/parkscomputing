@@ -574,6 +574,13 @@
         el.live.textContent = liveTracker.length;
 
         return {
+            menus: function () {
+                function action(name, label) { return window.pcAppletAction(root, '[data-action=\"' + name + '\"]', label); }
+                return { titles: [
+                    { label: "Conway's Game of Life", items: window.pcAppletIdentity(root) },
+                    { label: 'Simulation', items: [action('start', 'Start'), action('stop', 'Stop'), action('step', 'Step'), action('reset', 'Reset board')] }
+                ], into: { help: [action('help', "Conway's Game of Life help")] } };
+            },
             state: stateString,
             setState: function (s) { clearTimeout(intervalID); setControlsRunning(false); applyAndDraw(s); },
             destroy: function () {

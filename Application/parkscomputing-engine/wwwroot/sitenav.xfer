@@ -4,6 +4,65 @@
     title "Home"
     url "/home"
     description "Parks Computing Site Home"
+    menu [
+        {
+            menu-id "site"
+            title "Parks Computing"
+            icon "/favicon-32x32.png"
+            nav [
+                { title "Home" url "/" }
+                { slug "about" title "About Parks Computing" }
+                { slug "settings"
+                    size "content" title "Site settings" url "/page/settings" }
+            ]
+        }
+        {
+            menu-id "go"
+            title "Go"
+            nav [
+                { title "Find in the list" command "find" when "window" }
+                { slug "resume-of-paul-m-parks" title "Resume of Paul M. Parks" }
+                { separator ~true when "classic" }
+                { title "All" url "/home" when "classic" }
+                { from "sections" when "classic" }
+            ]
+        }
+        {
+            menu-id "applets"
+            title "Applets"
+            nav [ { from "applets" } ]
+        }
+        {
+            menu-id "view"
+            title "View"
+            nav [
+                { title "Windowed view" command "view" args { value "window" } }
+                { title "Classic view" command "view" args { value "classic" } }
+                { title "Show sidebar" command "sidebar" when "window" }
+                { separator ~true }
+                { title "Theme" nav [
+                    { title "Light" command "theme" args { value "light" } }
+                    { title "Dark" command "theme" args { value "dark" } }
+                    { title "Follow the system" command "theme" args { value "system" } }
+                ] }
+            ]
+        }
+        {
+            menu-id "window"
+            title "Window"
+            when "window"
+            window-commands ~true
+            nav [ ]
+        }
+        {
+            menu-id "help"
+            title "Help"
+            nav [
+                { title "Site help and keyboard navigation" url "/page/site-help" }
+                { slug "terminal-guide" title "Terminal Guide" url "/page/terminal-guide" }
+            ]
+        }
+    ]
     nav [
         {
             slug "applications"
@@ -16,15 +75,95 @@
             ]
         }
         {
-            slug "webapps"
-            title "Web Apps"
-            description "Here are some web-based applications I've written."
+            slug "applets"
+            title "Applets"
+            description "Here are some web-based applications written in PUDL."
             nav [
-                { slug "flashcards" title "Barcode Flash Cards" description "The drill alone; the article about it is under Articles" }
-                { slug "sudoku" win "0.17,0.58" }
-                { slug "conway" title "Conway's Game of Life" description "The game alone; the article about it is under Articles" }
-                { slug "barcode-scanner" win "0.55,0.85" title "Barcode Scanner" description "Scan camera images and decode retail layouts" }
-                { slug "barcodes" win "0.5,0.85" title "Barcode Tool" description "Make retail barcodes with embedded data, and read them back" }
+                {
+                    slug "settings"
+                    size "content"
+                    title "Settings"
+                    description "Theme, default view, window preferences, and this browser's data"
+                    tags [ "web apps" "site development" ]
+                }
+                {
+                    slug "theme-studio"
+                    win "0.9,0.9"
+                    title "PUDL Theme Studio"
+                    description "Make a PUDL theme: edit its colours, watch PUDL's components take them, check their contrast, and take the CSS"
+                    tags [ "web apps" "site development" ]
+                }
+                {
+                    slug "barcode-scanner"
+                    size "content"
+                    title "Barcode Scanner"
+                    description "Scan camera images and decode retail layouts"
+                    tags [ "web apps" "barcodes" "retail" ]
+                }
+                {
+                    slug "barcodes"
+                    size "content"
+                    title "Barcode Tool"
+                    description "Make retail barcodes with embedded data, and read them back"
+                    tags [ "web apps" "barcodes" ]
+                }
+                {
+                    slug "terminal"
+                    win "0.5,0.7"
+                    min "420,220"
+                    title "Terminal"
+                    description "This site in terminal mode: browse with ls and cd, read with cat, launch the applets"
+                    tags [ "web apps" "site development" ]
+                }
+                {
+                    slug "files"
+                    win "0.6,0.75"
+                    title "Files"
+                    description "The site and your own files as folders: browse the pages, launch the applets, keep files of your own"
+                    tags [ "web apps" "site development" ]
+                }
+                {
+                    slug "editor"
+                    win "0.6,0.8"
+                    title "Editor"
+                    description "A text editor for your own files, with syntax colouring, search and replace, and tabs"
+                    tags [ "web apps" "site development" ]
+                }
+                {
+                    slug "diff"
+                    win "0.85,0.85"
+                    title "Diff Viewer"
+                    description "Compare two texts line by line, side by side or in one column, from the site's files, your computer, or pasted in"
+                    tags [ "web apps" "site development" ]
+                }
+                {
+                    slug "dice"
+                    size "content"
+                    title "Dice"
+                    description "Roll up to three dice"
+                    tags [ "web apps" "games" ]
+                }
+                {
+                    slug "sudoku"
+                    win "0.28,0.88"
+                    title "Sudoku"
+                    description "A Sudoku game that lets you edit and share games"
+                    tags [ "web apps" "games" ]
+                }
+                {
+                    slug "conway"
+                    win "0.22,0.6"
+                    title "Conway's Game of Life"
+                    description "The game alone; the article about it is under Articles"
+                    tags [ "web apps" "games" "algorithms" ]
+                }
+                {
+                    slug "flashcards"
+                    win "0.54,0.66"
+                    title "Barcode Flash Cards"
+                    description "The drill alone; the article about it is under Articles"
+                    tags [ "web apps" "barcodes" "learning" ]
+                }
             ]
         }
         {

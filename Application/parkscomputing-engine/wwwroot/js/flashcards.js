@@ -290,6 +290,13 @@
         if (opts.ownsUrl || root.closest('.win.active')) { root.focus({ preventScroll: true }); }
 
         return {
+            menus: function () {
+                function action(name, label) { return window.pcAppletAction(root, '[data-action=\"' + name + '\"]', label); }
+                return { titles: [
+                    { label: 'Barcode Flash Cards', items: window.pcAppletIdentity(root) },
+                    { label: 'Deck', items: [action('reveal', 'Reveal answer'), action('shuffle', 'Shuffle')] }
+                ], into: { go: [action('prev', 'Previous card'), action('next', 'Next card')] } };
+            },
             destroy: function () {
                 destroyed = true;
                 root.removeEventListener('keydown', onKeyDown);

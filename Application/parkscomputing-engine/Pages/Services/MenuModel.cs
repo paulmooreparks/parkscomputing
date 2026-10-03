@@ -16,7 +16,7 @@ public sealed record MenuEntry(MenuEntryKind Kind, string? Label = null, SiteCom
 
 /// <summary>A title of the logo menu, resolved. WindowsOnly asks PUDL to
 /// show it only on a page of windows.</summary>
-public sealed record MenuTitle(string Label, string? Icon, bool WindowsOnly, IReadOnlyList<MenuEntry> Entries);
+public sealed record MenuTitle(string Label, string? Icon, bool WindowsOnly, IReadOnlyList<MenuEntry> Entries, string? Id = null, bool WindowCommands = false);
 
 /// <summary>
 /// The menu bar's host menu, for both sites (Architecture/site-menu-design.md).
@@ -47,7 +47,7 @@ public static class MenuBuilder {
         }
 
         return (titles ?? Array.Empty<NavNode>()).Where(Shows)
-            .Select(t => new MenuTitle(t.Title ?? t.Slug ?? "", t.Icon, t.When == "window", Entries(t.Nav)))
+            .Select(t => new MenuTitle(t.Title ?? t.Slug ?? "", t.Icon, t.When == "window", Entries(t.Nav), t.MenuId, t.WindowCommands))
             .ToList();
     }
 
@@ -60,7 +60,11 @@ public static class MenuBuilder {
         var html = new StringBuilder("<ul data-menubar-source hidden>");
         for (int i = 0; i < titles.Count; i++) {
             var t = titles[i];
-            html.Append(t.WindowsOnly ? "<li data-menubar-if=\"windows\">" : "<li>");
+            html.Append("<li");
+            if (t.WindowsOnly) { html.Append(" data-menubar-if=\"windows\""); }
+            if (t.Id != null) { html.Append(" data-menubar-id=\"").Append(WebUtility.HtmlEncode(t.Id)).Append('"'); }
+            if (t.WindowCommands) { html.Append(" data-menubar-windows"); }
+            html.Append('>');
             if (i == 0 && !string.IsNullOrEmpty(t.Icon)) { html.Append("<img src=\"").Append(WebUtility.HtmlEncode(t.Icon)).Append("\" alt=\"\" /> "); }
             html.Append(WebUtility.HtmlEncode(t.Label)).Append("<ul>");
             Write(html, t.Entries);

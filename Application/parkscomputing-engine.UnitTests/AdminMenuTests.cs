@@ -33,22 +33,24 @@ namespace ParksComputing.Engine.UnitTests {
         private static string Html(System.Collections.Generic.IReadOnlyList<MenuTitle> m) => MenuBuilder.ToHtml(m);
 
         [TestMethod]
-        public void TheDefaultHasTheLogoViewAndWindowOnTheDesktop() {
+        public void TheDefaultRetainsStandardTitlesAndEmptyContributionSlots() {
             var m = Menu().For("paul", desktop: true);
-            CollectionAssert.AreEqual(new[] { "Parks Computing Admin", "View", "Window" }, m.Select(t => t.Label).ToArray());
-            Assert.IsTrue(m[2].WindowsOnly);
+            CollectionAssert.AreEqual(new[] { "Parks Computing Admin", "Go", "Applets", "View", "Window", "Help" }, m.Select(t => t.Label).ToArray());
+            Assert.IsTrue(m[4].WindowsOnly);
+            Assert.IsTrue(m[4].WindowCommands);
+            Assert.AreEqual("help", m[5].Id);
             var html = Html(m);
             StringAssert.Contains(html, "<a href=\"/admin/files\" data-win-open=\"files\">Files</a>");
             StringAssert.Contains(html, "<a href=\"/admin/terminal\" data-win-request=\"shell\">New terminal</a>");
             StringAssert.Contains(html, "<button type=\"submit\" form=\"admin-signout\">Sign out</button>");
             StringAssert.Contains(html, "data-command=\"theme\"");
-            StringAssert.Contains(html, "data-win-back");
+            StringAssert.Contains(html, "data-menubar-windows");
         }
 
         [TestMethod]
         public void OffTheDesktopTheLogoGoesBackToItAndThereIsNoWindowTitle() {
             var m = Menu().For("paul", desktop: false);
-            CollectionAssert.AreEqual(new[] { "Parks Computing Admin", "View" }, m.Select(t => t.Label).ToArray());
+            CollectionAssert.AreEqual(new[] { "Parks Computing Admin", "Go", "Applets", "View", "Help" }, m.Select(t => t.Label).ToArray());
             Assert.AreEqual("Desktop", m[0].Entries[0].Label);
             StringAssert.Contains(Html(m), "<a href=\"/admin/files\">Files</a>");
         }
@@ -58,7 +60,7 @@ namespace ParksComputing.Engine.UnitTests {
             File.WriteAllText(Path.Combine(_dir, "home", "paul", ".config", "admin-menu.xfer"),
                 "{ menu [ { title \"Tools\" nav [ { slug \"files\" } ] } { slug \"site\" } { title \"Docs\" url \"https://example.org\" } ] }");
             var m = Menu().For("paul", desktop: true);
-            CollectionAssert.AreEqual(new[] { "Parks Computing Admin", "View", "Window" }, m.Select(t => t.Label).ToArray());
+            CollectionAssert.AreEqual(new[] { "Parks Computing Admin", "Go", "Applets", "View", "Window", "Help" }, m.Select(t => t.Label).ToArray());
             Assert.AreEqual(MenuEntryKind.Heading, m[0].Entries[0].Kind);
             Assert.AreEqual("Tools", m[0].Entries[0].Label);
             Assert.AreEqual("View the site", m[0].Entries[1].Label);

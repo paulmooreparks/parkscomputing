@@ -111,10 +111,22 @@
                     '</div>' +
                   '</form>' +
                 '</dialog>' +
+                '<dialog class="dialog" data-role="help-dialog" aria-labelledby="fm-help-title-' + n + '">' +
+                  '<h3 class="dialog-title" id="fm-help-title-' + n + '">Files quick help</h3>' +
+                  '<div class="dialog-body">' +
+                    '<p>Browse the site in <code>/site</code>, or choose the home button to manage your own files in <code>~</code>. Select an entry to see its details; double-click or press Enter to open it.</p>' +
+                    '<p>The Files menu and the Actions button offer commands for the current selection and folder. In your home directory you can create files and folders, upload text files, rename, move, and delete. Download saves a copy to your computer.</p>' +
+                    '<p>Use View &gt; Files &gt; Show hidden files to reveal names starting with a dot. With the list focused, Backspace goes up a folder, F2 renames a selected personal file, and Delete asks before deleting it.</p>' +
+                    '<p>On the public parkscomputing.com site, your personal file contents are never sent to the parkscomputing.com servers. Files keeps your data in this browser&apos;s local storage. Upload imports a text file into that local storage. Other browsers and devices do not share it; clearing site data removes it. Download important files for safekeeping.</p>' +
+                    (mounted ? '<p>You are using the admin site. Its mounted home and server folders are server-backed; changes there are sent to the server.</p>' : '') +
+                    '<p><a href="/page/files-guide" data-action="help-guide">Read the complete Files guide</a> for commands, storage limits, and troubleshooting.</p>' +
+                  '</div>' +
+                  '<div class="dialog-actions"><button type="button" class="btn btn-primary" data-action="help-close">Close</button></div>' +
+                '</dialog>' +
                 '<input type="file" multiple hidden data-role="file-input"' + (mounted ? '' : ' accept=".txt,.md,.json,.cells,.sudoku,.csv,.xfer,.sh,text/*"') + ' />';
             var q = function (sel) { return root.querySelector(sel); };
             el = {
-                detail: q('[data-role="detail"]'), status: q('[data-role="status"]'), homeTools: q('[data-role="home-tools"]'),
+                helpDialog: q('[data-role="help-dialog"]'), detail: q('[data-role="detail"]'), status: q('[data-role="status"]'), homeTools: q('[data-role="home-tools"]'),
                 menu: q('[data-role="menu"]'), fileInput: q('[data-role="file-input"]'), main: q('[data-fb="main"]'),
                 dialog: q('[data-role="dialog"]'), dlgForm: q('[data-role="dialog-form"]'), dlgTitle: q('[data-role="dialog-title"]'),
                 dlgText: q('[data-role="dialog-text"]'), dlgInput: q('[data-role="dialog-input"]'), dlgError: q('[data-role="dialog-error"]'),
@@ -193,7 +205,8 @@
 
         /* The actions menu offers only what applies: changing ~ is not on
            offer outside it. */
-        function renderMenu() {
+        function actionItems() {
+            if (!b || !F) { return []; }
             var items = [], c = b.selected(), home = inHome(cwd()), shell = canOpen('shell');
             if (c) {
                 var kind = F.kindOf(c), r = F.realOf(c), editable = canOpen('open', kind);
@@ -221,12 +234,17 @@
             }
             items.push(['sep']);
             items.push(['hidden', showHidden ? 'Hide hidden files' : 'Show hidden files']);
-            var html = '';
+            return items;
+        }
+
+        function renderMenu() {
+            var items = actionItems(), html = '';
             items.forEach(function (it, i) {
                 if (it[0] === 'sep') { if (html && i < items.length - 1 && items[i + 1][0] !== 'sep') { html += '<div class="menu-sep" role="separator"></div>'; } return; }
                 html += '<button type="button" class="menu-action" data-action="' + it[0] + '">' + esc(it[1]) + '</button>';
             });
             el.menu.innerHTML = html;
+            if (window.pudlMenubar) { window.pudlMenubar.refresh(); }
         }
 
         /* === Opening things ============================================== */
@@ -316,6 +334,8 @@
         /* === Actions ====================================================== */
 
         async function act(action) {
+            if (action === 'help') { el.helpDialog.showModal(); return; }
+            if (action === 'help-close') { el.helpDialog.close(); return; }
             var c = b.selected(), dir = cwd();
             switch (action) {
                 case 'up': b.up(); return;
@@ -423,6 +443,11 @@
         function onClick(e) {
             var a = e.target.closest('[data-action]');
             if (!a || !root.contains(a)) { return; }
+            if (a.getAttribute('data-action') === 'help-guide') {
+                el.helpDialog.close();
+                if (inWindows()) { e.preventDefault(); window.pudlWindows.open('files-guide'); }
+                return;
+            }
             if (el.menu.contains(a) && el.menu.matches(':popover-open')) { el.menu.hidePopover(); }
             act(a.getAttribute('data-action'));
         }
@@ -447,6 +472,37 @@
             if (canOpen('shell')) { list.push({ label: 'Open a terminal here', run: function () { act('terminal'); } }); }
             return list;
         }
+        /* Both menu surfaces use the same availability rules and actions. */
+        function menuCommand(action, label) {
+            return { label: label, run: function () { if (b) { return act(action); } } };
+        }
+
+        function menus() {
+            var files = [menuCommand('up', 'Up one folder'), menuCommand('home', 'Your home directory')];
+            files[0].disabled = !b || !cwd().parent;
+            files[1].disabled = !b;
+            var file = [], view = [];
+            actionItems().forEach(function (it) {
+                if (it[0] === 'terminal') {
+                    file.push('-', menuCommand(it[0], it[1]));
+                } else if (it[0] === 'hidden') {
+                    var hidden = menuCommand('hidden', 'Show hidden files');
+                    hidden.checked = showHidden;
+                    view.push(hidden);
+                } else if (it[0] === 'sep') {
+                    if (file.length && file[file.length - 1] !== '-') { file.push('-'); }
+                } else {
+                    file.push(menuCommand(it[0], it[1]));
+                }
+            });
+            if (file[file.length - 1] === '-') { file.pop(); }
+            return { titles: [{ label: 'Files', items: window.pcAppletIdentity(root) },
+                { id: 'file', label: 'File', items: file }], into: { go: files, view: view, help: [
+                { label: 'Files quick help', disabled: !b, run: function () { if (el) { el.helpDialog.showModal(); } } },
+                { label: 'Files guide', run: function () { if (inWindows()) { window.pudlWindows.open('files-guide'); } else { location.assign('/page/files-guide'); } } }
+            ] } };
+        }
+
         function setHidden(on) { showHidden = !!on; if (b) { b.showHidden(showHidden); renderMenu(); } }
 
         var boot = Promise.all([loadSiteFs().then(function (api) { F = api; return F.load(); }), loadBrowser()]).then(async function (got) {
@@ -496,11 +552,13 @@
             /* A folder handed over, by a browse request or a preset. */
             setState: function (s) { var p = pathFrom(s); if (b && p) { if (b.goPath(F.upgradePath(p))) { b.focusList(); } } },
             commands: root.closest('.win') ? commands : undefined,
+            menus: menus,
             destroy: function () {
                 destroyed = true;
                 if (unConfig) { unConfig(); }
                 if (b) { b.destroy(); }
                 root.removeEventListener('click', onClick);
+                if (el && el.helpDialog.open) { el.helpDialog.close(); }
                 if (el && el.dialog.open) { el.dialog.close(); }
             },
             ready: boot

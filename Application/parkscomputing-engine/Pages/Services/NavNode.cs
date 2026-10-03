@@ -116,6 +116,13 @@ public class NavNode {
     [XferProperty("menu")]
     public NavNode[]? Menu { get; set; }
 
+    /// <summary>The stable PUDL identity of a menu title.</summary>
+    [XferProperty("menu-id")]
+    public string? MenuId { get; set; }
+
+    [XferProperty("window-commands")]
+    public bool WindowCommands { get; set; }
+
     /// <summary>In the menu: a heading over the entries of this entry's nav.</summary>
     [XferProperty("heading")]
     public string? Heading { get; set; }

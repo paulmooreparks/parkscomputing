@@ -827,6 +827,14 @@ SOFTWARE.
         }
 
         return {
+            menus: function () {
+                function action(name, label) { return window.pcAppletAction(root, '[data-action=\"' + name + '\"]', label); }
+                return { titles: [
+                    { label: 'Sudoku', items: window.pcAppletIdentity(root) },
+                    { id: 'edit', label: 'Edit', items: [action('undo', 'Undo'), action('redo', 'Redo')] },
+                    { label: 'Game', items: [action('new', 'New game…'), action('reset', 'Restart game…'), action('solve', 'Solve puzzle'), action('clear', 'Clear puzzle')] }
+                ], into: { help: [action('help', 'Sudoku help')] } };
+            },
             state: continuityState,
             setState: applyAnyState,
             destroy: function () {

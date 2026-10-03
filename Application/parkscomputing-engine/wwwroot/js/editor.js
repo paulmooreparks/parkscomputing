@@ -782,19 +782,28 @@
                 }
             }
         });
-        /* The Editor's commands, for PUDL's window menu (0.32.0). The
-           toolbar has them too; the menu is where every tool's are. On its
-           own page the toolbar is enough, so it offers them only in a
-           window, and PUDL adds no Commands button above it there. */
-        function commands() {
-            if (!CM || !view) { return []; }
-            return [
-                { label: 'New', run: newTab },
-                { label: 'Open…', run: openDialog },
-                { label: 'Save as…', run: saveAs, disabled: !current() },
-                { label: 'Show the files', run: function () { el.explorerBtn.click(); }, checked: !el.explorer.hidden },
-                { label: 'Wrap lines', run: function () { el.wrap.click(); }, checked: el.wrap.checked }
+        function menus() {
+            var ready = !!(CM && view), tab = current();
+            function action(name, label) { return window.pcAppletAction(root, '[data-action="' + name + '"]', label); }
+            var file = [action('new', 'New document'), action('open', 'Open…'),
+                action('save', 'Save'), action('save-as', 'Save as…'), '-',
+                { label: 'Close document', disabled: !ready || !tab, run: function () { closeTab(active); } }];
+            var viewItems = [
+                { label: 'Show the files', disabled: !ready, checked: !el.explorer.hidden,
+                    run: function () { el.explorerBtn.click(); } },
+                { label: 'Wrap lines', disabled: !ready, checked: el.wrap.checked,
+                    run: function () { el.wrap.click(); } }
             ];
+            var previewButton = q('[data-action="preview"]');
+            if (previewButton && !previewButton.hidden) { viewItems.push(action('preview', 'Preview document')); }
+            return { titles: [
+                { label: 'Editor', items: window.pcAppletIdentity(root) },
+                { id: 'file', label: 'File', items: file },
+                { id: 'edit', label: 'Edit', items: [action('undo', 'Undo'), action('redo', 'Redo'), '-', action('find', 'Find and replace…')] }
+            ], into: { view: viewItems, go: [{ label: 'Go to line…', shortcut: 'Ctrl+Alt+G', disabled: !ready,
+                run: function () { var binding = CM.searchKeymap.find(function (key) { return key.key === 'Mod-Alt-g'; });
+                    if (binding) { binding.run(view); } }
+            }] } };
         }
 
         el.wrap.addEventListener('change', function () {
@@ -834,7 +843,7 @@
         return {
             state: function () { return stateString() || null; },
             setState: takeFile,
-            commands: root.closest('.win') ? commands : undefined,
+            menus: menus,
             destroy: function () {
                 destroyed = true;
                 if (unsubscribe) { unsubscribe(); }

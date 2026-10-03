@@ -1,0 +1,189 @@
+/* Diff viewer (js/diff.js). The two texts sit side by side at the top, in
+   a section the reader can fold away, the choices under them, and the
+   comparison below. A removed line carries a minus and an added line a
+   plus as well as its tint, so the change never rests on colour alone. */
+.pc-diff {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* On its page the viewer takes the page's full width less its 20px
+   margins, since two columns of text need more than the reading column;
+   in a window the column gives way to it. */
+.content-body .pc-diff {
+  margin-left: calc(50% - 50vw + 20px);
+  margin-right: calc(50% - 50vw + 20px);
+  max-width: none;
+}
+
+.win-body .post-content:has(.pc-diff) {
+  max-width: none;
+}
+
+.df-inputs>summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.df-sides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.df-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.df-side-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.df-side-head .form-label {
+  margin: 0;
+}
+
+.df-source {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--text-xs) var(--mono);
+  color: var(--text-muted);
+}
+
+.df-text {
+  min-height: 10rem;
+  height: 14rem;
+  resize: vertical;
+  font: var(--text-sm) / 1.45 var(--mono);
+}
+
+.df-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.df-summary {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.df-status,
+.df-empty-note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.df-out {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+/* The site's article tables (pudl-site.css, .post-body table) have their
+   own size, padding and cell borders; the comparison is a block of code,
+   so these rules name it closely enough to win. */
+.pc-diff table.df-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--text-sm) / 1.45 var(--mono);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.df-c-num {
+  width: 3.5rem;
+}
+
+.df-c-sign {
+  width: 1.4rem;
+}
+
+.pc-diff table.df-table td {
+  padding: 0 6px;
+  border: 0;
+  vertical-align: top;
+}
+
+.df-num {
+  text-align: end;
+  color: var(--text-muted);
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.df-sign {
+  text-align: center;
+  user-select: none;
+  font-weight: 700;
+}
+
+.df-line {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pc-diff table.df-split td:nth-child(4) {
+  border-left: 1px solid var(--border);
+}
+
+.df-del {
+  background: color-mix(in srgb, var(--danger) 13%, transparent);
+}
+
+.df-add {
+  background: color-mix(in srgb, var(--positive) 15%, transparent);
+}
+
+.df-sign.df-del {
+  color: var(--danger);
+}
+
+.df-sign.df-add {
+  color: var(--positive);
+}
+
+.df-empty {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+/* The words that changed within a changed line: a stronger tint of the
+   line's own, and underlined, so they show without colour too. */
+.df-del .df-word {
+  background: color-mix(in srgb, var(--danger) 32%, transparent);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--danger) 70%, transparent);
+}
+
+.df-add .df-word {
+  background: color-mix(in srgb, var(--positive) 34%, transparent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--positive) 70%, transparent);
+}
+
+.pc-diff table.df-table .df-gap td {
+  padding: 2px 8px;
+  font: var(--text-xs) var(--font);
+  color: var(--text-muted);
+  background: var(--recess-bg);
+  text-align: center;
+}
+
+.df-about {
+  max-width: 34rem;
+}

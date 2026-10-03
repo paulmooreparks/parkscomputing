@@ -182,7 +182,16 @@
                 if (destroyed) { return; }
                 var viewport = window.visualViewport, bottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
                 var host = root.closest('.win-body');
-                if (host) { bottom = Math.min(bottom, host.getBoundingClientRect().bottom); }
+                var contentWindow = root.closest('.win[data-win-size="content"]');
+                if (contentWindow) {
+                    // The content sizes this window. Its current bottom cannot also
+                    // constrain the content, or the window can never grow again.
+                    var layer = contentWindow.closest('[data-win-layer]');
+                    if (layer && getComputedStyle(layer).position !== 'static') {
+                        var dockBottom = parseFloat(getComputedStyle(layer).getPropertyValue('--dock-bottom')) || 0;
+                        bottom = Math.min(bottom, layer.getBoundingClientRect().bottom - dockBottom);
+                    }
+                } else if (host) { bottom = Math.min(bottom, host.getBoundingClientRect().bottom); }
                 var available = Math.max(160, bottom - root.getBoundingClientRect().top - 12);
                 root.style.setProperty('--bs-height', Math.floor(available) + 'px');
             }
@@ -321,16 +330,25 @@
             document.addEventListener('pc:fs-change', libraryChanged); window.addEventListener('storage', libraryChanged);
             window.addEventListener('pagehide', stop);
             instance.state = state; instance.setState = setState;
-            instance.menus = function () { return { titles: [{ label: 'Barcode Scanner', items: [
-                { label: 'Camera', run: toggleCamera, checked: cameraOn },
-                { label: 'Type or paste', run: typeInput },
-                { label: 'Scan details', run: function () { q('details-dialog').showModal(); }, disabled: !capture },
-                { label: 'Open image', run: function () { q('image-file').click(); } },
-                { label: 'Import layouts', run: function () { q('layout-file').click(); } },
-                { label: 'Copy result', run: copy, disabled: !capture }, { label: 'Clear', run: clear },
-                { label: 'Lookup sources', run: function () { lookup.manage(); } },
-                { label: 'Install scanner', run: function () { stop(); q('install-dialog').showModal(); } }
-            ] }] }; };
+            instance.menus = function () { return { titles: [
+                { label: 'Barcode Scanner', items: window.pcAppletIdentity(root, [
+                    { label: 'Install scanner…', run: function () { q('install-dialog').showModal(); } }
+                ]) },
+                { id: 'file', label: 'File', items: [
+                    { label: 'Open image…', run: function () { q('image-file').click(); } },
+                    { label: 'Import layouts…', run: function () { q('layout-file').click(); } }
+                ] },
+                { id: 'edit', label: 'Edit', items: [
+                    { label: 'Copy result', run: copy, disabled: !capture }
+                ] },
+                { label: 'Scan', items: [
+                    { label: 'Camera', run: toggleCamera, checked: cameraOn },
+                    { label: 'Type or paste…', run: typeInput },
+                    { label: 'Scan details', run: function () { q('details-dialog').showModal(); }, disabled: !capture },
+                    { label: 'Lookup sources', run: function () { lookup.manage(); } },
+                    '-', { label: 'Clear result', run: clear, disabled: !capture }
+                ] }
+            ] }; };
             var resize = new ResizeObserver(fit); resize.observe(root.parentElement);
             window.addEventListener('resize', fit);
             if (window.visualViewport) { window.visualViewport.addEventListener('resize', fit); }

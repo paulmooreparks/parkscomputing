@@ -119,7 +119,7 @@ public sealed class AdminMenu {
     /// its entries become the logo's title, a labelled group becoming a
     /// heading, and the default's other titles follow.</summary>
     private NavNode[] Titled(NavNode[] menu) {
-        if (menu.All(e => e.Nav is { Length: > 0 })) { return menu; }
+        if (menu.All(e => e.Nav is { Length: > 0 } || !string.IsNullOrWhiteSpace(e.MenuId) || e.WindowCommands)) { return menu; }
         var logo = new NavNode {
             Title = LogoTitle, Icon = LogoIcon,
             Nav = menu.Select(e => e.Nav is { Length: > 0 } ? new NavNode { Heading = e.Title ?? e.Slug, Nav = e.Nav } : e).ToArray()

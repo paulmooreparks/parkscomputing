@@ -1,0 +1,17 @@
+/* The theme studio's preview page (preview.html): spacing for its sample
+   components, and the status lines, which draw a glyph in their status
+   colour, as PUDL asks status to show. */
+body { background: var(--bg); color: var(--text); }
+.tp { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.tp h1 { margin: 0; }
+.tp p { margin: 0; }
+.tp-muted { color: var(--text-muted); }
+.tp-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.tp .card { display: flex; flex-direction: column; gap: var(--space-2); }
+.tp .card-title { margin: 0; }
+.tp-status { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
+.tp-status .glyph { flex: none; }
+.tp-positive { --glyph: var(--glyph-check); color: var(--positive); }
+.tp-warn { --glyph: var(--glyph-warning); color: var(--warn); }
+.tp-danger { --glyph: var(--glyph-stop); color: var(--danger); }
+.tp pre { margin: 0; }

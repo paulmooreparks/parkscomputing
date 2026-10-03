@@ -1,0 +1,56 @@
+/* Dice (js/dice.js): up to three dice in a recessed tray, the total under
+   them, and the Roll button, which is the one thing to press. */
+.pc-dice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 22rem;
+  outline: none;
+}
+
+.dice-tray {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-alt);
+  border-radius: var(--radius);
+  box-shadow: var(--recess-shadow);
+}
+
+.dice-die {
+  font-size: 4.5rem;
+  line-height: 1;
+}
+
+.dice-total {
+  margin: 0;
+  text-align: center;
+  font-weight: 700;
+  font-size: var(--text-lg);
+}
+
+.dice-roll {
+  align-self: center;
+}
+
+.dice-history,
+.dice-status {
+  margin: 0;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.dice-history {
+  font-size: var(--text-sm);
+  min-height: 1.5em;
+}
+
+.dice-status {
+  font-size: var(--text-xs);
+  min-height: 1.4em;
+}
+
+.dice-about {
+  max-width: 30rem;
+}

@@ -57,6 +57,19 @@ Files is an applet at `/page/files` that shows the same tree the terminal sees.
 - **Changing `~`.** Inside the home directory, and only there, the reader can make a new file or folder, rename, delete, move, download, and upload, including by dropping files from the computer onto the list. Outside `~` those actions are absent rather than disabled, because the site is read-only there.
 - **Keyboard and accessibility.** Actions come from a PUDL menu button and the keyboard, not only from a right-click menu. Every entry is reachable with the arrow keys, and Enter opens it.
 
+### Files menu bar (2026-10-02)
+
+Files supplies its menu bar on its own page and in a window. The division follows the site's menu contract in `menu-bar-design.md`.
+
+- **Files** holds the selected entry's Open, Edit or View in the editor, Run in the terminal, Download, Copy to ~, Rename, Move to, and Delete commands when applicable. In a writable folder it also holds New file, New folder, and Upload. Folder navigation and Open a terminal here follow these operations after a separator. There is no separate File title, since it is too similar to Files and would be empty without a selection in a read-only folder.
+- **View** receives Show hidden files as a checked command in the host's existing panel, under Files. The applet does not introduce a second View title.
+
+The surface Actions menu remains available. It and the menu bar share the same command definitions and availability rules, evaluated from the current folder and selection. File operations that do not apply are absent, and the existing handlers serve both surfaces. Up one folder is disabled at the root. The older `commands()` interface remains available for hosts without a menu bar.
+
+### Files help (2026-10-02)
+
+Files contributes Files quick help and Files guide to the shared Help menu under its Files heading. The menu framework reserves Help for the host, so the applet uses `menus().into.Help`. Quick help is a native modal dialog with a link to `/page/files-guide`, and the full guide also opens directly from Help. Both explain that public-site personal file contents stay in browser local storage and are never sent to the site's servers, including when Upload imports a text file. They distinguish the authenticated admin filesystem, whose mounted folders are server-backed. The guide documents browsing, commands, keyboard access, storage limits, and recovery through downloaded copies.
+
 ## Editor
 
 Editor is an applet at `/page/editor` that edits the reader's files.
