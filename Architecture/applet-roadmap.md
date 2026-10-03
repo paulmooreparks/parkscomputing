@@ -41,6 +41,13 @@ The last two are the mistakes that cost the most time on 2026-10-01.
 
 The server keeps each file's previous versions for 30 days before overwriting it (`admin-and-identity-design.md`). This applet browses them by file or by date, shows any version against the current file with the diff viewer's engine (2), and restores a version after a recent passkey tap, as every other change to the site's scripts and styles needs.
 
+## Next, ahead of the list above (Paul, 2026-10-01)
+
+Paul picked two ideas from a list of applets built on open APIs, and put them ahead of everything else, in this order:
+
+1. **GitHub repositories in the site's file system**, browsable in Files, the terminal, the Editor and the Diff Viewer, with sign-in from the start. The design is `github-mount-design.md`.
+2. **A phone barcode scanner with Open Food Facts.** It installs on a phone like Sudoku, on iPhone and Android alike, and scans with the camera both product barcodes, which it looks up in Open Food Facts (ingredients, nutrition, Nutri-Score, allergens, and two or three products side by side), and the barcodes the Barcode Tool makes, which it reads back through the tool's layouts. Decoding is ZXing, vendored like CodeMirror and xterm, since Safari has no built-in barcode detector and GS1-128 needs its FNC1 reported in a documented way.
+
 ## Retail tools (proposed 2026-10-01, not yet placed)
 
 Paul asked for applets in the Barcode Tool's vein, useful to a retail consultant, a retail QA engineer or a retail developer, and said he would come back to them. In the order I proposed:
