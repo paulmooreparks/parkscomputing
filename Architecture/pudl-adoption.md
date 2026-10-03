@@ -353,3 +353,24 @@ All of the above landed 2026-09-26, the day the releases pushed, plus the launch
 - PUDL itself has no master-detail resize script yet; the desktop sidebar is fixed-width until PUDL grows one. Gaps this project finds in PUDL are fixed in the PUDL repo, not patched here.
 - The production content volume's static fragments (header/footer sections) may carry Bootstrap classes; dev copies are updated here, and the production volume needs the same edit at deploy time.
 - Slug collisions across sections would collide as window keys; acceptable while content is flat.
+
+### D55. PUDL 0.40.0 and standard menus
+
+The repository and mounted live site use the unmodified v0.40.0 distribution. Stable menu IDs, scoped applet contributions, generated window management, and explicit applet identity and working menus are adopted together. [The menu adoption record](menu-bar-adoption-0.40.md) captures the command inventory, compatibility decisions, and verification.
+
+### D56. PUDL 0.42.0 menu styling
+
+Parks Computing adopts the unmodified v0.42.0 distribution, including the coordinated responsive workspace assets introduced in v0.41.0. PUDL now supplies raised menu groups in both themes and the light-theme topbar surface. The equivalent site CSS overrides are removed. The existing site-owned sidebar splitter and taskbar navigation retain their behavior. Narrow-window restrictions remain opt-in; this upgrade does not change window placement policy.
+
+The host refreshes taskbar icons on PUDL's documented windows-policy event as well as window-state changes because policy refreshes rebuild the dock. Browser checks against localhost and the public site cover both themes, sidebar dragging and keyboard controls, taskbar icons, and mobile window restoration.
+
+
+### D57. PUDL 0.43.0 persistent sidebar
+
+Parks Computing adopts the unmodified v0.43.0 distribution and its persistent master-detail component. The desktop opts in with a 300px default width and a 40px expanded minimum, retaining the site's narrow-sidebar choice. The divider now uses PUDL's 24px default target. PUDL owns dragging, keyboard interaction, cancellation, responsive geometry, inert content, and focus transfer. The local divider CSS and gesture handlers are removed.
+
+The window manager remains the sole owner of narrow pane selection. The host handles `pudl:md-request` synchronously by minimizing or restoring windows through their existing public API; it does not independently commit a pane. The taskbar and View commands call `pudlMd.command`. Committed width and collapse changes persist through `pudl:md-change` in the existing browser preference keys.
+
+The URL parameters `sidebarRestore` (comma-separated window keys) and `sidebarTop` (the former front window) retain the mobile restoration set across reloads and history navigation. They are written before minimizing and removed before restoring. Closed keys are filtered out, and already-minimized windows stay minimized. The page's initial pane continues to derive from its canonical window state.
+
+The Docker build and desktop/mobile browser checks passed on the staging container, localhost, and parkscomputing.com. The mobile restoration check includes reloading the list before returning to the previous windows. Served CSS, sidebar runtime, and host adapter were compared with the deployed source. Real-device touch and assistive-technology checks remain unperformed.

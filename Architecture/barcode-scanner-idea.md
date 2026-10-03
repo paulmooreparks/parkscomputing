@@ -261,3 +261,12 @@ The live mount contains the scanner, lookup scripts, stylesheet and guide, with 
 
 
 Selecting the shipping source removes carrier-detection ambiguity and makes the first shipping implementation smaller. It does not remove provider authentication, access requirements or the need to interpret each source's label format. The initial implementation can still use documented tracking-page links, with in-app delivery events reserved for a configured connector.
+
+
+## Outer window sizing correction
+
+The earlier sizing change affected only the scanner's inner reading panel. Paul correctly pointed out that the outer applet window still retained a fixed frame. The live Barcode Tool uses `size "content"` in its sitenav node, which the server renders as PUDL's `data-win-size="content"`; the applet then receives flow sizing. The scanner now uses the same setting in both repository and live navigation.
+
+A content-sized window cannot use its current bottom edge as the scanner's maximum height, because that would prevent growth after a small result. The scanner uses the available window layer instead, while retaining viewport bounds for the camera. The integration check in `Tools/test-barcode-scanner-window.js` verifies the actual outer frame grows for decoded data, shrinks on Clear, expands for scanning and returns when stopped. The live site uses scanner asset version 6. This correction is not yet committed.
+
+The applet-owned sizing correction on 3 October supersedes the navigation setting above. Barcode Scanner now declares `data-applet-window-size="content"` on its own mount; the server renders the PUDL sizing attribute from that declaration.

@@ -217,9 +217,8 @@ public class DesktopModel : PageModel {
                 Y = placement?.Y ?? shape?.Y,
                 W = placement?.W ?? shape?.W,
                 H = placement?.H ?? shape?.H,
-                // Sizing by content, and a reader-sized window's limits,
-                // come from the page's sitenav entry (PUDL 0.35.0).
-                SizeMode = parent is null ? WindowViewModel.SizeOf(node?.Size) : null,
+                // The applet declares content sizing; navigation still supplies placement limits.
+                SizeMode = parent is null ? article.WindowSize : null,
                 MinSize = parent is null ? WindowViewModel.PixelSize(node?.Min) : null,
                 MaxSize = parent is null ? WindowViewModel.PixelSize(node?.Max) : null,
                 Minimized = minimized,

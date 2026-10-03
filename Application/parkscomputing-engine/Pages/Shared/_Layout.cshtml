@@ -135,8 +135,8 @@
             @* data-seg-menu: on a phone PUDL folds the switcher into a
                pop-up button labelled with the current view (0.36.0). *@
             <nav class="seg view-seg" aria-label="View" data-seg-menu>
-                <a href="/?view=window" aria-current="@(isDesktop ? "true" : null)">Window</a>
-                <a href="/home" aria-current="@(isDesktop ? null : "true")">Classic</a>
+                <a href="/?view=window" aria-current="@(isDesktop ? "true" : null)"><span class="glyph" style="--glyph: var(--pc-glyph-windowed)" aria-hidden="true"></span>Windowed</a>
+                <a href="/home" aria-current="@(isDesktop ? null : "true")"><span class="glyph" style="--glyph: var(--pc-glyph-classic)" aria-hidden="true"></span>Classic</a>
             </nav>
         </div>
         @* The classic view's categories, on a band of section tabs just below
@@ -300,6 +300,7 @@
     <script src="~/pudl/pudl-menubar.js" defer asp-append-version="true"></script>
     <script src="~/js/commands.js" defer asp-append-version="true"></script>
     <script src="~/pudl/pudl-dialog.js" defer asp-append-version="true"></script>
+    <script src="~/pudl/pudl-tooltip.js" defer asp-append-version="true"></script>
     @* Document tabs, trees and grids, for the Editor and Files applets,
        which can open on any page. *@
     <script src="~/pudl/pudl-tabs.js" defer asp-append-version="true"></script>

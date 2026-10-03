@@ -86,7 +86,7 @@ public class WindowModel : PageModel {
             Created = article.IsApplet || bookSlug is not null ? null : node?.Date,
             Updated = article.IsApplet || bookSlug is not null ? null : node?.Updated,
             X = shape?.X, Y = shape?.Y, W = shape?.W, H = shape?.H,
-            SizeMode = WindowViewModel.SizeOf(node?.Size),
+            SizeMode = article.WindowSize,
             MinSize = WindowViewModel.PixelSize(node?.Min),
             MaxSize = WindowViewModel.PixelSize(node?.Max)
         };

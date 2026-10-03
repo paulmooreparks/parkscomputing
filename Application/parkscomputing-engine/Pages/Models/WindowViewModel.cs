@@ -30,11 +30,6 @@ public class WindowViewModel {
             ? $"{w},{h}" : null;
     }
 
-    /// <summary>How the window is sized, from a sitenav node (PUDL 0.35.0):
-    /// "content" when its content sizes it, otherwise null, the reader.</summary>
-    public static string? SizeOf(string? size) =>
-        string.Equals(size?.Trim(), "content", StringComparison.OrdinalIgnoreCase) ? "content" : null;
-
     /// <summary>"content" for a window its content sizes; null for one the reader sizes.</summary>
     public string? SizeMode { get; init; }
     /// <summary>Limits on a window the reader sizes, "w,h" in pixels.</summary>

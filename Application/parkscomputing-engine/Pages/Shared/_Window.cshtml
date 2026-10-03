@@ -1,6 +1,18 @@
 @model ParksComputing.Engine.Pages.Models.WindowViewModel
 @inject ParksComputing.Engine.Pages.Services.INavService TagNav
 @inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AdminOptions> AdminConfig
+@functions {
+    private static string? WindowIcon(ParksComputing.Engine.Pages.Services.NavNode node, string? pageUrl)
+    {
+        if (pageUrl is not null && node.Url == pageUrl && !string.IsNullOrEmpty(node.Icon)) { return node.Icon; }
+        foreach (var child in node.Nav ?? Array.Empty<ParksComputing.Engine.Pages.Services.NavNode>())
+        {
+            var icon = WindowIcon(child, pageUrl);
+            if (icon is not null) { return icon; }
+        }
+        return null;
+    }
+}
 @{
     // The button hrefs are placeholders here; pudl-windows.js rewrites each
     // one to the URL of the state it produces. Without script the window is
@@ -15,6 +27,7 @@
 @* A section, not an article: ARIA allows role="dialog" on a section
    (PUDL 0.23.0). *@
 <section class="win @(Model.Active ? "active" : string.Empty)" data-win="@Model.Key"
+         data-window-icon="@WindowIcon(TagNav.GetRoot(), Model.PageUrl)"
          @(Model.Parent is null ? null : Html.Raw($"data-win-parent=\"{Model.Parent}\""))
          data-win-mode="@(Model.Mode ?? "floating")"
          @(Model.SizeMode is null ? null : Html.Raw($"data-win-size=\"{Model.SizeMode}\""))

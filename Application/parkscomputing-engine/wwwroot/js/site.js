@@ -37,6 +37,15 @@
         try { host = window.top.pudlWindows; } catch (err) { return; }
         if (!host) { return; }
 
+        // Pointer events do not cross an iframe's document boundary.
+        document.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0) { return; }
+            var frame = window.frameElement;
+            var win = frame && frame.closest('.win[data-win]');
+            if (win && host.state().top !== win.dataset.win) { host.raise(win.dataset.win); }
+        }, true);
+
+
         function articleSlugOf(a) {
             var segments = a.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
             if (segments.length === 0) { return null; }

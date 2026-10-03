@@ -7,6 +7,13 @@
    which js/window-bar.js carries out and which leads to the windowless
    state without script. It knows nothing of the page it sits on. *@
 <div class="win-bar">
+    <button class="icon-btn sidebar-toggle" type="button" data-sidebar-toggle hidden
+            aria-label="Hide sidebar" title="Hide sidebar" aria-expanded="true" aria-pressed="false">
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4">
+            <rect x="1.5" y="2" width="13" height="12" rx="1.5" />
+            <path d="M6 2v12" /><path class="sidebar-glyph-pane" d="M2 2.5h3.5v11H2z" stroke="none" />
+        </svg>
+    </button>
     <nav class="win-dock win-bar-dock" data-win-dock aria-label="Open windows"></nav>
     <a class="icon-btn min-all" data-win-back href="@Model.MinimizeAllUrl"
        @(Model.AnyShowing ? null : Html.Raw("aria-disabled=\"true\""))

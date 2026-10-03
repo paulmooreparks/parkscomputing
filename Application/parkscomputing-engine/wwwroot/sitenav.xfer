@@ -12,8 +12,7 @@
             nav [
                 { title "Home" url "/" }
                 { slug "about" title "About Parks Computing" }
-                { slug "settings"
-                    size "content" title "Site settings" url "/page/settings" }
+                { slug "settings" title "Site settings" url "/page/settings" }
             ]
         }
         {
@@ -81,7 +80,6 @@
             nav [
                 {
                     slug "settings"
-                    size "content"
                     title "Settings"
                     description "Theme, default view, window preferences, and this browser's data"
                     tags [ "web apps" "site development" ]
@@ -95,14 +93,12 @@
                 }
                 {
                     slug "barcode-scanner"
-                    size "content"
                     title "Barcode Scanner"
                     description "Scan camera images and decode retail layouts"
                     tags [ "web apps" "barcodes" "retail" ]
                 }
                 {
                     slug "barcodes"
-                    size "content"
                     title "Barcode Tool"
                     description "Make retail barcodes with embedded data, and read them back"
                     tags [ "web apps" "barcodes" ]
@@ -138,7 +134,6 @@
                 }
                 {
                     slug "dice"
-                    size "content"
                     title "Dice"
                     description "Roll up to three dice"
                     tags [ "web apps" "games" ]

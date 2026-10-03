@@ -16,7 +16,7 @@ namespace ParksComputing.Engine.Pages.Services;
 /// because scripts in fetched window markup do not run and head assets
 /// never arrive. FrameUrl marks an external destination whose window is a
 /// frame straight onto that URL.</summary>
-public record ArticleWindowContent(string Slug, string Title, string BodyHtml, bool HasCode, bool HasMermaid, bool RequiresOwnDocument = false, string? FrameUrl = null, bool IsApplet = false);
+public record ArticleWindowContent(string Slug, string Title, string BodyHtml, bool HasCode, bool HasMermaid, bool RequiresOwnDocument = false, string? FrameUrl = null, bool IsApplet = false, string? WindowSize = null);
 
 /// <summary>
 /// Loads an article's title and body for rendering inside a PUDL window.
@@ -362,14 +362,19 @@ public class ArticleContentService {
         // chrome) is a separate question the page answers itself, with
         // <meta name="applet-page">; an article that merely embeds an
         // applet keeps its tags and dates.
-        bool hasMount = doc.DocumentNode.SelectSingleNode("//*[@data-applet]") is not null;
+        var mount = doc.DocumentNode.SelectSingleNode("//*[@data-applet]");
+        bool hasMount = mount is not null;
         bool appletPage = doc.DocumentNode.SelectSingleNode("//head/meta[@name='applet-page']") is not null;
         bool ownAssets = !hasMount && (
             doc.DocumentNode.SelectSingleNode("//script") is not null
             || doc.DocumentNode.SelectSingleNode("//head/link[@rel='stylesheet']") is not null
             || doc.DocumentNode.SelectSingleNode("//head/style") is not null);
 
-        return Build(slug, title, body) with { RequiresOwnDocument = ownAssets, IsApplet = appletPage };
+        // Sizing belongs to the applet document, independent of navigation entries.
+        var declaredSize = mount?.GetAttributeValue("data-applet-window-size", "");
+        var windowSize = appletPage && string.Equals(declaredSize, "content", StringComparison.OrdinalIgnoreCase)
+            ? "content" : null;
+        return Build(slug, title, body) with { RequiresOwnDocument = ownAssets, IsApplet = appletPage, WindowSize = windowSize };
     }
 
     private static ArticleWindowContent Build(string slug, string? title, string bodyHtml) {

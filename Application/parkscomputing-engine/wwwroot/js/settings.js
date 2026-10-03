@@ -62,6 +62,10 @@
         try { var v = localStorage.getItem('pc-' + name); return v == null ? fallback : v === '1'; } catch (err) { return fallback; }
     }
 
+    function settingsMenus(root) {
+        return { titles: [{ label: 'Settings', items: window.pcAppletIdentity(root, []) }] };
+    }
+
     function initPublic(root, opts, n) {
         root.classList.add('pc-settings');
         if (opts.fit === 'fill') { root.classList.add('pc-settings-fill'); }
@@ -78,7 +82,7 @@
               '<h2 class="card-title">View</h2>' +
               '<p class="card-desc">Which view the site opens in when you arrive at its front page.</p>' +
               '<div class="seg" role="group" aria-label="Default view">' +
-                '<button type="button" data-view-choice="window">Window</button>' +
+                '<button type="button" data-view-choice="window">Windowed</button>' +
                 '<button type="button" data-view-choice="classic">Classic</button>' +
               '</div>' +
             '</section>' +
@@ -139,6 +143,7 @@
         document.addEventListener('pudl:theme-change', mark);
         mark();
         return {
+            menus: function () { return settingsMenus(root); },
             destroy: function () {
                 root.removeEventListener('click', onClick);
                 root.removeEventListener('change', onChange);
@@ -396,6 +401,7 @@
         });
 
         return {
+            menus: function () { return settingsMenus(root); },
             destroy: function () {
                 destroyed = true;
                 if (unConfig) { unConfig(); }

@@ -75,18 +75,15 @@
     }
 }
 
-<div class="md-layout" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
+<div class="md-layout" data-md-persistent data-md-default-width="300" data-md-min="40" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
     @* A stored sidebar width applies before the first paint, per PUDL's
        0.14.0 pattern; a later script would let the default width flash. *@
     <script>
         (function (layout) {
             try {
+                layout.toggleAttribute('data-md-collapsed', localStorage.getItem('pc-focus') === '1');
                 var w = localStorage.getItem('pc-sidebar-w');
                 if (w) { layout.style.setProperty('--md-sidebar-w', w); }
-                layout.addEventListener('pudl:md-resize', function (e) {
-                    if (e.detail.reset) { localStorage.removeItem('pc-sidebar-w'); }
-                    else { localStorage.setItem('pc-sidebar-w', e.detail.width + 'px'); }
-                });
             } catch (e) { /* the default width serves */ }
         })(document.currentScript.parentElement);
     </script>
@@ -176,12 +173,11 @@
                 }
             }
         </nav>
-        <div class="md-resize" role="separator" aria-orientation="vertical" aria-label="Resize the list"></div>
+        <div class="md-resize" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Article sidebar" data-md-wide-help="Drag to resize or collapse the sidebar. Use arrow keys to resize, Home to collapse, End to expand, or Enter to toggle." data-md-narrow-help="Drag to switch between the article list and windows, or press Enter."></div>
         @* tabindex: the pane is a tab stop so the keyboard can scroll it
            (PUDL 0.22.1). *@
         <div class="md-detail reader-stage" tabindex="0">
             <div class="reader-col">
-                <a class="md-back" href="/" data-win-back>Articles</a>
                 <main class="win-host">
                     <div class="reader-empty">
                         @if (Model.WelcomeHtml is not null)
@@ -199,8 +195,8 @@
                         }
                     </div>
                 </main>
-                <partial name="_WindowBar" model="windowBar" />
             </div>
         </div>
     </div>
+    <partial name="_WindowBar" model="windowBar" />
 </div>

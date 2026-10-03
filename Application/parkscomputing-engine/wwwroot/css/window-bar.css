@@ -1,12 +1,13 @@
 /* === The window bar (Pages/Shared/_WindowBar.cshtml, js/window-bar.js) ====
-   On a page of windows, in either site's top bar: PUDL's dock of open
-   windows, then minimise-all or restore-all and close-all. The dock is the
-   elastic part and scrolls when the windows outnumber the room. A rule
-   after it parts the bar's own controls at the right. PUDL's top bar
-   wraps an item that doesn't fit (0.29.1), so the bar starts from no
-   width and grows into the room left, rather than asking for the width of
-   every open window and going to a line of its own. */
-.win-bar { display: flex; align-items: center; gap: 6px; flex: 1 1 0; min-width: 0; margin: 0 var(--space-3); --ctl-h: 30px; }
+   The taskbar spans the workspace below the sidebar and windows. Its
+   sidebar toggle precedes PUDL's dock, with window controls at the right.
+   The dock scrolls horizontally when its tabs exceed the available room. */
+.win-bar { display: flex; align-items: center; gap: 6px; flex: none; min-width: 0; padding: 6px 12px max(6px, env(safe-area-inset-bottom)); background: var(--surface-alt); border-top: 1px solid var(--border); --ctl-h: 30px; }
+.win-bar-dock .win-tab { flex: 0 0 auto; max-width: 250px; }
+.win-tab .task-icon { width: 16px; height: 16px; flex: none; object-fit: contain; }
+.win-tab .task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.win-tab:has(.task-icon)::before { display: none; }
+.win-bar [hidden] { display: none; }
 .win-bar-dock { flex: 1 1 auto; min-width: 0; overflow-x: auto; flex-wrap: nowrap; }
 .win-bar .icon-btn { flex: none; }
 .win-bar .icon-btn svg { width: 15px; height: 15px; }
@@ -28,6 +29,8 @@
 }
 .win-bar + .topbar-rule { margin-left: 0; }
 @media (max-width: 560px) {
-  .win-bar { margin: 0 8px; }
+  .win-bar { padding-inline: 6px; gap: 4px; }
+  .win-bar-dock .win-tab { max-width: 175px; min-height: 40px; }
+  .win-bar .icon-btn { width: 36px; height: 40px; }
   .topbar-rule { margin-right: 8px; }
 }

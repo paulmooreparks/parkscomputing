@@ -43,7 +43,7 @@ namespace ParksComputing.Engine.Pages.Services {
             if (string.IsNullOrWhiteSpace(slug)) { return null; }
             var root = GetRoot();
             if (root == null) { return null; }
-            foreach (var node in Enumerate(root)) {
+            foreach (var node in Enumerate(root).Concat((root.Menu ?? Array.Empty<NavNode>()).SelectMany(Enumerate))) {
                 if (string.Equals(node.Slug, slug, StringComparison.OrdinalIgnoreCase)) { return node; }
             }
             return null;
@@ -223,14 +223,14 @@ namespace ParksComputing.Engine.Pages.Services {
                 var tags = twins.FirstOrDefault(t => t.Tags is { Length: > 0 })?.Tags;
                 var title = First(t => string.IsNullOrWhiteSpace(t.Title) ? null : t.Title);
                 var description = First(t => string.IsNullOrWhiteSpace(t.Description) ? null : t.Description);
-                var win = First(t => t.Win); var size = First(t => t.Size); var min = First(t => t.Min); var max = First(t => t.Max);
+                var win = First(t => t.Win); var min = First(t => t.Min); var max = First(t => t.Max);
                 var icon = First(t => t.Icon);
                 bool frame = twins.Any(t => t.Frame);
                 foreach (var t in twins) {
                     if (t.Tags is not { Length: > 0 }) { t.Tags = tags; }
                     if (string.IsNullOrWhiteSpace(t.Title)) { t.Title = title; }
                     if (string.IsNullOrWhiteSpace(t.Description)) { t.Description = description; }
-                    t.Win ??= win; t.Size ??= size; t.Min ??= min; t.Max ??= max; t.Icon ??= icon;
+                    t.Win ??= win; t.Min ??= min; t.Max ??= max; t.Icon ??= icon;
                     t.Frame = t.Frame || frame;
                 }
             }
