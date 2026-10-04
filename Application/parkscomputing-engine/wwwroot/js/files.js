@@ -230,7 +230,7 @@
             }
             if (shell) {
                 items.push(['sep']);
-                items.push(['terminal', 'Open a terminal here']);
+                items.push(['terminal', 'New terminal window here']);
             }
             items.push(['sep']);
             items.push(['hidden', showHidden ? 'Hide hidden files' : 'Show hidden files']);
@@ -469,7 +469,7 @@
            window, and PUDL adds no Commands button above it there. */
         function commands() {
             var list = [{ label: 'Show hidden files', run: function () { act('hidden'); }, checked: showHidden }];
-            if (canOpen('shell')) { list.push({ label: 'Open a terminal here', run: function () { act('terminal'); } }); }
+            if (canOpen('shell')) { list.push({ label: 'New terminal window here', run: function () { act('terminal'); } }); }
             return list;
         }
         /* Both menu surfaces use the same availability rules and actions. */
@@ -484,7 +484,9 @@
             var file = [], view = [];
             actionItems().forEach(function (it) {
                 if (it[0] === 'terminal') {
-                    file.push('-', menuCommand(it[0], it[1]));
+                    // Its own group, after one separator, never two.
+                    if (file.length && file[file.length - 1] !== '-') { file.push('-'); }
+                    file.push(menuCommand(it[0], it[1]));
                 } else if (it[0] === 'hidden') {
                     var hidden = menuCommand('hidden', 'Show hidden files');
                     hidden.checked = showHidden;
@@ -497,7 +499,7 @@
             });
             if (file[file.length - 1] === '-') { file.pop(); }
             return { titles: [{ label: 'Files', items: window.pcAppletIdentity(root) },
-                { id: 'file', label: 'File', items: file }], into: { go: files, view: view, help: [
+                { id: 'folder', label: 'Folder', items: file }], into: { go: files, view: view, help: [
                 { label: 'Files quick help', disabled: !b, run: function () { if (el) { el.helpDialog.showModal(); } } },
                 { label: 'Files guide', run: function () { if (inWindows()) { window.pudlWindows.open('files-guide'); } else { location.assign('/page/files-guide'); } } }
             ] } };

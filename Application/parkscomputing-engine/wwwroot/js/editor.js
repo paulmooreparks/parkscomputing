@@ -639,15 +639,24 @@
         async function preview() {
             var t = current(), node = t && F.resolve(F.home(), t.path);
             if (!node || !previewable(node)) { return; }
-            var token = (document.querySelector('meta[name="request-verification-token"]') || {}).content || '';
             say('Making a preview…');
-            var r;
-            try {
-                r = await fetch('/api/admin/preview', {
+            var payload = JSON.stringify({ path: F.realOf(node).rel, text: view.state.doc.toString() });
+            /* The token is read at each try, since signing in again (a session
+               that ended while the page was open) replaces it. */
+            function send() {
+                var token = (document.querySelector('meta[name="request-verification-token"]') || {}).content || '';
+                return fetch('/api/admin/preview', {
                     method: 'POST', credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json', Accept: 'application/json', RequestVerificationToken: token },
-                    body: JSON.stringify({ path: F.realOf(node).rel, text: view.state.doc.toString() })
+                    body: payload
                 });
+            }
+            var r;
+            try {
+                r = await send();
+                if (r.status === 401 && window.pcAdmin && window.pcAdmin.signIn) {
+                    try { await window.pcAdmin.signIn(); r = await send(); } catch (err) { /* The 401 stands. */ }
+                }
             } catch (err) { say('The preview could not be made: ' + err.message, true); return; }
             var body = await r.json().catch(function () { return {}; });
             if (!r.ok || !body.url) { say('The preview could not be made' + (body.error ? ': ' + body.error : '.'), true); return; }

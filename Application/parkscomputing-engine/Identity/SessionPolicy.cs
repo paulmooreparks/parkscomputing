@@ -22,8 +22,7 @@ public sealed record Timeouts(int IdleMinutes, int AbsoluteHours, int ConfirmMin
 /// <summary>
 /// Each admin's timeouts, within the bounds the server's configuration sets
 /// (A14). They are kept as claims on the Identity user, cached for a minute,
-/// and applied to every session: the idle limit through a last-seen time per
-/// session held here, and the rest through the session's own claims.
+/// and applied to durable session records.
 /// </summary>
 public sealed class SessionPolicy {
     public const string IdleClaim = "pc_timeout_idle";
@@ -34,9 +33,10 @@ public sealed class SessionPolicy {
     private readonly IMemoryCache _cache;
     private readonly IServiceScopeFactory _scopes;
     private readonly AdminOptions _options;
+    private readonly DurableSessions _sessions;
 
-    public SessionPolicy(IMemoryCache cache, IServiceScopeFactory scopes, IOptions<AdminOptions> options) {
-        _cache = cache; _scopes = scopes; _options = options.Value;
+    public SessionPolicy(IMemoryCache cache, IServiceScopeFactory scopes, IOptions<AdminOptions> options, DurableSessions sessions) {
+        _cache = cache; _scopes = scopes; _options = options.Value; _sessions = sessions;
     }
 
     public Timeouts Defaults => new(_options.IdleMinutes, _options.AbsoluteHours, _options.ConfirmMinutes, _options.DestructiveConfirmMinutes);
@@ -95,25 +95,12 @@ public sealed class SessionPolicy {
         _cache.Remove(Key(user.Id));
     }
 
-    /// <summary>
-    /// Records a request on a session and says whether the session had gone
-    /// idle for longer than its admin allows. A session this process has not
-    /// seen, such as one begun before a restart, counts as seen now; the
-    /// cookie's own expiry, at the configured ceiling, still bounds it.
-    /// </summary>
-    /// <summary>
-    /// Whether a session has gone idle, without counting this as a request.
-    /// The SSH relay asks it while it runs (A16).
-    /// </summary>
-    public bool Idle(string sessionId, int idleMinutes) =>
-        _cache.TryGetValue("pc-seen:" + sessionId, out DateTimeOffset last)
-        && DateTimeOffset.UtcNow - last > TimeSpan.FromMinutes(idleMinutes);
+    public async Task<bool> ValidAsync(ClaimsPrincipal principal, bool touch = false) =>
+        await _sessions.ValidAsync(principal, await ForAsync(principal), touch);
 
-    public bool Touch(string sessionId, int idleMinutes) {
-        var key = "pc-seen:" + sessionId;
-        var now = DateTimeOffset.UtcNow;
-        bool idle = _cache.TryGetValue(key, out DateTimeOffset last) && now - last > TimeSpan.FromMinutes(idleMinutes);
-        _cache.Set(key, now, TimeSpan.FromMinutes(_options.IdleMinutesMax + 1));
-        return !idle;
-    }
+    public async Task<bool> ConfirmAsync(ClaimsPrincipal principal) =>
+        await _sessions.ConfirmAsync(principal, await ForAsync(principal));
+
+    public async Task<bool> ConfirmedAsync(ClaimsPrincipal principal, bool destructive = false) =>
+        await _sessions.ConfirmedAsync(principal, await ForAsync(principal), destructive);
 }

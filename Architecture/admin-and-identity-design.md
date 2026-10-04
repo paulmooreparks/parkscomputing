@@ -1,5 +1,7 @@
 # Admin editing and identity
 
+The [unified identity proposal](unified-identity-design.md), revised 2026-10-03, covers one workspace with public registration, super-admin bootstrap, administrative permissions, in-site editing and article comments. It supersedes the invitation-only proposal and this document's separate-origin and separate-account direction when implemented. Its security and migration changes have not yet been implemented. This document records the earlier design.
+
 This document is the design for editing parkscomputing.com from the site itself, with the identity system that editing needs. The same system will later serve comments. The decisions below were settled with Paul on 2026-09-30. The phases after the first are described so the identity work doesn't have to be redone for them.
 
 ## Threat model

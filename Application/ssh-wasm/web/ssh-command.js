@@ -75,16 +75,29 @@
 
     /* === The server ==================================================== */
 
-    var TOKEN = (document.querySelector('meta[name="request-verification-token"]') || {}).content || '';
-
-    function api(path, init) {
+    /* A request to the server, as the mount makes them (js/sitefs.js): the
+       token read afresh each time, and a session that ended while the page
+       was open asks the reader to sign in again (window.pcAdmin.signIn),
+       then goes once more. */
+    async function api(path, init) {
         init = init || {};
         init.credentials = 'same-origin';
-        init.headers = Object.assign({ Accept: 'application/json', RequestVerificationToken: TOKEN }, init.headers || {});
-        return fetch(path, init);
+        var headers = init.headers || {};
+        function send() {
+            var token = (document.querySelector('meta[name="request-verification-token"]') || {}).content || '';
+            init.headers = Object.assign({ Accept: 'application/json', RequestVerificationToken: token }, headers);
+            return fetch(path, init);
+        }
+        var r = await send();
+        if (r.status !== 401 || !window.pcAdmin || !window.pcAdmin.signIn) { return r; }
+        var body = await r.clone().json().catch(function () { return {}; });
+        if (!body.signin) { return r; }
+        try { await window.pcAdmin.signIn(); } catch (err) { return r; }
+        return send();
     }
     async function targets() {
         var r = await api('/api/admin/ssh/targets');
+        if (r.status === 401) { throw new Error('you\'re signed out; sign in again to connect'); }
         if (!r.ok) { throw new Error('the server has no destinations for you (' + r.status + ')'); }
         return (await r.json()).targets || [];
     }

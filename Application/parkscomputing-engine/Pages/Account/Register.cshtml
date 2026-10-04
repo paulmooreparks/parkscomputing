@@ -1,0 +1,62 @@
+@page
+@model ParksComputing.Engine.Pages.Account.RegisterModel
+@{
+    ViewData["Title"] = "Create account | Parks Computing";
+    bool nameWrong = ViewData.ModelState["DisplayName"]?.Errors.Count > 0;
+    bool emailWrong = ViewData.ModelState["Email"]?.Errors.Count > 0;
+}
+@* Create account is a modal dialog in both views, as Sign in is
+   (Pages/Account/SignIn.cshtml). *@
+<dialog class="dialog account-dialog" open aria-labelledby="register-title" data-account-page-dialog>
+<section class="account-panel" data-account-panel>
+    <h2 class="dialog-title" id="register-title">Create an account</h2>
+    @if (Model.Sent)
+    {
+        <div class="notice positive" role="status">
+            <div class="notice-content">
+                <p class="notice-title">Check your email</p>
+                <p class="notice-body">A link to confirm <strong>@Model.Email</strong> is on its way. Opening it finishes your account and signs you in. It works once, within 15 minutes.</p>
+            </div>
+        </div>
+        <p class="form-help">Nothing arrived? Look in your spam folder, or <a href="/account/signin" data-account-dialog>sign in</a> to get a new link.</p>
+        <div class="dialog-actions">
+            <a class="btn btn-primary" href="@Model.Back" data-account-cancel>Done</a>
+        </div>
+    }
+    else
+    {
+        <p>An account lets you comment on articles. You sign in with a link sent to your email, so there is no password to remember.</p>
+        <form method="post" asp-antiforgery="true" action="/account/register" novalidate>
+            <partial name="_AccountErrors" />
+            <input type="hidden" name="returnUrl" value="@Model.Back" />
+            <div class="form-group">
+                <label class="form-label" for="register-name">Display name</label>
+                <input class="form-input" id="register-name" name="DisplayName" value="@Model.DisplayName" autocomplete="nickname" maxlength="80" required autofocus
+                       aria-invalid="@(nameWrong ? "true" : null)" aria-describedby="register-name-help@(nameWrong ? " register-name-error" : "")" />
+                <p class="form-help" id="register-name-help">Shown beside your comments.</p>
+                @if (nameWrong)
+                {
+                    <p class="form-error" id="register-name-error">@ViewData.ModelState["DisplayName"]!.Errors[0].ErrorMessage</p>
+                }
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="register-email">Email address</label>
+                <input class="form-input" id="register-email" name="Email" value="@Model.Email" type="email" autocomplete="email" maxlength="254" required
+                       aria-invalid="@(emailWrong ? "true" : null)" aria-describedby="register-email-help@(emailWrong ? " register-email-error" : "")" />
+                <p class="form-help" id="register-email-help">Never shown to anyone. It's where your sign-in links go.</p>
+                @if (emailWrong)
+                {
+                    <p class="form-error" id="register-email-error">@ViewData.ModelState["Email"]!.Errors[0].ErrorMessage</p>
+                }
+            </div>
+            <div class="dialog-actions">
+                <a class="btn" href="@Model.Back" data-account-cancel>Cancel</a>
+                <button class="btn btn-primary" type="submit">Create account</button>
+            </div>
+        </form>
+        <div class="account-alt">
+            <p>Already have an account? <a href="/account/signin" data-account-dialog>Sign in</a>.</p>
+        </div>
+    }
+</section>
+</dialog>

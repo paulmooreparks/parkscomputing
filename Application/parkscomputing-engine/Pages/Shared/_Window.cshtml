@@ -1,6 +1,5 @@
 @model ParksComputing.Engine.Pages.Models.WindowViewModel
 @inject ParksComputing.Engine.Pages.Services.INavService TagNav
-@inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AdminOptions> AdminConfig
 @functions {
     private static string? WindowIcon(ParksComputing.Engine.Pages.Services.NavNode node, string? pageUrl)
     {
@@ -112,7 +111,7 @@
                         {
                             <span class="updated-on">&nbsp;· Updated <time datetime="@Model.Updated?.ToString("yyyy-MM-dd")">@Model.Updated?.ToLongDateString()</time></span>
                         }
-                        <a class="post-edit" href="@(AdminConfig.Value.EditOrigin.TrimEnd('/'))/admin/source?slug=@Uri.EscapeDataString(Model.Key)" target="_blank" rel="nofollow noopener">Edit</a>
+                        <partial name="_EditLink" model="Model.Key" />
                     </div>
                 }
                 <div class="post-body">

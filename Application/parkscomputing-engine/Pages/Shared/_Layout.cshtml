@@ -3,8 +3,18 @@
 @using ParksComputing.Engine.Pages.Services
 @inject StaticFileReaderService FileReaderService
 @inject INavService PaletteNav
+@inject ParksComputing.Engine.Identity.AccountMenu AccountMenu
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 
 @{
+    // Where the site has accounts, what the reader's account offers, for
+    // the logo menu here and in _MenuBar (Identity/AccountMenu).
+    var accountState = await AccountMenu.StateAsync(Context);
+    ViewData["AccountMenu"] = accountState;
+    // The super-user's server tools: Terminal, Files and the Editor mount
+    // /wwwroot, ~ and /etc from the server and the terminal gains ssh, as on
+    // the edit origin (Architecture/unified-identity-design.md).
+    string? serverToolsName = accountState.ServerTools ? accountState.HomeName : null;
     bool mdFlag = ViewData["IsMarkdown"] as bool? ?? false;
     string? contentFormat = ViewData["ContentFormat"] as string;
     bool hasMermaid = ViewData["HasMermaid"] as bool? ?? false;
@@ -39,6 +49,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
+    @if (serverToolsName is not null)
+    {
+        @* js/sitefs.js mounts the server's roots from this API, and the
+           terminal's ssh and ssh-key come from the server; the name goes in
+           an SSH key's comment. A change asks for a passkey tap through
+           window.pcAdmin.confirm, which js/accounts.js supplies here. *@
+        <meta name="pc-fs-mount" content="/api/admin/fs" />
+        <meta name="pc-ssh-commands" content="/admin/ssh/ssh-command.js" />
+        <meta name="pc-admin-name" content="@serverToolsName" />
+    }
     <title>@ViewData["Title"]</title>
 
     @* Every PUDL asset is version-stamped: a pinned-dist upgrade must
@@ -52,6 +72,11 @@
     <link rel="stylesheet" href="~/css/pudl-site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/window-bar.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/accessibility.css" asp-append-version="true" />
+    @if (accountState.Enabled)
+    {
+        @* The sign-in dialogs open over any page (js/accounts.js). *@
+        <link rel="stylesheet" href="~/css/account.css" asp-append-version="true" />
+    }
     <link rel="alternate" type="application/rss+xml" title="RSS Feed for @ViewData["Title"]" href="/rss">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -123,6 +148,25 @@
                         }
                         else if (entry.Command == null && entry.From == null && !entry.Separator && entry.Nav is not { Length: > 0 }) { RenderMenuItem(entry); }
                     }
+                    @if (accountState.Enabled)
+                    {
+                        <hr class="menu-sep" />
+                    }
+                    @foreach (var accountEntry in ParksComputing.Engine.Identity.AccountMenu.Entries(accountState, isDesktop))
+                    {
+                        if (accountEntry.Kind == MenuEntryKind.Heading)
+                        {
+                            <div class="md-section-label">@accountEntry.Label</div>
+                            foreach (var accountItem in accountEntry.Entries ?? Array.Empty<MenuEntry>())
+                            {
+                                <div class="md-row">@Html.Raw(accountItem.Element!.Open("md-item site-menu-item"))<span class="site-menu-icon" aria-hidden="true"></span>@accountItem.Label@Html.Raw(accountItem.Element.Close())</div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="md-row">@Html.Raw(accountEntry.Element!.Open("md-item site-menu-item"))<span class="site-menu-icon" aria-hidden="true"></span>@accountEntry.Label@Html.Raw(accountEntry.Element.Close())</div>
+                        }
+                    }
                 </nav>
             </div>
             </nav>
@@ -138,6 +182,22 @@
                 <a href="/?view=window" aria-current="@(isDesktop ? "true" : null)"><span class="glyph" style="--glyph: var(--pc-glyph-windowed)" aria-hidden="true"></span>Windowed</a>
                 <a href="/home" aria-current="@(isDesktop ? null : "true")"><span class="glyph" style="--glyph: var(--pc-glyph-classic)" aria-hidden="true"></span>Classic</a>
             </nav>
+            @* The account, at the far right where a site's account usually
+               is: Sign in when nobody is, and otherwise the reader's picture,
+               which opens their account, as a window in the window view.
+               Both are raised pills, because both are pressed. *@
+            @if (accountState.SignedIn)
+            {
+                var accountLabel = "Your account" + (accountState.Name is null ? "" : " (" + accountState.Name + ")");
+                <a class="topbar-pill account-pill" href="@(isDesktop ? "/?open=account&top=account" : "/account")"
+                   @(isDesktop ? Html.Raw("data-win-open=\"account\"") : null) aria-label="@accountLabel" title="@accountLabel">
+                    @ParksComputing.Engine.Identity.AccountMenu.Avatar(accountState.AvatarUrl, "account-avatar")
+                </a>
+            }
+            else if (accountState.Enabled)
+            {
+                <a class="topbar-pill account-pill account-signin" href="/account/signin" data-account-dialog>Sign in</a>
+            }
         </div>
         @* The classic view's categories, on a band of section tabs just below
            the top bar, at every width (Pages/Components/Nav). *@
@@ -278,6 +338,23 @@
         </nav>
     }
 
+    @if (accountState.SignedIn)
+    {
+        @* Sign out is a POST, so the logo menu's Sign out submits this form.
+           The reader comes back to the page they were on. *@
+        <form id="@ParksComputing.Engine.Identity.AccountMenu.SignOutForm" method="post" action="/account/signout" hidden>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+        </form>
+    }
+    @if (accountState.Enabled)
+    {
+        @* Sign in and Create account open over the page, and passkeys work
+           anywhere (js/accounts.js). The token lets a script's request pass
+           the antiforgery check. *@
+        <meta name="request-verification-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
+        <script src="~/js/accounts.js" defer asp-append-version="true"></script>
+    }
     <script src="~/js/continuity.js" asp-append-version="true"></script>
     <script src="~/js/window-bar.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

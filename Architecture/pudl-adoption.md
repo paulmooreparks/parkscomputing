@@ -374,3 +374,11 @@ The window manager remains the sole owner of narrow pane selection. The host han
 The URL parameters `sidebarRestore` (comma-separated window keys) and `sidebarTop` (the former front window) retain the mobile restoration set across reloads and history navigation. They are written before minimizing and removed before restoring. Closed keys are filtered out, and already-minimized windows stay minimized. The page's initial pane continues to derive from its canonical window state.
 
 The Docker build and desktop/mobile browser checks passed on the staging container, localhost, and parkscomputing.com. The mobile restoration check includes reloading the list before returning to the previous windows. Served CSS, sidebar runtime, and host adapter were compared with the deployed source. Real-device touch and assistive-technology checks remain unperformed.
+
+### D59. PUDL 0.44.1 in the checkout, on beta first
+
+Version 0.44.1 changes `pudl.css` alone: a disabled button of any kind, primary and danger included, now looks like a disabled plain button, and a button disabled by its fieldset looks disabled too. The site had no stopgap of its own for `.btn` to remove; its disabled rules are for its own `.icon-btn` and stay. Beta serves it; production keeps 0.43.0 until Paul promotes beta.
+
+### D58. PUDL 0.44.0 in the checkout, on beta first
+
+Version 0.44.0 changes fonts only: Inter is split into per-script subsets, so `pudl.css` and the whole `fonts/` directory move together. The checkout's `wwwroot/pudl` now holds 0.44.0, and every other file in the distribution was already identical to 0.43.0. The site preloads no fonts, so nothing else changes. Beta (`Tools/beta-webroot.sh`) serves this copy. Production still serves 0.43.0 from the live tree until the next static deploy copies it there.

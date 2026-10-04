@@ -135,6 +135,12 @@ namespace ParksComputing.Engine.Pages {
                 if (!BookService.IsSafePath(slug)) {
                     return Task.FromResult<IActionResult>(NotFound());
                 }
+                // The Account applet's page is /account, where a site has
+                // accounts; its window's Open as a page names /page/account.
+                if (slug == ArticleContentService.AccountKey && draft is null &&
+                    HttpContext.RequestServices.GetService<Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions>>()?.Value.Enabled == true) {
+                    return Task.FromResult<IActionResult>(Redirect("/account"));
+                }
                 // A book's main page or chapter shows inside its contents. A
                 // chapter's file is the one its book names, wherever the
                 // book's front matter put its folder.

@@ -1,0 +1,10 @@
+@page "/account"
+@model ParksComputing.Engine.Pages.Account.IndexModel
+@{ ViewData["Title"] = "Your account | Parks Computing"; }
+@* The Account applet on a page of its own, for the classic view and for
+   the window's Open as a page. The applet's body is server-rendered here;
+   in a window, js/account.js loads the same body (_AccountContent). *@
+<div class="account-page">
+    <h1>Your account</h1>
+    <div data-applet="account" data-applet-page="/account"><partial name="_AccountContent" model="Model" /></div>
+</div>

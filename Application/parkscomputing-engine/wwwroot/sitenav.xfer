@@ -57,8 +57,8 @@
             menu-id "help"
             title "Help"
             nav [
-                { title "Site help and keyboard navigation" url "/page/site-help" }
-                { slug "terminal-guide" title "Terminal Guide" url "/page/terminal-guide" }
+                { slug "site-help" title "Site help and keyboard navigation" }
+                { slug "terminal-guide" title "Terminal Guide" }
             ]
         }
     ]

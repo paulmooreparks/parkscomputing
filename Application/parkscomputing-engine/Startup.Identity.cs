@@ -20,6 +20,9 @@ namespace ParksComputing.Engine;
    data-protection keys kept in the accounts database. */
 public partial class Startup {
     private void ConfigureIdentity(IServiceCollection services, string connectionString) {
+        services.Configure<AccountOptions>(Configuration.GetSection("Accounts"));
+        var accounts = Configuration.GetSection("Accounts").Get<AccountOptions>() ?? new AccountOptions();
+        accounts.Validate();
         services.Configure<AdminOptions>(Configuration.GetSection("Admin"));
         // SSH from the web terminal (A16): its destinations, and the relay's bookkeeping.
         services.Configure<SshOptions>(Configuration.GetSection("Admin:Ssh"));
@@ -31,10 +34,12 @@ public partial class Startup {
         });
         var admin = Configuration.GetSection("Admin").Get<AdminOptions>() ?? new AdminOptions();
         admin.Validate();
-        var cookieSecurity = admin.Secure ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest;
+        var cookieSecurity = (accounts.Enabled ? accounts.Scheme == "https" : admin.Secure) ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest;
 
-        services.AddDbContext<SiteIdentityDbContext>(options =>
+        services.AddDbContextFactory<SiteIdentityDbContext>(options =>
             options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(5), null)));
+        services.AddSingleton<ParksComputing.Engine.Publishing.ArticleRenderer>();
+        services.AddSingleton<ParksComputing.Engine.Publishing.ArticleStore>();
 
         services.AddDataProtection()
             .SetApplicationName("parkscomputing")
@@ -57,27 +62,27 @@ public partial class Startup {
         // Passkeys belong to the edit origin: its host is the relying party,
         // and a ceremony from any other origin, or from a frame, is refused.
         services.Configure<IdentityPasskeyOptions>(o => {
-            o.ServerDomain = admin.EditHost;
+            o.ServerDomain = accounts.Enabled ? accounts.Host : admin.EditHost;
             o.UserVerificationRequirement = "required";
             o.ResidentKeyRequirement = "required";
             o.ValidateOrigin = ctx => ValueTask.FromResult(
-                !ctx.CrossOrigin && string.Equals(ctx.Origin, admin.EditOrigin.TrimEnd('/'), StringComparison.Ordinal));
+                !ctx.CrossOrigin && string.Equals(ctx.Origin, (accounts.Enabled ? accounts.Origin : admin.EditOrigin).TrimEnd('/'), StringComparison.Ordinal));
         });
 
         services.ConfigureApplicationCookie(o => {
-            o.Cookie.Name = admin.CookieName("pc-admin");
+            o.Cookie.Name = accounts.Enabled ? (accounts.Scheme == "https" ? "__Host-pc-account" : "pc-account") : admin.CookieName("pc-admin");
             o.Cookie.Path = "/";
             o.Cookie.HttpOnly = true;
             o.Cookie.SecurePolicy = cookieSecurity;
-            o.Cookie.SameSite = SameSiteMode.Strict;
+            o.Cookie.SameSite = accounts.Enabled ? SameSiteMode.Lax : SameSiteMode.Strict;
             o.Cookie.IsEssential = true;
             // The cookie lasts as long as the longest idle limit an admin may
             // choose; each admin's own limit is kept per session (A14).
             o.ExpireTimeSpan = TimeSpan.FromMinutes(admin.IdleMinutesMax);
             o.SlidingExpiration = true;
-            o.LoginPath = "/admin/signin";
-            o.LogoutPath = "/admin/signout";
-            o.AccessDeniedPath = "/admin/signin";
+            o.LoginPath = accounts.Enabled ? "/account/signin" : "/admin/signin";
+            o.LogoutPath = accounts.Enabled ? "/account/signout" : "/admin/signout";
+            o.AccessDeniedPath = accounts.Enabled ? "/account/signin" : "/admin/signin";
             // An API call without a session is answered, not redirected.
             o.Events.OnRedirectToLogin = ctx => ApiOrRedirect(ctx, StatusCodes.Status401Unauthorized);
             o.Events.OnRedirectToAccessDenied = ctx => ApiOrRedirect(ctx, StatusCodes.Status403Forbidden);
@@ -107,7 +112,7 @@ public partial class Startup {
 
         services.AddAntiforgery(o => {
             o.HeaderName = "RequestVerificationToken";
-            o.Cookie.Name = admin.CookieName("pc-af");
+            o.Cookie.Name = accounts.Enabled ? (accounts.Scheme == "https" ? "__Host-pc-account-af" : "pc-account-af") : admin.CookieName("pc-af");
             o.Cookie.Path = "/";
             o.Cookie.SecurePolicy = cookieSecurity;
             o.Cookie.SameSite = SameSiteMode.Strict;
@@ -117,6 +122,16 @@ public partial class Startup {
         services.AddHttpClient(ResendMailer.ClientName, c => c.Timeout = TimeSpan.FromSeconds(15));
         services.AddScoped<ResendMailer>();
         services.AddScoped<AdminSessions>();
+        services.AddScoped<MemberSessions>();
+        services.AddSingleton<AccountWorkflow>();
+        services.AddSingleton<StaffAccess>();
+        services.AddSingleton<StaffBootstrap>();
+        services.AddSingleton<AccountMenu>();
+        services.AddSingleton<AccountAvatars>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<DurableSessions>();
+        services.AddSingleton<AccountLinks>();
+        services.AddSingleton<AccountStatus>();
         services.AddSingleton<SessionPolicy>();
         services.AddSingleton<AdminMenu>();
         services.AddSingleton<ServerFiles>();

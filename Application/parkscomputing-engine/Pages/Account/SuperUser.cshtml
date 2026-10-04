@@ -1,0 +1,60 @@
+@page "/account/superuser"
+@model ParksComputing.Engine.Pages.Account.SuperUserModel
+@{ ViewData["Title"] = "Super-user setup | Parks Computing"; }
+@functions {
+    // A step's state, as a glyph and in words, so colour is never the only sign.
+    static Microsoft.AspNetCore.Html.IHtmlContent Mark(bool done) => new Microsoft.AspNetCore.Html.HtmlString(done
+        ? "<span class=\"glyph account-step-mark\" style=\"--glyph: var(--glyph-check)\" aria-hidden=\"true\"></span><span class=\"account-step-state\">Done</span>"
+        : "<span class=\"glyph account-step-mark\" style=\"--glyph: var(--glyph-ring)\" aria-hidden=\"true\"></span><span class=\"account-step-state\">To do</span>");
+}
+<div class="account-page">
+<h1>Super-user setup</h1>
+@if (Model.Activated)
+{
+    <div class="notice positive" role="status">
+        <div class="notice-content">
+            <p class="notice-title">This account is the super-user</p>
+            <p class="notice-body">You can edit and publish articles, and manage the site's staff as those tools arrive.</p>
+            <div class="notice-actions"><a class="btn" href="/admin/articles">Open Administration</a></div>
+        </div>
+    </div>
+}
+else if (!Model.Pending)
+{
+    <p>This account has no super-user setup waiting. Setup starts on the server: the operator runs the site's <code>account-bootstrap</code> command for an account, and that account then has seven days to finish here.</p>
+    <p><a href="/account">Back to your account</a></p>
+}
+else
+{
+    <p>The server operator has authorized this account to become the site's super-user. Finish the three steps below by <time datetime="@Model.Until!.Value.ToString("yyyy-MM-ddTHH:mm:ssZ")">@Model.Until.Value.ToString("yyyy-MM-dd HH:mm") UTC</time>.</p>
+    <ol class="account-steps">
+        <li data-done="@(Model.EmailConfirmed ? "true" : "false")">
+            <h2 class="account-step-title">@Mark(Model.EmailConfirmed) Confirm your email address</h2>
+            <p>Signing in with the link sent to your email confirms the address.@(Model.EmailConfirmed ? " You've done this." : "")</p>
+        </li>
+        <li data-done="@(Model.Keys >= 2 ? "true" : "false")">
+            <h2 class="account-step-title">@Mark(Model.Keys >= 2) Add two passkeys</h2>
+            <p>You have @Model.Keys of the two. A super-user signs in only with a passkey, and the second one keeps you in if you lose the first.</p>
+            <p>In <a href="/account#passkeys">Your account</a>, under Passkeys, type a name and press <strong>Add a passkey…</strong>, then follow your browser's prompt. Do it twice, each time with a different device or app. A device that already holds a passkey for this account won't take another. Good pairs are:</p>
+            <ul>
+                <li>Windows Hello on this PC, and your phone. The simplest way to add the phone's is to open this site in the phone's own browser, sign in there with an email link, and add the passkey from Your account. Scanning the code a computer's browser shows also works, but only when both the computer and the phone have Bluetooth turned on;</li>
+                <li>your phone, and a hardware security key;</li>
+                <li>a password manager that stores passkeys, and either of the others.</li>
+            </ul>
+        </li>
+        <li data-done="false">
+            <h2 class="account-step-title">@Mark(false) Activate</h2>
+            <p>Press <strong>Activate</strong> and confirm with one of your passkeys. The account becomes the super-user, every other session it has is signed out, and Administration opens.</p>
+            @if (Model.Ready)
+            {
+                <p><button class="btn btn-primary" type="button" data-passkey="activate-superuser">Activate…</button></p>
+            }
+            else
+            {
+                <p class="form-help">Activate appears here once the steps above are done.</p>
+            }
+            <p class="form-error" data-passkey-status role="alert" hidden></p>
+        </li>
+    </ol>
+}
+</div>

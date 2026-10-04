@@ -1,2 +1,5 @@
 .vs
 .env
+.local/unified-identity/
+.local/beta/
+Tools/__pycache__/

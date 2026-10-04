@@ -107,7 +107,7 @@
             '<div class="df-out"></div>' +
             '<p class="df-status" aria-live="polite"></p>' +
             '<dialog class="dialog df-about" aria-labelledby="df-about-' + n + '">' +
-            '<h3 class="dialog-title" id="df-about-' + n + '">About the diff viewer</h3>' +
+            '<h3 class="dialog-title" id="df-about-' + n + '">About Diff Viewer</h3>' +
             '<div class="dialog-body"><p>The diff viewer compares two texts line by line. Type or paste each one, or open a file from the site or from your computer. ' +
             'Removed lines are marked with a minus and added lines with a plus, and within a changed line the words that changed are marked as well.</p>' +
             '<p>Ignore spaces treats lines that differ only in their spacing as the same. Unless Show every line is on, only the changes show, with ' +
@@ -296,7 +296,7 @@
         function menus() {
             var empty = !sides.a.text && !sides.b.text;
             return { titles: [
-                { label: 'Diff Viewer', items: window.pcAppletIdentity(root, [{ label: 'About the diff viewer', run: function () { about.showModal(); } }]) },
+                { label: 'Diff Viewer', items: window.pcAppletIdentity(root, [{ label: 'About Diff Viewer', run: function () { about.showModal(); } }]) },
                 { id: 'file', label: 'File', items: [
                     { label: 'Open the original…', run: function () { openSide('a'); } },
                     { label: 'Open the changed text…', run: function () { openSide('b'); } }, '-',

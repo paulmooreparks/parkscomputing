@@ -1,5 +1,6 @@
 
 /* Identity actions use PUDL's documented capability snapshots. */
+pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '4' });
 window.pcAppletIdentity = function (root, entries) {
     var result = (entries || []).slice(), win = root.closest('[data-win]');
     if (win && window.pudlWindows) {
@@ -8,9 +9,12 @@ window.pcAppletIdentity = function (root, entries) {
             var command = commands.find(function (c) { return c.id === id; });
             if (!command) { return; }
             if (result.length && (id === 'page' || id === 'close')) { result.push('-'); }
+            /* Close window is not marked as a danger here, as it is not in
+               PUDL's own identity menu for an article: closing a window loses
+               nothing, and the window menu's Close keeps PUDL's own mark. */
             result.push(Object.assign({}, command, {
                 label: id === 'page' ? 'Open as a page' : id === 'copy-link' ? 'Copy link to this applet' : 'Close window'
-            }));
+            }, id === 'close' ? { danger: false } : {}));
         });
     } else if (navigator.clipboard) {
         if (result.length) { result.push('-'); }
@@ -85,7 +89,7 @@ window.pcTerminalCommands = ['/js/terminal-text.js'];
 /* The site filesystem the terminal, the file manager and the editor share
    (js/sitefs.js). Every applet loads it from this one address, so a page
    holds one copy; raise its v on every change to the file. */
-window.pcSiteFsSrc = '/js/sitefs.js?v=6';
+window.pcSiteFsSrc = '/js/sitefs.js?v=7';
 
 /* The file browser Files, the editor and the barcode tool share (js/filebrowser.js), with its
    stylesheet; like the site filesystem, one copy a page, and a raised v on
@@ -113,7 +117,7 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: pcWorkspacePages + 'terminal',
-    ver: '29',
+    ver: '31',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
     instances: 4
 });
@@ -123,7 +127,7 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: pcWorkspacePages + 'files',
-    ver: '20',
+    ver: '22',
     handles: { browse: { param: 'path' } }
 });
 
@@ -132,7 +136,7 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
-    ver: '17',
+    ver: '18',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } }
 });
 
@@ -166,12 +170,12 @@ pudlApplets.define('theme-studio', {
    src: '/js/theme-studio.js',
    css: '/css/theme-studio.css',
    page: '/page/theme-studio',
-   ver: '6'
+   ver: '7'
 });
 
 pudlApplets.define('diff', {
    src: '/js/diff.js',
    css: '/css/diff.css',
    page: '/page/diff',
-   ver: '4'
+   ver: '5'
 });

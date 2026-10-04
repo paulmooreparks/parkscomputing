@@ -19,6 +19,20 @@ using Microsoft.Extensions.Logging;
 namespace ParksComputing.Engine {
     public class Program {
         public static int Main(string[] args) {
+            if (args.Length > 0 && args[0] == "account-bootstrap") {
+                using var bootstrapHost = CreateHostBuilder(Array.Empty<string>()).ConfigureLogging(logging => logging.ClearProviders()).Build();
+                return ParksComputing.Engine.Identity.StaffBootstrap.RunAsync(bootstrapHost.Services, args).GetAwaiter().GetResult();
+            }
+            if (ParksComputing.Engine.Publishing.ArticleImportCommand.Matches(args)) {
+                using var importHost = CreateHostBuilder(Array.Empty<string>())
+                    .ConfigureLogging(logging => logging.ClearProviders()).Build();
+                return ParksComputing.Engine.Publishing.ArticleImportCommand.RunAsync(importHost.Services, args).GetAwaiter().GetResult();
+            }
+            if (ParksComputing.Engine.Identity.IdentityInventoryCommand.Matches(args)) {
+                using var inventoryHost = CreateHostBuilder(Array.Empty<string>())
+                    .ConfigureLogging(logging => logging.ClearProviders()).Build();
+                return ParksComputing.Engine.Identity.IdentityInventoryCommand.RunAsync(inventoryHost.Services, args).GetAwaiter().GetResult();
+            }
             // Server-side admin commands (Identity/AdminCommand.cs) use the
             // site's services without starting the web server.
             if (ParksComputing.Engine.Identity.AdminCommand.Matches(args)) {
@@ -42,6 +56,11 @@ namespace ParksComputing.Engine {
            unchanged. */
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
+                // Email-link query strings contain credentials. Never emit them through request diagnostics.
+                .ConfigureLogging(logging => {
+                    logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
+                    logging.AddFilter("Microsoft.AspNetCore.Mvc.ModelBinding", LogLevel.Warning);
+                })
                 // The SSH destinations (Identity/SshOptions.cs) live in a file
                 // of the server's own, outside anything the admin mount shows,
                 // and an edit to it applies without a restart. The file is

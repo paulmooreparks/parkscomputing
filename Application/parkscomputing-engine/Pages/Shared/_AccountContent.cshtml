@@ -1,0 +1,110 @@
+@model ParksComputing.Engine.Pages.Account.IndexModel
+@* The Account applet's body (js/account.js), the same on the classic
+   /account page and in the window view's Account window. *@
+<div class="account" data-account-panel>
+@if (!Model.SignedIn)
+{
+    <p>You're not signed in. An account lets you comment on articles.</p>
+    <p class="account-buttons">
+        <a class="btn btn-primary" href="/account/signin" data-account-dialog>Sign in…</a>
+        <a class="btn" href="/account/register" data-account-dialog>Create account…</a>
+    </p>
+}
+else
+{
+    @if (Model.SetupPending)
+    {
+        <div class="notice warn" role="status">
+            <div class="notice-content">
+                <p class="notice-title">Super-user setup is waiting</p>
+                <p class="notice-body">The server operator has authorized this account to become the site's super-user.</p>
+                <div class="notice-actions"><a class="btn" href="/account/superuser">Finish super-user setup</a></div>
+            </div>
+        </div>
+    }
+    <section class="account-section" aria-labelledby="account-profile">
+        <h2 class="account-subtitle" id="account-profile">Profile</h2>
+        <table class="kv-table">
+            <tr><th scope="row">Email</th><td>@Model.Email</td></tr>
+            <tr><th scope="row">Access</th><td>@Model.Access</td></tr>
+        </table>
+        <form method="post" asp-antiforgery="true" action="/account?handler=Profile" novalidate>
+            <partial name="~/Pages/Account/_AccountErrors.cshtml" />
+            <input type="hidden" name="Version" value="@Model.Version" />
+            <div class="form-group">
+                <label class="form-label" for="account-name">Display name</label>
+                <input class="form-input" id="account-name" name="DisplayName" value="@Model.DisplayName" maxlength="80" required aria-describedby="account-name-help" />
+                <p class="form-help" id="account-name-help">Shown beside your comments.</p>
+            </div>
+            <div class="account-actions"><button class="btn" type="submit">Save display name</button></div>
+        </form>
+    </section>
+
+    <section class="account-section" id="picture" aria-labelledby="account-picture" data-account-avatar-url="@(Model.AvatarUrl ?? "")">
+        <h2 class="account-subtitle" id="account-picture">Profile picture</h2>
+        <div class="account-picture">
+            @ParksComputing.Engine.Identity.AccountMenu.Avatar(Model.AvatarUrl, "account-avatar account-avatar-large")
+            <p>Shown at the top of every page while you're signed in, and beside your comments. Any picture works; it's cropped to a square and made small before it's sent.</p>
+        </div>
+        <form method="post" asp-antiforgery="true" action="/account?handler=Avatar" enctype="multipart/form-data" novalidate data-account-avatar-form>
+            <div class="form-group">
+                <label class="form-label" for="account-picture-file">Choose a picture</label>
+                <input class="form-file" id="account-picture-file" name="Picture" type="file" accept="image/png,image/jpeg,image/webp" required />
+            </div>
+            <div class="account-actions">
+                <button class="btn" type="submit">Save picture</button>
+            </div>
+        </form>
+        @if (Model.AvatarUrl is not null)
+        {
+            <form method="post" asp-antiforgery="true" action="/account?handler=RemoveAvatar">
+                <div class="account-actions"><button class="btn" type="submit">Remove picture</button></div>
+            </form>
+        }
+    </section>
+
+    <section class="account-section" id="passkeys" aria-labelledby="account-passkeys">
+        <h2 class="account-subtitle" id="account-passkeys">Passkeys</h2>
+        <p>A passkey signs you in with this device's own lock, such as Windows Hello, Touch ID, your phone's screen lock or a security key, instead of an email link.</p>
+        @if (Model.Keys.Count == 0)
+        {
+            <p class="form-help">You have no passkeys yet.</p>
+        }
+        else
+        {
+            <ul class="account-list">
+                @foreach (var key in Model.Keys)
+                {
+                    <li><span>@key.Name</span><button class="btn btn-sm" type="button" data-remove-key="@key.Id">Remove</button></li>
+                }
+            </ul>
+        }
+        <div class="form-group">
+            <label class="form-label" for="key-name">Name for a new passkey</label>
+            <input class="form-input" id="key-name" maxlength="60" placeholder="For example, Laptop or Phone" aria-describedby="key-name-help" />
+            <p class="form-help" id="key-name-help">The name only helps you tell your passkeys apart.</p>
+        </div>
+        <div class="account-actions"><button class="btn" type="button" data-passkey="register">Add a passkey…</button></div>
+        <p class="form-error" data-passkey-status role="alert" hidden></p>
+    </section>
+
+    <section class="account-section" aria-labelledby="account-sessions">
+        <h2 class="account-subtitle" id="account-sessions">Where you're signed in</h2>
+        <p>Ending a session signs that browser out the next time it asks this site for anything.</p>
+        <ul class="account-list">
+            @foreach (var session in Model.Sessions)
+            {
+                <li>
+                    <span>@(session.Id == Model.CurrentSession ? "This browser" : "Another browser")<br />
+                        <span class="form-help">Signed in <time datetime="@session.StartedUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")">@session.StartedUtc.ToString("yyyy-MM-dd HH:mm") UTC</time> with @ParksComputing.Engine.Identity.AdminSessions.Describe(session.Method)</span></span>
+                    @if (session.Id != Model.CurrentSession)
+                    {
+                        <form method="post" asp-antiforgery="true" action="/account?handler=Revoke"><input type="hidden" name="sessionId" value="@session.Id" /><button class="btn btn-sm btn-danger" type="submit">End session</button></form>
+                    }
+                </li>
+            }
+        </ul>
+        <form method="post" asp-antiforgery="true" action="/account/signout"><div class="account-actions"><button class="btn" type="submit">Sign out of this browser</button></div></form>
+    </section>
+}
+</div>

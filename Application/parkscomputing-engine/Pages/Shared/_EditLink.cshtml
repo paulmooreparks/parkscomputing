@@ -1,0 +1,19 @@
+@model string
+@inject ParksComputing.Engine.Identity.AccountMenu AccountMenu
+@inject ParksComputing.Engine.Pages.Services.ArticleContentService Articles
+@* An article's Edit link (the model is its slug), shown only to a reader
+   who may edit the site's files, the super-user on the site with accounts.
+   Anyone else gets nothing: not a link that asks them to sign in, which
+   would only advertise where editing happens. In the window view it opens
+   the article's source in the Editor, beside whatever the Editor already
+   has open (js/commands.js, edit); elsewhere, and without script, it goes
+   to the Editor's page with that file. *@
+@{
+    var state = await AccountMenu.StateAsync(Context);
+    var source = state.ServerTools ? Articles.SourcePathOf(Model) : null;
+}
+@if (source is not null)
+{
+    <a class="post-edit" href="/page/editor?file=@Uri.EscapeDataString(source)" rel="nofollow"
+       data-command="edit" data-args="@System.Text.Json.JsonSerializer.Serialize(new { path = source })">Edit</a>
+}

@@ -1,0 +1,18 @@
+@* A refused form comes back with what the reader typed and, at its top, a
+   danger notice saying what went wrong, each wrong field marked as well
+   (PUDL reference, Forms). *@
+@{
+    var errors = ViewData.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Where(m => !string.IsNullOrEmpty(m)).Distinct().ToList();
+}
+@if (errors.Count > 0)
+{
+    <div class="notice danger" role="alert" tabindex="-1" data-account-errors>
+        <div class="notice-content">
+            <p class="notice-title">@(errors.Count == 1 ? "That didn't work" : "Those didn't work")</p>
+            @foreach (var error in errors)
+            {
+                <p class="notice-body">@error</p>
+            }
+        </div>
+    </div>
+}

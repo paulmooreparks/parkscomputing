@@ -14,7 +14,7 @@ namespace ParksComputing.Engine.Identity;
 /// <summary>
 /// Admin sign-in (Architecture/admin-and-identity-design.md, A4, A8, A9).
 /// Every session records how it began and when, and when its last passkey
-/// tap was, as claims in the session cookie; those decide what it may do.
+/// tap was. Durable records decide whether the session is valid or elevated.
 /// </summary>
 public sealed class AdminSessions {
     public const string MethodClaim = "pc_method";
@@ -33,18 +33,28 @@ public sealed class AdminSessions {
     private readonly UserManager<IdentityUser> _users;
     private readonly ResendMailer _mail;
     private readonly SessionPolicy _policy;
+    private readonly DurableSessions _durable;
+    private readonly AccountStatus _status;
+    private readonly string _serverRole;
 
-    public AdminSessions(SignInManager<IdentityUser> signIn, UserManager<IdentityUser> users, ResendMailer mail, SessionPolicy policy) {
-        _signIn = signIn; _users = users; _mail = mail; _policy = policy;
+    public AdminSessions(SignInManager<IdentityUser> signIn, UserManager<IdentityUser> users, ResendMailer mail, SessionPolicy policy, DurableSessions durable, AccountStatus status,
+        Microsoft.Extensions.Options.IOptions<AccountOptions> accounts) {
+        _signIn = signIn; _users = users; _mail = mail; _policy = policy; _durable = durable; _status = status;
+        _serverRole = ServerRole(accounts.Value);
     }
 
-    private static string NewSessionId() => Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
+    /// <summary>The role the server's own tools (the admin mount, SSH) take.
+    /// On the edit origin every admin uses them; on the site with accounts
+    /// only the super-user does, because there an Admin edits articles and
+    /// nothing more (Architecture/unified-identity-design.md, roles table).</summary>
+    public static string ServerRole(AccountOptions accounts) => accounts.Enabled ? "SuperAdmin" : AdminOptions.Role;
 
     private static string Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
 
-    /// <summary>Whether this account may use the edit origin at all.</summary>
+    /// <summary>Whether this account may use the server's own tools: the
+    /// edit origin, or on the site with accounts its admin mount and SSH.</summary>
     public async Task<bool> MaySignInAsync(IdentityUser user) =>
-        !await _users.IsLockedOutAsync(user) && await _users.IsInRoleAsync(user, AdminOptions.Role);
+        user.EmailConfirmed && !await _status.SuspendedAsync(user.Id) && !await _users.IsLockedOutAsync(user) && await _users.IsInRoleAsync(user, _serverRole);
 
     /// <summary>
     /// Starts a session. A passkey sign-in counts as a passkey tap; an email
@@ -52,12 +62,14 @@ public sealed class AdminSessions {
     /// sign-in methods until it taps a passkey.
     /// </summary>
     public async Task SignInAsync(IdentityUser user, string method, HttpContext ctx) {
+        if (!await MaySignInAsync(user) || !user.EmailConfirmed) { throw new InvalidOperationException("Account cannot sign in."); }
+        var sessionId = await _durable.CreateAsync(user, method);
         var now = Now();
         await _signIn.SignInWithClaimsAsync(user, isPersistent: false, new[] {
             new Claim(MethodClaim, method),
             new Claim(SignedInClaim, now),
             new Claim(ConfirmedClaim, method == Passkey ? now : "0"),
-            new Claim(SessionClaim, NewSessionId())
+            new Claim(SessionClaim, sessionId)
         });
         await NotifyAsync(user, "Signed in to parkscomputing.com",
             $"Someone signed in to edit parkscomputing.com as {user.Email}, with {Describe(method)}.", ctx);
@@ -65,45 +77,27 @@ public sealed class AdminSessions {
 
     /// <summary>Records a fresh passkey tap on the current session, keeping how it began.</summary>
     public async Task ConfirmAsync(IdentityUser user, ClaimsPrincipal current) {
+        if (current.FindFirstValue(ClaimTypes.NameIdentifier) != user.Id || !await _policy.ConfirmAsync(current)) {
+            throw new InvalidOperationException("Session has ended.");
+        }
         await _signIn.SignInWithClaimsAsync(user, isPersistent: false, new[] {
             new Claim(MethodClaim, current.FindFirstValue(MethodClaim) ?? Passkey),
             new Claim(SignedInClaim, current.FindFirstValue(SignedInClaim) ?? Now()),
             new Claim(ConfirmedClaim, Now()),
-            new Claim(SessionClaim, current.FindFirstValue(SessionClaim) ?? NewSessionId())
+            new Claim(SessionClaim, current.FindFirstValue(SessionClaim)!)
         });
     }
 
-    /// <summary>Whether the session tapped a passkey within its admin's confirmation window.</summary>
-    public async Task<bool> RecentlyConfirmedAsync(ClaimsPrincipal p) =>
-        Within(p, ConfirmedClaim, TimeSpan.FromMinutes((await _policy.ForAsync(p)).ConfirmMinutes));
+    public Task<bool> RecentlyConfirmedAsync(ClaimsPrincipal p) => _policy.ConfirmedAsync(p);
 
-    /// <summary>Whether the session tapped a passkey recently enough for a destructive change (A8).</summary>
-    public async Task<bool> ConfirmedForDestructiveAsync(ClaimsPrincipal p) =>
-        Within(p, ConfirmedClaim, TimeSpan.FromMinutes((await _policy.ForAsync(p)).DestructiveConfirmMinutes));
+    public Task<bool> ConfirmedForDestructiveAsync(ClaimsPrincipal p) => _policy.ConfirmedAsync(p, destructive: true);
 
-    /// <summary>Whether the session has outlived its absolute lifetime, or gone idle too long (A14).</summary>
-    public static async Task<bool> ExpiredAsync(ClaimsPrincipal p, SessionPolicy policy) {
-        var t = await policy.ForAsync(p);
-        if (!Within(p, SignedInClaim, TimeSpan.FromHours(t.AbsoluteHours))) {
-            return true;
-        }
-        /* A session from before sessions carried their own id can't be
-           timed for idleness, so it ends and signs in again. */
-        var sid = p.FindFirstValue(SessionClaim);
-        return sid is null || !policy.Touch(sid, t.IdleMinutes);
-    }
+    public static async Task<bool> ExpiredAsync(ClaimsPrincipal p, SessionPolicy policy) =>
+        !await policy.ValidAsync(p, touch: true);
 
-    /// <summary>Whether the session has outlived its absolute lifetime, without counting as a request.</summary>
-    public static async Task<bool> ExpiredAbsoluteAsync(ClaimsPrincipal p, SessionPolicy policy) =>
-        !Within(p, SignedInClaim, TimeSpan.FromHours((await policy.ForAsync(p)).AbsoluteHours));
-
-    private static bool Within(ClaimsPrincipal p, string claim, TimeSpan window) {
-        var v = p.FindFirstValue(claim);
-        if (!long.TryParse(v, NumberStyles.Integer, CultureInfo.InvariantCulture, out var secs) || secs <= 0) {
-            return false;
-        }
-        return DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(secs) <= window;
-    }
+    /// <summary>Checks all durable session limits without extending activity.</summary>
+    public static async Task<bool> ExpiredWithoutActivityAsync(ClaimsPrincipal p, SessionPolicy policy) =>
+        !await policy.ValidAsync(p);
 
     /// <summary>
     /// Carries the session's claims across Identity's periodic refresh of the

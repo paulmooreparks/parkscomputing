@@ -184,7 +184,7 @@
             '</div></div>' +
             '<input type="file" accept=".css,text/css" hidden data-ts="file" />' +
             '<dialog class="dialog ts-about" aria-labelledby="ts-about-' + n + '">' +
-            '<h3 class="dialog-title" id="ts-about-' + n + '">About the theme studio</h3>' +
+            '<h3 class="dialog-title" id="ts-about-' + n + '">About PUDL Theme Studio</h3>' +
             '<div class="dialog-body"><p>The theme studio edits the colours a PUDL theme may set, for the light palette and the dark one. ' +
             'The two previews are PUDL\'s own components, drawn by the release of PUDL this site uses, so what you see is what a project gets.</p>' +
             '<p>Under the previews, each pairing that carries text shows its contrast ratio against WCAG AA\'s 4.5:1. ' +
@@ -374,7 +374,7 @@
             var changed = { light: Object.keys(st.light).length > 0, dark: Object.keys(st.dark).length > 0 };
             return {
                 titles: [
-                    { label: 'Theme Studio', items: window.pcAppletIdentity(root, [{ label: 'About the theme studio', run: function () { about.showModal(); } }]) },
+                    { label: 'PUDL Theme Studio', items: window.pcAppletIdentity(root, [{ label: 'About PUDL Theme Studio', run: function () { about.showModal(); } }]) },
                     {
                         id: 'file', label: 'File', items: [
                             { label: 'Open a theme…', run: function () { file.click(); }, disabled: !ready },

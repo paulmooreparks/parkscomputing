@@ -4,7 +4,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -13,7 +12,7 @@ namespace ParksComputing.Engine.Identity;
 /// <summary>
 /// Sends plain-text mail through Resend's documented HTTP API
 /// (POST https://api.resend.com/emails). Without an API key it logs and sends
-/// nothing, so a missing key never stops a sign-in, only its notice.
+/// nothing. Callers must cancel undelivered sign-in links.
 /// </summary>
 public sealed class ResendMailer {
     public const string ClientName = "resend";
@@ -22,22 +21,13 @@ public sealed class ResendMailer {
     private readonly EmailOptions _options;
     private readonly ILogger<ResendMailer> _logger;
 
-    private readonly bool _development;
-
-    public ResendMailer(IHttpClientFactory clients, IOptions<EmailOptions> options, ILogger<ResendMailer> logger, IHostEnvironment environment) {
-        _clients = clients; _options = options.Value; _logger = logger; _development = environment.IsDevelopment();
+    public ResendMailer(IHttpClientFactory clients, IOptions<EmailOptions> options, ILogger<ResendMailer> logger) {
+        _clients = clients; _options = options.Value; _logger = logger;
     }
 
     public async Task<bool> SendAsync(string to, string subject, string text) {
         if (string.IsNullOrWhiteSpace(_options.ApiKey) || string.IsNullOrWhiteSpace(_options.From)) {
-            // In development the message itself is logged, so a sign-in link
-            // can be followed without sending mail. Never in production,
-            // where it would put live links in the logs.
-            if (_development) {
-                _logger.LogWarning("Mail to {To} not sent (no RESEND_API_KEY): {Subject}\n{Text}", to, subject, text);
-            } else {
-                _logger.LogWarning("Mail to {To} not sent: RESEND_API_KEY or EMAIL_FROM is not set ({Subject})", to, subject);
-            }
+            _logger.LogWarning("Mail not sent: RESEND_API_KEY or EMAIL_FROM is not set");
             return false;
         }
 
@@ -59,11 +49,11 @@ public sealed class ResendMailer {
                 return true;
             }
 
-            _logger.LogError("Resend refused mail to {To}: {Status} {Body}", to, (int)response.StatusCode, await response.Content.ReadAsStringAsync());
+            _logger.LogError("Resend refused mail: {Status}", (int)response.StatusCode);
             return false;
         }
         catch (Exception ex) {
-            _logger.LogError(ex, "Resend could not be reached for mail to {To}", to);
+            _logger.LogError("Resend request failed ({ErrorType})", ex.GetType().Name);
             return false;
         }
     }

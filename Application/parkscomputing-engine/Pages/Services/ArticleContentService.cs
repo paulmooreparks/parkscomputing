@@ -31,11 +31,41 @@ public class ArticleContentService {
 
     private readonly IWebHostEnvironment _environment;
     private readonly BookService _books;
+    private readonly bool _accounts;
 
-    public ArticleContentService(IWebHostEnvironment environment, BookService books) {
+    public ArticleContentService(IWebHostEnvironment environment, BookService books,
+        Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions>? accounts = null) {
         _environment = environment;
         _books = books;
+        _accounts = accounts?.Value.Enabled ?? false;
     }
+
+    /// <summary>Where an article's source is in the admin mount, such as
+    /// /wwwroot/content/about.md or a book chapter's file, for the Edit
+    /// link a reader who may edit sees; null when it has no file here.</summary>
+    public string? SourcePathOf(string? slug) {
+        if (string.IsNullOrEmpty(slug) || !BookService.IsSafePath(slug)) { return null; }
+        var root = Path.GetFullPath(_environment.WebRootPath);
+        string? file = null;
+        if (_books.Locate(slug) is { } inBook && inBook.ChapterPath.Length > 0) { file = _books.FileOf(inBook.Book, inBook.ChapterPath); }
+        file ??= new[] { ".md", ".html" }.Select(ext => Path.Combine(root, "content", slug + ext)).FirstOrDefault(File.Exists);
+        if (file is null) { return null; }
+        var rel = Path.GetRelativePath(root, Path.GetFullPath(file)).Replace('\\', '/');
+        return rel.StartsWith("..", StringComparison.Ordinal) ? null : "/wwwroot/" + rel;
+    }
+
+    /// <summary>The window key of the Account applet, which a site with
+    /// accounts serves itself rather than from a content file
+    /// (Architecture/unified-identity-design.md). Its page is /account.</summary>
+    public const string AccountKey = "account";
+
+    /// <summary>The Account applet's window: an empty mount, which the
+    /// applet fills with the reader's own account (js/account.js), so the
+    /// window is the same for everyone and holds nothing private.</summary>
+    private ArticleWindowContent? AccountWindow() => !_accounts ? null :
+        new ArticleWindowContent(AccountKey, "Your account",
+            "<div data-applet=\"account\" data-applet-page=\"/account\" aria-label=\"Your account\"><noscript><p>Your account needs JavaScript in a window. <a href=\"/account\">Open it as a page</a>.</p></noscript></div>",
+            false, false, IsApplet: true, WindowSize: "content");
 
     /// <summary>
     /// A book's window (Architecture/books-design.md): the key is the book's
@@ -69,6 +99,7 @@ public class ArticleContentService {
     /// <summary>An article prepared for a window: internal links become
     /// window openers.</summary>
     public ArticleWindowContent? Load(string? slug) {
+        if (slug == AccountKey && AccountWindow() is { } account) { return account; }
         var raw = LoadRaw(slug);
         if (raw is null) { return null; }
         return raw with { BodyHtml = PrepareWindowBody(raw.Slug, raw.BodyHtml) };

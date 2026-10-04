@@ -43,6 +43,12 @@ public sealed class AdminOptions {
     /// <summary>The public site, where pages are viewed and previews shown.</summary>
     public string PublicOrigin { get; set; } = "https://parkscomputing.com";
 
+    /// <summary>The site's files, /wwwroot in the admin mount. Empty means the
+    /// web root this server serves, as on the production host. A server that
+    /// serves a copy of the site, as beta does, names the live tree here so
+    /// that its admins edit the real site.</summary>
+    public string? SiteRoot { get; set; }
+
     /// <summary>The admins' home directories on the server, one each, outside the web root (A10).</summary>
     public string HomeRoot { get; set; } = "/app/home";
 

@@ -1,0 +1,55 @@
+@page
+@model ParksComputing.Engine.Pages.Account.SignInModel
+@{
+    ViewData["Title"] = "Sign in | Parks Computing";
+    bool emailWrong = ViewData.ModelState["Email"]?.Errors.Count > 0;
+}
+@* Sign in is a modal dialog in both views (Architecture/unified-identity-design.md).
+   The logo menu's Sign in… opens this panel over the page the reader is
+   on (js/accounts.js); this address shows the same dialog over the site,
+   and without script the dialog is simply open. Cancel goes back. *@
+<dialog class="dialog account-dialog" open aria-labelledby="signin-title" data-account-page-dialog>
+<section class="account-panel" data-account-panel>
+    <h2 class="dialog-title" id="signin-title">Sign in</h2>
+    @if (Model.Sent)
+    {
+        <div class="notice positive" role="status">
+            <div class="notice-content">
+                <p class="notice-title">Check your email</p>
+                <p class="notice-body">If <strong>@Model.Email</strong> belongs to an account here, a sign-in link is on its way to it. The link works once, within 15 minutes. Open it in this browser to stay signed in here.</p>
+            </div>
+        </div>
+        <p class="form-help">Nothing arrived? Look in your spam folder, or <a href="/account/signin" data-account-dialog>ask for another link</a>.</p>
+        <div class="dialog-actions">
+            <a class="btn btn-primary" href="@Model.Back" data-account-cancel>Done</a>
+        </div>
+    }
+    else
+    {
+        <p>Enter your email address and you'll get a link that signs you in. There is no password.</p>
+        <form method="post" asp-antiforgery="true" action="/account/signin" novalidate>
+            <partial name="_AccountErrors" />
+            <input type="hidden" name="returnUrl" value="@Model.Back" />
+            <div class="form-group">
+                <label class="form-label" for="signin-email">Email address</label>
+                <input class="form-input" id="signin-email" name="Email" value="@Model.Email" type="email" autocomplete="email" maxlength="254" required autofocus
+                       aria-invalid="@(emailWrong ? "true" : null)" aria-describedby="@(emailWrong ? "signin-email-error" : null)" />
+                @if (emailWrong)
+                {
+                    <p class="form-error" id="signin-email-error">@ViewData.ModelState["Email"]!.Errors[0].ErrorMessage</p>
+                }
+            </div>
+            <div class="dialog-actions">
+                <a class="btn" href="@Model.Back" data-account-cancel>Cancel</a>
+                <button class="btn btn-primary" type="submit">Email me a link</button>
+            </div>
+        </form>
+        <div class="account-alt">
+            <p>Added a passkey to your account? Use it instead of email.</p>
+            <p><button class="btn" type="button" data-passkey="signin">Sign in with a passkey</button></p>
+            <p class="form-error" data-passkey-status role="alert" hidden></p>
+            <p>No account yet? <a href="/account/register" data-account-dialog>Create one</a>.</p>
+        </div>
+    }
+</section>
+</dialog>

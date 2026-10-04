@@ -1,3 +1,7 @@
+/* Copyright 2026 Paul Parks. SPDX-License-Identifier: Apache-2.0
+   Licensed under the Apache License, Version 2.0; see
+   https://www.apache.org/licenses/LICENSE-2.0 */
+
 /* The terminal applet. The screen is an input surface, so it sits sunken
    in a PUDL well; xterm.js draws inside it with colours taken from the
    PUDL tokens. Flowing (on its own page or in an article) it takes the

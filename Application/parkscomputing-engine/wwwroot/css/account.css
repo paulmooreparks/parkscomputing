@@ -1,0 +1,59 @@
+/* Account surfaces (Architecture/unified-identity-design.md). PUDL draws
+   every control; these rules only place the account's pages, dialogs and
+   applet, and every rule is scoped to them, because this sheet loads with
+   the Account applet on any page of the site. */
+
+/* A page of the account in the classic view: one readable column. */
+.account-page { max-width: 40rem; margin: 0 auto; padding: var(--space-5) 0; }
+.account-page > h1 { margin: 0 0 var(--space-4); }
+/* The beta's article workspace and its reader take a wider column. */
+.account-page-wide { max-width: 56rem; }
+.account-page form.stack { display: grid; gap: var(--space-3); margin-block: var(--space-4); }
+.account-page form.stack > .btn { justify-self: start; }
+.account-page article { overflow-wrap: anywhere; }
+.account-page article pre { overflow: auto; }
+
+/* The applet's body, on its page and in its window. */
+.account { display: grid; gap: var(--space-5); font-size: var(--text-md); }
+.account p { margin: 0; line-height: 1.55; overflow-wrap: anywhere; }
+.account form { display: grid; gap: var(--space-3); margin: 0; }
+.account-section { display: grid; gap: var(--space-3); }
+.account-section + .account-section { border-top: 1px solid var(--border); padding-top: var(--space-5); }
+.account-subtitle { margin: 0; font-size: var(--text-lg); }
+.account-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.account-buttons { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.account-list { list-style: none; margin: 0; padding: 0; }
+.account-list li { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); padding-block: var(--space-2); border-top: 1px solid var(--border); }
+.account-list li:last-child { border-bottom: 1px solid var(--border); }
+.account-list form { display: block; }
+@media (max-width: 540px) { .account-list li { flex-direction: column; align-items: flex-start; } }
+
+/* In a window the body scrolls inside the window's own padding. */
+.win-body [data-applet="account"] { padding: var(--space-4); width: min(38rem, 100%); box-sizing: border-box; }
+
+/* The account at the far right of the top bar: Sign in, or the reader's
+   picture in a round raised pill. */
+.account-pill { margin-inline-start: var(--space-2); }
+.account-pill:has(.account-avatar) { padding: 2px; border-radius: 999px; }
+.account-avatar { display: block; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+.account-avatar-placeholder { color: var(--text); }
+.account-picture { display: flex; align-items: center; gap: var(--space-4); }
+.account-avatar-large { width: 72px; height: 72px; flex: none; }
+
+/* Sign in and Create account: PUDL's dialog, with room for a form. */
+.account-dialog { width: min(30rem, calc(100vw - 2rem)); max-width: none; max-height: calc(100dvh - 2rem); overflow: auto; }
+.account-panel { display: grid; gap: var(--space-3); }
+.account-panel p { margin: 0; line-height: 1.55; }
+.account-panel form { display: grid; gap: var(--space-3); margin: 0; }
+.account-panel .dialog-actions { margin-top: var(--space-2); }
+.account-alt { display: grid; gap: var(--space-2); border-top: 1px solid var(--border); padding-top: var(--space-3); }
+
+/* Super-user setup: numbered steps, each marked done or to do by a glyph
+   and a word, never by colour alone. */
+.account-steps { display: grid; gap: var(--space-5); margin: var(--space-4) 0 0; padding-left: var(--space-5); }
+.account-steps > li { display: grid; gap: var(--space-2); }
+.account-steps p, .account-steps ul { margin: 0; line-height: 1.55; }
+.account-step-title { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--text-lg); }
+.account-step-mark { color: var(--text-muted); }
+.account-steps > li[data-done="true"] .account-step-mark { color: var(--positive); }
+.account-step-state { order: 9; margin-left: auto; font-size: var(--text-sm); font-weight: normal; color: var(--text-muted); }

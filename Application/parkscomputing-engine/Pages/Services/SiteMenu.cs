@@ -12,6 +12,17 @@ namespace ParksComputing.Engine.Pages.Services;
 /// section's entries.
 /// </summary>
 public static class SiteMenu {
+    /// <summary>The titles, with the account's commands (Identity/AccountMenu)
+    /// at the end of the logo's own title, after a separator, where PUDL's
+    /// menu bar guidance puts them.</summary>
+    public static IReadOnlyList<MenuTitle> Build(NavNode root, bool desktop, IReadOnlyList<MenuEntry> account) {
+        var titles = Build(root, desktop);
+        if (account.Count == 0) { return titles; }
+        var first = titles[0];
+        var entries = first.Entries.Count == 0 ? account : first.Entries.Append(new MenuEntry(MenuEntryKind.Separator)).Concat(account).ToList();
+        return new[] { first with { Entries = entries } }.Concat(titles.Skip(1)).ToList();
+    }
+
     public static IReadOnlyList<MenuTitle> Build(NavNode root, bool desktop) {
         var sections = NavService.Sections(root).ToArray();
 

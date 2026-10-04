@@ -95,6 +95,17 @@
         }
     });
 
+    /* edit { path }: an article's Edit link. In the window view the file
+       goes to the Editor through the request it answers ("open"), so it
+       opens beside what the Editor already has, starting one if none is
+       open. Elsewhere the link goes to the Editor's page with the file. */
+    define('edit', {
+        run: function (a) {
+            if (!desktop() || !a.path || !window.pudlApplets || !window.pudlApplets.request) { return false; }
+            return window.pudlApplets.request('open', { path: a.path, kind: 'file' });
+        }
+    });
+
     /* run { script, cwd }: one of the terminal's scripts, through the
        request the terminal answers ("shell", with the script to run), so a
        terminal opens and runs it. Elsewhere the link goes to the terminal's

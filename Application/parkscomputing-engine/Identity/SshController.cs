@@ -180,24 +180,29 @@ public sealed class SshController : ControllerBase {
         var principal = User;
         var userId = me.Id;
         var watch = Task.Run(async () => {
-            while (!stop.IsCancellationRequested) {
-                try { await Task.Delay(TimeSpan.FromSeconds(30), stop.Token); } catch (OperationCanceledException) { return; }
-                var tm = await _policy.ForAsync(principal);
-                if (await AdminSessions.ExpiredAbsoluteAsync(principal, _policy) || _policy.Idle(sid!, tm.IdleMinutes)) {
-                    ended = "session ended";
-                    stop.Cancel();
-                    return;
+            try {
+                while (!stop.IsCancellationRequested) {
+                    try { await Task.Delay(TimeSpan.FromSeconds(30), stop.Token); } catch (OperationCanceledException) { return; }
+                    if (await AdminSessions.ExpiredWithoutActivityAsync(principal, _policy)) {
+                        ended = "session ended";
+                        stop.Cancel();
+                        return;
+                    }
+                    /* Revoking an admin, from the server's command line, ends
+                       their relays too. A scope of its own gives a fresh read. */
+                    using var scope = _scopes.CreateScope();
+                    var sessions = scope.ServiceProvider.GetRequiredService<AdminSessions>();
+                    var fresh = await scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>().FindByIdAsync(userId);
+                    if (fresh is null || !await sessions.MaySignInAsync(fresh)) {
+                        ended = "admin revoked";
+                        stop.Cancel();
+                        return;
+                    }
                 }
-                /* Revoking an admin, from the server's command line, ends
-                   their relays too. A scope of its own gives a fresh read. */
-                using var scope = _scopes.CreateScope();
-                var sessions = scope.ServiceProvider.GetRequiredService<AdminSessions>();
-                var fresh = await scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>().FindByIdAsync(userId);
-                if (fresh is null || !await sessions.MaySignInAsync(fresh)) {
-                    ended = "admin revoked";
-                    stop.Cancel();
-                    return;
-                }
+            } catch (Exception ex) {
+                _log.LogWarning(ex, "SSH session validation failed");
+                ended = "session validation failed";
+                stop.Cancel();
             }
         });
 
@@ -210,12 +215,16 @@ public sealed class SshController : ControllerBase {
                     return;
                 }
                 if (r.Count > 0) {
-                    await net.WriteAsync(buf.AsMemory(0, r.Count), stop.Token);
-                    Interlocked.Add(ref up, r.Count);
                     if (DateTimeOffset.UtcNow - lastTouch > TimeSpan.FromSeconds(30)) {
                         lastTouch = DateTimeOffset.UtcNow;
-                        _policy.Touch(sid!, (await _policy.ForAsync(principal)).IdleMinutes);
+                        if (!await _policy.ValidAsync(principal, touch: true)) {
+                            ended = "session ended";
+                            stop.Cancel();
+                            return;
+                        }
                     }
+                    await net.WriteAsync(buf.AsMemory(0, r.Count), stop.Token);
+                    Interlocked.Add(ref up, r.Count);
                 }
             }
         });

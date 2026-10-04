@@ -19,9 +19,10 @@ namespace ParksComputing.Engine.Pages.Admin;
 public sealed class LinkModel : PageModel {
     private readonly UserManager<IdentityUser> _users;
     private readonly AdminSessions _sessions;
+    private readonly AccountLinks _links;
 
-    public LinkModel(UserManager<IdentityUser> users, AdminSessions sessions) {
-        _users = users; _sessions = sessions;
+    public LinkModel(UserManager<IdentityUser> users, AdminSessions sessions, AccountLinks links) {
+        _users = users; _sessions = sessions; _links = links;
     }
 
     [BindProperty(SupportsGet = true)] public string? Uid { get; set; }
@@ -35,7 +36,7 @@ public sealed class LinkModel : PageModel {
         }
         var user = await _users.FindByIdAsync(Uid);
         return user is not null && await _sessions.MaySignInAsync(user)
-            && await _users.VerifyUserTokenAsync(user, EmailLinkTokenProvider<IdentityUser>.ProviderName, EmailLinkTokenProvider<IdentityUser>.SignInPurpose, Token)
+            && await _links.ValidAsync(user.Id, AccountLinkPurpose.SignIn, Token)
             ? user : null;
     }
 
@@ -46,11 +47,9 @@ public sealed class LinkModel : PageModel {
 
     public async Task<IActionResult> OnPostAsync() {
         var user = await ValidUserAsync();
-        if (user is null) {
+        if (user is null || !await _links.RedeemAsync(user.Id, AccountLinkPurpose.SignIn, Token!)) {
             return Page();
         }
-        // A new stamp voids this link, and any other session the account had.
-        await _users.UpdateSecurityStampAsync(user);
         await _sessions.SignInAsync(user, AdminSessions.EmailLink, HttpContext);
         return Redirect("/admin");
     }

@@ -6,7 +6,8 @@ namespace ParksComputing.Engine.Api {
     /// <summary>
     /// Adds consistent Cache-Control (and Vary) headers for cacheable content endpoints.
     /// Currently targets GET/HEAD /api/content* responses with 200 or 304 status codes.
-    /// Admin endpoints (/api/admin/*) are marked no-store.
+    /// Account and admin endpoints are never cached. Cookie-bearing content
+    /// responses are private, including requests whose session has expired.
     /// </summary>
     public class CachingMiddleware {
         private readonly RequestDelegate _next;
@@ -24,31 +25,49 @@ namespace ParksComputing.Engine.Api {
         }
 
         public async Task InvokeAsync(HttpContext context) {
-            await _next(context);
+            // MVC may start the response while executing the endpoint. Set policy
+            // in OnStarting so it applies before headers leave the server.
+            context.Response.OnStarting(() => {
+                var path = context.Request.Path;
+                bool privateResource = path.StartsWithSegments("/api/account", StringComparison.OrdinalIgnoreCase) || path.StartsWithSegments("/account", StringComparison.OrdinalIgnoreCase)
+                    || path.StartsWithSegments("/admin", StringComparison.OrdinalIgnoreCase)
+                    || path.StartsWithSegments("/api/admin", StringComparison.OrdinalIgnoreCase);
+                bool content = path.StartsWithSegments("/api/content", StringComparison.OrdinalIgnoreCase);
+                bool personalized = context.User.Identity?.IsAuthenticated == true
+                    || context.Request.Headers.ContainsKey("Cookie")
+                    || context.Request.Headers.ContainsKey("Authorization")
+                    || context.Response.Headers.ContainsKey("Set-Cookie");
 
-            if (context.Response.HasStarted) { return; }
-
-            var path = context.Request.Path.Value ?? string.Empty;
-            var method = context.Request.Method;
-            // Auth endpoints should never be cached
-            if (path.StartsWith("/api/admin/", StringComparison.OrdinalIgnoreCase)) {
-                if (!context.Response.Headers.ContainsKey("Cache-Control")) {
+                // A page drawn for a signed-in reader carries their name and
+                // their commands, so no cache may keep it.
+                // A profile picture is the same for everyone and sets its own
+                // caching (Identity/AvatarController.cs).
+                bool signedIn = context.User.Identity?.IsAuthenticated == true &&
+                    !path.StartsWithSegments("/avatars", StringComparison.OrdinalIgnoreCase);
+                if (privateResource || (content && personalized) || signedIn) {
+                    // Override accidental public headers on a private response.
                     context.Response.Headers["Cache-Control"] = _authCacheControl;
+                    context.Response.Headers.Remove("Expires");
+                    return Task.CompletedTask;
                 }
-
-                return;
-            }
-
-            if ((method == HttpMethods.Get || method == HttpMethods.Head) && path.StartsWith("/api/content", StringComparison.OrdinalIgnoreCase)) {
-                if ((context.Response.StatusCode == 200 || context.Response.StatusCode == 304) && !context.Response.Headers.ContainsKey("Cache-Control")) {
-                    context.Response.Headers["Cache-Control"] = _contentCacheControl;
+                if (content && (HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method))) {
+                    if ((context.Response.StatusCode == 200 || context.Response.StatusCode == 304)
+                        && !context.Response.Headers.ContainsKey("Cache-Control")) {
+                        context.Response.Headers["Cache-Control"] = _contentCacheControl;
+                    }
+                    // Preserve endpoint-specific representation dimensions.
+                    var vary = context.Response.Headers["Vary"].ToString();
+                    var values = new System.Collections.Generic.HashSet<string>(
+                        vary.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries),
+                        StringComparer.OrdinalIgnoreCase);
+                    if (!values.Contains("*")) {
+                        values.UnionWith(new[] { "Accept", "Authorization", "Cookie" });
+                        context.Response.Headers["Vary"] = string.Join(", ", values);
+                    }
                 }
-
-                // Ensure Vary for representations & auth (if using bearer may influence body)
-                if (!context.Response.Headers.ContainsKey("Vary")) {
-                    context.Response.Headers["Vary"] = "Accept, Authorization";
-                }
-            }
+                return Task.CompletedTask;
+            });
+            await _next(context);
         }
     }
 }

@@ -1,3 +1,7 @@
+/* Copyright 2026 Paul Parks. SPDX-License-Identifier: Apache-2.0
+   Licensed under the Apache License, Version 2.0; see
+   https://www.apache.org/licenses/LICENSE-2.0 */
+
 /* The terminal applet: the public site in terminal mode
    (Architecture/terminal-design.md). Its filesystem (js/sitefs.js) holds
    the site's structure as sitenav describes it, in /site, served read-only
@@ -1008,7 +1012,7 @@
                 { label: 'Clear the screen', run: function () { if (term) { term.clear(); term.focus(); } } }
             ];
             if (window.pudlApplets && window.pudlApplets.can && window.pudlApplets.can('shell')) {
-                list.push({ label: 'New terminal here', run: function () { window.pudlApplets.request('shell', { path: cwd ? pathOf(cwd) : '/' }, root); } });
+                list.push({ label: 'New terminal window here', run: function () { window.pudlApplets.request('shell', { path: cwd ? pathOf(cwd) : '/' }, root); } });
             }
             return list;
         }
@@ -1060,10 +1064,11 @@
 
         function write(s) { if (term) { term.write(String(s).replace(/\r?\n/g, '\r\n')); } }
         function prompt() {
-            /* On the edit origin the prompt is the admin's, and ends in #,
-               as a root shell's does. */
+            /* With the server mounted the prompt is the admin's, at the
+               host they are on (edit.parkscomputing, beta.parkscomputing),
+               and ends in #, as a root shell's does. */
             return F.mounted
-                ? paint('red', F.user() + '@edit.parkscomputing') + ':' + paint('blue', C.bold + displayPath(cwd)) + '# '
+                ? paint('red', F.user() + '@' + location.hostname.replace(/\.com$/, '')) + ':' + paint('blue', C.bold + displayPath(cwd)) + '# '
                 : paint('green', 'guest@parkscomputing') + ':' + paint('blue', C.bold + displayPath(cwd)) + '$ ';
         }
         function redraw() {

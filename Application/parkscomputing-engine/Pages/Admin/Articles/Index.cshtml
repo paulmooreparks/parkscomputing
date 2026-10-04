@@ -1,0 +1,13 @@
+@page "/admin/articles"
+@model ParksComputing.Engine.Pages.Admin.Articles.IndexModel
+@{ ViewData["Title"] = "Administration"; }
+<div class="account-page account-page-wide">
+<h1>Administration</h1><p>This beta workspace edits articles in the beta database.</p>
+@if (!Model.Confirmed) {
+    <p>Confirm with a passkey to edit articles.</p><button class="btn btn-primary" type="button" data-passkey="confirm">Confirm with a passkey</button><p class="form-error" data-passkey-status role="status" hidden></p>
+} else {
+    <p><a class="btn btn-primary" href="/admin/articles/edit">Create article</a></p>
+    @if (Model.Articles.Count == 0) { <p>No articles have been created yet.</p> }
+    <ul>@foreach (var article in Model.Articles) { <li><a href="/admin/articles/edit/@article.Id">@article.Title</a> <small>@article.Slug, draft @article.Draft, @(article.Published is null ? "unpublished" : "published revision " + article.Published)</small></li> }</ul>
+}
+</div>

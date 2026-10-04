@@ -1,3 +1,7 @@
+/* Copyright 2026 Paul Parks. SPDX-License-Identifier: Apache-2.0
+   Licensed under the Apache License, Version 2.0; see
+   https://www.apache.org/licenses/LICENSE-2.0 */
+
 /* Text tools for the terminal: head, tail, wc, sort and uniq. Each is a
    JavaScript command registered through window.pcTerminal.register, the
    way any command beyond the built-in ones is added

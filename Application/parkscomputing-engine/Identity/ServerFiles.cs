@@ -69,17 +69,20 @@ public sealed class ServerFiles {
     private readonly ILogger<ServerFiles> _logger;
 
     public ServerFiles(IWebHostEnvironment env, IOptions<AdminOptions> options, TagHelperMemoryCacheProvider tagHelperCache, ILogger<ServerFiles> logger) {
-        _webRoot = Path.GetFullPath(env.WebRootPath);
         _options = options.Value;
+        _webRoot = Path.GetFullPath(string.IsNullOrWhiteSpace(_options.SiteRoot) ? env.WebRootPath : _options.SiteRoot);
         _tagHelperCache = tagHelperCache;
         _logger = logger;
     }
 
     public sealed record Entry(string P, bool D, long S, long M);
 
-    /// <summary>An admin's directory name: the account's short name, or its email's local part.</summary>
+    /// <summary>An admin's directory name: the account's short name, or its
+    /// email's local part when the account has none of its own, as accounts
+    /// made by public sign-up have only an opaque id for a user name.</summary>
     public static string HomeNameOf(IdentityUser user) {
-        var raw = (user.UserName ?? "").Contains('@') || string.IsNullOrWhiteSpace(user.UserName)
+        var raw = (user.UserName ?? "").Contains('@') || string.IsNullOrWhiteSpace(user.UserName) ||
+            System.Text.RegularExpressions.Regex.IsMatch(user.UserName!, "^[0-9a-f]{32}$")
             ? (user.Email ?? user.Id).Split('@')[0]
             : user.UserName!;
         var name = HomeNameChars.Replace(raw.ToLowerInvariant(), "-").Trim('-', '.');

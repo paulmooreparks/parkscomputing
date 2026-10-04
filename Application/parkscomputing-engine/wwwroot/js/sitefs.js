@@ -1,3 +1,7 @@
+/* Copyright 2026 Paul Parks. SPDX-License-Identifier: Apache-2.0
+   Licensed under the Apache License, Version 2.0; see
+   https://www.apache.org/licenses/LICENSE-2.0 */
+
 /* The site filesystem: the sandbox the terminal, the file manager and the
    editor share (Architecture/files-editor-design.md). Its root holds
    /site, the site's public structure as /api/site/tree serves it from
@@ -387,15 +391,29 @@
        path under that root), and is writable, so home is true on it as on a
        local file. Its text is fetched when first read and kept on the node. */
 
-    var TOKEN = meta('request-verification-token');
     var serverRoots = {};
     var channel = null;
 
-    function api(path, init) {
+    /* A request to the mount. The antiforgery token is read afresh each
+       time, because signing in again replaces it. A session that ended
+       while the page was open answers 401 with signin (the server's
+       Identity/ServerToolSignIn.cs): the reader is asked to sign in again
+       (window.pcAdmin.signIn), and the request goes once more; if they
+       decline, the 401 stands, saying they are signed out. */
+    async function api(path, init) {
         init = init || {};
         init.credentials = 'same-origin';
-        init.headers = Object.assign({ Accept: 'application/json', RequestVerificationToken: TOKEN }, init.headers || {});
-        return fetch(MOUNT + path, init);
+        var headers = init.headers || {};
+        function send() {
+            init.headers = Object.assign({ Accept: 'application/json', RequestVerificationToken: meta('request-verification-token') }, headers);
+            return fetch(MOUNT + path, init);
+        }
+        var r = await send();
+        if (r.status !== 401 || !window.pcAdmin || !window.pcAdmin.signIn) { return r; }
+        var body = await r.clone().json().catch(function () { return {}; });
+        if (!body.signin) { return r; }
+        try { await window.pcAdmin.signIn(); } catch (err) { return r; }
+        return send();
     }
 
     /* A change the server wants a fresh passkey tap for asks for one, then
@@ -451,7 +469,7 @@
 
     async function listing(rootName) {
         var r = await api('/tree?root=' + rootName);
-        if (!r.ok) { throw new Error('the ' + rootName + ' listing: HTTP ' + r.status); }
+        if (!r.ok) { throw new Error('the ' + rootName + ' listing: ' + (r.status === 401 ? 'you\'re signed out; sign in again' : 'HTTP ' + r.status)); }
         return r.json();
     }
 
@@ -500,7 +518,7 @@
 
     async function serverBytes(n) {
         var r = await api('/file?root=' + n.server + '&path=' + encodeURIComponent(n.rel), { headers: { Accept: 'application/octet-stream' } });
-        if (!r.ok) { throw new Error(displayPath(n) + ': ' + (r.status === 404 ? 'no such file' : 'HTTP ' + r.status)); }
+        if (!r.ok) { throw new Error(displayPath(n) + ': ' + (r.status === 404 ? 'no such file' : r.status === 401 ? 'you\'re signed out; sign in again' : 'HTTP ' + r.status)); }
         return r.arrayBuffer();
     }
 

@@ -232,6 +232,9 @@ namespace ParksComputing.Engine {
                 c.DisplayRequestDuration();
             });
 
+            // Register before cookie/session middleware too: their OnStarting
+            // callbacks can add cookies that must prevent public caching.
+            app.UseMiddleware<ParksComputing.Engine.Api.CachingMiddleware>();
             app.UseCookiePolicy();
             app.UseSession();
             app.UseRouting();
@@ -240,8 +243,9 @@ namespace ParksComputing.Engine {
             // looked anonymous and the admin allowances never applied.
             app.UseAuthentication();
             app.UseRateLimiter();
+            // A server tool's call without a session hears so (Identity/ServerToolSignIn.cs).
+            app.UseMiddleware<ParksComputing.Engine.Identity.ServerToolSignIn>();
             app.UseMiddleware<ParksComputing.Engine.Api.ApiNotFoundMiddleware>();
-            app.UseMiddleware<ParksComputing.Engine.Api.CachingMiddleware>();
             app.UseAuthorization();
             // The SSH relay's WebSocket (Identity/SshController.cs, A16); the
             // controller alone decides who may open one.

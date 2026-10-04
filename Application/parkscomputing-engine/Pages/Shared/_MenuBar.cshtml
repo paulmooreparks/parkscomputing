@@ -1,4 +1,5 @@
 @using ParksComputing.Engine.Pages.Services
+@using ParksComputing.Engine.Identity
 @inject INavService SiteNav
 @* The site's host menu, for PUDL's menu bar (pudl-menubar.js; see
    Architecture/site-menu-design.md): sitenav.xfer's menu, resolved by
@@ -7,5 +8,10 @@
    a page of the site still opens as a window in the window view, and
    js/commands.js carries out the commands that need script. The front
    menu, for what the reader is in, is PUDL's to build from the applet or
-   the article. *@
-@Html.Raw(MenuBuilder.ToHtml(SiteMenu.Build(SiteNav.GetRoot(), ViewData["Desktop"] as bool? ?? false)))
+   the article. Where the site has accounts, the logo's title ends with the
+   account's commands, which the layout worked out (Identity/AccountMenu). *@
+@{
+    bool desktop = ViewData["Desktop"] as bool? ?? false;
+    var accountState = ViewData["AccountMenu"] as AccountMenuState ?? AccountMenuState.Off;
+}
+@Html.Raw(MenuBuilder.ToHtml(SiteMenu.Build(SiteNav.GetRoot(), desktop, AccountMenu.Entries(accountState, desktop))))

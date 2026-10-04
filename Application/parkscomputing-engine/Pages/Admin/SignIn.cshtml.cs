@@ -24,9 +24,10 @@ public sealed class SignInModel : PageModel {
     private readonly AdminSessions _sessions;
     private readonly ResendMailer _mail;
     private readonly AdminOptions _options;
+    private readonly AccountLinks _links;
 
-    public SignInModel(UserManager<IdentityUser> users, AdminSessions sessions, ResendMailer mail, IOptions<AdminOptions> options) {
-        _users = users; _sessions = sessions; _mail = mail; _options = options.Value;
+    public SignInModel(UserManager<IdentityUser> users, AdminSessions sessions, ResendMailer mail, IOptions<AdminOptions> options, AccountLinks links) {
+        _users = users; _sessions = sessions; _mail = mail; _options = options.Value; _links = links;
     }
 
     [BindProperty] public string? Email { get; set; }
@@ -48,12 +49,13 @@ public sealed class SignInModel : PageModel {
         var email = (Email ?? "").Trim();
         var user = email.Length > 0 ? await _users.FindByEmailAsync(email) : null;
         if (user is not null && await _sessions.MaySignInAsync(user)) {
-            var token = await _users.GenerateUserTokenAsync(user, EmailLinkTokenProvider<IdentityUser>.ProviderName, EmailLinkTokenProvider<IdentityUser>.SignInPurpose);
+            var token = await _links.IssueAsync(user.Id, AccountLinkPurpose.SignIn);
             var url = $"{_options.EditOrigin.TrimEnd('/')}/admin/link?uid={Uri.EscapeDataString(user.Id)}&token={Uri.EscapeDataString(token)}";
-            await _mail.SendAsync(user.Email!, "Your sign-in link for parkscomputing.com",
+            bool sent = await _mail.SendAsync(user.Email!, "Your sign-in link for parkscomputing.com",
                 "Open this link within 15 minutes to sign in to edit parkscomputing.com:\n\n" + url + "\n\n" +
                 "It works once. If you didn't ask for it, ignore this message: nobody can use the link without reading your email.\n\n" +
                 $"Asked for from {AdminOptions.ClientIp(HttpContext)}.");
+            if (!sent) { await _links.CancelAsync(user.Id, AccountLinkPurpose.SignIn, token); }
         }
         Message = "If that address belongs to an admin, a sign-in link is on its way. It works once, within 15 minutes.";
         return Page();
