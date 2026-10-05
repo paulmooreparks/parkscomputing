@@ -57,7 +57,11 @@ public sealed class AccountWorkflow {
             await db.SaveChangesAsync(); await transaction.CommitAsync(); return true;
         });
     }
-    public async Task RequestAsync(string email, string? displayName, string ip) {
+    /// <summary>Sends a sign-in or verification link. returnUrl, a local
+    /// address the caller has already checked, rides in the link, so that
+    /// following it brings the reader back to the page they asked from, such
+    /// as their window view with its windows, rather than to a page of ours.</summary>
+    public async Task RequestAsync(string email, string? displayName, string ip, string? returnUrl = null) {
         email = Email(email);
         if (displayName is not null) { displayName = DisplayName(displayName); }
         if (!await BudgetAsync(email, ip)) { return; }
@@ -93,7 +97,8 @@ public sealed class AccountWorkflow {
         try { token = await _links.IssueAsync(userId, purpose); }
         catch (InvalidOperationException) { return; }
         var url = _options.Origin.TrimEnd('/') + "/account/link?uid=" + Uri.EscapeDataString(userId) +
-            "&purpose=" + purpose + "&token=" + Uri.EscapeDataString(token);
+            "&purpose=" + purpose + "&token=" + Uri.EscapeDataString(token) +
+            (string.IsNullOrEmpty(returnUrl) || returnUrl == "/" ? "" : "&return=" + Uri.EscapeDataString(returnUrl));
         using var mailScope = _scopes.CreateScope();
         var sent = await mailScope.ServiceProvider.GetRequiredService<ResendMailer>().SendAsync(email,
             purpose == AccountLinkPurpose.VerifyEmail ? "Verify your Parks Computing account" : "Sign in to Parks Computing",

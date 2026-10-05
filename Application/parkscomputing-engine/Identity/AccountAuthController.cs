@@ -95,6 +95,6 @@ public sealed class AccountAuthController : ControllerBase {
             !await _policy.ConfirmAsync(User) || !await _bootstrap.ActivateAsync(User)) { return BadRequest(new { error = "Setup requires host authorization, verified email and two passkeys." }); }
         var refreshed = await _users.FindByIdAsync(user.Id);
         await _sessions.SignInAsync(refreshed!, AdminSessions.Passkey);
-        return Ok(new { redirect = "/admin/articles" });
+        return Ok(new { redirect = "/" });
     }
 }

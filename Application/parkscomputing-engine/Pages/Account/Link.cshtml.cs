@@ -15,6 +15,9 @@ public sealed class LinkModel : PageModel {
     [BindProperty(SupportsGet = true)] public string Uid { get; set; } = "";
     [BindProperty(SupportsGet = true)] public string Token { get; set; } = "";
     [BindProperty(SupportsGet = true)] public AccountLinkPurpose Purpose { get; set; }
+    /// <summary>Where the reader asked for the link from, which the link
+    /// carries; checked again here, and the home page when it is missing.</summary>
+    [BindProperty(SupportsGet = true)] public string? Return { get; set; }
     public bool Valid { get; private set; }
     public async Task OnGetAsync() { Valid = Purpose is AccountLinkPurpose.VerifyEmail or AccountLinkPurpose.SignIn && await _links.ValidAsync(Uid, Purpose, Token); }
     public async Task<IActionResult> OnPostAsync() {
@@ -23,6 +26,6 @@ public sealed class LinkModel : PageModel {
         var user = await _users.FindByIdAsync(redeemed.Value.UserId);
         if (user is null || !await _sessions.EligibleAsync(user)) { return Page(); }
         await _sessions.SignInAsync(user, AdminSessions.EmailLink, redeemed.Value.SessionId);
-        return Redirect("/account");
+        return LocalRedirect(AccountReturn.Of(Return, Url));
     }
 }

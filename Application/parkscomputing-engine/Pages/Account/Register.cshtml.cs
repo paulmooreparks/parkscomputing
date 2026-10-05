@@ -20,7 +20,7 @@ public sealed class RegisterModel : PageModel {
     public IActionResult OnGet() => !_options.Registration ? NotFound() : User.Identity?.IsAuthenticated == true ? LocalRedirect(Back) : Page();
     public async Task<IActionResult> OnPostAsync() {
         if (!_options.Registration) { return NotFound(); }
-        try { await _workflow.RequestAsync(Email, DisplayName, AdminOptions.ClientIp(HttpContext)); Sent = true; }
+        try { await _workflow.RequestAsync(Email, DisplayName, AdminOptions.ClientIp(HttpContext), Back); Sent = true; }
         catch (ArgumentException ex) { ModelState.AddModelError(ex.Message.StartsWith("Use a display") ? "DisplayName" : "Email", ex.Message); }
         return Page();
     }

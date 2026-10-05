@@ -13,6 +13,9 @@ namespace ParksComputing.Engine.Pages.Account;
 public sealed class SuperUserModel : PageModel {
     private readonly StaffBootstrap _bootstrap; private readonly UserManager<IdentityUser> _users;
     public SuperUserModel(StaffBootstrap bootstrap, UserManager<IdentityUser> users) { _bootstrap = bootstrap; _users = users; }
+    /// <summary>The page the reader came from, where Activate returns them.</summary>
+    [Microsoft.AspNetCore.Mvc.BindProperty(SupportsGet = true)] public string? ReturnUrl { get; set; }
+    public string Back => AccountReturn.Of(ReturnUrl, Url);
     public bool Pending { get; private set; }
     public bool Activated { get; private set; }
     public DateTime? Until { get; private set; }

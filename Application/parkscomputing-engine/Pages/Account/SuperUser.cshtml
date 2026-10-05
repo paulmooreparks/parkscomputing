@@ -14,8 +14,8 @@
     <div class="notice positive" role="status">
         <div class="notice-content">
             <p class="notice-title">This account is the super-user</p>
-            <p class="notice-body">You can edit and publish articles, and manage the site's staff as those tools arrive.</p>
-            <div class="notice-actions"><a class="btn" href="/admin/articles">Open Administration</a></div>
+            <p class="notice-body">Terminal, Files and the Editor now work on the site's own files, and the terminal can reach your SSH destinations.</p>
+            <div class="notice-actions"><a class="btn" href="@Model.Back">Back to where you were</a></div>
         </div>
     </div>
 }
@@ -44,10 +44,10 @@ else
         </li>
         <li data-done="false">
             <h2 class="account-step-title">@Mark(false) Activate</h2>
-            <p>Press <strong>Activate</strong> and confirm with one of your passkeys. The account becomes the super-user, every other session it has is signed out, and Administration opens.</p>
+            <p>Press <strong>Activate</strong> and confirm with one of your passkeys. The account becomes the super-user, every other session it has is signed out, and you go back to where you were.</p>
             @if (Model.Ready)
             {
-                <p><button class="btn btn-primary" type="button" data-passkey="activate-superuser">Activate…</button></p>
+                <p><button class="btn btn-primary" type="button" data-passkey="activate-superuser" data-return="@Model.Back">Activate…</button></p>
             }
             else
             {

@@ -83,8 +83,12 @@ public sealed class AccountMenu {
             ? MenuBuilder.Link("/?open=account&top=account", ("data-win-open", "account"))
             : MenuBuilder.Link("/account");
         var items = new List<MenuEntry> { Item("Your account", account) };
-        if (state.SetupPending) { items.Add(Item("Finish super-user setup", MenuBuilder.Link("/account/superuser"))); }
-        if (state.Staff) { items.Add(Item("Administration", MenuBuilder.Link("/admin/articles"))); }
+        if (state.SetupPending) { items.Add(Item("Finish super-user setup", MenuBuilder.Link("/account/superuser", ("data-return-here", "")))); }
+        /* The revision-backed article workspace (/admin/articles) is not in
+           the menu: it keeps its own articles apart from the site's, which
+           are files the Editor edits, and it was getting in the way rather
+           than helping. It returns here when it becomes how articles are
+           edited (Architecture/unified-identity-design.md). */
         items.Add(Item("Sign out", new SiteCommands.Rendered("button", new[] {
             new KeyValuePair<string, string?>("type", "submit"), new KeyValuePair<string, string?>("form", SignOutForm)
         })));

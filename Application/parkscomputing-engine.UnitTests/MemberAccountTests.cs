@@ -114,9 +114,13 @@ public class MemberAccountTests {
                 var html=await replayCookie.Content.ReadAsStringAsync();
                 StringAssert.Contains(html,"not signed in"); Assert.IsFalse(html.Contains("Renamed"));
             }
-            form=await Form("/account/signin"); form["Email"]="member+test@example.test";
+            // Signing in from the window view comes back to it: the link carries the place.
+            form=await Form("/account/signin"); form["Email"]="member+test@example.test"; form["returnUrl"]="/?view=window&open=about";
             using(var request=await Send(HttpMethod.Post,"/account/signin",form)) { Assert.AreEqual(HttpStatusCode.OK,request.StatusCode); }
-            form=await Form(LastLink()); using(var signIn=await Send(HttpMethod.Post,"/account/link",form)) { Assert.AreEqual(HttpStatusCode.Redirect,signIn.StatusCode); }
+            StringAssert.Contains(LastLink(),"&return=%2F%3Fview%3Dwindow%26open%3Dabout");
+            form=await Form(LastLink()); using(var signIn=await Send(HttpMethod.Post,"/account/link",form)) {
+                Assert.AreEqual(HttpStatusCode.Redirect,signIn.StatusCode); Assert.AreEqual("/?view=window&open=about",signIn.Headers.Location!.ToString());
+            }
             // A second browser can be revoked only by its owner.
             using(var scope=host.Services.CreateScope()) {
                 var sessions=scope.ServiceProvider.GetRequiredService<DurableSessions>(); var users=scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();

@@ -1,8 +1,8 @@
 @page "/admin/articles"
 @model ParksComputing.Engine.Pages.Admin.Articles.IndexModel
-@{ ViewData["Title"] = "Administration"; }
+@{ ViewData["Title"] = "Article workspace"; }
 <div class="account-page account-page-wide">
-<h1>Administration</h1><p>This beta workspace edits articles in the beta database.</p>
+<h1>Article workspace</h1><p>This workspace keeps drafts and published revisions in the site's database, apart from the site's own articles, which are files under /wwwroot that you edit in the Editor. Articles made here appear only at their own addresses.</p>
 @if (!Model.Confirmed) {
     <p>Confirm with a passkey to edit articles.</p><button class="btn btn-primary" type="button" data-passkey="confirm">Confirm with a passkey</button><p class="form-error" data-passkey-status role="status" hidden></p>
 } else {

@@ -28,7 +28,7 @@ public sealed class SignInModel : PageModel {
     public bool Sent { get; private set; }
     public IActionResult OnGet() => User.Identity?.IsAuthenticated == true ? LocalRedirect(Back) : Page();
     public async Task<IActionResult> OnPostAsync() {
-        try { await _workflow.RequestAsync(Email, null, AdminOptions.ClientIp(HttpContext)); Sent = true; }
+        try { await _workflow.RequestAsync(Email, null, AdminOptions.ClientIp(HttpContext), Back); Sent = true; }
         catch (ArgumentException ex) { ModelState.AddModelError(ex.Message.StartsWith("Use a display") ? "DisplayName" : "Email", ex.Message); }
         return Page();
     }

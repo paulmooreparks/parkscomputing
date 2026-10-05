@@ -230,7 +230,20 @@
             if (back) { location.assign(back.getAttribute('href')); } else { location.reload(); }
             return;
         }
-        if (result.redirect) { location.assign(result.redirect); }
+        // A button that knows where the reader came from goes back there.
+        if (result.redirect) { location.assign(button.dataset.return || result.redirect); }
+    });
+
+    /* A link to an account page that is a page of its own, such as super-user
+       setup, takes the reader's place along (returnUrl), so finishing there
+       brings them back: to their window view with its windows, say. */
+    document.addEventListener('click', function (e) {
+        var link = e.target.closest && e.target.closest('a[data-return-here]');
+        if (!link || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) { return; }
+        e.preventDefault();
+        var url = new URL(link.getAttribute('href'), location.href);
+        url.searchParams.set('returnUrl', location.pathname + location.search);
+        location.assign(url.pathname + url.search);
     });
 
     /* === Dialogs ======================================================= */
