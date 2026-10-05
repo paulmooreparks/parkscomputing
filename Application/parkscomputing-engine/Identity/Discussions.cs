@@ -12,6 +12,10 @@ namespace ParksComputing.Engine.Identity;
 /// <summary>The operating limits on comments (Architecture/unified-identity-design.md),
 /// from the Comments section of configuration.</summary>
 public sealed class CommentOptions {
+    /// <summary>Whether the site has comments at all. Off, no discussion,
+    /// discussion page, comment API or moderation queue exists; comments
+    /// open on production with public sign-up (Architecture/unified-identity-design.md, step 2).</summary>
+    public bool Enabled { get; set; }
     public int MaxPerTenMinutes { get; set; } = 5;
     public int MaxPendingPerAccount { get; set; } = 20;
     public int MaxPendingSite { get; set; } = 500;

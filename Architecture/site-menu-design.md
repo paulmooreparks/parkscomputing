@@ -17,7 +17,7 @@ The root's `menu` is a list of titles, the first the logo's own, whose `icon` PU
 | `{ separator ~true }` | A separator. |
 | `{ from "applets" }`, `{ from "sections" }` | Entries of the nav, kept in step with it: a section's entries by its slug, or a link to the list of each section. |
 
-Any entry, a title included, may carry `when "window"` or `when "classic"` to show in that view only. The arguments are an XferLang object, which the server reads into a `Dictionary<string, string>` (XferLang 0.15.25 deserializes an object into one). Paul suggested a list of name and value pairs; the object is the same pairs, unique by name, at a third of the text, and named arguments need no order.
+Any entry, a title included, may carry `when "window"` or `when "classic"` to show in that view only. It may instead carry `when` with the name of a stage, such as `when "beta"`, to show only on a server whose `Site:Stage` setting has that name; a server with no `Site:Stage` is `production`. Paul asked for this on 2026-10-05, so that an entry for something that exists only on beta can go into the shared `sitenav.xfer` without showing on production. A `when` names a view or a stage, not both. The arguments are an XferLang object, which the server reads into a `Dictionary<string, string>` (XferLang 0.15.25 deserializes an object into one). Paul suggested a list of name and value pairs; the object is the same pairs, unique by name, at a third of the text, and named arguments need no order.
 
 `NavService` watches `sitenav.xfer`, so a change to the menu shows on the next page without a build or a restart.
 

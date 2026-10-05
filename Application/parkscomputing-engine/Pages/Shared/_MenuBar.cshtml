@@ -1,6 +1,7 @@
 @using ParksComputing.Engine.Pages.Services
 @using ParksComputing.Engine.Identity
 @inject INavService SiteNav
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
 @* The site's host menu, for PUDL's menu bar (pudl-menubar.js; see
    Architecture/site-menu-design.md): sitenav.xfer's menu, resolved by
    SiteMenu and written by MenuBuilder as the hidden nested list PUDL reads
@@ -13,5 +14,8 @@
 @{
     bool desktop = ViewData["Desktop"] as bool? ?? false;
     var accountState = ViewData["AccountMenu"] as AccountMenuState ?? AccountMenuState.Off;
+    // Which stage this server is, beta or production, for an entry's when
+    // (Architecture/site-menu-design.md); production unless Site:Stage says otherwise.
+    var stage = Config["Site:Stage"];
 }
-@Html.Raw(MenuBuilder.ToHtml(SiteMenu.Build(SiteNav.GetRoot(), desktop, AccountMenu.Entries(accountState, desktop))))
+@Html.Raw(MenuBuilder.ToHtml(SiteMenu.Build(SiteNav.GetRoot(), desktop, AccountMenu.Entries(accountState, desktop), stage)))

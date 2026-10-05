@@ -28,9 +28,20 @@ public sealed record MenuTitle(string Label, string? Icon, bool WindowsOnly, IRe
 /// titles as the hidden nested list PUDL's menu bar reads.
 /// </summary>
 public static class MenuBuilder {
+    public const string DefaultStage = "production";
+
+    /// <param name="stage">The stage this server runs as (Site:Stage, such as
+    /// "beta" or "production"; production when it says none). An entry's
+    /// when names a view, "window" or "classic", or a stage, and the entry
+    /// shows only there.</param>
     public static IReadOnlyList<MenuTitle> Build(IEnumerable<NavNode>? titles, bool desktop,
-        Func<NavNode, MenuEntry?> link, Func<string, IEnumerable<MenuEntry>> from) {
-        bool Shows(NavNode n) => n.When == null || (n.When == "window") == desktop;
+        Func<NavNode, MenuEntry?> link, Func<string, IEnumerable<MenuEntry>> from, string? stage = null) {
+        bool Shows(NavNode n) => n.When switch {
+            null => true,
+            "window" => desktop,
+            "classic" => !desktop,
+            var s => string.Equals(s, string.IsNullOrWhiteSpace(stage) ? DefaultStage : stage, StringComparison.OrdinalIgnoreCase)
+        };
 
         List<MenuEntry> Entries(IEnumerable<NavNode>? list) {
             var outList = new List<MenuEntry>();

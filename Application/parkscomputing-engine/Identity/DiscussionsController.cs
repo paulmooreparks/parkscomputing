@@ -18,8 +18,11 @@ namespace ParksComputing.Engine.Identity;
 public sealed class DiscussionsController : ControllerBase {
     private readonly Discussions _discussions; private readonly UserManager<IdentityUser> _users;
     private readonly StaffAccess _staff; private readonly SessionPolicy _policy; private readonly AccountOptions _options;
-    public DiscussionsController(Discussions discussions, UserManager<IdentityUser> users, StaffAccess staff, SessionPolicy policy, IOptions<AccountOptions> options) {
-        _discussions = discussions; _users = users; _staff = staff; _policy = policy; _options = options.Value;
+    public DiscussionsController(Discussions discussions, UserManager<IdentityUser> users, StaffAccess staff, SessionPolicy policy,
+        IOptions<AccountOptions> options, IOptions<CommentOptions> comments) {
+        _discussions = discussions; _users = users; _staff = staff; _policy = policy;
+        // Without comments, every endpoint here answers 404, as without accounts.
+        _options = new AccountOptions { Enabled = options.Value.Enabled && comments.Value.Enabled };
     }
 
     public sealed record NewComment(Guid? ParentId, string? Source, string? Key);
@@ -96,8 +99,9 @@ public sealed class DiscussionsController : ControllerBase {
 public sealed class ModerationController : ControllerBase {
     private readonly Discussions _discussions; private readonly UserManager<IdentityUser> _users;
     private readonly StaffAccess _staff; private readonly AccountOptions _options;
-    public ModerationController(Discussions discussions, UserManager<IdentityUser> users, StaffAccess staff, IOptions<AccountOptions> options) {
-        _discussions = discussions; _users = users; _staff = staff; _options = options.Value;
+    private readonly bool _comments;
+    public ModerationController(Discussions discussions, UserManager<IdentityUser> users, StaffAccess staff, IOptions<AccountOptions> options, IOptions<CommentOptions> comments) {
+        _discussions = discussions; _users = users; _staff = staff; _options = options.Value; _comments = comments.Value.Enabled;
     }
 
     public sealed record Decision(string? Kind, string? Reason, string? Version);
@@ -107,7 +111,7 @@ public sealed class ModerationController : ControllerBase {
     /// that says what they must do first.</summary>
     private async Task<IActionResult?> GateAsync() {
         Response.Headers.CacheControl = "no-store";
-        if (!_options.Enabled || !_options.StaffEnabled) { return NotFound(); }
+        if (!_options.Enabled || !_options.StaffEnabled || !_comments) { return NotFound(); }
         if (User.Identity?.IsAuthenticated != true) { return Unauthorized(new { ok = false, signin = true, error = "You're signed out. Sign in again to carry on." }); }
         if (!await _staff.ModeratesAsync(User, confirmed: false)) { return NotFound(); }
         if (!await _staff.ModeratesAsync(User)) { return StatusCode(403, new { ok = false, confirm = true, error = "Confirm with your passkey to moderate." }); }

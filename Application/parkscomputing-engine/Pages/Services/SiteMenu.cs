@@ -15,15 +15,15 @@ public static class SiteMenu {
     /// <summary>The titles, with the account's commands (Identity/AccountMenu)
     /// at the end of the logo's own title, after a separator, where PUDL's
     /// menu bar guidance puts them.</summary>
-    public static IReadOnlyList<MenuTitle> Build(NavNode root, bool desktop, IReadOnlyList<MenuEntry> account) {
-        var titles = Build(root, desktop);
+    public static IReadOnlyList<MenuTitle> Build(NavNode root, bool desktop, IReadOnlyList<MenuEntry> account, string? stage = null) {
+        var titles = Build(root, desktop, stage);
         if (account.Count == 0) { return titles; }
         var first = titles[0];
         var entries = first.Entries.Count == 0 ? account : first.Entries.Append(new MenuEntry(MenuEntryKind.Separator)).Concat(account).ToList();
         return new[] { first with { Entries = entries } }.Concat(titles.Skip(1)).ToList();
     }
 
-    public static IReadOnlyList<MenuTitle> Build(NavNode root, bool desktop) {
+    public static IReadOnlyList<MenuTitle> Build(NavNode root, bool desktop, string? stage = null) {
         var sections = NavService.Sections(root).ToArray();
 
         MenuEntry Place(NavNode item) {
@@ -44,7 +44,7 @@ public static class SiteMenu {
             return (section?.Nav ?? Array.Empty<NavNode>()).Select(Place);
         }
 
-        var titles = MenuBuilder.Build(root.Menu, desktop, Place, From);
+        var titles = MenuBuilder.Build(root.Menu, desktop, Place, From, stage);
         return titles.Count > 0 ? titles : new[] {
             new MenuTitle("Parks Computing", "/favicon-32x32.png", false, new[] { new MenuEntry(MenuEntryKind.Item, "Home", MenuBuilder.Link("/")) })
         };

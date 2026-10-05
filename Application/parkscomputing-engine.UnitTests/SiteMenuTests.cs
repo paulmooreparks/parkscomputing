@@ -128,6 +128,20 @@ namespace ParksComputing.Engine.UnitTests {
         }
 
         [TestMethod]
+        public void AnEntryCanShowOnOneStageOnly() {
+            var titles = new[] { new NavNode { Title = "Help", Nav = new[] {
+                new NavNode { Command = "always", Title = "Always" },
+                new NavNode { Command = "beta-only", Title = "Beta only", When = "beta" },
+                new NavNode { Command = "production-only", Title = "Production only", When = "production" },
+                new NavNode { Command = "classic-only", Title = "Classic only", When = "classic" }
+            } } };
+            string Labels(string? stage, bool desktop) => string.Join("|", MenuBuilder.Build(titles, desktop, e => null, _ => Enumerable.Empty<MenuEntry>(), stage)[0].Entries.Select(e => e.Label));
+            Assert.AreEqual("Always|Beta only|Classic only", Labels("beta", false));
+            Assert.AreEqual("Always|Production only|Classic only", Labels(null, false), "No stage is production.");
+            Assert.AreEqual("Always|Production only", Labels("Production", true));
+        }
+
+        [TestMethod]
         public void AnUnknownCommandIsAButtonForAScriptToDefine() {
             var r = SiteCommands.Render("notes.new", new Dictionary<string, string> { ["folder"] = "inbox" }, desktop: false);
             Assert.AreEqual("button", r.Tag);
