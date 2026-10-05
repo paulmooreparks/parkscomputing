@@ -11,6 +11,12 @@
         return new DOMParser().parseFromString(html, 'text/html').querySelector('[data-moderation-panel]');
     }
 
+    /* The account button's badge and the menu's count (js/accounts.js)
+       follow the queue at once, rather than at their next two-minute ask. */
+    function recount() {
+        if (window.pcModerationCount) { window.pcModerationCount(true); }
+    }
+
     function load(root) {
         return fetch('/moderation?handler=Applet', { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'text/html' } })
             .then(function (r) {
@@ -18,7 +24,7 @@
                 if (!r.ok) { throw new Error(r.status); }
                 return r.text();
             })
-            .then(function (html) { var p = panelOf(html); if (p && root.isConnected) { root.replaceChildren(document.importNode(p, true)); } })
+            .then(function (html) { var p = panelOf(html); if (p && root.isConnected) { root.replaceChildren(document.importNode(p, true)); recount(); } })
             .catch(function () { if (root.isConnected) { root.textContent = 'The queue could not be loaded. Reload the page to try again.'; } });
     }
 
@@ -46,6 +52,7 @@
                 if (!panel) { throw new Error('no panel'); }
                 if (!root.isConnected) { return; }
                 root.replaceChildren(document.importNode(panel, true));
+                recount();
                 var said = root.querySelector('.notice');
                 if (said) { said.focus(); }
             }

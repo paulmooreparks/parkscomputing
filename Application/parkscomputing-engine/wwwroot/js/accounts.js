@@ -270,8 +270,9 @@
                 a.textContent = total > 0 ? 'Moderation (' + total + ')' : 'Moderation';
             });
         }
-        function ask() {
-            if (document.hidden) { return; }
+        /* now asks even in a hidden tab, for a change the reader just made. */
+        function ask(now) {
+            if (document.hidden && now !== true) { return; }
             fetch('/api/moderation/count', { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } })
                 .then(function (r) { return r.ok ? r.json() : null; })
                 .then(function (v) { if (v && typeof v.total === 'number') { show(v.total); } })
