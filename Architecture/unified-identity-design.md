@@ -100,6 +100,8 @@ The article's HTML stays the same for every reader. Under the article sits a mou
 
 Comments are Markdown with raw HTML off, rendered by Markdig and then cleaned by HtmlSanitizer to paragraphs, line breaks, emphasis, code, quotations, lists and links, which open without the opener and carry `rel="ugc nofollow"`. Images are text. The rendered HTML is never stored: the source is, with the sanitizer policy it was rendered under, so a change of policy re-renders every comment.
 
+Comments have a switch of their own, `Comments:Enabled`, off unless set. Off, there is no discussion under any article, no discussion page, comment API or moderation queue, and the Account applet has no Your comments. Beta has it on; production has it off until public sign-up opens, which let the privacy policy, terms of use, data download and account deletion go to production first, on 2026-10-05.
+
 ### Gaps closed before sign-up opens
 
 - **The privacy policy and terms of use.** They follow YAVCHN's (`privacy-and-terms.md`, "Decisions, following YAVCHN"): part of the application in `Legal/`, shown at `/privacy` and `/terms` and as windows, linked from the footer and the Help menu. Creating an account accepts the terms shown with the form, and the account records the versions in force and when.
