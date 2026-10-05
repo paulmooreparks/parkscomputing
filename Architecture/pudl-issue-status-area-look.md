@@ -1,5 +1,7 @@
 # For PUDL: the status area is drawn as a pill, not as a menu bar group
 
+**Fixed in PUDL 0.50.0** (B7 of YAVCHN's proposal; `pudl-adoption.md`, D64): beside a menu bar the status area is drawn as the menu bar's groups are, and the site's workaround is gone.
+
 From parkscomputing.com, 2026-10-05, on PUDL 0.48.0.
 
 The proposal for the status area (`pudl-proposal-status-area.md`) asked for it to be "drawn as the menu bar's groups are: one raised surface, with a border and the raised shadow, holding flat controls". PUDL 0.48.0 draws it instead with the topbar pill's tokens, `--tb-chip` for its background and `--tb-chip-shadow` for its shadow. On a topbar that holds a menu bar, the menu bar's groups use the group tokens, `--menubar-group-bg` (the recessed surface), `--menubar-group-border` and `--menubar-group-shadow`. So the status area, sitting in the same row, is lighter and lit differently, and reads as a different kind of control. Paul noticed it at once on beta.

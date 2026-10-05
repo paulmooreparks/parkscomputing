@@ -20,7 +20,7 @@
 
     /* Each background applet's script, with a version raised on every change. */
     var defined = {
-        account: { src: '/js/status/account.js', ver: '1' },
+        account: { src: '/js/status/account.js', ver: '2' },
         moderation: { src: '/js/status/moderation.js', ver: '1' }
     };
     var registered = {};
