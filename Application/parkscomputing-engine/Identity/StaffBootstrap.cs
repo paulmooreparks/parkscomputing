@@ -40,6 +40,18 @@ public sealed class StaffAccess {
             where ur.UserId == id && (role.Name == "Admin" || role.Name == "SuperAdmin") select ur).AnyAsync();
     }
 
+    /// <summary>Whether the reader is the super-user on a live session,
+    /// confirmed with a passkey unless confirmed is false: the server's own
+    /// tools, such as its log, are theirs alone.</summary>
+    public async Task<bool> SuperuserAsync(ClaimsPrincipal principal, bool confirmed = true) {
+        if (!_options.Enabled || !_options.StaffEnabled || principal.Identity?.IsAuthenticated != true ||
+            !await _policy.ValidAsync(principal) || (confirmed && !await _policy.ConfirmedAsync(principal))) { return false; }
+        var id = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+        await using var db = await _factory.CreateDbContextAsync();
+        return await (from ur in db.UserRoles join role in db.Roles on ur.RoleId equals role.Id
+            where ur.UserId == id && role.Name == "SuperAdmin" select ur).AnyAsync();
+    }
+
     /// <summary>Whether the reader may moderate comments: a Moderator, Admin
     /// or SuperAdmin on a live session, confirmed with a passkey unless
     /// confirmed is false.</summary>

@@ -127,7 +127,18 @@ public class ArticleContentService {
             // ordinary window.
             false, false, IsApplet: true);
 
+    /// <summary>The window key of the super-user's Server log
+    /// (Identity/RecentLogs.cs), served by the site itself on a site with
+    /// accounts. Its page is /logs.</summary>
+    public const string LogsKey = "logs";
+
+    private ArticleWindowContent? LogsWindow() => !_accounts ? null :
+        new ArticleWindowContent(LogsKey, "Server log",
+            "<div data-applet=\"logs\" data-applet-page=\"/logs\" aria-label=\"Server log\"><noscript><p>The log needs JavaScript in a window. <a href=\"/logs\">Open it as a page</a>.</p></noscript></div>",
+            false, false, IsApplet: true);
+
     public ArticleWindowContent? Load(string? slug) {
+        if (slug == LogsKey && LogsWindow() is { } logs) { return logs; }
         // The privacy policy and the terms of use are part of the
         // application, not content files (Identity/PolicyDocuments.cs).
         if (ParksComputing.Engine.Identity.PolicyDocuments.IsPolicy(slug) && _policies?.Get(slug!) is { } policy) {
@@ -373,7 +384,7 @@ public class ArticleContentService {
         ContentExists(slug)
         || (ParksComputing.Engine.Identity.PolicyDocuments.IsPolicy(slug) && _policies?.Get(slug) is not null)
         || slug == PinsKey
-        || (_accounts && (slug == AccountKey || slug == ModerationKey));
+        || (_accounts && (slug == AccountKey || slug == ModerationKey || slug == LogsKey));
 
     private bool ContentExists(string slug) {
         var baseDir = Path.Combine(_environment.WebRootPath, "content");

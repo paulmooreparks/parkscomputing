@@ -81,6 +81,9 @@ namespace ParksComputing.Engine {
             services.AddSingleton<INavService, NavService>();
 
             services.AddSingleton<StaticFileReaderService>();
+            // The recent log for the super-user's Server log applet (Identity/RecentLogs.cs).
+            services.AddSingleton<ParksComputing.Engine.Identity.RecentLogs>();
+            services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider, ParksComputing.Engine.Identity.RecentLogProvider>();
             services.AddSingleton<ParksComputing.Engine.Identity.PolicyDocuments>();
             services.AddSingleton<ArticleContentService>();
             services.AddSingleton<BookService>();

@@ -1,0 +1,81 @@
+@model ParksComputing.Engine.Pages.LogsModel
+@using Microsoft.Extensions.Logging
+@* The Server log's panel (Pages/Logs.cshtml.cs), the same on the page and
+   in the logs applet's window. The filters are a plain GET form, so they
+   work without script and their choice is the address. *@
+@{
+    string Badge(LogLevel l) => l >= LogLevel.Error ? "badge danger" : l == LogLevel.Warning ? "badge warn" : "badge";
+    string Name(LogLevel l) => l switch { LogLevel.Critical => "critical", LogLevel.Error => "error", LogLevel.Warning => "warning", LogLevel.Information => "info", _ => l.ToString().ToLowerInvariant() };
+}
+<div class="logs" data-logs-panel>
+@if (Model.Stage == "signin")
+{
+    <p>Sign in as the site's super-user to read the server log.</p>
+    <p><a class="btn btn-primary" href="/account/signin" data-account-dialog>Sign in…</a></p>
+}
+else if (Model.Stage == "confirm")
+{
+    <p>Reading the server log needs a fresh tap of your passkey.</p>
+    <p><button class="btn btn-primary" type="button" data-passkey="confirm">Confirm with a passkey…</button></p>
+    <p class="form-error" data-passkey-status role="alert" hidden></p>
+}
+else
+{
+    <form class="logs-filters" method="get" action="/logs" data-logs-filters>
+        <div class="form-group">
+            <label class="form-label" for="logs-level">Show</label>
+            <span class="form-select-wrap"><select class="form-select" id="logs-level" name="level">
+                @foreach (var (value, label, _) in ParksComputing.Engine.Pages.LogsModel.Levels)
+                {
+                    <option value="@value" selected="@(value == Model.Level)">@label</option>
+                }
+            </select></span>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="logs-source">From</label>
+            <span class="form-select-wrap"><select class="form-select" id="logs-source" name="source">
+                <option value="" selected="@(Model.Source is null)">Every part of the site</option>
+                @foreach (var source in ParksComputing.Engine.Identity.RecentLogs.Sources)
+                {
+                    <option value="@source" selected="@(source == Model.Source)">@source</option>
+                }
+            </select></span>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="logs-since">Since</label>
+            <span class="form-select-wrap"><select class="form-select" id="logs-since" name="since">
+                @foreach (var (value, label, _) in ParksComputing.Engine.Pages.LogsModel.Spans)
+                {
+                    <option value="@value" selected="@(value == Model.Since)">@label</option>
+                }
+            </select></span>
+        </div>
+        <div class="logs-filter-actions"><button class="btn" type="submit">Show</button></div>
+    </form>
+    <p class="form-help">
+        @(Model.Entries.Count == 0 ? "Nothing matches." : Model.Entries.Count == 1 ? "1 entry, newest first." : $"{Model.Entries.Count} entries, newest first.")
+        The server keeps its last @ParksComputing.Engine.Identity.RecentLogs.Capacity.ToString("N0") entries in memory (@Model.Kept.ToString("N0") now) and forgets them when it restarts. Times are UTC.
+    </p>
+    @if (Model.Entries.Count > 0)
+    {
+        <ol class="logs-list">
+            @foreach (var e in Model.Entries)
+            {
+                <li class="logs-entry">
+                    <div class="logs-head">
+                        <span class="@Badge(e.Level)">@Name(e.Level)</span>
+                        <span class="chip">@e.Source</span>
+                        <time class="logs-time" datetime="@e.Utc.ToString("yyyy-MM-ddTHH:mm:ssZ")">@e.Utc.ToString("d MMM HH:mm:ss")</time>
+                        <span class="logs-category" title="@e.Category">@e.Category.Split('.').Last()</span>
+                    </div>
+                    <div class="logs-message">@e.Message</div>
+                    @if (e.Exception is not null)
+                    {
+                        <div class="logs-exception">@e.Exception</div>
+                    }
+                </li>
+            }
+        </ol>
+    }
+}
+</div>

@@ -1,0 +1,17 @@
+/* The Server log (js/logs.js, Pages/Shared/_LogsContent.cshtml). PUDL draws
+   the controls, badges and chips; these rules lay out the panel. */
+.logs-page { max-width: 64rem; margin: 0 auto; padding: var(--space-5) 0; }
+.logs-page > h1 { margin: 0 0 var(--space-4); }
+.logs { display: grid; gap: var(--space-3); font-size: var(--text-md); }
+.win-body .logs { padding: var(--space-4); }
+.logs p { margin: 0; }
+.logs-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2) var(--space-3); }
+.logs-filters .form-group { margin: 0; min-width: 12rem; }
+.logs-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.logs-entry { display: grid; gap: 4px; padding: var(--space-2) 0; border-top: 1px solid var(--border); min-width: 0; }
+.logs-entry:last-child { border-bottom: 1px solid var(--border); }
+.logs-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
+.logs-time { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.logs-category { color: var(--text-muted); font-family: var(--mono); font-size: 12px; }
+.logs-message, .logs-exception { font-family: var(--mono); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.logs-exception { color: var(--danger); }

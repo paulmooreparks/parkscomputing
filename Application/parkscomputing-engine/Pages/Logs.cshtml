@@ -1,0 +1,9 @@
+@page "/logs"
+@model ParksComputing.Engine.Pages.LogsModel
+@* The Server log as a page (Pages/Logs.cshtml.cs). *@
+<div class="logs-page">
+    <h1>Server log</h1>
+    <div data-applet="logs">
+        <partial name="_LogsContent" model="Model" />
+    </div>
+</div>

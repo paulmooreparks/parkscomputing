@@ -7,6 +7,8 @@ pudlApplets.define('pins', { src: '/js/pins-manager.js', css: '/css/pins-manager
    /comments/{slug}, and the moderators' queue (Architecture/unified-identity-design.md, step 2). */
 pudlApplets.define('comments', { src: '/js/comments.js', css: '/css/comments.css', ver: '4' });
 pudlApplets.define('moderation', { src: '/js/moderation.js', css: '/css/comments.css', page: '/moderation', ver: '3' });
+/* The super-user's Server log (Identity/RecentLogs.cs). */
+pudlApplets.define('logs', { src: '/js/logs.js', css: '/css/logs.css', page: '/logs', ver: '1' });
 window.pcAppletIdentity = function (root, entries) {
     var result = (entries || []).slice(), win = root.closest('[data-win]');
     if (win && window.pudlWindows) {
