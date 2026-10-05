@@ -71,7 +71,9 @@ public sealed class AccountWorkflow {
             var users = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             var user = await users.FindByEmailAsync(email);
-            if (user is null && displayName is not null) {
+            // A new account only while registration is open; otherwise the
+            // request is answered as for any unknown address, with nothing sent.
+            if (user is null && displayName is not null && _options.Registration) {
                 user = new IdentityUser { UserName = Guid.NewGuid().ToString("N"), Email = email, EmailConfirmed = false };
                 var result = await users.CreateAsync(user);
                 if (!result.Succeeded) { return; }

@@ -42,7 +42,7 @@ public class MemberAccountTests {
         var mail = new Mail();
         using var host = new HostBuilder().ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string,string> {
             ["Auth:ConnectionString"] = parsed.ConnectionString, ["Accounts:Enabled"] = "true",
-            ["Accounts:Origin"] = "https://beta.example.test", ["Accounts:StaffEnabled"] = "true", ["Admin:HomeRoot"] = directory + "/home",
+            ["Accounts:Origin"] = "https://beta.example.test", ["Accounts:StaffEnabled"] = "true", ["Accounts:Registration"] = "true", ["Admin:HomeRoot"] = directory + "/home",
             ["Admin:EtcRoot"] = directory + "/etc", ["Admin:HistoryRoot"] = directory + "/history",
             ["RESEND_API_KEY"] = "fixture", ["EMAIL_FROM"] = "site@example.test", ["CommentService:ApiUrl"] = "http://unused.localhost"
         })).ConfigureWebHost(web => web.UseTestServer().UseEnvironment("Production").UseContentRoot(directory).UseWebRoot("wwwroot")

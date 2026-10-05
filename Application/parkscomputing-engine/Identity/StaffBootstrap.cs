@@ -94,8 +94,18 @@ public sealed class StaffBootstrap {
             await db.SaveChangesAsync(); await tx.CommitAsync(); return true;
         });
     }
+    /// <summary>
+    /// account-bootstrap &lt;email&gt; &lt;display-name&gt; [--replace-passkeys]:
+    /// authorizes super-user setup for an account for seven days, making the
+    /// account if there is none and giving it a profile if it has none.
+    /// --replace-passkeys first removes the account's passkeys and ends its
+    /// sessions, for an account moving to a new site, whose passkeys belong to
+    /// the old one (the edit origin's, when accounts came to
+    /// parkscomputing.com) and can neither sign in nor confirm here.
+    /// </summary>
     public static async Task<int> RunAsync(IServiceProvider root, string[] args) {
-        if (args.Length != 3) { Console.Error.WriteLine("Usage: account-bootstrap <email> <display-name>"); return 2; }
+        bool replace = args.Length == 4 && args[3] == "--replace-passkeys";
+        if (args.Length != 3 && !replace) { Console.Error.WriteLine("Usage: account-bootstrap <email> <display-name> [--replace-passkeys]"); return 2; }
         var options = root.GetRequiredService<IOptions<AccountOptions>>().Value;
         if (!options.Enabled || !options.StaffEnabled) { Console.Error.WriteLine("Account staff access is disabled."); return 1; }
         string email = AccountWorkflow.Email(args[1]), name = AccountWorkflow.DisplayName(args[2]);
@@ -111,14 +121,26 @@ public sealed class StaffBootstrap {
                 if (!(await users.CreateAsync(user)).Succeeded) { throw new InvalidOperationException("Account creation failed."); }
                 db.AccountProfiles.Add(new SiteAccountProfile { UserId = user.Id, DisplayName = name, Version = Guid.NewGuid(), CreatedUtc = DateTime.UtcNow });
             }
+            else if (!await db.AccountProfiles.AnyAsync(x => x.UserId == user.Id)) {
+                // An account from before profiles, such as the edit origin's admin.
+                db.AccountProfiles.Add(new SiteAccountProfile { UserId = user.Id, DisplayName = name, Version = Guid.NewGuid(), CreatedUtc = DateTime.UtcNow });
+            }
             if (await users.IsLockedOutAsync(user) || await db.AccountProfiles.AnyAsync(x => x.UserId == user.Id && x.SuspendedUtc != null)) { throw new InvalidOperationException("Account is disabled."); }
+            if (replace) {
+                foreach (var key in await users.GetPasskeysAsync(user)) {
+                    if (!(await users.RemovePasskeyAsync(user, key.CredentialId)).Succeeded) { throw new InvalidOperationException("Passkey removal failed."); }
+                }
+                // A new security stamp ends every session and link of the account.
+                if (!(await users.UpdateSecurityStampAsync(user)).Succeeded) { throw new InvalidOperationException("Session reset failed."); }
+            }
             var existing = await db.StaffBootstraps.SingleOrDefaultAsync(x => x.UserId == user.Id);
             if (existing?.ActivatedUtc is not null || await users.IsInRoleAsync(user, "SuperAdmin")) { throw new InvalidOperationException("This account is already activated."); }
             if (existing is null) { existing = new SiteStaffBootstrap { UserId = user.Id }; db.StaffBootstraps.Add(existing); }
             existing.SecurityStamp = user.SecurityStamp!; existing.AuthorizedUtc = DateTime.UtcNow; existing.ExpiresUtc = DateTime.UtcNow.AddDays(7);
             await db.SaveChangesAsync(); await tx.CommitAsync();
         });
-        Console.WriteLine("Super-user setup is authorized for " + email + " for seven days. Verify email, add two passkeys, then open " + options.Origin.TrimEnd('/') + "/account/superuser.");
+        Console.WriteLine("Super-user setup is authorized for " + email + " for seven days." + (replace ? " Its old passkeys were removed and its sessions ended." : "") +
+            " Sign in with an email link, add two passkeys, then open " + options.Origin.TrimEnd('/') + "/account/superuser.");
         return 0;
     }
 }

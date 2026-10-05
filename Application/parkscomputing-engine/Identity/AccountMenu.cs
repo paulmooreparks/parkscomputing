@@ -13,7 +13,7 @@ namespace ParksComputing.Engine.Identity;
 /// needs it: whether accounts exist on this site at all, who is signed in,
 /// and which of the account's places they may go.</summary>
 public sealed record AccountMenuState(bool Enabled, bool SignedIn, string? Name, bool SetupPending, bool Staff,
-    bool ServerTools = false, string? HomeName = null, string? AvatarUrl = null) {
+    bool ServerTools = false, string? HomeName = null, string? AvatarUrl = null, bool Registration = false) {
     public static readonly AccountMenuState Off = new(false, false, null, false, false);
 }
 
@@ -51,7 +51,7 @@ public sealed class AccountMenu {
     public async Task<AccountMenuState> StateAsync(ClaimsPrincipal user) {
         if (!_options.Enabled) { return AccountMenuState.Off; }
         var id = user.Identity?.IsAuthenticated == true ? user.FindFirstValue(ClaimTypes.NameIdentifier) : null;
-        if (id is null) { return new(true, false, null, false, false); }
+        if (id is null) { return new(true, false, null, false, false, Registration: _options.Registration); }
         await using var db = await _factory.CreateDbContextAsync();
         var name = await db.AccountProfiles.AsNoTracking().Where(p => p.UserId == id).Select(p => p.DisplayName).SingleOrDefaultAsync();
         bool staff = await _staff.AllowedAsync(user, false);
@@ -64,7 +64,7 @@ public sealed class AccountMenu {
         var avatar = await db.AccountAvatars.AsNoTracking().Where(a => a.UserId == id).Select(a => (Guid?)a.Version).SingleOrDefaultAsync();
         return new(true, true, string.IsNullOrWhiteSpace(name) ? null : name,
             await _bootstrap.PendingAsync(id), staff, serverTools, serverTools ? ServerFiles.HomeNameOf(account!) : null,
-            avatar is { } v ? AccountAvatars.UrlOf(id, v) : null);
+            avatar is { } v ? AccountAvatars.UrlOf(id, v) : null, _options.Registration);
     }
 
     /// <summary>The entries, in the logo menu's terms. A sign-in or sign-up
@@ -74,10 +74,10 @@ public sealed class AccountMenu {
     public static IReadOnlyList<MenuEntry> Entries(AccountMenuState state, bool desktop) {
         if (!state.Enabled) { return Array.Empty<MenuEntry>(); }
         if (!state.SignedIn) {
-            return new[] {
-                Item("Sign in…", MenuBuilder.Link("/account/signin", ("data-account-dialog", ""))),
-                Item("Create account…", MenuBuilder.Link("/account/register", ("data-account-dialog", "")))
-            };
+            // Create account only while registration is open.
+            var signedOut = new List<MenuEntry> { Item("Sign in…", MenuBuilder.Link("/account/signin", ("data-account-dialog", ""))) };
+            if (state.Registration) { signedOut.Add(Item("Create account…", MenuBuilder.Link("/account/register", ("data-account-dialog", "")))); }
+            return signedOut;
         }
         var account = desktop
             ? MenuBuilder.Link("/?open=account&top=account", ("data-win-open", "account"))

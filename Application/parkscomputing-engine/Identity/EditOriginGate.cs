@@ -80,7 +80,17 @@ public sealed class EditOriginGate {
         "form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
 
     private async Task InvokeAccountsSite(HttpContext ctx) {
-        if (!string.Equals(ctx.Request.Host.Host, _accounts.Host, StringComparison.OrdinalIgnoreCase)) {
+        var host = ctx.Request.Host.Host;
+        if (!string.Equals(host, _accounts.Host, StringComparison.OrdinalIgnoreCase)) {
+            // Another name for the site keeps its address; a retired host
+            // goes to the home page, dropping anything its links carried.
+            var origin = _accounts.Origin.TrimEnd('/');
+            if (_accounts.RedirectHosts.Any(h => string.Equals(h, host, StringComparison.OrdinalIgnoreCase))) {
+                ctx.Response.Redirect(origin + ctx.Request.PathBase + ctx.Request.Path + ctx.Request.QueryString, permanent: true); return;
+            }
+            if (_accounts.RetiredHosts.Any(h => string.Equals(h, host, StringComparison.OrdinalIgnoreCase))) {
+                ctx.Response.Redirect(origin + "/", permanent: true); return;
+            }
             ctx.Response.StatusCode = StatusCodes.Status404NotFound; return;
         }
         ctx.Request.Scheme = _accounts.Scheme;

@@ -22,6 +22,14 @@ public sealed class AccountAuthController : ControllerBase {
         return user is not null && await _sessions.EligibleAsync(user) && await _policy.ValidAsync(User) ? user : null;
     }
     private async Task<bool> StaffAsync(IdentityUser user) => (await _users.GetRolesAsync(user)).Any(r => r is "Moderator" or "Admin" or "SuperAdmin");
+
+    /// <summary>Whether adding a passkey needs a tap of an existing one first,
+    /// as a staff account's does. Not while the operator's super-user setup
+    /// for the account is pending: that host-side authorization is the proof,
+    /// and the account may hold no passkey this site can use, such as one
+    /// made for the retired edit origin.</summary>
+    private async Task<bool> MustConfirmToEnrollAsync(IdentityUser user) =>
+        await StaffAsync(user) && !await _policy.ConfirmedAsync(User) && !await _bootstrap.PendingAsync(user.Id);
     /// <summary>A fresh antiforgery token for whoever the reader is now, and
     /// whether they are signed in. A page open across a sign-in or a lapsed
     /// session holds a token for who the reader was, which the next form or
@@ -53,7 +61,7 @@ public sealed class AccountAuthController : ControllerBase {
     [HttpPost("creation-options")]
     public async Task<IActionResult> CreationOptions() {
         var user = await CurrentAsync(); if (user is null) { return Unauthorized(Refused); }
-        if (await StaffAsync(user) && !await _policy.ConfirmedAsync(User)) { return StatusCode(403, new { confirm = true, error = "Confirm with an existing passkey first." }); }
+        if (await MustConfirmToEnrollAsync(user)) { return StatusCode(403, new { confirm = true, error = "Confirm with an existing passkey first." }); }
         return Content(await _signIn.MakePasskeyCreationOptionsAsync(new PasskeyUserEntity {
             Id = user.Id, Name = user.Email ?? user.UserName!, DisplayName = user.Email ?? user.UserName!
         }), "application/json");
@@ -61,7 +69,7 @@ public sealed class AccountAuthController : ControllerBase {
     [HttpPost("register")]
     public async Task<IActionResult> Register(Body body) {
         var user = await CurrentAsync(); if (user is null || body.Credential is not { } credential) { return Unauthorized(Refused); }
-        if (await StaffAsync(user) && !await _policy.ConfirmedAsync(User)) { return StatusCode(403, new { confirm = true }); }
+        if (await MustConfirmToEnrollAsync(user)) { return StatusCode(403, new { confirm = true }); }
         var result = await _signIn.PerformPasskeyAttestationAsync(credential.GetRawText());
         if (!result.Succeeded || result.UserEntity?.Id != user.Id) { return BadRequest(Refused); }
         result.Passkey.Name = string.IsNullOrWhiteSpace(body.Name) ? "Passkey" : body.Name.Trim()[..Math.Min(60, body.Name.Trim().Length)];

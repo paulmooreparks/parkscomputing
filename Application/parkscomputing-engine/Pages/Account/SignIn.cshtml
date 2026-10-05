@@ -1,5 +1,6 @@
 @page
 @model ParksComputing.Engine.Pages.Account.SignInModel
+@inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions> AccountConfig
 @{
     ViewData["Title"] = "Sign in | Parks Computing";
     bool emailWrong = ViewData.ModelState["Email"]?.Errors.Count > 0;
@@ -48,7 +49,10 @@
             <p>Added a passkey to your account? Use it instead of email.</p>
             <p><button class="btn" type="button" data-passkey="signin">Sign in with a passkey</button></p>
             <p class="form-error" data-passkey-status role="alert" hidden></p>
-            <p>No account yet? <a href="/account/register" data-account-dialog>Create one</a>.</p>
+            @if (AccountConfig.Value.Registration)
+            {
+                <p>No account yet? <a href="/account/register" data-account-dialog>Create one</a>.</p>
+            }
         </div>
     }
 </section>

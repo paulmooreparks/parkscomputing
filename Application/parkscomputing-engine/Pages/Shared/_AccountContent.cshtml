@@ -1,13 +1,17 @@
 @model ParksComputing.Engine.Pages.Account.IndexModel
+@inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions> AccountConfig
 @* The Account applet's body (js/account.js), the same on the classic
    /account page and in the window view's Account window. *@
 <div class="account" data-account-panel>
 @if (!Model.SignedIn)
 {
-    <p>You're not signed in. An account lets you comment on articles.</p>
+    <p>You're not signed in.@(AccountConfig.Value.Registration ? " An account lets you comment on articles." : "")</p>
     <p class="account-buttons">
         <a class="btn btn-primary" href="/account/signin" data-account-dialog>Sign in…</a>
-        <a class="btn" href="/account/register" data-account-dialog>Create account…</a>
+        @if (AccountConfig.Value.Registration)
+        {
+            <a class="btn" href="/account/register" data-account-dialog>Create account…</a>
+        }
     </p>
 }
 else

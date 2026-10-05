@@ -27,9 +27,21 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - AUTH_CONNECTION_STRING=Server=sqlserver,1433;Database=ParksComputingAuth;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=true;Encrypt=false;
-      # Admin sign-in (Architecture/admin-and-identity-design.md): the edit
-      # origin, and mail through Resend for sign-in links and notices.
-      - Admin__EditOrigin=https://edit.parkscomputing.com
+      # Accounts on the site itself (Architecture/unified-identity-design.md):
+      # parkscomputing.com is the one origin, for readers, members and the
+      # super-user's server tools. www keeps its address on the way there;
+      # the retired edit origin goes to the home page. Public sign-up stays
+      # closed until comments and the policy pages ship. The admin origin
+      # settings name the same origin, since the SSH relay and previews
+      # accept their own pages from it. Mail goes through Resend.
+      - Accounts__Enabled=true
+      - Accounts__Origin=https://parkscomputing.com
+      - Accounts__StaffEnabled=true
+      - Accounts__Registration=false
+      - Accounts__RedirectHosts__0=www.parkscomputing.com
+      - Accounts__RetiredHosts__0=edit.parkscomputing.com
+      - Admin__EditOrigin=https://parkscomputing.com
+      - Admin__PublicOrigin=https://parkscomputing.com
       - RESEND_API_KEY=${RESEND_API_KEY}
       - EMAIL_FROM=${EMAIL_FROM}
       - EMAIL_REPLY_TO=${EMAIL_REPLY_TO}
