@@ -45,6 +45,16 @@
 .account-panel form { display: grid; gap: var(--space-3); margin: 0; }
 .account-panel .dialog-actions { margin-top: var(--space-2); }
 .account-alt { display: grid; gap: var(--space-2); border-top: 1px solid var(--border); padding-top: var(--space-3); }
+/* Sign in's first part, for a newcomer: Create an account, before the form
+   for those who already have one. */
+.account-new { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3);
+  padding-bottom: var(--space-3); border-bottom: 1px solid var(--border); }
+.account-new p { flex: 1 1 14rem; }
+/* The top bar's Sign in or create account keeps only Sign in on a phone,
+   where the rest is still heard. */
+@media (max-width: 560px) {
+  .status-join { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
 
 /* Super-user setup: numbered steps, each marked done or to do by a glyph
    and a word, never by colour alone. */

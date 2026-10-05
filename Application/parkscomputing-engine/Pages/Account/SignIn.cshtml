@@ -33,7 +33,16 @@
     }
     else
     {
-        <p>Enter your email address and you'll get a link that signs you in. There is no password.</p>
+        @if (AccountConfig.Value.Registration)
+        {
+            @* Up front, because Sign in sends nothing to an address without an
+               account and cannot say so; a newcomer starts here instead. *@
+            <div class="account-new">
+                <p>New here? Make an account first; signing in only works once you have one.</p>
+                <a class="btn" href="/account/register" data-account-dialog>Create an account…</a>
+            </div>
+        }
+        <p>Already have an account? Enter its email address and you'll get a link that signs you in. There is no password.</p>
         <form method="post" asp-antiforgery="true" action="/account/signin" novalidate>
             <partial name="_AccountErrors" />
             <input type="hidden" name="returnUrl" value="@Model.Back" />
@@ -56,10 +65,6 @@
             <p>Added a passkey to your account? Use it instead of email.</p>
             <p><button class="btn" type="button" data-passkey="signin">Sign in with a passkey</button></p>
             <p class="form-error" data-passkey-status role="alert" hidden></p>
-            @if (AccountConfig.Value.Registration)
-            {
-                <p>No account yet? <a href="/account/register" data-account-dialog>Create one</a>.</p>
-            }
         </div>
     }
 </section>
