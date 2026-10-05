@@ -375,6 +375,10 @@ The URL parameters `sidebarRestore` (comma-separated window keys) and `sidebarTo
 
 The Docker build and desktop/mobile browser checks passed on the staging container, localhost, and parkscomputing.com. The mobile restoration check includes reloading the list before returning to the previous windows. Served CSS, sidebar runtime, and host adapter were compared with the deployed source. Real-device touch and assistive-technology checks remain unperformed.
 
+### D60. PUDL 0.45.0 pinned: the pins group, on beta and production
+
+Version 0.45.0 ships the pins group this site proposed (`pudl-proposal-pins-bar.md`), with 0.44.2's change on the way: code turns the monospace face's ligatures off, so Cascadia Code no longer draws `!=` or a table's `|---|` as one sign. Only `pudl.css` and `pudl-menubar.js` changed. The site's own Pins bar is gone: the layout renders `ul[data-menubar-pins]` inside the menu bar, whose first item is the Pins menu with the pinning command, `js/pins.js` writes a link for each pin after it and names the command on `pudl:pins-menu`, and PUDL draws the group between the site and applet groups, collapses the pins to Items and folds the group into the bar's menu on a phone. The site's Pins bar styles and its own pin glyph went with it, since PUDL now has `--glyph-pin`. Beta and production were updated together on 2026-10-05.
+
 ### D59. PUDL 0.44.1 in the checkout, on beta first
 
 Version 0.44.1 changes `pudl.css` alone: a disabled button of any kind, primary and danger included, now looks like a disabled plain button, and a button disabled by its fieldset looks disabled too. The site had no stopgap of its own for `.btn` to remove; its disabled rules are for its own `.icon-btn` and stay. Beta serves it; production keeps 0.43.0 until Paul promotes beta.

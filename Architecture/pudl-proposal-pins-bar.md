@@ -1,5 +1,7 @@
 # Proposal to PUDL: a pins group in the menu bar
 
+**Shipped in PUDL 0.45.0** (`pudl-adoption.md`, D60). PUDL read the pins from the same nested-list markup as the site menu rather than the attributes suggested here: the Pins menu is a title with its list, a pin's icon is the content of its link, and `pudl:pins-menu` fires on the list as the menu opens. What follows is the text as it was sent.
+
 From parkscomputing.com, 2026-10-05. Paul wants a place for the applets and articles he uses often, one press away in both the window and classic views. He sketched it as an extension of the menu bar: a group of its own with a Pins menu first, whose glyph marks the group as the site identity's glyph marks the site's, followed by buttons rather than menus, one for each pinned item. The site has built it outside the menu bar (`Architecture/pins-design.md`, `js/pins.js`), and it works, but it cannot stand where Paul wants it, between the site group and the applet group, because the menu bar holds those two groups and builds and rebuilds the row itself. This proposal asks PUDL to make a pins group part of the menu bar.
 
 ## Behavior

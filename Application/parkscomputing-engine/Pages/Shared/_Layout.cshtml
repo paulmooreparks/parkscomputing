@@ -145,6 +145,14 @@
             }
             <nav class="site-menubar" data-menubar aria-label="Parks Computing">
             <partial name="_MenuBar" />
+            @* The pins group (PUDL 0.45.0, Architecture/pins-design.md): the
+               Pins menu with the pinning command, then one link a pin, which
+               js/pins.js writes from the reader's pins. The menu bar draws
+               it between the site's menus and the front ones, and redraws it
+               as the list changes. *@
+            <ul data-menubar-pins hidden>
+                <li>Pins<ul><li><button type="button" data-pin-command disabled>Pin</button></li></ul></li>
+            </ul>
             <div class="menu site-menu">
                 <button type="button" class="brand topbar-pill menu-btn site-menu-btn" popovertarget="site-menu" aria-label="Parks Computing menu">
                     <img src="~/favicon-32x32.png" alt="" /> <span class="site-menu-name">Parks Computing</span>
@@ -185,9 +193,6 @@
                 </nav>
             </div>
             </nav>
-            @* The Pins bar (Architecture/pins-design.md): js/pins.js builds it
-               from the reader's pins; without script there is nothing to show. *@
-            <nav class="pinbar" data-pinbar aria-label="Pins" hidden></nav>
             @* The view switcher: one segmented control at the far right,
                after a rule. Each side is a link, because each view is a URL;
                ?view=window bypasses a classic default-view choice. The window

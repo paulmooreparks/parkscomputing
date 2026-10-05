@@ -1,10 +1,13 @@
-/* The Pins bar (Architecture/pins-design.md): a group in the top bar after
-   the menu bar's own. Its first control is the Pins menu, with Pin or Unpin
-   for whatever is in front; after it, a button for each pinned item, with
-   the icon and title its window shows in the taskbar. When the buttons
-   don't fit they all give way to an Items menu, and on a phone the pin
-   glyph alone remains, its menu listing the pins. Each window's own menu
-   offers Pin or Unpin too.
+/* Pins (Architecture/pins-design.md), in PUDL's pins group (0.45.0). The
+   menu bar draws the group from the hidden list the layout renders
+   (ul[data-menubar-pins]): its first item is the Pins menu, whose command
+   this script names for whatever is in front as the menu opens
+   (pudl:pins-menu), and each later item is a pin, a link with the icon and
+   title its window shows in the taskbar, which this script writes. The bar
+   redraws when the list changes, collapses the pins to Items when they
+   don't fit, and presses a pin's link on a plain press, which opens the
+   item's window in the window view. Each window's own menu offers Pin or
+   Unpin too.
 
    A signed-in reader's pins are their account's: the page carries them
    (#pc-pins-data) and a change is saved with PUT /api/account/pins. A
@@ -13,9 +16,10 @@
 (function () {
     'use strict';
 
-    var bar = document.querySelector('[data-pinbar]');
+    var list = document.querySelector('[data-menubar-pins]');
+    var command = list && list.querySelector('[data-pin-command]');
     var dataEl = document.getElementById('pc-pins-data');
-    if (!bar || !dataEl) { return; }
+    if (!list || !command || !dataEl) { return; }
     var data = {};
     try { data = JSON.parse(dataEl.textContent) || {}; } catch (err) { data = {}; }
 
@@ -27,8 +31,8 @@
     function readLocal() {
         try { var v = JSON.parse(localStorage.getItem(LOCAL) || '[]'); return Array.isArray(v) ? v : []; } catch (err) { return []; }
     }
-    function writeLocal(list) {
-        try { if (list) { localStorage.setItem(LOCAL, JSON.stringify(list)); } else { localStorage.removeItem(LOCAL); } } catch (err) { /* storage blocked */ }
+    function writeLocal(value) {
+        try { if (value) { localStorage.setItem(LOCAL, JSON.stringify(value)); } else { localStorage.removeItem(LOCAL); } } catch (err) { /* storage blocked */ }
     }
     function same(a, b) { return a.key === b.key && (a.chapter || '') === (b.chapter || ''); }
     function indexOf(p) { for (var i = 0; i < pins.length; i++) { if (same(pins[i], p)) { return i; } } return -1; }
@@ -77,7 +81,6 @@
 
     function desktop() { return !!(window.pudlWindows && document.querySelector('[data-win-layer]')); }
     function hrefOf(p) { return p.key === 'account' ? '/account' : '/page/' + p.key + (p.chapter ? '/' + p.chapter : ''); }
-    function narrow() { return window.matchMedia && window.matchMedia('(max-width: 640px)').matches; }
 
     /* === What can be pinned ============================================ */
 
@@ -146,137 +149,52 @@
         return true;
     }
 
-    /* === Drawing the bar =============================================== */
+    /* === The pins list the menu bar draws ============================== */
 
-    function iconOf(p, cls) {
-        var el;
-        if (p.icon || !p.applet) {
-            el = document.createElement('img');
-            el.src = p.icon || '/favicon-16x16.png';
-            el.alt = '';
-        } else {
-            el = document.createElement('span');
-            el.className = 'glyph';
-            el.style.setProperty('--glyph', 'var(--glyph-app)');
-        }
-        el.classList.add(cls);
-        el.setAttribute('aria-hidden', 'true');
-        return el;
-    }
-
-    function link(p, cls) {
-        var a = document.createElement('a');
-        a.className = cls;
+    /* A pin as the menu bar reads it: a link to its page, holding its icon
+       (an image, or the applet glyph, as the taskbar shows) and its title. */
+    function pinItem(p) {
+        var li = document.createElement('li'), a = document.createElement('a');
         a.href = hrefOf(p);
-        a.title = p.title;
-        a.appendChild(iconOf(p, cls === 'menu-action' ? 'pinbar-row-icon' : 'pinbar-icon'));
-        var t = document.createElement('span');
-        t.className = cls === 'menu-action' ? 'menubar-label' : 'pinbar-pin-title';
-        t.textContent = p.title;
-        a.appendChild(t);
-        if (cls === 'menu-action') { a.setAttribute('role', 'menuitem'); }
+        var icon;
+        if (p.icon || !p.applet) {
+            icon = document.createElement('img');
+            icon.src = p.icon || '/favicon-16x16.png';
+            icon.alt = '';
+        } else {
+            icon = document.createElement('span');
+            icon.className = 'glyph';
+            icon.style.setProperty('--glyph', 'var(--glyph-app)');
+            icon.setAttribute('aria-hidden', 'true');
+        }
+        a.appendChild(icon);
+        a.appendChild(document.createTextNode(' ' + p.title));
+        /* The bar presses this link on a plain press; the window view opens
+           the item's window instead of leaving the page. */
         a.addEventListener('click', function (e) {
             if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) { return; }
-            var panel = a.closest('[popover]');
             if (open(p)) { e.preventDefault(); }
-            if (panel && panel.hidePopover) { try { panel.hidePopover(); } catch (err) { } }
         });
-        return a;
+        li.appendChild(a);
+        return li;
     }
 
-    function menuButton(id, label, glyph) {
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'pinbar-title';
-        b.setAttribute('popovertarget', id);
-        b.setAttribute('aria-haspopup', 'menu');
-        b.setAttribute('aria-expanded', 'false');
-        if (glyph) {
-            b.setAttribute('aria-label', label);
-            var g = document.createElement('span');
-            g.className = 'pinbar-glyph';
-            g.setAttribute('aria-hidden', 'true');
-            b.appendChild(g);
-        }
-        var l = document.createElement('span');
-        l.className = 'pinbar-label';
-        l.textContent = label;
-        b.appendChild(l);
-        var panel = document.createElement('div');
-        panel.className = 'menu-panel pinbar-panel';
-        panel.id = id;
-        panel.setAttribute('popover', '');
-        panel.setAttribute('role', 'menu');
-        panel.setAttribute('aria-label', label);
-        panel.addEventListener('toggle', function (e) { b.setAttribute('aria-expanded', e.newState === 'open' ? 'true' : 'false'); });
-        return { button: b, panel: panel };
-    }
-
-    var group = document.createElement('div');
-    group.className = 'pinbar-group';
-    var pinsMenu = menuButton('pc-pins-menu', 'Pins', true);
-    var items = document.createElement('div');
-    items.className = 'pinbar-items';
-    var more = document.createElement('div');
-    more.className = 'pinbar-more';
-    var itemsMenu = menuButton('pc-pins-items', 'Items', false);
-    more.appendChild(itemsMenu.button);
-    group.appendChild(pinsMenu.button);
-    group.appendChild(items);
-    group.appendChild(more);
-    bar.appendChild(group);
-    bar.appendChild(pinsMenu.panel);
-    bar.appendChild(itemsMenu.panel);
-
-    /* The Pins menu, built as it opens, so its command names what is in
-       front now: Pin "title" or Unpin "title", there but unavailable when
-       nothing pinnable is. On a phone it lists the pins as well. */
-    pinsMenu.panel.addEventListener('beforetoggle', function (e) {
-        if (e.newState !== 'open') { return; }
-        var panel = pinsMenu.panel, cur = current();
-        panel.textContent = '';
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'menu-action';
-        b.setAttribute('role', 'menuitem');
-        var label = document.createElement('span');
-        label.className = 'menubar-label';
-        label.textContent = !cur ? 'Pin' : (indexOf(cur) >= 0 ? 'Unpin “' : 'Pin “') + cur.title + '”';
-        b.appendChild(label);
-        if (!cur) { b.disabled = true; b.setAttribute('aria-disabled', 'true'); }
-        b.addEventListener('click', function () { if (cur) { toggle(cur); } try { panel.hidePopover(); } catch (err) { } });
-        panel.appendChild(b);
-        if (narrow() && pins.length) {
-            var sep = document.createElement('div');
-            sep.className = 'menu-sep';
-            sep.setAttribute('role', 'separator');
-            panel.appendChild(sep);
-            pins.forEach(function (p) { panel.appendChild(link(p, 'menu-action')); });
-        }
-    });
-
-    itemsMenu.panel.addEventListener('beforetoggle', function (e) {
-        if (e.newState !== 'open') { return; }
-        itemsMenu.panel.textContent = '';
-        pins.forEach(function (p) { itemsMenu.panel.appendChild(link(p, 'menu-action')); });
-    });
-
-    /* The buttons give way to Items, all together, when they don't fit. */
-    function fit() {
-        bar.classList.remove('pinbar-collapsed');
-        if (!pins.length || narrow()) { return; }
-        if (items.scrollWidth > items.clientWidth + 1) { bar.classList.add('pinbar-collapsed'); }
-    }
-
+    /* Writes the pins after the Pins menu, which the menu bar redraws from. */
     function render() {
-        items.textContent = '';
-        pins.forEach(function (p) { items.appendChild(link(p, 'pinbar-pin')); });
-        more.hidden = !pins.length;
-        bar.hidden = false;
-        fit();
+        while (list.children.length > 1) { list.removeChild(list.lastElementChild); }
+        pins.forEach(function (p) { list.appendChild(pinItem(p)); });
     }
 
-    if (window.ResizeObserver) { new ResizeObserver(fit).observe(bar); } else { window.addEventListener('resize', fit); }
+    /* The Pins menu's command names what is in front as the menu opens:
+       Pin "title" or Unpin "title", there but unavailable when nothing
+       pinnable is. */
+    var front = null;
+    list.addEventListener('pudl:pins-menu', function () {
+        front = current();
+        command.textContent = !front ? 'Pin' : (indexOf(front) >= 0 ? 'Unpin “' : 'Pin “') + front.title + '”';
+        command.disabled = !front;
+    });
+    command.addEventListener('click', function () { if (front) { toggle(front); } });
 
     /* === Pinning from a window, and keeping pins current ================= */
 
