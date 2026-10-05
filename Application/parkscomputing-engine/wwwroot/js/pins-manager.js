@@ -104,6 +104,12 @@
                 pins.forEach(function (p, i) {
                     var li = document.createElement('li');
                     li.className = 'pins-row';
+                    var grip = document.createElement('span');
+                    grip.className = 'glyph pins-grip';
+                    grip.style.setProperty('--glyph', 'var(--glyph-grip)');
+                    grip.title = 'Drag to move';
+                    grip.setAttribute('aria-hidden', 'true');
+                    li.appendChild(grip);
                     li.appendChild(icon(p));
                     li.appendChild(title(p));
                     var actions = document.createElement('span');
@@ -159,7 +165,41 @@
                 if (!shown) { catEl.innerHTML = '<p class="form-help">Nothing on the site matches that.</p>'; }
             }
 
-            var off = window.pcPins.onChange(function () { drawPins(); drawCatalog(); });
+            /* Dragging a pin by its grip, with a mouse, a pen or a finger:
+               the row moves among the others under the pointer, and the
+               new order is kept when it is let go. The buttons above do the
+               same from the keyboard. */
+            var drag = null;
+            function rowsOf() { return Array.prototype.slice.call(listEl.children); }
+            listEl.addEventListener('pointerdown', function (e) {
+                var grip = e.target.closest && e.target.closest('.pins-grip');
+                if (!grip || e.button !== 0) { return; }
+                var li = grip.closest('.pins-row');
+                drag = { li: li, from: rowsOf().indexOf(li), id: e.pointerId };
+                grip.setPointerCapture(e.pointerId);
+                li.classList.add('pins-dragging');
+                e.preventDefault();
+            });
+            listEl.addEventListener('pointermove', function (e) {
+                if (!drag || e.pointerId !== drag.id) { return; }
+                var next = rowsOf().filter(function (r) { return r !== drag.li; }).find(function (r) {
+                    var b = r.getBoundingClientRect();
+                    return e.clientY < b.top + b.height / 2;
+                });
+                if ((next || null) !== drag.li.nextElementSibling) { listEl.insertBefore(drag.li, next || null); }
+            });
+            function drop(e, keep) {
+                if (!drag || e.pointerId !== drag.id) { return; }
+                var from = drag.from, to = rowsOf().indexOf(drag.li);
+                drag.li.classList.remove('pins-dragging');
+                drag = null;
+                if (keep && to !== from) { window.pcPins.move(from, to); } else { drawPins(); }
+            }
+            listEl.addEventListener('pointerup', function (e) { drop(e, true); });
+            listEl.addEventListener('pointercancel', function (e) { drop(e, false); });
+
+            /* A change made elsewhere redraws the lists, but not under a drag. */
+            var off = window.pcPins.onChange(function () { if (!drag) { drawPins(); } drawCatalog(); });
             filter.addEventListener('input', drawCatalog);
             drawPins();
             loadCatalog().then(drawCatalog).catch(function () {
