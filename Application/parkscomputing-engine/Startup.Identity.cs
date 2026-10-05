@@ -139,6 +139,9 @@ public partial class Startup {
         services.AddHostedService<HistoryPruner>();
         services.AddMemoryCache();
         services.AddSingleton<PreviewDrafts>();
+        services.Configure<CommentOptions>(Configuration.GetSection("Comments"));
+        services.AddSingleton<CommentPolicies>();
+        services.AddSingleton<Discussions>();
     }
 
     private static Task ApiOrRedirect(Microsoft.AspNetCore.Authentication.RedirectContext<Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions> ctx, int status) {
