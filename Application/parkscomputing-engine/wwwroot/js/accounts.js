@@ -301,7 +301,13 @@
             spots.forEach(function (spot) {
                 if (!spot.isConnected) { return; }
                 spot.setAttribute('data-turnstile-drawn', '');
-                ts.render(spot, { sitekey: spot.getAttribute('data-turnstile-sitekey'), action: spot.getAttribute('data-turnstile-action') || undefined });
+                // In the site's theme rather than the browser's, which may differ.
+                var theme = document.documentElement.getAttribute('data-theme');
+                ts.render(spot, {
+                    sitekey: spot.getAttribute('data-turnstile-sitekey'),
+                    action: spot.getAttribute('data-turnstile-action') || undefined,
+                    theme: theme === 'dark' || theme === 'light' ? theme : 'auto'
+                });
             });
         }).catch(function () {
             spots.forEach(function (spot) {

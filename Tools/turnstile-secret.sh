@@ -33,7 +33,7 @@ case "$ANSWER" in
 esac
 
 # Replace any earlier value, then add this one. sed never sees the secret.
-for pair in "$ENV:TURNSTILE_SECRET" "$BETA:Accounts__TurnstileSecret"; do
+for pair in "$ENV:TURNSTILE_SECRET_KEY" "$BETA:Accounts__TurnstileSecret"; do
     file="${pair%%:*}"; name="${pair#*:}"
     [ -f "$file" ] || continue
     grep -v "^$name=" "$file" > "$file.tmp" || true

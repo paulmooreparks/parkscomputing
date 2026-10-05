@@ -1,5 +1,7 @@
 # Proposal to PUDL: no File menu for an article
 
+**Shipped in PUDL 0.49.0** (`pudl-adoption.md`, D63), with Print offered by `data-page-print` on the page menu. What follows is the text as it was sent.
+
 From parkscomputing.com, 2026-10-05, on PUDL 0.48.0.
 
 When an article is in front, the menu bar gives it two titles of PUDL's own before any the host adds: the article's own menu, named for the article, holding Open as a page, Copy link to this content and Close window; and a File menu holding one command, Print (`frontMenu` in `pudl-menubar.js`, since 0.38.0). Paul finds the File menu close to useless: a whole title for a single command, and a command whose result is poor, since printing the window view prints the desktop rather than the article. He asked for it to be filled with substantially more or to go. Nothing else belongs in it for an article. Opening the article as a page and copying its link are already in the article's own menu, editing is the host's, and offering a download of an article's source is a staff concern, not a reader's. So this asks for it to go.

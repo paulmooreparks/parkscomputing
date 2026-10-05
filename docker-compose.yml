@@ -43,7 +43,7 @@ services:
       - Accounts__Registration=true
       - Comments__Enabled=true
       - Accounts__TurnstileSiteKey=${TURNSTILE_SITE_KEY:-}
-      - Accounts__TurnstileSecret=${TURNSTILE_SECRET:-}
+      - Accounts__TurnstileSecret=${TURNSTILE_SECRET_KEY:-}
       - Accounts__RedirectHosts__0=www.parkscomputing.com
       - Accounts__RetiredHosts__0=edit.parkscomputing.com
       - Admin__EditOrigin=https://parkscomputing.com
