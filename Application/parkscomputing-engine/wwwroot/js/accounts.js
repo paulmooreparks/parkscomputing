@@ -301,7 +301,7 @@
             spots.forEach(function (spot) {
                 if (!spot.isConnected) { return; }
                 spot.setAttribute('data-turnstile-drawn', '');
-                ts.render(spot, { sitekey: spot.getAttribute('data-turnstile-sitekey') });
+                ts.render(spot, { sitekey: spot.getAttribute('data-turnstile-sitekey'), action: spot.getAttribute('data-turnstile-action') || undefined });
             });
         }).catch(function () {
             spots.forEach(function (spot) {

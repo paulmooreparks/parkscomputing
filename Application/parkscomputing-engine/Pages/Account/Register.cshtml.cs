@@ -28,7 +28,7 @@ public sealed class RegisterModel : PageModel {
     public async Task<IActionResult> OnPostAsync() {
         if (!_options.Registration) { return NotFound(); }
         var policies = Policies;
-        if (!await _turnstile.PassesAsync(Request.Form[Turnstile.FieldName], AdminOptions.ClientIp(HttpContext))) {
+        if (!await _turnstile.PassesAsync(Request.Form[Turnstile.FieldName], AdminOptions.ClientIp(HttpContext), Turnstile.RegisterAction)) {
             ModelState.AddModelError("", Turnstile.Refusal); return Page();
         }
         try { await _workflow.RequestAsync(Email, DisplayName, AdminOptions.ClientIp(HttpContext), Back, policies); Sent = true; }

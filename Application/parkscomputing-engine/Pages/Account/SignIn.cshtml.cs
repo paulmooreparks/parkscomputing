@@ -28,7 +28,7 @@ public sealed class SignInModel : PageModel {
     public bool Sent { get; private set; }
     public IActionResult OnGet() => User.Identity?.IsAuthenticated == true ? LocalRedirect(Back) : Page();
     public async Task<IActionResult> OnPostAsync() {
-        if (!await _turnstile.PassesAsync(Request.Form[Turnstile.FieldName], AdminOptions.ClientIp(HttpContext))) {
+        if (!await _turnstile.PassesAsync(Request.Form[Turnstile.FieldName], AdminOptions.ClientIp(HttpContext), Turnstile.SignInAction)) {
             ModelState.AddModelError("", Turnstile.Refusal); return Page();
         }
         try { await _workflow.RequestAsync(Email, null, AdminOptions.ClientIp(HttpContext), Back); Sent = true; }

@@ -40,7 +40,7 @@
                     <p class="form-error" id="signin-email-error">@ViewData.ModelState["Email"]!.Errors[0].ErrorMessage</p>
                 }
             </div>
-            <partial name="_Challenge" />
+            <partial name="_Challenge" model="ParksComputing.Engine.Identity.Turnstile.SignInAction" />
             <div class="dialog-actions">
                 <a class="btn" href="@Model.Back" data-account-cancel>Cancel</a>
                 <button class="btn btn-primary" type="submit">Email me a link</button>

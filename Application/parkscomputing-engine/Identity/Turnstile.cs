@@ -31,11 +31,28 @@ public sealed class Turnstile {
     public string? SiteKey => _options.TurnstileSiteKey;
 
     private sealed record Answer([property: JsonPropertyName("success")] bool Success,
-        [property: JsonPropertyName("error-codes")] string[]? Errors);
+        [property: JsonPropertyName("error-codes")] string[]? Errors,
+        [property: JsonPropertyName("action")] string? Action,
+        [property: JsonPropertyName("hostname")] string? Hostname);
 
-    /// <summary>Whether the token the form sent passes; always true when the
-    /// challenge is off.</summary>
-    public async Task<bool> PassesAsync(string? token, string? ip) {
+    /// <summary>The widget's action on each form, which the widget is drawn
+    /// with and the answer must name, so a token earned on one form cannot
+    /// be spent on the other.</summary>
+    public const string SignInAction = "signin";
+    public const string RegisterAction = "register";
+
+    /// <summary>Cloudflare's documented test secrets, which answer success
+    /// for a dummy token without an action or this site's hostname; on a
+    /// developer's or a test instance the action and hostname are not
+    /// checked.</summary>
+    private bool TestSecret => _options.TurnstileSecret is { } s && (s.StartsWith("1x0000", StringComparison.Ordinal)
+        || s.StartsWith("2x0000", StringComparison.Ordinal) || s.StartsWith("3x0000", StringComparison.Ordinal));
+
+    /// <summary>Whether the token the form sent passes: Cloudflare says it
+    /// succeeded, on this form's action, on this site's own hostname, as
+    /// Turnstile's integration guide asks. Always true when the challenge is
+    /// off.</summary>
+    public async Task<bool> PassesAsync(string? token, string? ip, string action) {
         if (!On) { return true; }
         if (string.IsNullOrWhiteSpace(token) || token.Length > 2048) { return false; }
         var form = new Dictionary<string, string> { ["secret"] = _options.TurnstileSecret!, ["response"] = token };
@@ -44,7 +61,17 @@ public sealed class Turnstile {
             using var response = await _http.CreateClient(ClientName).PostAsync(VerifyUrl, new FormUrlEncodedContent(form));
             if (!response.IsSuccessStatusCode) { _log.LogWarning("Turnstile answered {Status}.", (int)response.StatusCode); return false; }
             var answer = await response.Content.ReadFromJsonAsync<Answer>();
-            return answer?.Success == true;
+            if (answer?.Success != true) { return false; }
+            if (TestSecret) { return true; }
+            if (!string.Equals(answer.Action, action, StringComparison.Ordinal)) {
+                _log.LogWarning("Turnstile token was for another action.");
+                return false;
+            }
+            if (!string.Equals(answer.Hostname, _options.Host, StringComparison.OrdinalIgnoreCase)) {
+                _log.LogWarning("Turnstile token was from another hostname.");
+                return false;
+            }
+            return true;
         } catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) {
             _log.LogWarning(ex, "Turnstile could not be reached.");
             return false;

@@ -49,7 +49,7 @@
                     <p class="form-error" id="register-email-error">@ViewData.ModelState["Email"]!.Errors[0].ErrorMessage</p>
                 }
             </div>
-            <partial name="_Challenge" />
+            <partial name="_Challenge" model="ParksComputing.Engine.Identity.Turnstile.RegisterAction" />
             <p class="form-help">Creating an account means you accept the <a href="/terms" target="_blank" rel="noopener">terms of use</a> and are 13 or older. The <a href="/privacy" target="_blank" rel="noopener">privacy policy</a> says what the site keeps about you.</p>
             <div class="dialog-actions">
                 <a class="btn" href="@Model.Back" data-account-cancel>Cancel</a>
