@@ -30,18 +30,31 @@ public sealed record MenuTitle(string Label, string? Icon, bool WindowsOnly, IRe
 public static class MenuBuilder {
     public const string DefaultStage = "production";
 
-    /// <param name="stage">The stage this server runs as (Site:Stage, such as
-    /// "beta" or "production"; production when it says none). An entry's
-    /// when names a view, "window" or "classic", or a stage, and the entry
-    /// shows only there.</param>
+    /// <summary>The words a when may use for the reader's role, each
+    /// including the roles above it (Identity/AccountMenu.cs works out which
+    /// hold).</summary>
+    public static readonly string[] Audiences = { "member", "moderator", "admin", "superuser" };
+
+    /// <summary>
+    /// An entry's when is one or more words, separated by spaces, all of
+    /// which must hold for it to show (Architecture/site-menu-design.md):
+    /// a view, "window" or "classic"; a role the reader holds, "member",
+    /// "moderator", "admin" or "superuser"; or any other word, the stage
+    /// this server runs as (Site:Stage, such as "beta"; "production" when
+    /// it says none).
+    /// </summary>
+    /// <param name="roles">The role words the reader holds; none when not
+    /// signed in.</param>
     public static IReadOnlyList<MenuTitle> Build(IEnumerable<NavNode>? titles, bool desktop,
-        Func<NavNode, MenuEntry?> link, Func<string, IEnumerable<MenuEntry>> from, string? stage = null) {
-        bool Shows(NavNode n) => n.When switch {
-            null => true,
+        Func<NavNode, MenuEntry?> link, Func<string, IEnumerable<MenuEntry>> from, string? stage = null, IReadOnlyCollection<string>? roles = null) {
+        var here = string.IsNullOrWhiteSpace(stage) ? DefaultStage : stage;
+        bool Holds(string word) => word.ToLowerInvariant() switch {
             "window" => desktop,
             "classic" => !desktop,
-            var s => string.Equals(s, string.IsNullOrWhiteSpace(stage) ? DefaultStage : stage, StringComparison.OrdinalIgnoreCase)
+            var w when Audiences.Contains(w) => roles?.Contains(w, StringComparer.OrdinalIgnoreCase) == true,
+            _ => string.Equals(word, here, StringComparison.OrdinalIgnoreCase)
         };
+        bool Shows(NavNode n) => n.When == null || n.When.Split(' ', StringSplitOptions.RemoveEmptyEntries).All(Holds);
 
         List<MenuEntry> Entries(IEnumerable<NavNode>? list) {
             var outList = new List<MenuEntry>();
@@ -58,7 +71,9 @@ public static class MenuBuilder {
         }
 
         return (titles ?? Array.Empty<NavNode>()).Where(Shows)
-            .Select(t => new MenuTitle(t.Title ?? t.Slug ?? "", t.Icon, t.When == "window", Entries(t.Nav), t.MenuId, t.WindowCommands))
+            .Select(t => new MenuTitle(t.Title ?? t.Slug ?? "", t.Icon,
+                t.When?.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains("window", StringComparer.OrdinalIgnoreCase) == true,
+                Entries(t.Nav), t.MenuId, t.WindowCommands))
             .ToList();
     }
 

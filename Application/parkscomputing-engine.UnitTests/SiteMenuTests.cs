@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
+using ParksComputing.Engine.Identity;
 using ParksComputing.Engine.Pages.Services;
 using ParksComputing.Xfer.Lang;
 
@@ -139,6 +140,24 @@ namespace ParksComputing.Engine.UnitTests {
             Assert.AreEqual("Always|Beta only|Classic only", Labels("beta", false));
             Assert.AreEqual("Always|Production only|Classic only", Labels(null, false), "No stage is production.");
             Assert.AreEqual("Always|Production only", Labels("Production", true));
+        }
+
+        [TestMethod]
+        public void AnEntryCanShowToARoleAndEveryWordMustHold() {
+            var titles = new[] { new NavNode { Title = "Tools", Nav = new[] {
+                new NavNode { Command = "a", Title = "Anyone" },
+                new NavNode { Command = "m", Title = "Moderators", When = "moderator" },
+                new NavNode { Command = "s", Title = "Super-user on beta", When = "beta superuser" },
+                new NavNode { Command = "w", Title = "Admins in windows", When = "admin window" }
+            } } };
+            string Labels(IReadOnlyCollection<string> roles, string stage, bool desktop) => string.Join("|",
+                MenuBuilder.Build(titles, desktop, e => null, _ => Enumerable.Empty<MenuEntry>(), stage, roles)[0].Entries.Select(e => e.Label));
+            Assert.AreEqual("Anyone", Labels(System.Array.Empty<string>(), "beta", true), "A reader who is not signed in sees none of them.");
+            Assert.AreEqual("Anyone", Labels(AccountMenu.RolesOf(new[] { "Member" }), "beta", true));
+            Assert.AreEqual("Anyone|Moderators", Labels(AccountMenu.RolesOf(new[] { "Moderator" }), "beta", true));
+            Assert.AreEqual("Anyone|Moderators|Super-user on beta|Admins in windows", Labels(AccountMenu.RolesOf(new[] { "SuperAdmin" }), "beta", true));
+            Assert.AreEqual("Anyone|Moderators", Labels(AccountMenu.RolesOf(new[] { "SuperAdmin" }), "production", false));
+            CollectionAssert.AreEqual(new[] { "member", "moderator", "admin" }, AccountMenu.RolesOf(new[] { "Admin" }).ToArray());
         }
 
         [TestMethod]

@@ -15,6 +15,13 @@ namespace ParksComputing.Engine.Identity;
 public sealed record AccountMenuState(bool Enabled, bool SignedIn, string? Name, bool SetupPending, bool Staff,
     bool ServerTools = false, string? HomeName = null, string? AvatarUrl = null, bool Registration = false) {
     public static readonly AccountMenuState Off = new(false, false, null, false, false);
+    /// <summary>The role words a menu entry's when may name that this
+    /// reader holds (MenuBuilder.Audiences): member, moderator, admin and
+    /// superuser, each held by the roles above it too.</summary>
+    public IReadOnlyCollection<string> Roles { get; init; } = Array.Empty<string>();
+    /// <summary>Whether the account menu offers the moderation queue: the
+    /// site has comments and the reader may moderate them.</summary>
+    public bool Moderation { get; init; }
 }
 
 /// <summary>
@@ -34,9 +41,11 @@ public sealed class AccountMenu {
     private readonly StaffAccess _staff;
     private readonly StaffBootstrap _bootstrap;
     private readonly IDbContextFactory<SiteIdentityDbContext> _factory;
+    private readonly CommentOptions _comments;
 
-    public AccountMenu(IOptions<AccountOptions> options, StaffAccess staff, StaffBootstrap bootstrap, IDbContextFactory<SiteIdentityDbContext> factory) {
-        _options = options.Value; _staff = staff; _bootstrap = bootstrap; _factory = factory;
+    public AccountMenu(IOptions<AccountOptions> options, StaffAccess staff, StaffBootstrap bootstrap, IDbContextFactory<SiteIdentityDbContext> factory,
+        IOptions<CommentOptions> comments) {
+        _options = options.Value; _staff = staff; _bootstrap = bootstrap; _factory = factory; _comments = comments.Value;
     }
 
     /// <summary>The reader's state, worked out once per request, since the
@@ -62,9 +71,26 @@ public sealed class AccountMenu {
         bool serverTools = account is not null && account.EmailConfirmed && await (from ur in db.UserRoles join r in db.Roles on ur.RoleId equals r.Id
             where ur.UserId == id && r.Name == serverRole select ur).AnyAsync();
         var avatar = await db.AccountAvatars.AsNoTracking().Where(a => a.UserId == id).Select(a => (Guid?)a.Version).SingleOrDefaultAsync();
+        var held = await (from ur in db.UserRoles join r in db.Roles on ur.RoleId equals r.Id where ur.UserId == id select r.Name).ToListAsync();
+        var roles = RolesOf(held);
         return new(true, true, string.IsNullOrWhiteSpace(name) ? null : name,
             await _bootstrap.PendingAsync(id), staff, serverTools, serverTools ? ServerFiles.HomeNameOf(account!) : null,
-            avatar is { } v ? AccountAvatars.UrlOf(id, v) : null, _options.Registration);
+            avatar is { } v ? AccountAvatars.UrlOf(id, v) : null, _options.Registration) {
+            Roles = roles, Moderation = _comments.Enabled && _options.StaffEnabled && roles.Contains("moderator")
+        };
+    }
+
+    /// <summary>The role words an account's roles give it, each role
+    /// including those below it.</summary>
+    public static IReadOnlyCollection<string> RolesOf(IEnumerable<string?> roles) {
+        var r = roles.OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var words = new List<string>();
+        bool super = r.Contains("SuperAdmin"), admin = super || r.Contains("Admin"), mod = admin || r.Contains("Moderator");
+        if (mod || r.Contains("Member")) { words.Add("member"); }
+        if (mod) { words.Add("moderator"); }
+        if (admin) { words.Add("admin"); }
+        if (super) { words.Add("superuser"); }
+        return words;
     }
 
     /// <summary>The entries, in the logo menu's terms. A sign-in or sign-up
@@ -84,6 +110,13 @@ public sealed class AccountMenu {
             : MenuBuilder.Link("/account");
         var items = new List<MenuEntry> { Item("Your account", account) };
         if (state.SetupPending) { items.Add(Item("Finish super-user setup", MenuBuilder.Link("/account/superuser", ("data-return-here", "")))); }
+        // The moderation queue, a place a moderator's role opens
+        // (Architecture/unified-identity-design.md, step 2).
+        if (state.Moderation) {
+            items.Add(Item("Moderation", desktop
+                ? MenuBuilder.Link("/?open=moderation&top=moderation", ("data-win-open", "moderation"))
+                : MenuBuilder.Link("/moderation")));
+        }
         /* The revision-backed article workspace (/admin/articles) is not in
            the menu: it keeps its own articles apart from the site's, which
            are files the Editor edits, and it was getting in the way rather

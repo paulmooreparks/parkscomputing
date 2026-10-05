@@ -18,4 +18,4 @@
     // (Architecture/site-menu-design.md); production unless Site:Stage says otherwise.
     var stage = Config["Site:Stage"];
 }
-@Html.Raw(MenuBuilder.ToHtml(SiteMenu.Build(SiteNav.GetRoot(), desktop, AccountMenu.Entries(accountState, desktop), stage)))
+@Html.Raw(MenuBuilder.ToHtml(SiteMenu.Build(SiteNav.GetRoot(), desktop, AccountMenu.Entries(accountState, desktop), stage, accountState.Roles)))

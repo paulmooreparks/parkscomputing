@@ -17,7 +17,13 @@ The root's `menu` is a list of titles, the first the logo's own, whose `icon` PU
 | `{ separator ~true }` | A separator. |
 | `{ from "applets" }`, `{ from "sections" }` | Entries of the nav, kept in step with it: a section's entries by its slug, or a link to the list of each section. |
 
-Any entry, a title included, may carry `when "window"` or `when "classic"` to show in that view only. It may instead carry `when` with the name of a stage, such as `when "beta"`, to show only on a server whose `Site:Stage` setting has that name; a server with no `Site:Stage` is `production`. Paul asked for this on 2026-10-05, so that an entry for something that exists only on beta can go into the shared `sitenav.xfer` without showing on production. A `when` names a view or a stage, not both. The arguments are an XferLang object, which the server reads into a `Dictionary<string, string>` (XferLang 0.15.25 deserializes an object into one). Paul suggested a list of name and value pairs; the object is the same pairs, unique by name, at a third of the text, and named arguments need no order.
+Any entry, a title included, may carry `when` to show only in some places. Its value is one or more words separated by spaces, and every word must hold:
+
+- `window` or `classic`, the view in use;
+- `member`, `moderator`, `admin` or `superuser`, a role the signed-in reader holds, each held by the roles above it too, so a super-user is an admin and an admin a moderator;
+- any other word, the stage this server runs as, from its `Site:Stage` setting, such as `beta`; a server with no `Site:Stage` is `production`.
+
+So `when "beta superuser"` shows an entry only to the super-user on beta. Paul asked for stages and roles on 2026-10-05, so that an entry for something on beta alone, or for staff alone, can go into the shared `sitenav.xfer`. A hidden entry is not a security boundary: what it leads to checks the reader itself. The places an account's own roles open, such as the moderation queue, are not configured here; the account's section of the logo menu lists them (`Identity/AccountMenu.cs`). The arguments are an XferLang object, which the server reads into a `Dictionary<string, string>` (XferLang 0.15.25 deserializes an object into one). Paul suggested a list of name and value pairs; the object is the same pairs, unique by name, at a third of the text, and named arguments need no order.
 
 `NavService` watches `sitenav.xfer`, so a change to the menu shows on the next page without a build or a restart.
 
