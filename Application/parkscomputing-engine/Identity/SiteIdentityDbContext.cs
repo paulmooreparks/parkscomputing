@@ -48,6 +48,7 @@ public sealed class SiteIdentityDbContext : IdentityDbContext<IdentityUser, Iden
     internal DbSet<SiteCommentRevision> CommentRevisions => Set<SiteCommentRevision>();
     internal DbSet<SiteCommentDecision> CommentDecisions => Set<SiteCommentDecision>();
     internal DbSet<SiteCommentReport> CommentReports => Set<SiteCommentReport>();
+    internal DbSet<SiteModeratorNotice> ModeratorNotices => Set<SiteModeratorNotice>();
 
     protected override void OnModelCreating(ModelBuilder builder) {
         base.OnModelCreating(builder);
@@ -61,6 +62,7 @@ public sealed class SiteIdentityDbContext : IdentityDbContext<IdentityUser, Iden
         SiteEmailBudget.Configure(builder);
         SiteStaffBootstrap.Configure(builder);
         CommentRecords.Configure(builder);
+        SiteModeratorNotice.Configure(builder);
     }
 
     private void CheckImmutableRecords() {

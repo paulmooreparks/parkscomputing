@@ -226,6 +226,14 @@
                 <a class="topbar-pill account-pill" href="@(isDesktop ? "/?open=account&top=account" : "/account")"
                    @(isDesktop ? Html.Raw("data-win-open=\"account\"") : null) aria-label="@accountLabel" title="@accountLabel">
                     @ParksComputing.Engine.Identity.AccountMenu.Avatar(accountState.AvatarUrl, "account-avatar")
+                    @if (accountState.Moderation)
+                    {
+                        @* What is waiting for moderation (Identity/ModerationNotices.cs);
+                           js/accounts.js keeps it current while the page is open. *@
+                        <span class="badge warn account-badge" data-moderation-badge @(accountState.ModerationCount == 0 ? "hidden" : null)>
+                            <span class="visually-hidden">Waiting for moderation: </span><span data-moderation-number>@accountState.ModerationCount</span>
+                        </span>
+                    }
                 </a>
             }
             else if (accountState.Enabled)

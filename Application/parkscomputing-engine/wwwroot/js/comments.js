@@ -12,13 +12,27 @@
         return new DOMParser().parseFromString(html, 'text/html').querySelector('[data-discussion-panel]');
     }
 
+    /* Brings a comment into view and marks it for a moment. */
+    function reveal(item) {
+        item.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        item.classList.remove('comment-flash');
+        void item.offsetWidth;
+        item.classList.add('comment-flash');
+    }
+
     function load(root) {
         var slug = root.dataset.discussion;
         return fetch('/comments/' + encodeURIComponent(slug) + '?handler=Applet', { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'text/html' } })
             .then(function (r) { if (!r.ok) { throw new Error(r.status); } return r.text(); })
             .then(function (html) {
                 var panel = panelOf(html);
-                if (panel && root.isConnected) { root.replaceChildren(document.importNode(panel, true)); }
+                if (panel && root.isConnected) {
+                    root.replaceChildren(document.importNode(panel, true));
+                    // An address that names a comment (#c-…) shows it once the
+                    // discussion has arrived.
+                    var named = /^#c-[0-9a-f-]+$/i.test(location.hash) && root.querySelector(location.hash);
+                    if (named) { reveal(named); }
+                }
             })
             .catch(function () {
                 if (root.isConnected && !root.querySelector('[data-discussion-panel]')) {
@@ -87,9 +101,24 @@
                 }
             }
 
+            /* A comment's date is its address, for a new tab or for sharing.
+               A plain press keeps the reader where they are, in a window or
+               on the page, and shows that comment; on the discussion's own
+               page the address follows. */
+            function onClick(e) {
+                var link = e.target.closest && e.target.closest('a.comment-when');
+                if (!link || !root.contains(link) || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) { return; }
+                var item = link.closest('.comment');
+                if (!item) { return; }
+                e.preventDefault();
+                reveal(item);
+                if (location.pathname === new URL(link.href).pathname) { history.replaceState(history.state, '', '#' + item.id); }
+            }
+
             root.addEventListener('submit', onSubmit);
+            root.addEventListener('click', onClick);
             return {
-                destroy: function () { root.removeEventListener('submit', onSubmit); }
+                destroy: function () { root.removeEventListener('submit', onSubmit); root.removeEventListener('click', onClick); }
             };
         }
     });

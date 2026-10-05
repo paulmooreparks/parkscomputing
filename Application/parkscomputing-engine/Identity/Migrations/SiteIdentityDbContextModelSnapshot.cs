@@ -593,6 +593,26 @@ namespace ParksComputing.Engine.Identity.Migrations
                     b.ToTable("SiteEmailBudgets", (string)null);
                 });
 
+            modelBuilder.Entity("ParksComputing.Engine.Identity.SiteModeratorNotice", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("IntervalMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastNotifiedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LastViewedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("SiteModeratorNotices", (string)null);
+                });
+
             modelBuilder.Entity("ParksComputing.Engine.Identity.SiteSession", b =>
                 {
                     b.Property<string>("Id")
@@ -1078,6 +1098,15 @@ namespace ParksComputing.Engine.Identity.Migrations
                         .WithMany()
                         .HasForeignKey("CommentId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ParksComputing.Engine.Identity.SiteModeratorNotice", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                        .WithOne()
+                        .HasForeignKey("ParksComputing.Engine.Identity.SiteModeratorNotice", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

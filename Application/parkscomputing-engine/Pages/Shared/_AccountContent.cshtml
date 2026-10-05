@@ -100,6 +100,20 @@ else
         @if (Model.Moderates)
         {
             <p><a class="btn" href="/moderation" data-win-open="moderation">Open the moderation queue</a></p>
+            @* How often a moderator is emailed about what is waiting (Identity/ModerationNotices.cs). *@
+            <form method="post" asp-antiforgery="true" action="/account?handler=Notices">
+                <div class="form-group">
+                    <label class="form-label" for="account-notices">Email me when comments are waiting</label>
+                    <span class="form-select-wrap"><select class="form-select" id="account-notices" name="minutes" aria-describedby="account-notices-help">
+                        @foreach (var (minutes, label) in ParksComputing.Engine.Identity.ModerationNotices.Intervals)
+                        {
+                            <option value="@minutes" selected="@(minutes == Model.NoticeInterval)">@label</option>
+                        }
+                    </select></span>
+                    <p class="form-help" id="account-notices-help">An email comes only when something new has arrived since you last opened the queue. It gives counts and article titles, not the comments.</p>
+                </div>
+                <div class="account-actions"><button class="btn" type="submit">Save</button></div>
+            </form>
         }
         @if (Model.Comments.Count == 0)
         {
@@ -115,7 +129,8 @@ else
                         "declined" => "Not approved", "withdrawn" => "Withdrawn", "removed" => "Removed by a moderator", _ => c.Status };
                     <li>
                         <span>
-                            <a href="/comments/@c.Slug#c-@c.Id">@c.Title</a><br />
+                            @* In the window view the article opens as a window, its comments under it. *@
+                            <a href="/comments/@c.Slug#c-@c.Id" data-win-open="@c.Slug">@c.Title</a><br />
                             <span class="form-help">@status · <time datetime="@c.CreatedUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")">@c.CreatedUtc.ToString("d MMMM yyyy")</time></span>
                         </span>
                     </li>

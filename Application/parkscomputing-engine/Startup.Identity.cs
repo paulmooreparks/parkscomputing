@@ -142,6 +142,8 @@ public partial class Startup {
         services.Configure<CommentOptions>(Configuration.GetSection("Comments"));
         services.AddSingleton<CommentPolicies>();
         services.AddSingleton<Discussions>();
+        services.AddSingleton<ModerationNotices>();
+        services.AddHostedService<ModerationNotifier>();
         services.AddSingleton<AccountLifecycle>();
         services.AddHostedService<AccountHousekeeping>();
         services.AddHttpClient(Turnstile.ClientName, c => c.Timeout = TimeSpan.FromSeconds(10));

@@ -17,10 +17,10 @@ namespace ParksComputing.Engine.Pages;
 /// </summary>
 public sealed class ModerationModel : PageModel {
     private readonly Discussions _discussions; private readonly StaffAccess _staff; private readonly UserManager<IdentityUser> _users;
-    private readonly bool _enabled;
+    private readonly bool _enabled; private readonly ModerationNotices _notices;
     public ModerationModel(Discussions discussions, StaffAccess staff, UserManager<IdentityUser> users,
-        Microsoft.Extensions.Options.IOptions<CommentOptions> comments) {
-        _discussions = discussions; _staff = staff; _users = users; _enabled = comments.Value.Enabled;
+        Microsoft.Extensions.Options.IOptions<CommentOptions> comments, ModerationNotices notices) {
+        _discussions = discussions; _staff = staff; _users = users; _enabled = comments.Value.Enabled; _notices = notices;
     }
 
     /// <summary>signin, confirm or ready.</summary>
@@ -40,6 +40,9 @@ public sealed class ModerationModel : PageModel {
         if (!await _staff.ModeratesAsync(User)) { Stage = "confirm"; return true; }
         Stage = "ready";
         Queue = await _discussions.QueueAsync();
+        // Opening the queue is what counts as having seen what is in it, so
+        // no digest follows for it (Identity/ModerationNotices.cs).
+        await _notices.ViewedAsync(_users.GetUserId(User)!);
         return true;
     }
 

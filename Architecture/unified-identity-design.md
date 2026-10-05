@@ -102,6 +102,12 @@ Comments are Markdown with raw HTML off, rendered by Markdig and then cleaned by
 
 Comments have a switch of their own, `Comments:Enabled`, off unless set. Off, there is no discussion under any article, no discussion page, comment API or moderation queue, and the Account applet has no Your comments. Beta has it on; production has it off until public sign-up opens, which let the privacy policy, terms of use, data download and account deletion go to production first, on 2026-10-05.
 
+### Telling moderators what is waiting
+
+Paul asked on 2026-10-05 to know about waiting comments in the site and by email when he is away, and accepted this shape. The count is the comments and edits waiting for review plus the open reports. In the site, the account menu's Moderation shows it, as "Moderation (3)", and the account button in the top bar carries a badge while it is not zero. The server works it out for each page a moderator loads, and a moderator's page asks again every two minutes, so a tab left open stays current; nobody else's page asks.
+
+By email, a moderator gets a digest, never a message per comment, and only when two things hold: something has arrived since their last digest, and they have not opened the queue since it arrived. Opening the queue is what counts as having seen it, so a moderator who is on the site and has looked gets nothing. Each moderator chooses in the Account applet how often a digest may come: off, every 30 minutes, every hour or daily, with 30 minutes the default, since every comment waits for a moderator before anyone sees it. The digest gives counts and article titles and a link to the queue, never the comments' text, which keeps readers' words out of the mail provider and the inbox; the link still needs the moderator's sign-in and passkey. The privacy policy says moderators are emailed this way.
+
 ### Gaps closed before sign-up opens
 
 - **The privacy policy and terms of use.** They follow YAVCHN's (`privacy-and-terms.md`, "Decisions, following YAVCHN"): part of the application in `Legal/`, shown at `/privacy` and `/terms` and as windows, linked from the footer and the Help menu. Creating an account accepts the terms shown with the form, and the account records the versions in force and when.

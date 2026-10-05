@@ -24,7 +24,9 @@
         if (!pill || !mine || pill.classList.contains('account-signin')) { return; }
         var copy = mine.cloneNode(true);
         copy.classList.remove('account-avatar-large');
-        pill.replaceChildren(copy);
+        // Only the picture is replaced; a moderator's badge stays.
+        var old = pill.querySelector('.account-avatar');
+        if (old) { old.replaceWith(copy); } else { pill.prepend(copy); }
     }
 
     /* A chosen picture, cropped to its centre square and drawn at 256

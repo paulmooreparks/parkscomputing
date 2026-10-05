@@ -64,7 +64,7 @@ Everything else the site remembers is kept in your browser's local storage, whic
 ## Services the site uses
 
 - **Cloudflare** carries all traffic between your browser and the server, so it handles every request, including your IP address. Its Turnstile check runs when you create an account or ask for a sign-in link.
-- **Resend**, in the United States, delivers sign-in and account emails. It receives your email address and the message.
+- **Resend**, in the United States, delivers sign-in and account emails. It receives your email address and the message. It also delivers the moderators' emails about comments waiting for review, which give counts and article titles but never the comments themselves.
 - **Plausible Analytics**, in the European Union, counts page views as described above.
 
 Some of these services keep data outside Singapore. The site uses them under their standard data protection terms, which require them to protect your data to a standard comparable to Singapore's.

@@ -22,6 +22,8 @@ public sealed record AccountMenuState(bool Enabled, bool SignedIn, string? Name,
     /// <summary>Whether the account menu offers the moderation queue: the
     /// site has comments and the reader may moderate them.</summary>
     public bool Moderation { get; init; }
+    /// <summary>How much is waiting for moderation, when Moderation.</summary>
+    public int ModerationCount { get; init; }
 }
 
 /// <summary>
@@ -42,11 +44,15 @@ public sealed class AccountMenu {
     private readonly StaffBootstrap _bootstrap;
     private readonly IDbContextFactory<SiteIdentityDbContext> _factory;
     private readonly CommentOptions _comments;
+    private readonly ModerationNotices _notices;
 
     public AccountMenu(IOptions<AccountOptions> options, StaffAccess staff, StaffBootstrap bootstrap, IDbContextFactory<SiteIdentityDbContext> factory,
-        IOptions<CommentOptions> comments) {
-        _options = options.Value; _staff = staff; _bootstrap = bootstrap; _factory = factory; _comments = comments.Value;
+        IOptions<CommentOptions> comments, ModerationNotices notices) {
+        _options = options.Value; _staff = staff; _bootstrap = bootstrap; _factory = factory; _comments = comments.Value; _notices = notices;
     }
+
+    /// <summary>The Moderation command's words, with what is waiting.</summary>
+    public static string ModerationLabel(int count) => count > 0 ? $"Moderation ({count})" : "Moderation";
 
     /// <summary>The reader's state, worked out once per request, since the
     /// layout, an article and each window on the page all ask.</summary>
@@ -73,10 +79,11 @@ public sealed class AccountMenu {
         var avatar = await db.AccountAvatars.AsNoTracking().Where(a => a.UserId == id).Select(a => (Guid?)a.Version).SingleOrDefaultAsync();
         var held = await (from ur in db.UserRoles join r in db.Roles on ur.RoleId equals r.Id where ur.UserId == id select r.Name).ToListAsync();
         var roles = RolesOf(held);
+        bool moderation = _comments.Enabled && _options.StaffEnabled && roles.Contains("moderator");
         return new(true, true, string.IsNullOrWhiteSpace(name) ? null : name,
             await _bootstrap.PendingAsync(id), staff, serverTools, serverTools ? ServerFiles.HomeNameOf(account!) : null,
             avatar is { } v ? AccountAvatars.UrlOf(id, v) : null, _options.Registration) {
-            Roles = roles, Moderation = _comments.Enabled && _options.StaffEnabled && roles.Contains("moderator")
+            Roles = roles, Moderation = moderation, ModerationCount = moderation ? (await _notices.CountAsync()).Total : 0
         };
     }
 
@@ -113,9 +120,10 @@ public sealed class AccountMenu {
         // The moderation queue, a place a moderator's role opens
         // (Architecture/unified-identity-design.md, step 2).
         if (state.Moderation) {
-            items.Add(Item("Moderation", desktop
-                ? MenuBuilder.Link("/?open=moderation&top=moderation", ("data-win-open", "moderation"))
-                : MenuBuilder.Link("/moderation")));
+            // data-moderation-count lets the page update the count in place (js/accounts.js).
+            items.Add(Item(ModerationLabel(state.ModerationCount), desktop
+                ? MenuBuilder.Link("/?open=moderation&top=moderation", ("data-win-open", "moderation"), ("data-moderation-count", state.ModerationCount.ToString()))
+                : MenuBuilder.Link("/moderation", ("data-moderation-count", state.ModerationCount.ToString()))));
         }
         /* The revision-backed article workspace (/admin/articles) is not in
            the menu: it keeps its own articles apart from the site's, which

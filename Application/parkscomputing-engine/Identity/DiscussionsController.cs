@@ -99,9 +99,23 @@ public sealed class DiscussionsController : ControllerBase {
 public sealed class ModerationController : ControllerBase {
     private readonly Discussions _discussions; private readonly UserManager<IdentityUser> _users;
     private readonly StaffAccess _staff; private readonly AccountOptions _options;
-    private readonly bool _comments;
-    public ModerationController(Discussions discussions, UserManager<IdentityUser> users, StaffAccess staff, IOptions<AccountOptions> options, IOptions<CommentOptions> comments) {
-        _discussions = discussions; _users = users; _staff = staff; _options = options.Value; _comments = comments.Value.Enabled;
+    private readonly bool _comments; private readonly ModerationNotices _notices;
+    public ModerationController(Discussions discussions, UserManager<IdentityUser> users, StaffAccess staff, IOptions<AccountOptions> options,
+        IOptions<CommentOptions> comments, ModerationNotices notices) {
+        _discussions = discussions; _users = users; _staff = staff; _options = options.Value; _comments = comments.Value.Enabled; _notices = notices;
+    }
+
+    /// <summary>How much is waiting, for the badge on a moderator's page
+    /// (js/accounts.js), which asks every two minutes. A count reveals no
+    /// comment, so it needs the moderator's role but not a passkey tap.</summary>
+    [HttpGet("count")]
+    public async Task<IActionResult> Count() {
+        Response.Headers.CacheControl = "no-store";
+        if (!_options.Enabled || !_options.StaffEnabled || !_comments) { return NotFound(); }
+        if (User.Identity?.IsAuthenticated != true) { return Unauthorized(new { ok = false, signin = true }); }
+        if (!await _staff.ModeratesAsync(User, confirmed: false)) { return NotFound(); }
+        var c = await _notices.CountAsync();
+        return Ok(new { waiting = c.Waiting, reports = c.Reports, total = c.Total });
     }
 
     public sealed record Decision(string? Kind, string? Reason, string? Version);
@@ -123,7 +137,12 @@ public sealed class ModerationController : ControllerBase {
         : StatusCode(o.Status, new { ok = false, error = o.Error });
 
     [HttpGet("queue")]
-    public async Task<IActionResult> Queue() => await GateAsync() ?? Ok(await _discussions.QueueAsync());
+    public async Task<IActionResult> Queue() {
+        if (await GateAsync() is { } refused) { return refused; }
+        var queue = await _discussions.QueueAsync();
+        await _notices.ViewedAsync(_users.GetUserId(User)!);
+        return Ok(queue);
+    }
 
     [HttpPost("revisions/{id:guid}/decision")]
     public async Task<IActionResult> Decide(Guid id, [FromBody] Decision body) =>

@@ -49,7 +49,7 @@ else
                         @if (item.PublishedHtml is not null) { <span class="chip">edit</span> }
                         @if (item.IsReply) { <span class="chip">reply</span> }
                     </div>
-                    <p class="moderation-where">On <a href="/comments/@item.Slug#c-@item.CommentId" target="_blank" rel="noopener">@item.Title</a></p>
+                    <p class="moderation-where">On <a href="/comments/@item.Slug#c-@item.CommentId" data-win-open="@item.Slug" target="_blank" rel="noopener">@item.Title</a></p>
                     @if (item.PublishedHtml is not null)
                     {
                         <details class="moderation-before"><summary>The version that's up now</summary><div class="comment-body">@Html.Raw(item.PublishedHtml)</div></details>
@@ -86,7 +86,7 @@ else
                         <span class="comment-author">@(report.Author?.Name)</span>
                         <span class="comment-when">reported @When(report.ReportedUtc)</span>
                     </div>
-                    <p class="moderation-where">On <a href="/comments/@report.Slug#c-@report.CommentId" target="_blank" rel="noopener">@report.Title</a></p>
+                    <p class="moderation-where">On <a href="/comments/@report.Slug#c-@report.CommentId" data-win-open="@report.Slug" target="_blank" rel="noopener">@report.Title</a></p>
                     <div class="comment-body moderation-text">@Html.Raw(report.Html)</div>
                     <p class="moderation-reason"><strong>The report says:</strong> @report.Reason</p>
                     <form class="moderation-form" method="post" asp-antiforgery="true" action="/moderation?handler=Remove">

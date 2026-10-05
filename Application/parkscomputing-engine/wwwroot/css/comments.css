@@ -20,6 +20,10 @@
 .comment-when { color: var(--text-muted); }
 .comment-edited { color: var(--text-muted); font-style: italic; }
 .comment-body { overflow-wrap: anywhere; }
+/* The comment a reader went to by its date or address, marked for a moment. */
+.comment-flash { animation: comment-flash 2s ease-out; border-radius: var(--radius-sm); }
+@keyframes comment-flash { from { background: color-mix(in srgb, var(--accent) 22%, transparent); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .comment-flash { animation: none; outline: 2px solid var(--accent); outline-offset: 4px; } }
 .comment-body > * + * { margin-top: var(--space-2); }
 .comment-body pre { overflow-x: auto; }
 .comment-gone { color: var(--text-muted); font-style: italic; }

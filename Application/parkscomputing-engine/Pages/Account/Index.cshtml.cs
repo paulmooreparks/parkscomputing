@@ -21,10 +21,10 @@ namespace ParksComputing.Engine.Pages.Account;
 [RequestSizeLimit(AccountAvatars.MaxBytes + 64 * 1024)]
 public sealed class IndexModel : PageModel {
     private readonly SiteIdentityDbContext _db; private readonly UserManager<IdentityUser> _users; private readonly StaffBootstrap _bootstrap; private readonly AccountAvatars _avatars;
-    private readonly Discussions _discussions; private readonly AccountLifecycle _lifecycle;
+    private readonly Discussions _discussions; private readonly AccountLifecycle _lifecycle; private readonly ModerationNotices _notices;
     public IndexModel(SiteIdentityDbContext db, UserManager<IdentityUser> users, StaffBootstrap bootstrap, AccountAvatars avatars,
-        Discussions discussions, AccountLifecycle lifecycle) {
-        _db = db; _users = users; _bootstrap = bootstrap; _avatars = avatars; _discussions = discussions; _lifecycle = lifecycle;
+        Discussions discussions, AccountLifecycle lifecycle, ModerationNotices notices) {
+        _db = db; _users = users; _bootstrap = bootstrap; _avatars = avatars; _discussions = discussions; _lifecycle = lifecycle; _notices = notices;
     }
     /// <summary>The reader's own comments, newest first, with where each stands.</summary>
     public IReadOnlyList<MyComment> Comments { get; private set; } = Array.Empty<MyComment>();
@@ -61,6 +61,20 @@ public sealed class IndexModel : PageModel {
         Keys = (await _users.GetPasskeysAsync(user)).Select(k => new Key(Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(k.CredentialId), k.Name ?? "Passkey")).ToList();
         Comments = await _discussions.MineAsync(user.Id);
         Moderates = roles.Any(r => r is "Moderator" or "Admin" or "SuperAdmin");
+        if (Moderates) { NoticeInterval = await _notices.IntervalAsync(user.Id); }
+    }
+
+    /// <summary>How often, in minutes, a moderator is emailed about what is
+    /// waiting; 0 is never (Identity/ModerationNotices.cs).</summary>
+    public int NoticeInterval { get; private set; } = ModerationNotices.DefaultInterval;
+
+    public async Task<IActionResult> OnPostNoticesAsync(int minutes) {
+        if (User.Identity?.IsAuthenticated != true) { return Challenge(); }
+        var user = await _users.GetUserAsync(User);
+        if (user is null) { return Challenge(); }
+        var roles = await _users.GetRolesAsync(user);
+        if (roles.Any(r => r is "Moderator" or "Admin" or "SuperAdmin")) { await _notices.SetIntervalAsync(user.Id, minutes); }
+        return Redirect("/account#comments");
     }
 
     public async Task<IActionResult> OnPostProfileAsync() {
