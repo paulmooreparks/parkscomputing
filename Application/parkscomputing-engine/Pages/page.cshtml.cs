@@ -37,7 +37,6 @@ namespace ParksComputing.Engine.Pages {
 
         public bool CommentsAllowed { get; set; } = false;
         public bool CommentsEnabled { get; set; } = false;
-        public bool CommentPosted { get; set; } = false;
         public HtmlNodeCollection? MetaElements { get; set; }
         public HtmlNodeCollection? LinkElements { get; set; }
         public HtmlNodeCollection? StyleElements { get; set; }
@@ -46,21 +45,14 @@ namespace ParksComputing.Engine.Pages {
 
         AppServices Services { get; set; }
 
-        public IOptions<CommentServiceConfig> CommentServiceConfig { get; set; }
-        public ICommentService CommentService { get; set; }
         public INavService NavService { get; set; }
         protected IWebHostEnvironment Environment { get; set; }
         protected IHttpClientFactory ClientFactory { get; set; }
-        public List<CommentResponse>? CommentResponse { get; set; }
-        public string CommentStatus { get; set; } = string.Empty;
-
 
         public PageLoaderModel(AppServices services) {
             Services = services;
-            CommentServiceConfig = services.CommentServiceConfig;
             Environment = services.Environment;
             ClientFactory = services.ClientFactory;
-            CommentService = services.CommentService;
             NavService = services.NavService;
         }
 
@@ -72,10 +64,6 @@ namespace ParksComputing.Engine.Pages {
             if (slugObject is not null) {
                 slug = slugObject.ToString()!.Trim('/');
             }
-
-            var commentPosted = HttpContext.Session.GetString("CommentPosted") ?? "False";
-            CommentPosted = bool.Parse(commentPosted);
-            HttpContext.Session.SetString("CommentPosted", "False");
 
             // /preview/{token}: an unpublished draft from the edit origin's
             // Editor, rendered as the page it would become
@@ -89,42 +77,12 @@ namespace ParksComputing.Engine.Pages {
                 Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
                 Response.Headers.CacheControl = "no-store";
                 ViewData["PageId"] = draft.Slug;
+                // A draft's preview shows no discussion (Pages/Shared/_DiscussionMount.cshtml).
+                ViewData["Draft"] = true;
                 return RetrievePage(draft.Slug, draft);
             }
 
             return RetrievePage(slug);
-        }
-
-        [BindProperty]
-        public CommentForm? NewComment { get; set; }
-
-        public async Task<IActionResult> OnPostAsync() {
-            if (!ModelState.IsValid) {
-                return Page();
-            }
-
-            HttpResponseMessage response = await PostComment();
-
-            if (response.IsSuccessStatusCode) {
-                HttpContext.Session.SetString("CommentPosted", "True");
-                await HttpContext.Session.CommitAsync(); // Force the session to save
-                return RedirectToPage();
-            }
-
-            // Handle errors, maybe set an error message to display to the user
-            return Page();
-        }
-
-        private async Task<HttpResponseMessage> PostComment() {
-            var requestUri = $"{CommentServiceConfig.Value.ApiUrl}/api/comment";
-            var domain = CommentServiceConfig.Value.Domain;
-
-            var client = ClientFactory.CreateClient();
-            var response = await client.PostAsJsonAsync(
-                requestUri,
-                NewComment?.ToComment(domain!, HttpContext.Request.RouteValues["slug"]?.ToString()!)
-                );
-            return response;
         }
 
         protected Task<IActionResult> RetrievePage(string slug, ParksComputing.Engine.Identity.PreviewDrafts.Draft? draft = null) {
@@ -144,6 +102,10 @@ namespace ParksComputing.Engine.Pages {
                 // The Pins applet's page is /pins; its window's Open as a page names /page/pins.
                 if (slug == ArticleContentService.PinsKey && draft is null) {
                     return Task.FromResult<IActionResult>(Redirect("/pins"));
+                }
+                // The moderation queue's page is /moderation; its window's Open as a page names /page/moderation.
+                if (slug == ArticleContentService.ModerationKey && draft is null) {
+                    return Task.FromResult<IActionResult>(Redirect("/moderation"));
                 }
                 // A book's main page or chapter shows inside its contents. A
                 // chapter's file is the one its book names, wherever the

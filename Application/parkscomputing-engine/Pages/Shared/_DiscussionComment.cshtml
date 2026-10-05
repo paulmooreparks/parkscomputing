@@ -1,0 +1,122 @@
+@model (ParksComputing.Engine.Pages.Comments.DiscussionModel Page, ParksComputing.Engine.Identity.CommentView Comment)
+@using ParksComputing.Engine.Identity
+@* One comment and its replies (Pages/Shared/_DiscussionContent.cshtml). *@
+@{
+    var page = Model.Page;
+    var c = Model.Comment;
+    var slug = page.View.Slug;
+    var action = "/comments/" + Uri.EscapeDataString(slug);
+    bool failedHere = page.FailedFor == c.Id;
+    bool Can(string a) => c.Actions.Contains(a);
+}
+<li class="comment" id="c-@c.Id">
+    @if (c.Author is not null)
+    {
+        <div class="comment-head">
+            @AccountMenu.Avatar(c.Author.Avatar, "account-avatar comment-avatar")
+            <span class="comment-author">@c.Author.Name</span>
+            @if (c.Author.Staff)
+            {
+                <span class="chip">Moderator</span>
+            }
+            <a class="comment-when" href="/comments/@slug#c-@c.Id"><time datetime="@c.CreatedUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")">@c.CreatedUtc.ToString("d MMMM yyyy")</time></a>
+            @if (c.Edited)
+            {
+                <span class="comment-edited">edited</span>
+            }
+        </div>
+    }
+    @if (c.Html is not null)
+    {
+        <div class="comment-body">@Html.Raw(c.Html)</div>
+    }
+    else if (c.State == "withdrawn")
+    {
+        <p class="comment-gone">This comment was withdrawn by its author.</p>
+    }
+    else if (c.State == "removed")
+    {
+        <p class="comment-gone">This comment was removed by a moderator.</p>
+    }
+    @if (c.PendingStatus is not null)
+    {
+        <div class="comment-pending">
+            @if (c.PendingStatus == "pending")
+            {
+                <p><span class="badge warn">waiting</span> @(c.Html is null ? "Only you can see this until a moderator approves it." : "Your edit is waiting for a moderator. Only you can see it.")</p>
+            }
+            else
+            {
+                <p><span class="badge danger">not approved</span> A moderator didn't approve @(c.Html is null ? "this comment" : "this edit"). Only you can see it.</p>
+            }
+            <div class="comment-body">@Html.Raw(c.PendingHtml)</div>
+        </div>
+    }
+    @if (c.Actions.Count > 0)
+    {
+        <div class="comment-actions">
+            @if (Can("reply"))
+            {
+                <details class="comment-action" @(failedHere && page.Error is not null && c.ParentId is null && !c.Mine ? "open" : null)>
+                    <summary class="btn btn-sm">Reply</summary>
+                    <form method="post" asp-antiforgery="true" action="@(action)?handler=Submit" novalidate>
+                        <input type="hidden" name="key" value="@ParksComputing.Engine.Pages.Comments.DiscussionModel.NewKey()" />
+                        <input type="hidden" name="parentId" value="@c.Id" />
+                        <div class="form-group">
+                            <label class="form-label" for="reply-@c.Id">Your reply to @(c.Author?.Name ?? "this comment")</label>
+                            <textarea class="form-textarea" id="reply-@c.Id" name="source" rows="4" maxlength="10000" required>@(failedHere ? page.Draft : null)</textarea>
+                        </div>
+                        <div class="comment-form-actions"><button class="btn btn-primary" type="submit">Send for review</button></div>
+                    </form>
+                </details>
+            }
+            @if (Can("edit"))
+            {
+                <details class="comment-action" @(failedHere && c.Mine ? "open" : null)>
+                    <summary class="btn btn-sm">Edit</summary>
+                    <form method="post" asp-antiforgery="true" action="@(action)?handler=Edit" novalidate>
+                        <input type="hidden" name="id" value="@c.Id" />
+                        <input type="hidden" name="version" value="@c.Version" />
+                        <div class="form-group">
+                            <label class="form-label" for="edit-@c.Id">Your comment</label>
+                            <textarea class="form-textarea" id="edit-@c.Id" name="source" rows="5" maxlength="10000" required>@(failedHere ? page.Draft : c.PendingSource)</textarea>
+                            <p class="form-help">An edit is read by a moderator too. Until it's approved, the version already up stays up.</p>
+                        </div>
+                        <div class="comment-form-actions"><button class="btn btn-primary" type="submit">Send edit for review</button></div>
+                    </form>
+                </details>
+            }
+            @if (Can("withdraw"))
+            {
+                <form class="comment-action" method="post" asp-antiforgery="true" action="@(action)?handler=Withdraw" data-comment-withdraw>
+                    <input type="hidden" name="id" value="@c.Id" />
+                    <button class="btn btn-sm" type="submit">Withdraw</button>
+                </form>
+            }
+            @if (Can("report"))
+            {
+                <details class="comment-action" @(failedHere && !c.Mine && page.Error is not null ? "open" : null)>
+                    <summary class="btn btn-sm">Report</summary>
+                    <form method="post" asp-antiforgery="true" action="@(action)?handler=Report" novalidate>
+                        <input type="hidden" name="id" value="@c.Id" />
+                        <div class="form-group">
+                            <label class="form-label" for="report-@c.Id">What's wrong with this comment?</label>
+                            <textarea class="form-textarea" id="report-@c.Id" name="reason" rows="3" maxlength="1000" required></textarea>
+                            <p class="form-help">Only moderators see your report.</p>
+                        </div>
+                        <div class="comment-form-actions"><button class="btn" type="submit">Send report</button></div>
+                    </form>
+                </details>
+            }
+        </div>
+    }
+    @if (c.Replies.Count > 0)
+    {
+        <ol class="comment-list comment-replies">
+            @foreach (var r in c.Replies)
+            {
+                @await Html.PartialAsync("_DiscussionComment", (page, r))
+            }
+        </ol>
+    }
+</li>

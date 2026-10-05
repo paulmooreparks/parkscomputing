@@ -1,0 +1,11 @@
+@page "/comments/{slug}"
+@model ParksComputing.Engine.Pages.Comments.DiscussionModel
+@* An article's discussion as a page of its own (Architecture/unified-identity-design.md,
+   step 2). Under the article, the comments applet shows the same panel. *@
+<div class="discussion-page">
+    <p class="discussion-back"><a href="/page/@Model.View.Slug">← @Model.View.Title</a></p>
+    <h1>Comments on @Model.View.Title</h1>
+    <div data-applet="comments" data-discussion="@Model.View.Slug">
+        <partial name="_DiscussionContent" model="Model" />
+    </div>
+</div>

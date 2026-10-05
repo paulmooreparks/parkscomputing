@@ -1,0 +1,77 @@
+@model ParksComputing.Engine.Pages.Comments.DiscussionModel
+@inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions> AccountConfig
+@using ParksComputing.Engine.Identity
+@* The discussion panel (Architecture/unified-identity-design.md, step 2):
+   the same on /comments/{slug} and in the comments applet under an
+   article. It is drawn for the reader asking, and is never cached. Every
+   form works without script; the applet posts them in place. *@
+@{
+    var v = Model.View;
+    var slug = v.Slug;
+    var action = "/comments/" + Uri.EscapeDataString(slug);
+    string Done(string? d) => d switch {
+        "submitted" => "Thanks. Your comment will appear once a moderator has read it.",
+        "edited" => "Your edit will appear once a moderator has read it. Until then the earlier version stays up.",
+        "withdrawn" => "Your comment has been withdrawn, and its text deleted.",
+        "reported" => "Thanks. A moderator will look at it.",
+        _ => ""
+    };
+    string When(DateTime utc) => utc.ToString("d MMMM yyyy");
+}
+<div class="discussion" data-discussion-panel data-slug="@slug">
+    <h2 class="discussion-title">@(v.Count == 0 ? "Comments" : v.Count == 1 ? "1 comment" : $"{v.Count} comments")</h2>
+    @if (!string.IsNullOrEmpty(Done(Model.Done)) && Model.Error is null)
+    {
+        <div class="notice positive" role="status"><div class="notice-content"><p class="notice-body">@Done(Model.Done)</p></div></div>
+    }
+    @if (Model.Error is not null)
+    {
+        <div class="notice danger" role="alert" data-discussion-error tabindex="-1"><div class="notice-content"><p class="notice-body">@Model.Error</p>
+        @if (!v.SignedIn)
+        {
+            <div class="notice-actions"><a class="btn" href="/account/signin" data-account-dialog>Sign in…</a></div>
+        }
+        </div></div>
+    }
+
+    @if (v.Comments.Count > 0)
+    {
+        <ol class="comment-list">
+            @foreach (var c in v.Comments)
+            {
+                @await Html.PartialAsync("_DiscussionComment", (Model, c))
+            }
+        </ol>
+    }
+    else if (v.Policy == "open")
+    {
+        <p class="form-help">No comments yet.</p>
+    }
+
+    @if (v.CanComment)
+    {
+        <form class="comment-form" method="post" asp-antiforgery="true" action="@(action)?handler=Submit" novalidate>
+            <input type="hidden" name="key" value="@ParksComputing.Engine.Pages.Comments.DiscussionModel.NewKey()" />
+            <div class="form-group">
+                <label class="form-label" for="comment-new-@slug">Add a comment</label>
+                <textarea class="form-textarea" id="comment-new-@slug" name="source" rows="5" maxlength="10000" required aria-describedby="comment-new-help-@slug">@(Model.FailedFor is null ? Model.Draft : null)</textarea>
+                <p class="form-help" id="comment-new-help-@slug">A moderator reads every comment before it appears. You can use Markdown: *emphasis*, `code`, &gt; quotes, lists and [links](https://example.com). Your display name and picture appear beside it.</p>
+            </div>
+            <div class="comment-form-actions"><button class="btn btn-primary" type="submit">Send for review</button></div>
+        </form>
+    }
+    else if (v.Policy == "open" && !v.SignedIn)
+    {
+        <p class="discussion-signin">
+            <a class="btn" href="/account/signin" data-account-dialog>Sign in to comment…</a>
+            @if (AccountConfig.Value.Registration)
+            {
+                <a class="btn" href="/account/register" data-account-dialog>Create an account…</a>
+            }
+        </p>
+    }
+    else if (v.Reason is not null)
+    {
+        <p class="form-help">@v.Reason</p>
+    }
+</div>

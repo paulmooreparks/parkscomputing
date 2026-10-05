@@ -1,0 +1,110 @@
+@model ParksComputing.Engine.Pages.ModerationModel
+@using ParksComputing.Engine.Identity
+@* The moderation panel (Pages/Moderation.cshtml.cs), the same on the page
+   and in the moderation applet's window. *@
+@{
+    string Done(string? d) => d switch {
+        "approved" => "Approved. It's public now.", "declined" => "Not approved. Its author can see that.",
+        "spam" => "Marked as spam.", "removed" => "The comment was removed.", "dismissed" => "The report was dismissed.", _ => ""
+    };
+    string When(DateTime utc) => utc.ToString("d MMMM yyyy, HH:mm") + " UTC";
+}
+<div class="moderation" data-moderation-panel>
+@if (Model.Stage == "signin")
+{
+    <p>Sign in with a moderator's account to see the queue.</p>
+    <p><a class="btn btn-primary" href="/account/signin" data-account-dialog>Sign in…</a></p>
+}
+else if (Model.Stage == "confirm")
+{
+    <p>Moderating needs a fresh tap of your passkey.</p>
+    <p><button class="btn btn-primary" type="button" data-passkey="confirm">Confirm with a passkey…</button></p>
+    <p class="form-error" data-passkey-status role="alert" hidden></p>
+}
+else
+{
+    @if (Model.Error is not null)
+    {
+        <div class="notice danger" role="alert" tabindex="-1"><div class="notice-content"><p class="notice-body">@Model.Error</p></div></div>
+    }
+    else if (!string.IsNullOrEmpty(Done(Model.Done)))
+    {
+        <div class="notice positive" role="status" tabindex="-1"><div class="notice-content"><p class="notice-body">@Done(Model.Done)</p></div></div>
+    }
+
+    <section class="moderation-section" aria-labelledby="moderation-pending">
+        <h2 class="moderation-subtitle" id="moderation-pending">Waiting for review (@Model.Queue.Pending.Count)</h2>
+        @if (Model.Queue.Pending.Count == 0)
+        {
+            <p class="form-help">Nothing is waiting.</p>
+        }
+        <ol class="moderation-list">
+            @foreach (var item in Model.Queue.Pending)
+            {
+                <li class="moderation-item">
+                    <div class="comment-head">
+                        @AccountMenu.Avatar(item.Author?.Avatar, "account-avatar comment-avatar")
+                        <span class="comment-author">@(item.Author?.Name)</span>
+                        <span class="comment-when">@When(item.SubmittedUtc)</span>
+                        @if (item.PublishedHtml is not null) { <span class="chip">edit</span> }
+                        @if (item.IsReply) { <span class="chip">reply</span> }
+                    </div>
+                    <p class="moderation-where">On <a href="/comments/@item.Slug#c-@item.CommentId" target="_blank" rel="noopener">@item.Title</a></p>
+                    @if (item.PublishedHtml is not null)
+                    {
+                        <details class="moderation-before"><summary>The version that's up now</summary><div class="comment-body">@Html.Raw(item.PublishedHtml)</div></details>
+                    }
+                    <div class="comment-body moderation-text">@Html.Raw(item.Html)</div>
+                    <form class="moderation-form" method="post" asp-antiforgery="true" action="/moderation?handler=Decide">
+                        <input type="hidden" name="revisionId" value="@item.RevisionId" />
+                        <input type="hidden" name="version" value="@item.Version" />
+                        <label class="form-label" for="reason-@item.RevisionId">Note for the record (optional)</label>
+                        <input class="form-input" id="reason-@item.RevisionId" name="reason" maxlength="1000" />
+                        <div class="moderation-buttons">
+                            <button class="btn btn-primary" type="submit" name="kind" value="approve">Approve</button>
+                            <button class="btn" type="submit" name="kind" value="reject">Don't approve</button>
+                            <button class="btn btn-danger" type="submit" name="kind" value="spam">Spam</button>
+                        </div>
+                    </form>
+                </li>
+            }
+        </ol>
+    </section>
+
+    <section class="moderation-section" aria-labelledby="moderation-reports">
+        <h2 class="moderation-subtitle" id="moderation-reports">Reports (@Model.Queue.Reports.Count)</h2>
+        @if (Model.Queue.Reports.Count == 0)
+        {
+            <p class="form-help">No open reports.</p>
+        }
+        <ol class="moderation-list">
+            @foreach (var report in Model.Queue.Reports)
+            {
+                <li class="moderation-item">
+                    <div class="comment-head">
+                        @AccountMenu.Avatar(report.Author?.Avatar, "account-avatar comment-avatar")
+                        <span class="comment-author">@(report.Author?.Name)</span>
+                        <span class="comment-when">reported @When(report.ReportedUtc)</span>
+                    </div>
+                    <p class="moderation-where">On <a href="/comments/@report.Slug#c-@report.CommentId" target="_blank" rel="noopener">@report.Title</a></p>
+                    <div class="comment-body moderation-text">@Html.Raw(report.Html)</div>
+                    <p class="moderation-reason"><strong>The report says:</strong> @report.Reason</p>
+                    <form class="moderation-form" method="post" asp-antiforgery="true" action="/moderation?handler=Remove">
+                        <input type="hidden" name="commentId" value="@report.CommentId" />
+                        <input type="hidden" name="version" value="@report.Version" />
+                        <label class="form-label" for="remove-@report.ReportId">Reason for removing it</label>
+                        <input class="form-input" id="remove-@report.ReportId" name="reason" maxlength="1000" />
+                        <div class="moderation-buttons">
+                            <button class="btn btn-danger" type="submit">Remove the comment</button>
+                        </div>
+                    </form>
+                    <form class="moderation-form" method="post" asp-antiforgery="true" action="/moderation?handler=Dismiss">
+                        <input type="hidden" name="reportId" value="@report.ReportId" />
+                        <div class="moderation-buttons"><button class="btn" type="submit">Dismiss the report</button></div>
+                    </form>
+                </li>
+            }
+        </ol>
+    </section>
+}
+</div>

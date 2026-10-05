@@ -44,7 +44,6 @@ namespace ParksComputing.Engine {
 
             services.AddTransient<AppServices>();
 
-            services.Configure<CommentServiceConfig>(Configuration.GetSection("CommentService"));
             services.AddRazorPages();
             services.AddControllers().AddJsonOptions(o => {
                 o.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
@@ -80,11 +79,6 @@ namespace ParksComputing.Engine {
             // One for the whole site: it keeps sitenav.xfer, read and filled in, until a
             // file it comes from changes (Pages/Services/NavService.cs).
             services.AddSingleton<INavService, NavService>();
-            services.AddTransient<ICommentService, CommentService>();
-            services.AddHttpClient("commentApi", (serviceProvider, c) => {
-                var config = serviceProvider.GetRequiredService<IOptions<CommentServiceConfig>>().Value;
-                c.BaseAddress = new Uri(config?.ApiUrl ?? throw new InvalidOperationException("ApiUrl is null"));
-            });
 
             services.AddSingleton<StaticFileReaderService>();
             services.AddSingleton<ArticleContentService>();

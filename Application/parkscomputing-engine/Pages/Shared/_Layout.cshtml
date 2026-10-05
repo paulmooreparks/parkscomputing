@@ -256,12 +256,10 @@
 
             <div class="content-body" role="main" id="main-content" tabindex="-1">
                 @RenderBody()
-                @{
-                    string pageIdLocal = ViewData["PageId"]?.ToString()!;
-                    bool commentsEnabled = ViewData["CommentsEnabled"] as bool? ?? false;
-                    bool commentsAllowed = ViewData["CommentsAllowed"] as bool? ?? false;
+                @if (ViewData["PageId"] is string pageIdLocal && ViewData["Draft"] is null)
+                {
+                    <partial name="_DiscussionMount" model="pageIdLocal" />
                 }
-                @await Component.InvokeAsync("Comments", new { pageId = pageIdLocal, commentsEnabled = commentsEnabled, commentsAllowed = commentsAllowed, commentPosted = (ViewData["CommentPosted"] as bool? ?? false) })
             </div>
         </div>
 

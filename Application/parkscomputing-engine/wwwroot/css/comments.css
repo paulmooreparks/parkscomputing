@@ -1,0 +1,58 @@
+/* Article discussions (js/comments.js, Pages/Shared/_DiscussionContent.cshtml).
+   PUDL draws the controls, notices, badges and chips; these rules lay out
+   the panel, scoped to it, since the sheet loads wherever the applet does. */
+.discussion-mount { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.discussion-page { max-width: 48rem; margin: 0 auto; padding: var(--space-5) 0; }
+.discussion-page > h1 { margin: 0 0 var(--space-4); }
+.discussion-back { margin: 0 0 var(--space-3); font-size: var(--text-sm); }
+
+.discussion { display: grid; gap: var(--space-4); font-size: var(--text-md); }
+.discussion-title { margin: 0; font-size: var(--text-lg); }
+.discussion .notice { margin: 0; }
+.discussion p { margin: 0; }
+
+.comment-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
+.comment { display: grid; gap: var(--space-2); min-width: 0; }
+.comment-replies { margin-top: var(--space-2); padding-inline-start: var(--space-5); border-inline-start: 2px solid var(--border); }
+.comment-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
+.comment-avatar { width: 24px; height: 24px; flex: none; }
+.comment-author { font-weight: 600; overflow-wrap: anywhere; }
+.comment-when { color: var(--text-muted); }
+.comment-edited { color: var(--text-muted); font-style: italic; }
+.comment-body { overflow-wrap: anywhere; }
+.comment-body > * + * { margin-top: var(--space-2); }
+.comment-body pre { overflow-x: auto; }
+.comment-gone { color: var(--text-muted); font-style: italic; }
+.comment-pending { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px dashed var(--border); border-radius: var(--radius-sm); }
+.comment-pending .comment-body { color: var(--text-muted); }
+
+.comment-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-2); }
+.comment-action { margin: 0; }
+/* Reply, Edit and Report are summaries and Withdraw a button; all four
+   stand the same height in the row. */
+.comment-actions .btn-sm { box-sizing: border-box; min-height: 30px; display: inline-flex; align-items: center; }
+.comment-action > summary { list-style: none; cursor: pointer; }
+.comment-action > summary::-webkit-details-marker { display: none; }
+.comment-action[open] { flex-basis: 100%; display: grid; gap: var(--space-2); }
+.comment-action[open] > summary { justify-self: start; }
+.comment-action .form-group { margin-bottom: var(--space-2); }
+.comment-form .form-group { margin-bottom: var(--space-2); }
+.comment-form-actions { display: flex; gap: var(--space-2); }
+.discussion-signin { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* The moderation queue (js/moderation.js), which shares this sheet. */
+.moderation-page { max-width: 52rem; margin: 0 auto; padding: var(--space-5) 0; }
+.moderation-page > h1 { margin: 0 0 var(--space-4); }
+.moderation { display: grid; gap: var(--space-5); font-size: var(--text-md); }
+.win-body .moderation { padding: var(--space-4); width: min(48rem, 100%); box-sizing: border-box; }
+.moderation p { margin: 0; }
+.moderation .notice { margin: 0; }
+.moderation-section { display: grid; gap: var(--space-3); }
+.moderation-subtitle { margin: 0; font-size: var(--text-lg); }
+.moderation-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
+.moderation-item { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); min-width: 0; }
+.moderation-where { font-size: var(--text-sm); color: var(--text-muted); }
+.moderation-text { padding-inline-start: var(--space-3); border-inline-start: 3px solid var(--border); }
+.moderation-before .comment-body { color: var(--text-muted); margin-top: var(--space-2); }
+.moderation-form { display: grid; gap: var(--space-2); }
+.moderation-buttons { display: flex; flex-wrap: wrap; gap: var(--space-2); }

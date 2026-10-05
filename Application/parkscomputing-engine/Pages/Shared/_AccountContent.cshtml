@@ -92,6 +92,35 @@ else
         <p class="form-error" data-passkey-status role="alert" hidden></p>
     </section>
 
+    <section class="account-section" id="comments" aria-labelledby="account-comments">
+        <h2 class="account-subtitle" id="account-comments">Your comments</h2>
+        @if (Model.Moderates)
+        {
+            <p><a class="btn" href="/moderation" data-win-open="moderation">Open the moderation queue</a></p>
+        }
+        @if (Model.Comments.Count == 0)
+        {
+            <p class="form-help">You haven't commented yet. Every comment is read by a moderator before it appears.</p>
+        }
+        else
+        {
+            <ul class="account-list account-comments">
+                @foreach (var c in Model.Comments)
+                {
+                    var status = c.Status switch {
+                        "published" => "Published", "pending" => "Waiting for a moderator", "edit-pending" => "Published; your edit is waiting for a moderator",
+                        "declined" => "Not approved", "withdrawn" => "Withdrawn", "removed" => "Removed by a moderator", _ => c.Status };
+                    <li>
+                        <span>
+                            <a href="/comments/@c.Slug#c-@c.Id">@c.Title</a><br />
+                            <span class="form-help">@status · <time datetime="@c.CreatedUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")">@c.CreatedUtc.ToString("d MMMM yyyy")</time></span>
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
     <section class="account-section" aria-labelledby="account-sessions">
         <h2 class="account-subtitle" id="account-sessions">Where you're signed in</h2>
         <p>Ending a session signs that browser out the next time it asks this site for anything.</p>

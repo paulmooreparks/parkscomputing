@@ -109,9 +109,22 @@ public class ArticleContentService {
         "<div data-applet=\"pins\" data-applet-page=\"/pins\" aria-label=\"Pin manager\"><noscript><p>Managing pins needs JavaScript.</p></noscript></div>",
         false, false, IsApplet: true, WindowSize: "content");
 
+    /// <summary>The window key of the moderation queue
+    /// (Architecture/unified-identity-design.md, step 2), served by the site
+    /// itself on a site with accounts. Its page is /moderation.</summary>
+    public const string ModerationKey = "moderation";
+
+    /// <summary>The moderation applet's window: an empty mount the applet
+    /// fills with the queue (js/moderation.js), the same for everyone.</summary>
+    private ArticleWindowContent? ModerationWindow() => !_accounts ? null :
+        new ArticleWindowContent(ModerationKey, "Moderation",
+            "<div data-applet=\"moderation\" data-applet-page=\"/moderation\" aria-label=\"Moderation\"><noscript><p>The queue needs JavaScript in a window. <a href=\"/moderation\">Open it as a page</a>.</p></noscript></div>",
+            false, false, IsApplet: true, WindowSize: "content");
+
     public ArticleWindowContent? Load(string? slug) {
         if (slug == AccountKey && AccountWindow() is { } account) { return account; }
         if (slug == PinsKey) { return PinsWindow; }
+        if (slug == ModerationKey && ModerationWindow() is { } moderation) { return moderation; }
         var raw = LoadRaw(slug);
         if (raw is null) { return null; }
         return raw with { BodyHtml = PrepareWindowBody(raw.Slug, raw.BodyHtml) };

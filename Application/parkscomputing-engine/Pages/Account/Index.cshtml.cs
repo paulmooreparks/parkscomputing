@@ -21,9 +21,13 @@ namespace ParksComputing.Engine.Pages.Account;
 [RequestSizeLimit(AccountAvatars.MaxBytes + 64 * 1024)]
 public sealed class IndexModel : PageModel {
     private readonly SiteIdentityDbContext _db; private readonly UserManager<IdentityUser> _users; private readonly StaffBootstrap _bootstrap; private readonly AccountAvatars _avatars;
-    public IndexModel(SiteIdentityDbContext db, UserManager<IdentityUser> users, StaffBootstrap bootstrap, AccountAvatars avatars) {
-        _db = db; _users = users; _bootstrap = bootstrap; _avatars = avatars;
+    private readonly Discussions _discussions;
+    public IndexModel(SiteIdentityDbContext db, UserManager<IdentityUser> users, StaffBootstrap bootstrap, AccountAvatars avatars, Discussions discussions) {
+        _db = db; _users = users; _bootstrap = bootstrap; _avatars = avatars; _discussions = discussions;
     }
+    /// <summary>The reader's own comments, newest first, with where each stands.</summary>
+    public IReadOnlyList<MyComment> Comments { get; private set; } = Array.Empty<MyComment>();
+    public bool Moderates { get; private set; }
     public string? AvatarUrl { get; private set; }
     [BindProperty] public string DisplayName { get; set; } = "";
     [BindProperty] public Guid Version { get; set; }
@@ -54,6 +58,8 @@ public sealed class IndexModel : PageModel {
         Sessions = await _db.SiteSessions.Where(s => s.UserId == user.Id && s.RevokedUtc == null && s.SecurityStamp == user.SecurityStamp)
             .OrderByDescending(s => s.StartedUtc).Select(s => new Session(s.Id, s.StartedUtc, s.LastSeenUtc, s.Method)).ToListAsync();
         Keys = (await _users.GetPasskeysAsync(user)).Select(k => new Key(Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(k.CredentialId), k.Name ?? "Passkey")).ToList();
+        Comments = await _discussions.MineAsync(user.Id);
+        Moderates = roles.Any(r => r is "Moderator" or "Admin" or "SuperAdmin");
     }
 
     public async Task<IActionResult> OnPostProfileAsync() {
