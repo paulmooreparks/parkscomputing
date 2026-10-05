@@ -27,7 +27,9 @@ public sealed class SuperUserModel : PageModel {
         if (user is null) { return; }
         Until = await _bootstrap.PendingUntilAsync(user.Id);
         Pending = Until is not null;
-        Activated = await _users.IsInRoleAsync(user, "SuperAdmin");
+        // A super-user recovering from lost passkeys (account-bootstrap
+        // --replace-passkeys) is set up again, so open setup comes first.
+        Activated = !Pending && await _users.IsInRoleAsync(user, "SuperAdmin");
         EmailConfirmed = user.EmailConfirmed;
         Keys = (await _users.GetPasskeysAsync(user)).Count;
     }

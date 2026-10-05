@@ -7,6 +7,8 @@
 @inject Microsoft.Extensions.Options.IOptions<SiteOptions> SiteConfig
 @inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions> AccountsConfig
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@inject ParksComputing.Engine.Identity.StaffAccess StaffCheck
+@inject SiteEditor SiteFiles
 @* A brochure site's layout (Pages/Services/SiteOptions.cs), which
    BrochureLayoutExpander gives every page that asks for _Layout: the
    classic view only, with no window view, applets, menus of commands or
@@ -34,6 +36,9 @@
     var feed = NavService.Sections(root).FirstOrDefault(s => s.Feed);
     // The editing pages (Pages/SiteAdmin) take the whole width.
     bool workspace = ViewData["Workspace"] as bool? ?? false;
+    // The page's slug, "index" for the home page, for its Markdown, its
+    // tags for machines, and the staff bar's Edit this page.
+    var mdSlug = ViewData["PageId"] as string ?? (path == "/home" ? "index" : null);
     var recent = feed is null || workspace ? new List<NavNode>()
         : feed.Nav!.OrderByDescending(n => NavService.EffectiveDate(n) ?? DateTime.MinValue).Take(5).ToList();
     // The section a page belongs to is marked as the reader's place too, so
@@ -63,7 +68,6 @@
         // The page as machines read it (Pages/Services/MarkdownPages.cs):
         // its one address, its description, how a shared link to it looks,
         // and its Markdown for AI readers.
-        var mdSlug = ViewData["PageId"] as string ?? (path == "/home" ? "index" : null);
         var mdPage = mdSlug is null ? null : MarkdownExport.Load(mdSlug);
         var origin = MarkdownExport.OriginOr($"{Context.Request.Scheme}://{Context.Request.Host}");
         bool isArticle = mdSlug is not null && NavService.Articles(root).Any(n => string.Equals(n.Slug, mdSlug, StringComparison.OrdinalIgnoreCase));
@@ -129,6 +133,46 @@
 </head>
 <body class="brochure">
     <a class="skip-link" href="#main">Skip to the page</a>
+    @{
+        // The staff's own bar, for an Admin or the super-user signed in:
+        // their way to edit the page they are on, to the editing pages and
+        // to their account. Nobody else sees it, and a page drawn with it is
+        // never cached (Api/CachingMiddleware.cs).
+        bool staff = AccountsConfig.Value.Enabled && User.Identity?.IsAuthenticated == true
+            && await StaffCheck.AllowedAsync(User, confirmed: false);
+        string? editPath = null;
+        if (staff && !workspace && mdSlug is not null) {
+            var superuser = await StaffCheck.SuperuserAsync(User, confirmed: false);
+            editPath = new[] { ".md", ".html" }.Select(ext => "content/" + mdSlug + ext)
+                .FirstOrDefault(p => SiteFiles.Find(p, superuser) is not null);
+        }
+    }
+    @if (staff)
+    {
+        <style>
+            .staff-bar { background: var(--surface-alt); border-bottom: 1px solid var(--border); font-size: var(--text-sm); }
+            .staff-bar .brochure-inner { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-4); padding-block: var(--space-2); }
+            .staff-bar-label { color: var(--text-muted); margin-right: auto; }
+            .staff-bar form { margin: 0; }
+        </style>
+        <nav class="staff-bar" aria-label="Staff">
+            <div class="brochure-inner">
+                <span class="staff-bar-label">Signed in as @(User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "staff")</span>
+                @if (editPath is not null)
+                {
+                    <a href="/admin/pages/edit?file=@Uri.EscapeDataString(editPath)">Edit this page</a>
+                }
+                <a href="/admin/pages" aria-current="@(path.StartsWith("/admin/pages", StringComparison.OrdinalIgnoreCase) ? "page" : null)">All pages</a>
+                <a href="/admin/stats" aria-current="@(path.StartsWith("/admin/stats", StringComparison.OrdinalIgnoreCase) ? "page" : null)">Visits</a>
+                <a href="/account" aria-current="@(path.StartsWith("/account", StringComparison.OrdinalIgnoreCase) ? "page" : null)">Your account</a>
+                <form method="post" action="/account/signout">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="/" />
+                    <button class="btn btn-sm" type="submit">Sign out</button>
+                </form>
+            </div>
+        </nav>
+    }
     <header class="brochure-header">
         <div class="brochure-inner">
             @Html.RenderStaticFile("/content/header-section.html", FileReaderService)

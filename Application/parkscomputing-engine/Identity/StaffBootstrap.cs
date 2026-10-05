@@ -125,7 +125,10 @@ public sealed class StaffBootstrap {
     /// --replace-passkeys first removes the account's passkeys and ends its
     /// sessions, for an account moving to a new site, whose passkeys belong to
     /// the old one (the edit origin's, when accounts came to
-    /// parkscomputing.com) and can neither sign in nor confirm here.
+    /// parkscomputing.com) and can neither sign in nor confirm here. It is
+    /// also how an active super-user who has lost every passkey recovers:
+    /// setup opens again, and the account finishes it as it did the first
+    /// time, with a sign-in link, two new passkeys and /account/superuser.
     /// </summary>
     public static async Task<int> RunAsync(IServiceProvider root, string[] args) {
         bool replace = args.Length == 4 && args[3] == "--replace-passkeys";
@@ -158,13 +161,20 @@ public sealed class StaffBootstrap {
                 if (!(await users.UpdateSecurityStampAsync(user)).Succeeded) { throw new InvalidOperationException("Session reset failed."); }
             }
             var existing = await db.StaffBootstraps.SingleOrDefaultAsync(x => x.UserId == user.Id);
-            if (existing?.ActivatedUtc is not null || await users.IsInRoleAsync(user, "SuperAdmin")) { throw new InvalidOperationException("This account is already activated."); }
+            // An active super-user is set up again only to recover from lost
+            // passkeys: --replace-passkeys has just cleared them and ended its
+            // sessions, and setup opens again, so it can add new ones without
+            // a tap of an old one and confirm them at /account/superuser. The
+            // host is the recovery authority (Architecture/unified-identity-design.md).
+            bool active = existing?.ActivatedUtc is not null || await users.IsInRoleAsync(user, "SuperAdmin");
+            if (active && !replace) { throw new InvalidOperationException("This account is already activated. To recover it from lost passkeys, add --replace-passkeys."); }
             if (existing is null) { existing = new SiteStaffBootstrap { UserId = user.Id }; db.StaffBootstraps.Add(existing); }
+            existing.ActivatedUtc = null;
             existing.SecurityStamp = user.SecurityStamp!; existing.AuthorizedUtc = DateTime.UtcNow; existing.ExpiresUtc = DateTime.UtcNow.AddDays(7);
             await db.SaveChangesAsync(); await tx.CommitAsync();
         });
         Console.WriteLine("Super-user setup is authorized for " + email + " for seven days." + (replace ? " Its old passkeys were removed and its sessions ended." : "") +
-            " Sign in with an email link, add two passkeys, then open " + options.Origin.TrimEnd('/') + "/account/superuser.");
+            " Sign in with a link (an email link, or account-link on this host), add two passkeys, then open " + options.Origin.TrimEnd('/') + "/account/superuser.");
         return 0;
     }
 }

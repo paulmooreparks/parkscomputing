@@ -1,6 +1,7 @@
 @model ParksComputing.Engine.Pages.SiteAdmin.SiteAdminModel
-@* The bar at the top of every editing page: where the reader is, who they
-   are, and the way out. When the session is not yet confirmed with a
+@* The bar at the top of every editing page: where the reader is, and
+   whether they are an Admin or the super-user. When the session is not yet
+   confirmed with a
    passkey, it says so and offers the tap, which js/accounts.js carries out
    and then reloads the page. *@
 @* The editing pages' own few rules, here rather than in a stylesheet,
@@ -9,8 +10,7 @@
 <style>
     .site-admin-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2) var(--space-4);
         padding-bottom: var(--space-3); margin-bottom: var(--space-4); border-bottom: 1px solid var(--border); font-size: var(--text-base); }
-    .site-admin-crumbs, .site-admin-who { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
-    .site-admin-signout { margin: 0; }
+    .site-admin-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
     .site-admin-confirm, .site-admin-message { margin-bottom: var(--space-4); }
     .site-admin-file { font-family: var(--mono); font-size: var(--text-sm); color: var(--text-muted); }
     .site-admin-list { list-style: none; padding: 0 !important; margin: 0 0 var(--space-5); }
@@ -33,15 +33,9 @@
             <span aria-hidden="true">›</span> <span>@crumb</span>
         }
     </nav>
-    <div class="site-admin-who">
-        <span>Signed in as @Model.Who@(Model.Superuser ? " (super-user)" : "")</span>
-        <a href="/account">Your account</a>
-        <form method="post" action="/account/signout" class="site-admin-signout">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="returnUrl" value="/" />
-            <button class="btn btn-sm" type="submit">Sign out</button>
-        </form>
-    </div>
+    @* Who is signed in, their account and Sign out are in the staff bar at
+       the top of every page (Pages/Shared/_BrochureLayout.cshtml). *@
+    <span class="site-admin-file">@(Model.Superuser ? "Super-user" : "Admin")</span>
 </div>
 @if (!Model.Confirmed)
 {
