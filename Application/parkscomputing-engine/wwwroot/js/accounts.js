@@ -250,39 +250,6 @@
         location.assign(url.pathname + url.search);
     });
 
-    /* === What is waiting for moderation =============================== */
-
-    /* A moderator's page shows how much is waiting, on the account button's
-       badge and in the account menu's Moderation (Identity/ModerationNotices.cs),
-       and asks again every two minutes, so a tab left open stays current.
-       Only a moderator's page has the badge, so nobody else's asks. The
-       menu redraws itself when its hidden list changes. */
-    (function () {
-        var badge = document.querySelector('[data-moderation-badge]');
-        if (!badge) { return; }
-        function show(total) {
-            badge.hidden = total === 0;
-            var n = badge.querySelector('[data-moderation-number]');
-            if (n) { n.textContent = String(total); }
-            document.querySelectorAll('a[data-moderation-count]').forEach(function (a) {
-                if (a.getAttribute('data-moderation-count') === String(total)) { return; }
-                a.setAttribute('data-moderation-count', String(total));
-                a.textContent = total > 0 ? 'Moderation (' + total + ')' : 'Moderation';
-            });
-        }
-        /* now asks even in a hidden tab, for a change the reader just made. */
-        function ask(now) {
-            if (document.hidden && now !== true) { return; }
-            fetch('/api/moderation/count', { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } })
-                .then(function (r) { return r.ok ? r.json() : null; })
-                .then(function (v) { if (v && typeof v.total === 'number') { show(v.total); } })
-                .catch(function () { /* The next ask will do. */ });
-        }
-        setInterval(ask, 2 * 60 * 1000);
-        document.addEventListener('visibilitychange', function () { if (!document.hidden) { ask(); } });
-        window.pcModerationCount = ask;
-    })();
-
     /* === The challenge ================================================= */
 
     /* Cloudflare Turnstile on Create account and on asking for a sign-in

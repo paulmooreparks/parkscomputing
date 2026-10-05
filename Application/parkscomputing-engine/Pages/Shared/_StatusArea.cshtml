@@ -1,0 +1,38 @@
+@model (ParksComputing.Engine.Identity.AccountMenuState State, bool Desktop)
+@* The status area (Architecture/status-area-design.md): one raised group of
+   flat controls at the far right of the top bar, an item for each
+   background applet that has something to show this reader. Each item is a
+   link to its applet, a window in the window view, and is drawn here with
+   its count, so it is right before any script runs; js/status.js then
+   starts each item's background applet, which keeps it current. *@
+@{
+    var s = Model.State;
+    var desktop = Model.Desktop;
+    string Href(string key, string page) => desktop ? $"/?open={key}&top={key}" : page;
+}
+@if (s.Enabled)
+{
+    <nav class="status-area" aria-label="Status" data-status-area>
+        @if (s.Moderation)
+        {
+            var label = s.ModerationCount > 0 ? $"Moderation: {s.ModerationCount} waiting" : "Moderation: nothing waiting";
+            <a class="status-item" data-status="moderation" href="@Href("moderation", "/moderation")"
+               @(desktop ? Html.Raw("data-win-open=\"moderation\"") : null) aria-label="@label" title="@label">
+                <span class="glyph status-glyph" style="--glyph: var(--pc-glyph-comments)" aria-hidden="true"></span>
+                <span class="badge warn status-count" data-status-count aria-hidden="true" @(s.ModerationCount == 0 ? "hidden" : null)>@s.ModerationCount</span>
+            </a>
+        }
+        @if (s.SignedIn)
+        {
+            var accountLabel = "Your account" + (s.Name is null ? "" : " (" + s.Name + ")");
+            <a class="status-item status-account" data-status="account" href="@Href("account", "/account")"
+               @(desktop ? Html.Raw("data-win-open=\"account\"") : null) aria-label="@accountLabel" title="@accountLabel">
+                @ParksComputing.Engine.Identity.AccountMenu.Avatar(s.AvatarUrl, "account-avatar")
+            </a>
+        }
+        else
+        {
+            <a class="status-item status-text" data-status="account" href="/account/signin" data-account-dialog>Sign in</a>
+        }
+    </nav>
+}

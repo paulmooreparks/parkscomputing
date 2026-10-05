@@ -11,10 +11,10 @@
         return new DOMParser().parseFromString(html, 'text/html').querySelector('[data-moderation-panel]');
     }
 
-    /* The account button's badge and the menu's count (js/accounts.js)
-       follow the queue at once, rather than at their next two-minute ask. */
+    /* The status area's moderation item (js/status/moderation.js) follows
+       the queue at once, rather than at its next two-minute ask. */
     function recount() {
-        if (window.pcModerationCount) { window.pcModerationCount(true); }
+        document.dispatchEvent(new CustomEvent('pc:moderation-changed'));
     }
 
     function load(root) {

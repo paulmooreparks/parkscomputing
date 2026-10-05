@@ -31,14 +31,8 @@
 /* In a window the body scrolls inside the window's own padding. */
 .win-body [data-applet="account"] { padding: var(--space-4); width: min(38rem, 100%); box-sizing: border-box; }
 
-/* The account at the far right of the top bar: Sign in, or the reader's
-   picture in a round raised pill. */
-.account-pill { margin-inline-start: var(--space-2); }
-.account-pill:has(.account-avatar) { padding: 2px; border-radius: 999px; }
-/* A moderator's count of what is waiting, beside their picture
-   (Identity/ModerationNotices.cs). */
-.account-pill:has(.account-badge:not([hidden])) { display: inline-flex; align-items: center; gap: var(--space-1); padding-inline-end: var(--space-2); }
-.account-badge[hidden] { display: none; }
+/* A reader's picture, round. In the top bar it is the account's item in
+   the status area (css/pudl-site.css). */
 .account-avatar { display: block; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
 .account-avatar-placeholder { color: var(--text); }
 .account-picture { display: flex; align-items: center; gap: var(--space-4); }

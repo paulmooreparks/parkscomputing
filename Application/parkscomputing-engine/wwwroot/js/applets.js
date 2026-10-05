@@ -1,12 +1,12 @@
 
 /* Identity actions use PUDL's documented capability snapshots. */
-pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '5' });
+pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '6' });
 /* The Pin manager, reached from the Pins menu's Manage pins (js/pins.js). */
 pudlApplets.define('pins', { src: '/js/pins-manager.js', css: '/css/pins-manager.css', page: '/pins', ver: '2' });
 /* An article's discussion, under the article in both views and at
    /comments/{slug}, and the moderators' queue (Architecture/unified-identity-design.md, step 2). */
 pudlApplets.define('comments', { src: '/js/comments.js', css: '/css/comments.css', ver: '3' });
-pudlApplets.define('moderation', { src: '/js/moderation.js', css: '/css/comments.css', page: '/moderation', ver: '2' });
+pudlApplets.define('moderation', { src: '/js/moderation.js', css: '/css/comments.css', page: '/moderation', ver: '3' });
 window.pcAppletIdentity = function (root, entries) {
     var result = (entries || []).slice(), win = root.closest('[data-win]');
     if (win && window.pudlWindows) {

@@ -18,15 +18,12 @@
 
     /* The top bar's account button shows the same picture as the applet,
        so a new or removed picture shows there at once. */
+    /* The status area's account item (js/status/account.js) shows the same
+       picture as the applet, so a new or removed picture shows there at once. */
     function syncPill(root) {
-        var section = root.querySelector('[data-account-avatar-url]'), pill = document.querySelector('.account-pill');
+        var section = root.querySelector('[data-account-avatar-url]');
         var mine = section && section.querySelector('.account-avatar');
-        if (!pill || !mine || pill.classList.contains('account-signin')) { return; }
-        var copy = mine.cloneNode(true);
-        copy.classList.remove('account-avatar-large');
-        // Only the picture is replaced; a moderator's badge stays.
-        var old = pill.querySelector('.account-avatar');
-        if (old) { old.replaceWith(copy); } else { pill.prepend(copy); }
+        if (mine) { document.dispatchEvent(new CustomEvent('pc:account-picture', { detail: { picture: mine } })); }
     }
 
     /* A chosen picture, cropped to its centre square and drawn at 256

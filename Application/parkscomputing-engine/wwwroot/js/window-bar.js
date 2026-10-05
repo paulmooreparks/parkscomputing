@@ -104,7 +104,9 @@
                 tab.appendChild(title);
             }
             var iconUrl = win.getAttribute('data-window-icon');
-            var applet = win.querySelector('[data-applet]');
+            // An applet's window, not an article with comments under it,
+            // whose comments applet belongs to the article (js/pins.js does the same).
+            var applet = Array.prototype.some.call(win.querySelectorAll('[data-applet]'), function (el) { return !el.closest('.discussion-mount'); });
             var icon = document.createElement(iconUrl || !applet ? 'img' : 'span');
             icon.className = 'task-icon';
             if (icon.tagName === 'IMG') {

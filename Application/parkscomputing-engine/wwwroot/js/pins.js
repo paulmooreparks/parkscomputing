@@ -87,11 +87,17 @@
     /* A window as a pin: the item it shows, so a numbered copy (a second
        terminal, a second window of a book) pins the item itself. Tag lists
        and framed external sites are views of something else. */
+    /* Whether a window or page is an applet: whether it holds one, leaving
+       out the comments under an article, which belong to the article. */
+    function holdsApplet(scope) {
+        return Array.prototype.some.call(scope.querySelectorAll('[data-applet]'), function (el) { return !el.closest('.discussion-mount'); });
+    }
+
     function pinOfWindow(win) {
         var key = win.getAttribute('data-win');
         if (!key || /^(tag|ext)-/.test(key)) { return null; }
         var title = ((win.querySelector('.win-title') || {}).textContent || key).trim();
-        var applet = !!win.querySelector('[data-applet]');
+        var applet = holdsApplet(win);
         var book = win.querySelector('.book'), chapter = null;
         if (book) {
             if (book.getAttribute('data-book') && book.getAttribute('data-book') !== key) { key = book.getAttribute('data-book'); title = title.replace(/\s[2-9]$/, ''); }
@@ -117,7 +123,8 @@
         }
         var c = data.current;
         if (!c) { return null; }
-        return { key: c.key, chapter: c.chapter || null, title: c.title, icon: c.icon || null, applet: !!document.querySelector('.content-body [data-applet], .account-page [data-applet]') };
+        var scopes = document.querySelectorAll('.content-body, .account-page');
+        return { key: c.key, chapter: c.chapter || null, title: c.title, icon: c.icon || null, applet: Array.prototype.some.call(scopes, holdsApplet) };
     }
 
     function toggle(p) {

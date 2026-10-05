@@ -51,9 +51,6 @@ public sealed class AccountMenu {
         _options = options.Value; _staff = staff; _bootstrap = bootstrap; _factory = factory; _comments = comments.Value; _notices = notices;
     }
 
-    /// <summary>The Moderation command's words, with what is waiting.</summary>
-    public static string ModerationLabel(int count) => count > 0 ? $"Moderation ({count})" : "Moderation";
-
     /// <summary>The reader's state, worked out once per request, since the
     /// layout, an article and each window on the page all ask.</summary>
     public async Task<AccountMenuState> StateAsync(Microsoft.AspNetCore.Http.HttpContext ctx) {
@@ -120,10 +117,10 @@ public sealed class AccountMenu {
         // The moderation queue, a place a moderator's role opens
         // (Architecture/unified-identity-design.md, step 2).
         if (state.Moderation) {
-            // data-moderation-count lets the page update the count in place (js/accounts.js).
-            items.Add(Item(ModerationLabel(state.ModerationCount), desktop
-                ? MenuBuilder.Link("/?open=moderation&top=moderation", ("data-win-open", "moderation"), ("data-moderation-count", state.ModerationCount.ToString()))
-                : MenuBuilder.Link("/moderation", ("data-moderation-count", state.ModerationCount.ToString()))));
+            // Without a count: the status area carries it (Architecture/status-area-design.md).
+            items.Add(Item("Moderation", desktop
+                ? MenuBuilder.Link("/?open=moderation&top=moderation", ("data-win-open", "moderation"))
+                : MenuBuilder.Link("/moderation")));
         }
         /* The revision-backed article workspace (/admin/articles) is not in
            the menu: it keeps its own articles apart from the site's, which
