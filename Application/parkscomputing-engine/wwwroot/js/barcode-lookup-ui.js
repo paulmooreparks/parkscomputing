@@ -43,7 +43,7 @@
             if (loadError) { html += notice(loadError,true); }
             if (!id.kind) { html += notice(id.reason,false); }
             else {
-                html += '<label class="form-label" for="' + root.dataset.lookupId + '">Source</label><select class="form-select" id="' + root.dataset.lookupId + '" data-lookup="source"><option value="">Choose a source</option>' + options.map(function (s) { return '<option value="'+esc(s.id)+'"'+(s.id === source ? ' selected' : '')+'>'+esc(s.name)+'</option>'; }).join('') + '</select>';
+                html += '<label class="form-label" for="' + root.dataset.lookupId + '">Source</label><span class="form-select-wrap"><select class="form-select" id="' + root.dataset.lookupId + '" data-lookup="source"><option value="">Choose a source</option>' + options.map(function (s) { return '<option value="'+esc(s.id)+'"'+(s.id === source ? ' selected' : '')+'>'+esc(s.name)+'</option>'; }).join('') + '</select></span>';
                 if (source && !compatible) { html += notice('The selected source is unavailable for this barcode. Choose a compatible source.',false); }
                 if (!options.length) { html += notice('No source accepts this identifier.',false); }
                 if (id.note) { html += '<p class="form-help">'+esc(id.note)+'</p>'; }
@@ -66,7 +66,7 @@
         function renderSources() {
             var s = selected() || L.defaults[0], editing = edit === s.id && s.id.startsWith('user:');
             panel.innerHTML = '<h2>Lookup sources</h2><p class="form-help">Copy a default to customize it. Definitions are JSON. <a href="/page/barcode-lookup-guide" target="_blank" rel="noopener">Read the source-format guide</a> for fields and an example.</p>'+ (loadError ? notice(loadError,true) : '') +
-                '<label class="form-label" for="'+root.dataset.lookupId+'">Source definition</label><select class="form-select" id="'+root.dataset.lookupId+'" data-lookup="definition">'+all().map(function (x) { return '<option value="'+esc(x.id)+'"'+(x.id === s.id ? ' selected' : '')+'>'+esc(x.name)+'</option>'; }).join('')+'</select>'+
+                '<label class="form-label" for="'+root.dataset.lookupId+'">Source definition</label><span class="form-select-wrap"><select class="form-select" id="'+root.dataset.lookupId+'" data-lookup="definition">'+all().map(function (x) { return '<option value="'+esc(x.id)+'"'+(x.id === s.id ? ' selected' : '')+'>'+esc(x.name)+'</option>'; }).join('')+'</select></span>'+
                 '<div class="bs-source-actions"><button class="btn" type="button" data-lookup="clone">Copy as new source</button><button class="btn" type="button" data-lookup="export">Export</button>'+(s.id.startsWith('user:') ? '<button class="btn" type="button" data-lookup="edit">Edit</button><button class="btn btn-danger" type="button" data-lookup="delete">Delete</button>' : '')+'</div>'+
                 '<label class="form-label" for="'+root.dataset.lookupId+'-json">'+(editing ? 'Edit source JSON' : 'Source JSON')+'</label><textarea class="form-input" id="'+root.dataset.lookupId+'-json" data-lookup="json" rows="12" spellcheck="false"'+(editing?'':' readonly')+'>'+esc(JSON.stringify(s,null,2))+'</textarea>'+
                 (editing ? '<button class="btn" type="button" data-lookup="save">Save source</button>' : '')+

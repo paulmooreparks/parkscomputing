@@ -64,7 +64,7 @@
                 </div>
                 <div class="bs-layout">
                     <label class="form-label" for="${id}-layout">Layout</label>
-                    <select class="form-select" id="${id}-layout" data-role="layout"></select>
+                    <span class="form-select-wrap"><select class="form-select" id="${id}-layout" data-role="layout"></select></span>
                 </div>
                 <div class="bs-stage" data-role="stage">
                     <div class="bs-reading" data-role="reading">
@@ -85,8 +85,8 @@
                         <label class="form-label" for="${id}-text">Scanned or pasted value</label>
                         <textarea class="form-input" id="${id}-text" data-role="text" rows="3" spellcheck="false" autocomplete="off"></textarea>
                         <label class="form-label" for="${id}-format">Input format</label>
-                        <select class="form-select" id="${id}-format" data-role="format"><option value="">Unknown / try all</option>
-                        ${Object.keys(B.symbologies).map(function (key) { return '<option value="' + esc(key) + '">' + esc(B.symbologies[key].name || key) + '</option>'; }).join('')}</select>
+                        <span class="form-select-wrap"><select class="form-select" id="${id}-format" data-role="format"><option value="">Unknown / try all</option>
+                        ${Object.keys(B.symbologies).map(function (key) { return '<option value="' + esc(key) + '">' + esc(B.symbologies[key].name || key) + '</option>'; }).join('')}</select></span>
                         <p class="form-help">Enter decodes; Shift+Enter inserts a line break. You can also use a keyboard scanner.</p>
                         <div class="dialog-actions"><button class="btn" type="button" data-action="close-input">Cancel</button><button class="btn btn-primary" type="submit">Decode value</button></div>
                     </form>
@@ -228,7 +228,8 @@
                     var select = document.createElement('select'); select.className = 'form-select';
                     valid.forEach(function (r, i) { var option = document.createElement('option'); option.value = i; option.textContent = (i + 1) + '. ' + r.format + ': ' + C.visible(r.text).slice(0, 80); select.appendChild(option); });
                     select.addEventListener('change', function () { accept(valid[Number(select.value)], source); });
-                    label.appendChild(select); q('symbols').replaceChildren(label); q('symbols').hidden = false; status(valid.length + ' barcodes found');
+                    var wrap = document.createElement('span'); wrap.className = 'form-select-wrap'; wrap.appendChild(select);
+                    label.appendChild(wrap); q('symbols').replaceChildren(label); q('symbols').hidden = false; status(valid.length + ' barcodes found');
                 } else { q('symbols').hidden = true; status('Captured'); }
                 return true;
             }

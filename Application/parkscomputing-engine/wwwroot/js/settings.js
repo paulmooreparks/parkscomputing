@@ -201,9 +201,9 @@
                         '<button type="button" class="btn" data-role="choose">Choose a picture…</button>' +
                         '<span class="pc-set-image-name mono" data-role="image-name"></span>' +
                         '<label class="form-label pc-set-fit-label" for="pc-set-fit-' + n + '">Size</label>' +
-                        '<select class="form-select" id="pc-set-fit-' + n + '" data-role="fit">' +
+                        '<span class="form-select-wrap"><select class="form-select" id="pc-set-fit-' + n + '" data-role="fit">' +
                           FITS.map(function (f) { return '<option value="' + f[0] + '">' + f[1] + '</option>'; }).join('') +
-                        '</select>' +
+                        '</select></span>' +
                       '</div>' +
                       (mounted ? '' : '<p class="form-help">A picture needs a home directory on the server, so it is offered only when you are signed in to edit.</p>') +
                     '</div>' +

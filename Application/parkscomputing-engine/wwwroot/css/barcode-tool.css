@@ -9,127 +9,584 @@
    of their own. Rows that belong together (the two control rows, the
    preview and its captions) sit closer inside their own group. */
 .pc-barcodes {
-  display: flex; flex-direction: column; gap: var(--space-4);
-  max-width: 980px; margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 980px;
+  margin: 0 auto;
 }
+
 .pc-barcodes .bt-make,
 .pc-barcodes .bt-read {
-  display: flex; flex-direction: column; gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
+
 .pc-barcodes .bt-make[hidden],
-.pc-barcodes .bt-read[hidden] { display: none; }
-.pc-barcodes .form-group { margin: 0; }
+.pc-barcodes .bt-read[hidden] {
+  display: none;
+}
+
+.pc-barcodes .form-group {
+  margin: 0;
+}
+
 /* The host page's prose styles give paragraphs margins; the tool's own
    paragraphs take their spacing from the gaps above instead. */
-.pc-barcodes .form-help, .pc-barcodes .form-error, .pc-barcodes .bt-status,
-.pc-barcodes .bt-explain, .pc-barcodes .bt-layout-desc, .pc-barcodes .bt-loading { margin: 0; }
-.pc-barcodes .bt-actions { display: flex; flex-direction: column; gap: var(--space-3); }
-.pc-barcodes [data-color="blue"]   { --bt-c: #2f6fb3; }
-.pc-barcodes [data-color="gray"]   { --bt-c: #6b7280; }
-.pc-barcodes [data-color="orange"] { --bt-c: #c2410c; }
-.pc-barcodes [data-color="green"]  { --bt-c: #1f7a3a; }
-.pc-barcodes [data-color="purple"] { --bt-c: #6d3fb3; }
-.pc-barcodes [data-color="teal"]   { --bt-c: #0f766e; }
-.pc-barcodes [data-color="red"]    { --bt-c: #b91c1c; }
-.pc-barcodes [data-color="gold"]   { --bt-c: #a16207; }
+.pc-barcodes .form-help,
+.pc-barcodes .form-error,
+.pc-barcodes .bt-status,
+.pc-barcodes .bt-explain,
+.pc-barcodes .bt-layout-desc,
+.pc-barcodes .bt-loading {
+  margin: 0;
+}
 
-.pc-barcodes .bt-loading { color: var(--text-muted); }
+.pc-barcodes .bt-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pc-barcodes [data-color="blue"] {
+  --bt-c: #2f6fb3;
+}
+
+.pc-barcodes [data-color="gray"] {
+  --bt-c: #6b7280;
+}
+
+.pc-barcodes [data-color="orange"] {
+  --bt-c: #c2410c;
+}
+
+.pc-barcodes [data-color="green"] {
+  --bt-c: #1f7a3a;
+}
+
+.pc-barcodes [data-color="purple"] {
+  --bt-c: #6d3fb3;
+}
+
+.pc-barcodes [data-color="teal"] {
+  --bt-c: #0f766e;
+}
+
+.pc-barcodes [data-color="red"] {
+  --bt-c: #b91c1c;
+}
+
+.pc-barcodes [data-color="gold"] {
+  --bt-c: #a16207;
+}
+
+.pc-barcodes .bt-loading {
+  color: var(--text-muted);
+}
 
 /* === Toolbar ============================================================= */
 .pc-barcodes .bt-toolbar {
-  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
-.pc-barcodes .bt-tools { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
-.pc-barcodes .bt-spacer { flex: 1; }
-.pc-barcodes .bt-help-dialog { max-width: 560px; }
-.pc-barcodes .dialog .dialog-title { margin-top: 0; }
-.pc-barcodes .bt-help p { margin: 0 0 var(--space-3); color: var(--text); }
-.pc-barcodes .bt-help p:last-child { margin-bottom: 0; }
-.pc-barcodes .bt-tools .form-select { width: auto; }
-.pc-barcodes .bt-menu-sym { color: var(--text-muted); font-size: var(--text-xs); margin-left: var(--space-2); }
-.pc-barcodes .notice { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+
+.pc-barcodes .bt-tools {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.pc-barcodes .bt-spacer {
+  flex: 1;
+}
+
+.pc-barcodes .bt-help-dialog {
+  max-width: 560px;
+}
+
+.pc-barcodes .dialog .dialog-title {
+  margin-top: 0;
+}
+
+.pc-barcodes .bt-help p {
+  margin: 0 0 var(--space-3);
+  color: var(--text);
+}
+
+.pc-barcodes .bt-help p:last-child {
+  margin-bottom: 0;
+}
+
+.pc-barcodes .bt-tools .form-select {
+  width: auto;
+}
+
+.pc-barcodes .bt-menu-sym {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  margin-left: var(--space-2);
+}
+
+.pc-barcodes .notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
 
 /* === Data entry ========================================================== */
-.pc-barcodes .bt-layout-desc { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
-.pc-barcodes .bt-data { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .04em; }
-.pc-barcodes .form-error .btn { margin-left: var(--space-2); }
+.pc-barcodes .bt-layout-desc {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.pc-barcodes .bt-data {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  letter-spacing: .04em;
+}
+
+.pc-barcodes .form-error .btn {
+  margin-left: var(--space-2);
+}
 
 .pc-barcodes .bt-fields {
-  display: flex; flex-wrap: wrap; gap: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
+
 .pc-barcodes .bt-field {
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
   border-top: 3px solid var(--bt-c);
   background: color-mix(in srgb, var(--bt-c) 9%, var(--surface));
 }
-.pc-barcodes .bt-field-name { font-size: var(--text-sm); font-weight: 700; color: var(--bt-c); }
-.pc-barcodes .bt-field .form-input,
-.pc-barcodes .bt-field .form-select {
-  width: auto;
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-}
-.pc-barcodes .bt-computed {
-  min-height: 36px; display: flex; align-items: center;
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: var(--text-lg); font-weight: 700;
+
+.pc-barcodes .bt-field-name {
+  font-size: var(--text-sm);
+  font-weight: 700;
   color: var(--bt-c);
 }
-.pc-barcodes .bt-pos { font-weight: 400; font-size: var(--text-xs); color: var(--text-muted); }
-.pc-barcodes .bt-field-note { font-size: var(--text-xs); color: var(--text-muted); min-height: 1.3em; }
-.pc-barcodes .bt-field-note.bt-note-error { color: var(--danger); }
 
-.pc-barcodes .bt-symopts, .pc-barcodes .bt-controls {
-  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4);
+.pc-barcodes .bt-field .form-input,
+.pc-barcodes .bt-field .form-select {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
-.pc-barcodes .bt-controls .form-select { width: auto; }
-.pc-barcodes .bt-inline { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
-.pc-barcodes .bt-inline .form-select { width: auto; }
+/* A field's select fills its wrap, which the card stretches, so PUDL's
+   opener stays at the select's end. */
+.pc-barcodes .bt-field .form-input { width: auto; }
+
+.pc-barcodes .bt-computed {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--bt-c);
+}
+
+.pc-barcodes .bt-pos {
+  font-weight: 400;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.pc-barcodes .bt-field-note {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  min-height: 1.3em;
+}
+
+.pc-barcodes .bt-field-note.bt-note-error {
+  color: var(--danger);
+}
+
+.pc-barcodes .bt-symopts,
+.pc-barcodes .bt-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.pc-barcodes .bt-controls .form-select {
+  width: auto;
+}
+
+.pc-barcodes .bt-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.pc-barcodes .bt-inline .form-select {
+  width: auto;
+}
 
 /* === Preview ============================================================= */
-.pc-barcodes .bt-preview { display: flex; flex-direction: column; gap: var(--space-2); }
+.pc-barcodes .bt-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
 .pc-barcodes .bt-well {
   background: #ffffff;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--space-3);
-  display: flex; justify-content: center; align-items: center;
+  display: flex;
   min-height: 120px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
-.pc-barcodes .bt-well canvas { display: block; }
-.pc-barcodes .bt-status { margin: 0; font-size: var(--text-sm); color: var(--text-muted); }
-.pc-barcodes .bt-status.bt-status-error { color: var(--danger); }
-.pc-barcodes .bt-explain { margin: 0; font-size: var(--text-md); }
+
+/* Auto margins center the symbol, and unlike centering the content they
+   let a symbol wider than the well scroll from its left end. */
+.pc-barcodes .bt-well canvas {
+  display: block;
+  flex: none;
+  margin: auto;
+}
+
+.pc-barcodes .bt-status {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.pc-barcodes .bt-status.bt-status-error {
+  color: var(--danger);
+}
+
+.pc-barcodes .bt-explain {
+  margin: 0;
+  font-size: var(--text-md);
+}
 
 .pc-barcodes .bt-legend {
-  list-style: none; margin: 0; padding: 0;
-  display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
   font-size: var(--text-sm);
 }
-.pc-barcodes .bt-legend li { display: inline-flex; align-items: baseline; gap: 6px; }
-.pc-barcodes .bt-swatch {
-  display: inline-block; width: 10px; height: 10px; border-radius: 2px;
-  background: var(--bt-c); align-self: center;
+
+.pc-barcodes .bt-legend li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
 }
-.pc-barcodes .bt-legend-name { font-weight: 700; color: var(--bt-c); }
-.pc-barcodes .bt-legend-value { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+
+.pc-barcodes .bt-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--bt-c);
+  align-self: center;
+}
+
+.pc-barcodes .bt-legend-name {
+  font-weight: 700;
+  color: var(--bt-c);
+}
+
+.pc-barcodes .bt-legend-value {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
 
 /* === Read mode =========================================================== */
-.pc-barcodes .bt-match { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
-.pc-barcodes .bt-match-title { margin: 0; }
-.pc-barcodes .bt-match .btn { align-self: flex-start; }
-.pc-barcodes .bt-match td .bt-swatch { margin-right: 6px; }
-.pc-barcodes .bt-ident { margin: 0; padding-left: 1.2em; }
+.pc-barcodes .bt-match {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.pc-barcodes .bt-match-title {
+  margin: 0;
+}
+
+.pc-barcodes .bt-match .btn {
+  align-self: flex-start;
+}
+
+.pc-barcodes .bt-match td .bt-swatch {
+  margin-right: 6px;
+}
+
+.pc-barcodes .bt-ident {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+/* === Layout editor ======================================================= */
+/* While a layout is edited the tool becomes two columns: the barcode form
+   on the left, at the width it had when the editor opened (--bt-form-w,
+   which the script sets), and the editor on the right. A window sized by
+   its content widens to hold both; only when there is no room for that do
+   the columns give up width, down to their minimums. */
+.pc-barcodes.bt-editing {
+  display: grid;
+  grid-template-columns: minmax(min(300px, 100%), var(--bt-form-w, 600px)) minmax(360px, 460px);
+  column-gap: var(--space-5);
+  max-width: none;
+  align-items: start;
+}
+
+.pc-barcodes.bt-editing> :not(.bt-editor) {
+  grid-column: 1;
+}
+
+/* The editor's title bar, with Cancel and Save, stays put while its body
+   scrolls. */
+.pc-barcodes .bt-editor {
+  grid-column: 2;
+  grid-row: 1 / span 6;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 120px);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+
+.pc-barcodes .bt-editor[hidden] {
+  display: none;
+}
+
+.pc-barcodes .bt-editor-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.pc-barcodes .bt-editor-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.pc-barcodes .bt-editor-body {
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-4);
+}
+
+.pc-barcodes .bt-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pc-barcodes .bt-editor-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.pc-barcodes .bt-editor-heading {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.pc-barcodes .bt-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.pc-barcodes .bt-editor .form-group {
+  gap: 4px;
+}
+
+/* Each field is a row that opens to its settings. The row's left edge
+   carries the field's color, as its box does in the form. */
+.pc-barcodes .bt-editor-fields {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pc-barcodes .bt-editor-field {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--bt-c);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.pc-barcodes .bt-editor-field>details>summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--radius-sm);
+}
+
+.pc-barcodes .bt-editor-field>details>summary::-webkit-details-marker {
+  display: none;
+}
+
+.pc-barcodes .bt-editor-field>details>summary::before {
+  content: "";
+  flex: none;
+  width: 12px;
+  height: 12px;
+  background: var(--text-muted);
+  -webkit-mask: var(--glyph-caret) center / contain no-repeat;
+  mask: var(--glyph-caret) center / contain no-repeat;
+  transform: rotate(-90deg);
+  transition: transform .12s;
+}
+
+.pc-barcodes .bt-editor-field>details[open]>summary::before {
+  transform: none;
+}
+
+.pc-barcodes .bt-editor-field>details>summary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.pc-barcodes .bt-ef-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pc-barcodes .bt-ef-meta {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.pc-barcodes .bt-ef-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.pc-barcodes .bt-ef-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.pc-barcodes .bt-ef-actions .btn-danger {
+  margin-left: auto;
+}
+
+.pc-barcodes .bt-editor-checks {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.pc-barcodes .bt-editor-checks legend {
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 0;
+}
+
+.pc-barcodes .bt-editor-errors {
+  display: flex;
+  align-items: flex-start;
+}
+
+.pc-barcodes .bt-editor-errors ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
 
 /* === JSON authoring ====================================================== */
-.pc-barcodes .bt-json-dialog { max-width: 720px; }
-.pc-barcodes .bt-json {
-  min-height: 22em; width: 100%;
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: var(--text-sm);
+.pc-barcodes .bt-json-dialog {
+  max-width: 720px;
 }
-.pc-barcodes .bt-json-errors { margin: var(--space-2) 0 0; padding-left: 1.2em; }
+
+.pc-barcodes .bt-json {
+  min-height: 22em;
+  width: 100%;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: var(--text-sm);
+}
+
+.pc-barcodes .bt-json-errors {
+  margin: var(--space-2) 0 0;
+  padding-left: 1.2em;
+}
+
+@media (max-width: 760px) {
+  .pc-barcodes.bt-editing {
+    display: flex;
+    min-width: 0;
+  }
+
+  .pc-barcodes .bt-editor {
+    order: 1;
+    max-height: none;
+  }
+}
 
 /* In a window the tool scrolls with its content: it is a form, not a
    board that has to fill a box. */
-.win .pc-barcodes { max-width: none; }
+.win .pc-barcodes {
+  max-width: none;
+}
+
+/* On a page the tool sits in the article's column, a reading measure too
+   narrow for the form and the editor side by side. While a layout is
+   edited the tool breaks out of the column to the page's full width, less
+   the page's own 20px margins, and centers its two columns there. Negative
+   margins do it rather than a transform, which would leave the barcode on
+   a half pixel and blur it. */
+.content-body .pc-barcodes.bt-editing {
+  margin-left: calc(50% - 50vw + 20px);
+  margin-right: calc(50% - 50vw + 20px);
+  max-width: none;
+  justify-content: center;
+}
+
+/* The window holds the tool inside an article's column, whose reading
+   measure would cap the tool's width, and with it the window's. The tool
+   sets its own width, so in a window the column gives way to it, as it
+   does for a book. */
+.win-body .post-content:has(.pc-barcodes) {
+  max-width: none;
+}

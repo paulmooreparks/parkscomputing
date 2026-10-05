@@ -219,7 +219,7 @@
             '<button type="button" data-mode="read">Read</button>' +
             '</div>' +
             '<span class="bt-make-only bt-tools">' +
-            '<select class="form-select" data-role="sym" aria-label="Symbology">' + symOptions + '</select>' +
+            '<span class="form-select-wrap"><select class="form-select" data-role="sym" aria-label="Symbology">' + symOptions + '</select></span>' +
             '<span class="menu">' +
             '<button type="button" class="btn menu-btn" popovertarget="bt-layouts-' + n + '" data-role="layout-btn">Layout</button>' +
             '<nav class="menu-panel" id="bt-layouts-' + n + '" popover aria-label="Layouts" data-role="layout-menu"></nav>' +
@@ -244,7 +244,7 @@
             '<div class="bt-editor-grid">' +
             '<div class="form-group"><label class="form-label" for="bt-editor-name-' + n + '">Name</label><input class="form-input" id="bt-editor-name-' + n + '" data-editor="name" autocomplete="off" /></div>' +
             '<div class="form-group"><label class="form-label" for="bt-editor-id-' + n + '">Identifier</label><input class="form-input" id="bt-editor-id-' + n + '" data-editor="id" autocomplete="off" spellcheck="false" /></div>' +
-            '<div class="form-group"><label class="form-label" for="bt-editor-sym-' + n + '">Symbology</label><select class="form-select" id="bt-editor-sym-' + n + '" data-editor="sym">' + symOptions + '</select></div>' +
+            '<div class="form-group"><label class="form-label" for="bt-editor-sym-' + n + '">Symbology</label><span class="form-select-wrap"><select class="form-select" id="bt-editor-sym-' + n + '" data-editor="sym">' + symOptions + '</select></span></div>' +
             '</div>' +
             '<div class="form-group"><label class="form-label" for="bt-editor-description-' + n + '">Description</label><textarea class="form-textarea" id="bt-editor-description-' + n + '" data-editor="description" rows="2"></textarea></div>' +
             '<div class="form-group"><label class="form-label" for="bt-editor-explain-' + n + '">Explanation</label><input class="form-input" id="bt-editor-explain-' + n + '" data-editor="explain" autocomplete="off" placeholder="Item {item} at {price}." />' +
@@ -285,9 +285,9 @@
             '<label class="check" data-role="colors-flag"><input type="checkbox" data-flag="colors" /> Field colors</label>' +
             '</div>' +
             '<div class="bt-controls">' +
-            '<select class="form-select" data-role="mm" aria-label="Module width for downloads">' +
+            '<span class="form-select-wrap"><select class="form-select" data-role="mm" aria-label="Module width for downloads">' +
             MODULE_MM.map(function (m) { return '<option value="' + m[0] + '">' + m[1] + '</option>'; }).join('') +
-            '</select>' +
+            '</select></span>' +
             '<label class="check"><input type="checkbox" data-flag="annotate" /> Highlights in downloads</label>' +
             '<button type="button" class="btn" data-action="svg">Save SVG…</button>' +
             '<button type="button" class="btn" data-action="png">Save PNG…</button>' +
@@ -577,9 +577,9 @@
                 return group(key, label, '<input class="form-input"' + attrs(key) + ' value="' + esc(value == null ? '' : value) + '" autocomplete="off" spellcheck="false"' + (extra || '') + ' />', help);
             };
             var select = function (key, label, choices, current) {
-                return group(key, label, '<select class="form-select"' + attrs(key) + '>' + choices.map(function (c) {
+                return group(key, label, '<span class="form-select-wrap"><select class="form-select"' + attrs(key) + '>' + choices.map(function (c) {
                     return '<option value="' + esc(c[0]) + '"' + (c[0] === current ? ' selected' : '') + '>' + esc(c[1]) + '</option>';
-                }).join('') + '</select>');
+                }).join('') + '</select></span>');
             };
             var textarea = function (key, label, value, help) {
                 return group(key, label, '<textarea class="form-textarea" rows="2"' + attrs(key) + ' spellcheck="false">' + esc(value) + '</textarea>', help);
@@ -930,12 +930,12 @@
                     html += '<label class="check"><input type="checkbox" data-opt="bearer"' + (options.bearer !== '0' ? ' checked' : '') + (locked ? ' disabled' : '') + ' /> Bearer bars</label>';
                 } else if (o === 'start' || o === 'stop') {
                     var v = (options[o] || 'A').toUpperCase();
-                    html += '<label class="bt-inline">' + (o === 'start' ? 'Start' : 'Stop') + ' <select class="form-select" data-opt="' + o + '"' + (locked ? ' disabled' : '') + '>' +
-                        ['A', 'B', 'C', 'D'].map(function (c) { return '<option' + (c === v ? ' selected' : '') + '>' + c + '</option>'; }).join('') + '</select></label>';
+                    html += '<label class="bt-inline">' + (o === 'start' ? 'Start' : 'Stop') + ' <span class="form-select-wrap"><select class="form-select" data-opt="' + o + '"' + (locked ? ' disabled' : '') + '>' +
+                        ['A', 'B', 'C', 'D'].map(function (c) { return '<option' + (c === v ? ' selected' : '') + '>' + c + '</option>'; }).join('') + '</select></span></label>';
                 } else if (o === 'ecc') {
                     var lv = (options.ecc || 'M').toUpperCase();
-                    html += '<label class="bt-inline">Error correction <select class="form-select" data-opt="ecc"' + (locked ? ' disabled' : '') + '>' +
-                        ECC_LEVELS.map(function (e) { return '<option value="' + e[0] + '"' + (e[0] === lv ? ' selected' : '') + '>' + e[1] + '</option>'; }).join('') + '</select></label>';
+                    html += '<label class="bt-inline">Error correction <span class="form-select-wrap"><select class="form-select" data-opt="ecc"' + (locked ? ' disabled' : '') + '>' +
+                        ECC_LEVELS.map(function (e) { return '<option value="' + e[0] + '"' + (e[0] === lv ? ' selected' : '') + '>' + e[1] + '</option>'; }).join('') + '</select></span></label>';
                 }
             });
             el.symopts.innerHTML = html;
@@ -972,7 +972,7 @@
                         var opts = f.type === 'fixed'
                             ? (Array.isArray(f.values) ? f.values : []).map(function (v) { return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; })
                             : Object.keys(f.values || {}).map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + ': ' + esc(f.values[k]) + '</option>'; });
-                        input = '<select class="form-select" data-field="' + esc(f.id) + '" id="bt-f-' + n + '-' + esc(f.id) + '">' + opts.join('') + '</select>';
+                        input = '<span class="form-select-wrap"><select class="form-select" data-field="' + esc(f.id) + '" id="bt-f-' + n + '-' + esc(f.id) + '">' + opts.join('') + '</select></span>';
                     } else {
                         var ph = f.type === 'date' ? f.format : f.type === 'decimal' ? (f.decimals ? '0.' + '0'.repeat(f.decimals) : '0') : '';
                         var size = Math.max(4, Math.min(24, (len || f.maxLength || 8) + 2));

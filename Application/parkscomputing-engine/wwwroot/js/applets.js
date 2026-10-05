@@ -46,7 +46,7 @@ pudlApplets.define('sudoku', {
     src: '/js/sudoku.js',
     css: '/css/sudoku.css',
     page: '/page/sudoku',
-    ver: '16'
+    ver: '17'
 });
 
 /* Conway's page is its article, so the links shared since 2015 keep
@@ -66,7 +66,7 @@ pudlApplets.define('barcodes', {
     src: '/js/barcode-tool.js',
     css: '/css/barcode-tool.css',
     page: '/page/barcodes',
-    ver: '30'
+    ver: '31'
 });
 
 pudlApplets.define('flashcards', {
@@ -119,7 +119,7 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: pcWorkspacePages + 'terminal',
-    ver: '34',
+    ver: '35',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
     instances: 4
 });
@@ -150,7 +150,7 @@ pudlApplets.define('settings', {
     src: '/js/settings.js',
     css: '/css/settings.css',
     page: pcWorkspacePages + 'settings',
-    ver: '5'
+    ver: '6'
 });
 
 /* The scanner shares the engine and layout library with the Barcode Tool. */
@@ -158,7 +158,7 @@ pudlApplets.define('barcode-scanner', {
     src: '/js/barcode-scanner.js',
     css: '/css/barcode-scanner.css',
     page: '/page/barcode-scanner',
-    ver: '8'
+    ver: '9'
 });
 
 pudlApplets.define('dice', {
@@ -172,7 +172,7 @@ pudlApplets.define('theme-studio', {
    src: '/js/theme-studio.js',
    css: '/css/theme-studio.css',
    page: '/page/theme-studio',
-   ver: '7'
+   ver: '8'
 });
 
 pudlApplets.define('diff', {

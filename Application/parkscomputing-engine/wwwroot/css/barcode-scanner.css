@@ -14,7 +14,7 @@
 .bs-toolbar .btn { min-height: 40px; }
 .bs-layout { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); min-width: 0; }
 .bs-layout .form-label { margin: 0; flex: none; }
-.bs-layout .form-select { min-width: min(100%, 32ch); max-width: 100%; flex: 1 0 auto; width: auto; }
+.bs-layout .form-select-wrap { min-width: min(100%, 32ch); max-width: 100%; flex: 1 0 auto; }
 .barcode-scanner.is-scanning { height: var(--bs-height, 70svh); }
 .bs-stage { display: grid; position: relative; min-height: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
 .bs-reading { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: var(--space-3); box-sizing: border-box; }

@@ -84,10 +84,10 @@ SOFTWARE.
                 '<button type="button" data-mode="edit" aria-pressed="false">Edit</button>' +
               '</div>' +
               '<span class="tool-group">' +
-                '<select class="form-select" data-role="difficulty" aria-label="Difficulty">' +
+                '<span class="form-select-wrap"><select class="form-select" data-role="difficulty" aria-label="Difficulty">' +
                   '<option value="easy">Easy</option><option value="medium">Medium</option>' +
                   '<option value="hard">Hard</option><option value="veryhard">Very Hard</option>' +
-                '</select>' +
+                '</select></span>' +
                 '<button type="button" class="btn btn-primary" data-action="new">New</button>' +
               '</span>' +
               '<span class="tool-group">' +

@@ -1085,9 +1085,9 @@
                 '<h3 class="dialog-title" id="' + setId + '-title">Terminal settings</h3>' +
                 '<div class="dialog-body">' +
                   '<div class="form-group"><label class="form-label" for="' + setId + '-font">Text size</label>' +
-                    '<select class="form-select" id="' + setId + '-font" data-role="font-size">' +
+                    '<span class="form-select-wrap"><select class="form-select" id="' + setId + '-font" data-role="font-size">' +
                       FONT_SIZES.map(function (n) { return '<option value="' + n + '">' + n + ' px</option>'; }).join('') +
-                    '</select></div>' +
+                    '</select></span></div>' +
                   '<p class="form-help">These apply to every terminal, and are kept in ~/.config/terminal.json.</p>' +
                 '</div>' +
                 '<div class="dialog-actions"><button type="submit" class="btn btn-primary">Done</button></div>' +
