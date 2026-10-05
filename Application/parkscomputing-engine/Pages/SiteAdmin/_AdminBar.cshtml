@@ -26,7 +26,8 @@
 </style>
 <div class="site-admin-bar">
     <nav class="site-admin-crumbs" aria-label="Editing">
-        <a href="/admin/pages">Pages</a>
+        <a href="/admin/pages" aria-current="@(Context.Request.Path.StartsWithSegments("/admin/pages") && ViewData["Crumb"] is null ? "page" : null)">Pages</a>
+        <a href="/admin/stats" aria-current="@(Context.Request.Path.StartsWithSegments("/admin/stats") ? "page" : null)">Visits</a>
         @if (ViewData["Crumb"] is string crumb)
         {
             <span aria-hidden="true">›</span> <span>@crumb</span>

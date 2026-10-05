@@ -32,27 +32,35 @@ internal sealed class SiteAiVisit {
 }
 
 /// <summary>
-/// Which AI agent a request comes from, by the name each operator publishes
-/// for its crawlers and assistants in their user-agent strings. The list is
-/// the operators' documented names; an agent that hides its name is not
-/// counted as one, and a request for the site's Markdown or llms.txt from
-/// an agent not on the list is counted as "Unlisted".
+/// Which automated agent a request comes from, AI or search engine, by the
+/// name each operator publishes for its crawlers and assistants in their
+/// user-agent strings. The list is the operators' documented names; an
+/// agent that hides its name is not counted as one, and a request for the
+/// site's Markdown or llms.txt from an agent not on the list is counted as
+/// "Unlisted", an AI reader. People are not counted here at all: that is
+/// the site's analytics' work.
 /// </summary>
 public static class AiAgents {
+    public const string Ai = "AI";
+    public const string Search = "Search";
+
     // Each pattern is the token the operator documents, matched as a word.
-    private static readonly (string Name, Regex Pattern)[] Known = new[] {
-        ("OpenAI GPTBot", "GPTBot"), ("OpenAI ChatGPT-User", "ChatGPT-User"), ("OpenAI OAI-SearchBot", "OAI-SearchBot"),
-        ("Anthropic ClaudeBot", "ClaudeBot"), ("Anthropic Claude-User", "Claude-User"), ("Anthropic Claude-SearchBot", "Claude-SearchBot"),
-        ("Anthropic", "anthropic-ai"),
-        ("Perplexity PerplexityBot", "PerplexityBot"), ("Perplexity-User", "Perplexity-User"),
-        ("Google-CloudVertexBot", "Google-CloudVertexBot"), ("Google GoogleOther", "GoogleOther"),
-        ("Meta ExternalAgent", "meta-externalagent"), ("Meta ExternalFetcher", "meta-externalfetcher"),
-        ("Amazonbot", "Amazonbot"), ("Applebot", "Applebot"),
-        ("ByteDance Bytespider", "Bytespider"), ("Common Crawl CCBot", "CCBot"),
-        ("Cohere", "cohere-ai|cohere-training-data-crawler"), ("Mistral MistralAI-User", "MistralAI-User"),
-        ("DuckDuckGo DuckAssistBot", "DuckAssistBot"), ("You.com YouBot", "YouBot"),
-        ("Diffbot", "Diffbot"), ("Timpibot", "Timpibot"), ("AI2Bot", "AI2Bot"),
-    }.Select(k => (k.Item1, new Regex(@"(?<![A-Za-z0-9])(?:" + k.Item2 + @")(?![A-Za-z0-9])", RegexOptions.IgnoreCase | RegexOptions.Compiled))).ToArray();
+    private static readonly (string Name, string Kind, Regex Pattern)[] Known = new[] {
+        ("OpenAI GPTBot", Ai, "GPTBot"), ("OpenAI ChatGPT-User", Ai, "ChatGPT-User"), ("OpenAI OAI-SearchBot", Ai, "OAI-SearchBot"),
+        ("Anthropic ClaudeBot", Ai, "ClaudeBot"), ("Anthropic Claude-User", Ai, "Claude-User"), ("Anthropic Claude-SearchBot", Ai, "Claude-SearchBot"),
+        ("Anthropic", Ai, "anthropic-ai"),
+        ("Perplexity PerplexityBot", Ai, "PerplexityBot"), ("Perplexity-User", Ai, "Perplexity-User"),
+        ("Google-CloudVertexBot", Ai, "Google-CloudVertexBot"), ("Google GoogleOther", Ai, "GoogleOther"),
+        ("Meta ExternalAgent", Ai, "meta-externalagent"), ("Meta ExternalFetcher", Ai, "meta-externalfetcher"),
+        ("Amazonbot", Ai, "Amazonbot"),
+        ("ByteDance Bytespider", Ai, "Bytespider"), ("Common Crawl CCBot", Ai, "CCBot"),
+        ("Cohere", Ai, "cohere-ai|cohere-training-data-crawler"), ("Mistral MistralAI-User", Ai, "MistralAI-User"),
+        ("DuckDuckGo DuckAssistBot", Ai, "DuckAssistBot"), ("You.com YouBot", Ai, "YouBot"),
+        ("Diffbot", Ai, "Diffbot"), ("Timpibot", Ai, "Timpibot"), ("AI2Bot", Ai, "AI2Bot"),
+        ("Google Googlebot", Search, "Googlebot"), ("Microsoft Bingbot", Search, "bingbot"), ("Apple Applebot", Search, "Applebot"),
+        ("DuckDuckGo DuckDuckBot", Search, "DuckDuckBot"), ("Yandex", Search, "YandexBot"), ("Baidu", Search, "Baiduspider"),
+        ("Seznam", Search, "SeznamBot"), ("Huawei PetalBot", Search, "PetalBot"),
+    }.Select(k => (k.Item1, k.Item2, new Regex(@"(?<![A-Za-z0-9])(?:" + k.Item3 + @")(?![A-Za-z0-9])", RegexOptions.IgnoreCase | RegexOptions.Compiled))).ToArray();
 
     public const string Unlisted = "Unlisted";
 
@@ -60,11 +68,16 @@ public static class AiAgents {
     /// the known ones.</summary>
     public static string? Of(string? userAgent) {
         if (string.IsNullOrEmpty(userAgent)) { return null; }
-        foreach (var (name, pattern) in Known) {
+        foreach (var (name, _, pattern) in Known) {
             if (pattern.IsMatch(userAgent)) { return name; }
         }
         return null;
     }
+
+    /// <summary>Whether a counted agent is an AI reader or a search
+    /// engine's crawler.</summary>
+    public static string KindOf(string agent) =>
+        Known.FirstOrDefault(k => k.Name == agent).Kind ?? Ai;
 
     /// <summary>Whether a path is one of the site's addresses made for AI
     /// readers: llms.txt or a page's Markdown.</summary>
@@ -93,8 +106,10 @@ public sealed class AiVisitCounter {
     /// counted under its address, or under "(not found)" when it failed, so
     /// guesses at addresses do not each add a row.</summary>
     public static async Task Middleware(HttpContext ctx, Func<Task> next) {
-        await next();
+        // The address as asked, before anything later rewrites it (a
+        // brochure site serves / as /home).
         var path = ctx.Request.Path.Value ?? "/";
+        await next();
         var agent = AiAgents.Of(ctx.Request.Headers.UserAgent.ToString())
             ?? (AiAgents.IsForAi(path) ? AiAgents.Unlisted : null);
         if (agent is null) { return; }

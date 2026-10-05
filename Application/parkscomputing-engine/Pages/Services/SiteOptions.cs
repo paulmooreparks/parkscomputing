@@ -35,6 +35,11 @@ namespace ParksComputing.Engine.Pages.Services {
         /// Asia/Singapore, for the times its editing pages show; unset, UTC.</summary>
         public string? TimeZone { get; set; }
 
+        /// <summary>Where the site's own analytics show visits by people,
+        /// such as its Plausible dashboard, which the staff's Visits page
+        /// links to; the site itself counts only automated readers.</summary>
+        public string? AnalyticsUrl { get; set; }
+
         public bool Brochure => string.Equals(Mode, "brochure", StringComparison.OrdinalIgnoreCase);
 
         public string UrlOf(string slug) => PageUrl.Replace("{slug}", slug, StringComparison.Ordinal);

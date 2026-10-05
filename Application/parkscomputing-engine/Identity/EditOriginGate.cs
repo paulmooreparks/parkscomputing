@@ -105,7 +105,7 @@ public sealed class EditOriginGate {
         // /articles would otherwise take a brochure site's public article
         // list for a private page.
         bool workspace = _accounts.StaffEnabled && (_site.Brochure
-            ? path.StartsWithSegments("/admin/pages", StringComparison.OrdinalIgnoreCase)
+            ? path.StartsWithSegments("/admin/pages", StringComparison.OrdinalIgnoreCase) || path.StartsWithSegments("/admin/stats", StringComparison.OrdinalIgnoreCase)
             : path.StartsWithSegments("/admin/articles", StringComparison.OrdinalIgnoreCase) || path.StartsWithSegments("/articles", StringComparison.OrdinalIgnoreCase));
         // The server's own tools, which Terminal, Files and the Editor use
         // for the super-user (the admin mount, SSH and its client, a draft's
