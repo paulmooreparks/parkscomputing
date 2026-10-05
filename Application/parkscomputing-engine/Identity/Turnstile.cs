@@ -54,14 +54,17 @@ public sealed class Turnstile {
     /// off.</summary>
     public async Task<bool> PassesAsync(string? token, string? ip, string action) {
         if (!On) { return true; }
-        if (string.IsNullOrWhiteSpace(token) || token.Length > 2048) { return false; }
+        if (string.IsNullOrWhiteSpace(token) || token.Length > 2048) { _log.LogWarning("Turnstile refused the {Action} form: no token", action); return false; }
         var form = new Dictionary<string, string> { ["secret"] = _options.TurnstileSecret!, ["response"] = token };
         if (!string.IsNullOrEmpty(ip)) { form["remoteip"] = ip; }
         try {
             using var response = await _http.CreateClient(ClientName).PostAsync(VerifyUrl, new FormUrlEncodedContent(form));
             if (!response.IsSuccessStatusCode) { _log.LogWarning("Turnstile answered {Status}.", (int)response.StatusCode); return false; }
             var answer = await response.Content.ReadFromJsonAsync<Answer>();
-            if (answer?.Success != true) { return false; }
+            if (answer?.Success != true) {
+                _log.LogWarning("Turnstile refused the {Action} form: {Codes}", action, string.Join(", ", answer?.Errors ?? Array.Empty<string>()));
+                return false;
+            }
             if (TestSecret) { return true; }
             if (!string.Equals(answer.Action, action, StringComparison.Ordinal)) {
                 _log.LogWarning("Turnstile token was for another action.");

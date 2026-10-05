@@ -21,6 +21,12 @@
             </div>
         </div>
         <p class="form-help">Nothing arrived? Look in your spam folder, or <a href="/account/signin" data-account-dialog>ask for another link</a>.</p>
+        @if (AccountConfig.Value.Registration)
+        {
+            @* Sign in never says whether an address has an account, so someone
+               without one is told here where to make one. *@
+            <p class="form-help">No account yet? Sign in only sends a link to an address that already has one. <a href="/account/register" data-account-dialog>Create an account</a> instead.</p>
+        }
         <div class="dialog-actions">
             <a class="btn btn-primary" href="@Model.Back" data-account-cancel>Done</a>
         </div>

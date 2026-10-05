@@ -24,10 +24,20 @@ public sealed class AccountWorkflow {
     private readonly AccountLinks _links;
     private readonly TimeProvider _clock;
     private readonly AccountOptions _options;
+    private readonly Microsoft.Extensions.Logging.ILogger<AccountWorkflow> _log;
     public AccountWorkflow(IServiceScopeFactory scopes, IDbContextFactory<SiteIdentityDbContext> factory,
-        AccountLinks links, TimeProvider clock, IOptions<AccountOptions> options) {
+        AccountLinks links, TimeProvider clock, IOptions<AccountOptions> options,
+        Microsoft.Extensions.Logging.ILogger<AccountWorkflow>? log = null) {
         _scopes = scopes; _factory = factory; _links = links; _clock = clock; _options = options.Value;
+        _log = log ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<AccountWorkflow>.Instance;
     }
+
+    /* A request that ends without an email says why in the log, by reason
+       alone, never with the address, so a reader's "nothing arrived" can be
+       answered from the server. The reader is still told the same thing
+       either way, so the form cannot reveal who has an account. */
+    private void NotSent(bool signUp, string reason) =>
+        Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(_log, "Account email not sent ({Form}): {Reason}", signUp ? "create account" : "sign in", reason);
     public static string DisplayName(string name) {
         name = (name ?? "").Trim();
         if (name.Length is < 1 or > 80 || name.Any(char.IsControl)) { throw new ArgumentException("Use a display name of 1 to 80 characters."); }
@@ -66,12 +76,13 @@ public sealed class AccountWorkflow {
     public async Task RequestAsync(string email, string? displayName, string ip, string? returnUrl = null, PolicyVersions? agreed = null) {
         email = Email(email);
         if (displayName is not null) { displayName = DisplayName(displayName); }
-        if (!await BudgetAsync(email, ip)) { return; }
-        string? userId = null;
+        bool signUp = displayName is not null;
+        if (!await BudgetAsync(email, ip)) { NotSent(signUp, "too many requests for this address or network this hour"); return; }
+        string? userId = null, reason = null;
         AccountLinkPurpose purpose = AccountLinkPurpose.SignIn;
         await using var execution = await _factory.CreateDbContextAsync();
         await execution.Database.CreateExecutionStrategy().ExecuteAsync(async () => {
-            userId = null;
+            userId = null; reason = null;
             using var scope = _scopes.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<SiteIdentityDbContext>();
             var users = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
@@ -82,7 +93,10 @@ public sealed class AccountWorkflow {
             if (user is null && displayName is not null && _options.Registration) {
                 user = new IdentityUser { UserName = Guid.NewGuid().ToString("N"), Email = email, EmailConfirmed = false };
                 var result = await users.CreateAsync(user);
-                if (!result.Succeeded) { return; }
+                if (!result.Succeeded) {
+                    reason = "the account could not be created (" + string.Join(", ", result.Errors.Select(e => e.Code)) + ")";
+                    return;
+                }
                 db.AccountProfiles.Add(new SiteAccountProfile {
                     UserId = user.Id, DisplayName = displayName, Version = Guid.NewGuid(), CreatedUtc = _clock.GetUtcNow().UtcDateTime,
                     TermsVersion = agreed?.Terms, PrivacyVersion = agreed?.Privacy,
@@ -90,16 +104,20 @@ public sealed class AccountWorkflow {
                 });
                 await db.SaveChangesAsync();
             }
-            if (user is null || await users.IsLockedOutAsync(user) ||
-                await db.AccountProfiles.AnyAsync(p => p.UserId == user.Id && p.SuspendedUtc != null)) { return; }
+            if (user is null) {
+                reason = signUp ? "registration is closed" : "no account has that address (Create account makes one)";
+                return;
+            }
+            if (await users.IsLockedOutAsync(user)) { reason = "the account is locked out"; return; }
+            if (await db.AccountProfiles.AnyAsync(p => p.UserId == user.Id && p.SuspendedUtc != null)) { reason = "the account is suspended"; return; }
             // A registration request never replaces the profile or grants roles to an existing account.
             userId = user.Id; purpose = user.EmailConfirmed ? AccountLinkPurpose.SignIn : AccountLinkPurpose.VerifyEmail;
             await transaction.CommitAsync();
         });
-        if (userId is null) { return; }
+        if (userId is null) { NotSent(signUp, reason ?? "unknown"); return; }
         string token;
         try { token = await _links.IssueAsync(userId, purpose); }
-        catch (InvalidOperationException) { return; }
+        catch (InvalidOperationException) { NotSent(signUp, "the account cannot receive a link now"); return; }
         var url = _options.Origin.TrimEnd('/') + "/account/link?uid=" + Uri.EscapeDataString(userId) +
             "&purpose=" + purpose + "&token=" + Uri.EscapeDataString(token) +
             (string.IsNullOrEmpty(returnUrl) || returnUrl == "/" ? "" : "&return=" + Uri.EscapeDataString(returnUrl));
@@ -108,7 +126,11 @@ public sealed class AccountWorkflow {
             purpose == AccountLinkPurpose.VerifyEmail ? "Verify your Parks Computing account" : "Sign in to Parks Computing",
             "Open this link within 15 minutes, then press the confirmation button:\n\n" + url +
             "\n\nIf you did not request this email, ignore it.");
-        if (!sent) { await _links.CancelAsync(userId, purpose, token); }
+        if (!sent) { await _links.CancelAsync(userId, purpose, token); NotSent(signUp, "the mail service did not take the message"); }
+        else {
+            Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_log, "Account email sent ({Form}): {Purpose} link",
+                signUp ? "create account" : "sign in", purpose == AccountLinkPurpose.VerifyEmail ? "verification" : "sign-in");
+        }
     }
     public async Task<(string UserId, string SessionId)?> RedeemAsync(string userId, AccountLinkPurpose purpose, string token) {
         if (purpose is not (AccountLinkPurpose.VerifyEmail or AccountLinkPurpose.SignIn)) { return null; }
