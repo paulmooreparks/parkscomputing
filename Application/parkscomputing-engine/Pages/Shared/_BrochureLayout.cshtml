@@ -3,6 +3,7 @@
 @using ParksComputing.Engine.Pages.Services
 @inject StaticFileReaderService FileReaderService
 @inject INavService Nav
+@inject MarkdownPages MarkdownExport
 @* A brochure site's layout (Pages/Services/SiteOptions.cs), which
    BrochureLayoutExpander gives every page that asks for _Layout: the
    classic view only, with no window view, applets, menus of commands or
@@ -53,6 +54,15 @@
     <link rel="stylesheet" href="~/pudl/pudl.css" asp-append-version="true" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    @{
+        // The page as Markdown, for AI readers (Pages/Services/MarkdownPages.cs).
+        var mdSlug = ViewData["PageId"] as string ?? (path == "/home" ? "index" : null);
+    }
+    @if (mdSlug is not null && MarkdownExport.IsReadable(mdSlug))
+    {
+        <link rel="alternate" type="text/markdown" href="@MarkdownExport.MarkdownUrlOf(mdSlug)" title="This page as Markdown" />
+    }
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="This site for AI readers" />
     @RenderSection("Meta", required: false)
     @RenderSection("Links", required: false)
     @RenderSection("Style", required: false)
@@ -78,7 +88,9 @@
         </nav>
     }
     <div class="brochure-inner brochure-body@(recent.Count > 0 ? " has-aside" : "")">
-        <main id="main" class="brochure-page" tabindex="-1">
+        @* data-page is the page's slug, so a site's stylesheet can give one
+           page, such as a CV, a look of its own. *@
+        <main id="main" class="brochure-page" tabindex="-1" data-page="@(ViewData["PageId"] as string ?? (path == "/home" ? "home" : null))">
             @RenderBody()
         </main>
         @if (recent.Count > 0)

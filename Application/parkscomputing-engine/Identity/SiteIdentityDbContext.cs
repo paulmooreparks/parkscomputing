@@ -50,6 +50,8 @@ public sealed class SiteIdentityDbContext : IdentityDbContext<IdentityUser, Iden
     internal DbSet<SiteCommentReport> CommentReports => Set<SiteCommentReport>();
     internal DbSet<SiteModeratorNotice> ModeratorNotices => Set<SiteModeratorNotice>();
 
+    internal DbSet<SiteAiVisit> AiVisits => Set<SiteAiVisit>();
+
     protected override void OnModelCreating(ModelBuilder builder) {
         base.OnModelCreating(builder);
         builder.Entity<IdentityUser>().HasIndex(u => u.NormalizedEmail).IsUnique();
@@ -63,6 +65,7 @@ public sealed class SiteIdentityDbContext : IdentityDbContext<IdentityUser, Iden
         SiteStaffBootstrap.Configure(builder);
         CommentRecords.Configure(builder);
         SiteModeratorNotice.Configure(builder);
+        SiteAiVisit.Configure(builder);
     }
 
     private void CheckImmutableRecords() {

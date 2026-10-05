@@ -393,6 +393,27 @@ namespace ParksComputing.Engine.Identity.Migrations
                     b.ToTable("SiteAccountProfiles", (string)null);
                 });
 
+            modelBuilder.Entity("ParksComputing.Engine.Identity.SiteAiVisit", b =>
+                {
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Agent")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("Path")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("int");
+
+                    b.HasKey("Day", "Agent", "Path");
+
+                    b.ToTable("SiteAiVisits", (string)null);
+                });
+
             modelBuilder.Entity("ParksComputing.Engine.Identity.SiteComment", b =>
                 {
                     b.Property<Guid>("Id")

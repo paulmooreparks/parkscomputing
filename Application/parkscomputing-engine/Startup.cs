@@ -86,6 +86,11 @@ namespace ParksComputing.Engine {
             services.AddSingleton<INavService, NavService>();
 
             services.AddSingleton<StaticFileReaderService>();
+            // The site for AI readers: llms.txt and each page as Markdown, and
+            // the count of AI agents' visits (Identity/AiVisits.cs).
+            services.AddSingleton<MarkdownPages>();
+            services.AddSingleton<ParksComputing.Engine.Identity.AiVisitCounter>();
+            services.AddHostedService<ParksComputing.Engine.Identity.AiVisitWriter>();
             // The recent log for the super-user's Server log applet (Identity/RecentLogs.cs).
             services.AddSingleton<ParksComputing.Engine.Identity.RecentLogs>();
             services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider, ParksComputing.Engine.Identity.RecentLogProvider>();
@@ -185,6 +190,10 @@ namespace ParksComputing.Engine {
             else {
                 app.UseExceptionHandler("/Error");
             }
+
+            // AI agents' visits are counted after each response, whatever
+            // answered it (Identity/AiVisits.cs).
+            app.Use((ctx, next) => ParksComputing.Engine.Identity.AiVisitCounter.Middleware(ctx, next));
 
             // Admin work on its own origin, before anything else answers.
             app.UseMiddleware<ParksComputing.Engine.Identity.EditOriginGate>();

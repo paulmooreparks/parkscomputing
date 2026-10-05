@@ -80,4 +80,12 @@ Her content is in `C:\Users\paul\OneDrive\Documents\padmajairam.com\wwwroot`, co
 
 The preview runs from the image `padmajairam-local:preview` as the container `padmajairam-preview` on `http://localhost:8089`, with no accounts, the content mounted read-only, and the accounts database `PadmaJairamSite`. Its pages begin to arrive in about 20 milliseconds, against 8 seconds for the WordPress site.
 
+### Readable by AI
+
+The WordPress site used the RankReady plugin to give each page as Markdown and to count AI crawlers' visits. The engine now does both itself, for any site it serves:
+
+- `/llms.txt`, in the form llmstxt.org proposes, gives the site's name and description from `sitenav.xfer` and lists every page's Markdown: the top-level pages, then each section's pages under its own heading, then any other content page, such as the policies, under Optional. A site that writes its own `llms.txt` in wwwroot has that served instead.
+- Each page's Markdown is at its own address with `.md` added (`/about.md`, `/index.md` for the home page, `/page/about.md` on parkscomputing.com), headed by its title, description, address and date (`Pages/Services/MarkdownPages.cs`, `Api/MarkdownController.cs`). A Markdown page is given as written; an HTML page is converted with ReverseMarkdown. Layout parts (`-section` files) and applet pages have none. The response carries a canonical link to the page and `noindex`, so search engines keep the page itself. The brochure layout points to it with `<link rel="alternate" type="text/markdown">`.
+- A request from a known AI agent, recognised by the name its operator publishes in the user agent (OpenAI's GPTBot and ChatGPT-User, Anthropic's ClaudeBot and Claude-User, PerplexityBot, Meta's agents, Bytespider, CCBot and others), and any request for `llms.txt` or a page's Markdown, is counted by day, agent and address in `SiteAiVisits` (`Identity/AiVisits.cs`). Counting is in memory and written once a minute; no address or other detail of the requester is kept. `admin ai-visits [days]` on the server prints the totals until the site has a page for them.
+
 Not yet done: sign-in at `/admin` for Paul and Padma, an editing path for an Admin (the engine's article workspace edits database revisions, not the content files the site serves), canonical links and the trailing-slash redirect, `sitemap.xml`, structured data and social-sharing tags, the cookie policy's rewrite, the map decision, and the Thoughts list built from the navigation rather than written into the page.

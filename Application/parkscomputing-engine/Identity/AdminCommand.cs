@@ -82,8 +82,25 @@ public static class AdminCommand {
                 Console.WriteLine($"{email} is no longer an admin, and every session it had has ended.");
                 return 0;
             }
+            // AI agents' visits over the last N days (30 unless given), by
+            // agent and then by address (Identity/AiVisits.cs).
+            case "ai-visits": {
+                int days = int.TryParse(email, out var d) && d > 0 ? d : 30;
+                var since = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1 - days);
+                var rows = await sp.GetRequiredService<SiteIdentityDbContext>().AiVisits
+                    .Where(v => v.Day >= since).ToListAsync();
+                Console.WriteLine($"AI visits in the last {days} days: {rows.Sum(r => r.Count)}");
+                foreach (var agent in rows.GroupBy(r => r.Agent).OrderByDescending(g => g.Sum(r => r.Count))) {
+                    Console.WriteLine();
+                    Console.WriteLine($"{agent.Key}: {agent.Sum(r => r.Count)}");
+                    foreach (var path in agent.GroupBy(r => r.Path).OrderByDescending(g => g.Sum(r => r.Count)).Take(15)) {
+                        Console.WriteLine($"  {path.Sum(r => r.Count),6}  {path.Key}");
+                    }
+                }
+                return 0;
+            }
             default:
-                Console.Error.WriteLine("Usage: admin enroll <email> | admin list | admin revoke <email>");
+                Console.Error.WriteLine("Usage: admin enroll <email> | admin list | admin revoke <email> | admin ai-visits [days]");
                 return 2;
         }
     }
