@@ -250,6 +250,28 @@
         location.assign(url.pathname + url.search);
     });
 
+    /* === The Comments link ============================================= */
+
+    /* The Comments link in an article's tag row (Pages/Shared/_TagRow.cshtml)
+       scrolls to the discussion under the article, in the same window or on
+       the same page, and inside a framed article's own page, which is this
+       site's and so reachable. Without the discussion in reach it follows
+       its link, the discussion's own page. A modified press opens that page
+       as any link does. */
+    document.addEventListener('click', function (e) {
+        var link = e.target.closest && e.target.closest('a[data-comments-link]');
+        if (!link || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) { return; }
+        var scope = link.closest('.win') || document;
+        var target = scope.querySelector('.discussion-mount');
+        if (!target) {
+            var frame = scope.querySelector('iframe.win-app-frame');
+            try { target = frame && frame.contentDocument && frame.contentDocument.querySelector('.discussion-mount'); } catch (err) { target = null; }
+        }
+        if (!target) { return; }
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
     /* === The challenge ================================================= */
 
     /* Cloudflare Turnstile on Create account and on asking for a sign-in

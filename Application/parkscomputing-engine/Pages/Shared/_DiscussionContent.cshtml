@@ -18,7 +18,7 @@
     };
     string When(DateTime utc) => utc.ToString("d MMMM yyyy");
 }
-<div class="discussion" data-discussion-panel data-slug="@slug">
+<div class="discussion" data-discussion-panel data-slug="@slug" data-count="@v.Count">
     <h2 class="discussion-title">@(v.Count == 0 ? "Comments" : v.Count == 1 ? "1 comment" : $"{v.Count} comments")</h2>
     @if (!string.IsNullOrEmpty(Done(Model.Done)) && Model.Error is null)
     {

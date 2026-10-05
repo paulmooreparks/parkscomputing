@@ -477,6 +477,23 @@ body.desktop { height: 100dvh; }
   padding: 10px 0 0;
 }
 .win-body > .page-tags { padding: 0 0 4px; }
+/* In a window the row stays at the top while the article scrolls, as it
+   already did above a framed article's frame (Pages/Shared/_TagRow.cshtml).
+   It reaches over the body's padding and covers what scrolls under it. */
+.win-body > .page-tags:not(:has(~ .win-app-frame)) {
+  position: sticky; top: -16px; z-index: 2;
+  margin: -16px -18px 8px; padding: 10px 18px 6px; max-width: none;
+  background: var(--surface);
+}
+.page-tags { align-items: baseline; }
+/* Comments, at the row's right, with how many anyone can read. */
+.comments-link {
+  margin-inline-start: auto; white-space: nowrap;
+  font-size: 12px; font-weight: 600; color: var(--accent);
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px;
+}
+/* What the Comments link scrolls to clears the row above it. */
+.discussion-mount { scroll-margin-top: 48px; }
 /* A tag in the row is a link and looks like one (chips are display-only
    metadata in PUDL's grammar, so they are not used for navigation). */
 .tag-link {

@@ -20,6 +20,21 @@
         item.classList.add('comment-flash');
     }
 
+    /* The article's Comments link (Pages/Shared/_TagRow.cshtml) shows how
+       many anyone can read; once the discussion has loaded it says what the
+       panel says, on this page and, for a framed article, in the window
+       around it. */
+    function recount(root) {
+        var panel = root.querySelector('[data-discussion-panel]');
+        if (!panel || !panel.hasAttribute('data-count')) { return; }
+        var slug = root.dataset.discussion, n = panel.getAttribute('data-count');
+        var docs = [document];
+        try { if (window.parent !== window && window.parent.document) { docs.push(window.parent.document); } } catch (err) { /* not this site's */ }
+        docs.forEach(function (d) {
+            d.querySelectorAll('a[data-comments-link="' + CSS.escape(slug) + '"] [data-comments-count]').forEach(function (c) { c.textContent = n; });
+        });
+    }
+
     function load(root) {
         var slug = root.dataset.discussion;
         return fetch('/comments/' + encodeURIComponent(slug) + '?handler=Applet', { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'text/html' } })
@@ -28,6 +43,7 @@
                 var panel = panelOf(html);
                 if (panel && root.isConnected) {
                     root.replaceChildren(document.importNode(panel, true));
+                    recount(root);
                     // An address that names a comment (#c-…) shows it once the
                     // discussion has arrived.
                     var named = /^#c-[0-9a-f-]+$/i.test(location.hash) && root.querySelector(location.hash);
@@ -82,6 +98,7 @@
                 if (!panel) { throw new Error('no panel'); }
                 if (!root.isConnected) { return; }
                 root.replaceChildren(document.importNode(panel, true));
+                recount(root);
                 var said = root.querySelector('[data-discussion-error], .notice');
                 if (said) { said.setAttribute('tabindex', '-1'); said.focus(); }
             }

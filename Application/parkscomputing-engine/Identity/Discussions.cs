@@ -88,6 +88,19 @@ public sealed class Discussions {
         return roles.Any(r => r == "Member" || StaffRoles.Contains(r)) ? null : "Verify your email address before commenting.";
     }
 
+    /// <summary>How many comments anyone can read on this article, for the
+    /// Comments link in its tag row; null when the article has no
+    /// discussion, because the site has no comments or the article takes none.</summary>
+    public async Task<int?> PublicCountAsync(string? slug) {
+        if (!_options.Enabled) { return null; }
+        var info = _policies.Of(slug);
+        if (info is null || info.Policy == ArticleCommentPolicy.Disabled) { return null; }
+        await using var db = await _factory.CreateDbContextAsync();
+        return await (from c in db.Comments join d in db.Discussions on c.DiscussionId equals d.Id
+                      where d.Slug == info.Slug && c.State == CommentState.Active && c.PublishedRevisionId != null
+                      select c).CountAsync();
+    }
+
     public async Task<DiscussionView?> ReadAsync(string slug, string? viewerId, bool moderator) {
         var info = _policies.Of(slug);
         if (info is null) { return null; }

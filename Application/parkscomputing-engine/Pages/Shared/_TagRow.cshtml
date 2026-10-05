@@ -1,0 +1,48 @@
+@model (string Slug, string[] Tags, bool Desktop)
+@inject ParksComputing.Engine.Pages.Services.INavService TagNav
+@inject ParksComputing.Engine.Identity.Discussions Discussions
+@inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions> AccountConfig
+@* The row at the top of an article, in both views: its tags at the left,
+   and at the right, where it takes comments, a link to its comments with
+   how many anyone can read. In a window the row stays at the top while the
+   article scrolls. Pressing Comments scrolls to the discussion under the
+   article (js/accounts.js); without script it leads to the discussion's
+   page. In the window view each tag opens a menu of the articles under it;
+   in the classic view it leads to the tag's page. *@
+@{
+    int? count = AccountConfig.Value.Enabled ? await Discussions.PublicCountAsync(Model.Slug) : null;
+}
+@if (Model.Tags.Length > 0 || count is not null)
+{
+    <nav class="page-tags" aria-label="Tags and comments">
+        @if (Model.Desktop)
+        {
+            var tagRoot = TagNav.GetRoot();
+            foreach (var tag in Model.Tags)
+            {
+                var tagSlug = ParksComputing.Engine.Pages.Services.ArticleContentService.TagSlug(tag);
+                var menuId = $"tag-menu-{Model.Slug}-{tagSlug}";
+                <button type="button" class="tag-link" popovertarget="@menuId">@tag</button>
+                <nav class="menu-panel tag-menu" id="@menuId" popover aria-label="Articles tagged @tag">
+                    <div class="md-section-label">Tagged @tag</div>
+                    @foreach (var (node, _) in ParksComputing.Engine.Pages.Services.ArticleContentService.TaggedWith(tagRoot, tagSlug))
+                    {
+                        var date = ParksComputing.Engine.Pages.Services.NavService.EffectiveDate(node);
+                        <div class="md-row"><a class="md-item" href="/?open=@node.Slug&top=@node.Slug" data-win-open="@node.Slug">@(node.Title ?? node.Slug)@if (date is not null) {<span class="md-meta">@date.Value.ToString("d MMMM yyyy")</span>}</a></div>
+                    }
+                </nav>
+            }
+        }
+        else
+        {
+            foreach (var tag in Model.Tags)
+            {
+                <a class="tag-link" href="@ParksComputing.Engine.Pages.Services.ArticleContentService.TagPageUrl(tag)">@tag</a>
+            }
+        }
+        @if (count is not null)
+        {
+            <a class="comments-link" href="/comments/@Model.Slug" data-comments-link="@Model.Slug">Comments (<span data-comments-count>@count</span>)</a>
+        }
+    </nav>
+}

@@ -60,18 +60,15 @@
     // A page framed in a window (?frame) leaves its tags to the window,
     // whose row opens a menu in the window view.
     bool framed = ViewContext.HttpContext.Request.Query.ContainsKey("frame");
-    var pageTags = isApplet || framed ? null : Model.NavService.GetNavNode(ViewData["PageId"]?.ToString() ?? string.Empty)?.Tags;
+    var pageId = ViewData["PageId"]?.ToString() ?? string.Empty;
+    var pageTags = Model.NavService.GetNavNode(pageId)?.Tags ?? Array.Empty<string>();
 }
-@if (pageTags is { Length: > 0 })
+@if (!isApplet && !framed && ViewData["Draft"] is null)
 {
-    @* The tag row: each link leads to the tag's classic page, staying in
-       the classic view. *@
-    <nav class="page-tags" aria-label="Tags">
-        @foreach (var tag in pageTags)
-        {
-            <a class="tag-link" href="@ParksComputing.Engine.Pages.Services.ArticleContentService.TagPageUrl(tag)">@tag</a>
-        }
-    </nav>
+    @* The tag row (Pages/Shared/_TagRow.cshtml): each tag leads to the
+       tag's classic page, staying in the classic view, and Comments, at the
+       right, goes to the discussion. *@
+    <partial name="_TagRow" model="(pageId, pageTags, false)" />
 }
 @{
     // A book's page sits inside the book: its contents beside it, and the
