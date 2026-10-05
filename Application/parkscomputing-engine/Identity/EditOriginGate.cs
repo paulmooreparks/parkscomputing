@@ -114,7 +114,7 @@ public sealed class EditOriginGate {
         }
         if (account || workspace) {
             var h = ctx.Response.Headers;
-            h["Cache-Control"] = "no-store";
+            h["Cache-Control"] = "no-cache, no-store";
             h["Referrer-Policy"] = "no-referrer";
             h["X-Content-Type-Options"] = "nosniff";
             h["Content-Security-Policy"] = AccountsCsp;
@@ -154,7 +154,7 @@ public sealed class EditOriginGate {
         h["X-Frame-Options"] = "DENY";
         h["Cross-Origin-Opener-Policy"] = "same-origin";
         if (admin) {
-            h["Cache-Control"] = "no-store";
+            h["Cache-Control"] = "no-cache, no-store";
         }
 
         await _next(ctx);

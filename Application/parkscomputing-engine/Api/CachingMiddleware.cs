@@ -17,7 +17,7 @@ namespace ParksComputing.Engine.Api {
         public CachingMiddleware(
             RequestDelegate next,
             string contentCacheControl = "public, max-age=60, must-revalidate",
-            string authCacheControl = "no-store, max-age=0"
+            string authCacheControl = "no-cache, no-store, max-age=0"
             ) {
             _next = next;
             _contentCacheControl = contentCacheControl;

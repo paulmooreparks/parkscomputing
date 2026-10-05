@@ -17,9 +17,9 @@ public sealed class DeleteModel : PageModel {
     [BindProperty(SupportsGet = true)] public string Token { get; set; } = "";
     public bool Valid { get; private set; }
     public bool Deleted { get; private set; }
-    public async Task OnGetAsync() { Response.Headers.CacheControl = "no-store"; Valid = await _lifecycle.DeletionLinkValidAsync(Uid, Token); }
+    public async Task OnGetAsync() { Response.Headers.CacheControl = "no-cache, no-store"; Valid = await _lifecycle.DeletionLinkValidAsync(Uid, Token); }
     public async Task<IActionResult> OnPostAsync() {
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         Deleted = await _lifecycle.ConfirmDeletionAsync(Uid, Token);
         if (Deleted && _signIn.UserManager.GetUserId(User) == Uid) { await _signIn.SignOutAsync(); }
         return Page();

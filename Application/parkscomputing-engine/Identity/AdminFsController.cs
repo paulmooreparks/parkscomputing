@@ -88,7 +88,7 @@ public sealed class AdminFsController : ControllerBase {
         if (t is null || !System.IO.File.Exists(t.Full)) {
             return NotFound();
         }
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         return PhysicalFile(t.Full, "application/octet-stream");
     }
 

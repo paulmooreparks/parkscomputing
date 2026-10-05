@@ -32,7 +32,7 @@ public sealed class ModerationModel : PageModel {
     /// <summary>False when the reader is signed in but is not a moderator,
     /// to whom the page does not exist.</summary>
     private async Task<bool> LoadAsync() {
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         ViewData["Title"] = "Moderation";
         if (!_enabled) { return false; }
         if (User.Identity?.IsAuthenticated != true) { Stage = "signin"; return true; }

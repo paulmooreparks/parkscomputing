@@ -39,7 +39,7 @@ public sealed class LogsModel : PageModel {
     public int Kept { get; private set; }
 
     private async Task<bool> LoadAsync() {
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         ViewData["Title"] = "Server log";
         if (User.Identity?.IsAuthenticated != true) { Stage = "signin"; return true; }
         if (!await _staff.SuperuserAsync(User, confirmed: false)) { return false; }

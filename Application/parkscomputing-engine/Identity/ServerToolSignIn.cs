@@ -25,7 +25,7 @@ public sealed class ServerToolSignIn {
         if (ctx.User.Identity?.IsAuthenticated != true &&
             Apis.Any(a => ctx.Request.Path.StartsWithSegments(a, StringComparison.OrdinalIgnoreCase))) {
             ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            ctx.Response.Headers.CacheControl = "no-store";
+            ctx.Response.Headers.CacheControl = "no-cache, no-store";
             await ctx.Response.WriteAsJsonAsync(new { ok = false, signin = true, error = "you're signed out; sign in again to carry on" });
             return;
         }

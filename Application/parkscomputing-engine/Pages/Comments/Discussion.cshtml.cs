@@ -48,7 +48,7 @@ public sealed class DiscussionModel : PageModel {
         if (view is null || view.Policy == "disabled") { return false; }
         View = view;
         ViewData["Title"] = "Comments on " + view.Title;
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         return true;
     }
 

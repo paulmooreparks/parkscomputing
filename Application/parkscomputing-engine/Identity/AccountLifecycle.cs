@@ -186,6 +186,7 @@ public sealed class AccountLifecycle {
                                where !u.EmailConfirmed && !db.UserRoles.Any(ur => ur.UserId == u.Id)
                                    && !db.StaffBootstraps.Any(b => b.UserId == u.Id)
                                    && !db.AccountProfiles.Any(p => p.UserId == u.Id && p.CreatedUtc > since)
+                               orderby u.Id
                                select u.Id).Take(500).ToListAsync(cancel);
             foreach (var id in stale) { await DeleteAsync(id); }
 

@@ -32,7 +32,7 @@ public class BarcodeProductsController : ControllerBase {
 
     [HttpGet("{code}")]
     public async Task<IActionResult> Get(string code, CancellationToken ct) {
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         if (!Eligible(code)) return BadRequest(new { error = "A valid unrestricted EAN/UPC product identifier is required." });
         var now = DateTimeOffset.UtcNow;
         int retry = 0;

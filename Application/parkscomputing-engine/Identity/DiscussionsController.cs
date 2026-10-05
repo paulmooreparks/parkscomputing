@@ -43,7 +43,7 @@ public sealed class DiscussionsController : ControllerBase {
     [HttpGet("api/discussions/{slug}")]
     public async Task<IActionResult> Read(string slug) {
         if (!_options.Enabled) { return NotFound(); }
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         var view = await _discussions.ReadAsync(slug, await ReaderAsync(), await _staff.ModeratesAsync(User, confirmed: false));
         return view is null ? NotFound() : Ok(view);
     }
@@ -51,7 +51,7 @@ public sealed class DiscussionsController : ControllerBase {
     [HttpPost("api/discussions/{slug}/comments")]
     public async Task<IActionResult> Submit(string slug, [FromBody] NewComment body) {
         if (!_options.Enabled) { return NotFound(); }
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         if (await ReaderAsync() is not { } id) { return SignIn(); }
         return Answer(await _discussions.SubmitAsync(slug, id, body.ParentId, body.Source ?? "", body.Key ?? ""));
     }
@@ -59,7 +59,7 @@ public sealed class DiscussionsController : ControllerBase {
     [HttpPut("api/comments/{id:guid}")]
     public async Task<IActionResult> Edit(Guid id, [FromBody] Change body) {
         if (!_options.Enabled) { return NotFound(); }
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         if (await ReaderAsync() is not { } me) { return SignIn(); }
         return Answer(await _discussions.EditAsync(id, me, body.Source ?? "", body.Version));
     }
@@ -67,7 +67,7 @@ public sealed class DiscussionsController : ControllerBase {
     [HttpDelete("api/comments/{id:guid}")]
     public async Task<IActionResult> Withdraw(Guid id) {
         if (!_options.Enabled) { return NotFound(); }
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         if (await ReaderAsync() is not { } me) { return SignIn(); }
         return Answer(await _discussions.WithdrawAsync(id, me));
     }
@@ -75,7 +75,7 @@ public sealed class DiscussionsController : ControllerBase {
     [HttpPost("api/comments/{id:guid}/reports")]
     public async Task<IActionResult> ReportComment(Guid id, [FromBody] Report body) {
         if (!_options.Enabled) { return NotFound(); }
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         if (await ReaderAsync() is not { } me) { return SignIn(); }
         return Answer(await _discussions.ReportAsync(id, me, body.Reason ?? ""));
     }
@@ -83,7 +83,7 @@ public sealed class DiscussionsController : ControllerBase {
     [HttpGet("api/account/comments")]
     public async Task<IActionResult> Mine() {
         if (!_options.Enabled) { return NotFound(); }
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         if (await ReaderAsync() is not { } me) { return SignIn(); }
         return Ok(new { comments = await _discussions.MineAsync(me) });
     }
@@ -110,7 +110,7 @@ public sealed class ModerationController : ControllerBase {
     /// comment, so it needs the moderator's role but not a passkey tap.</summary>
     [HttpGet("count")]
     public async Task<IActionResult> Count() {
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         if (!_options.Enabled || !_options.StaffEnabled || !_comments) { return NotFound(); }
         if (User.Identity?.IsAuthenticated != true) { return Unauthorized(new { ok = false, signin = true }); }
         if (!await _staff.ModeratesAsync(User, confirmed: false)) { return NotFound(); }
@@ -124,7 +124,7 @@ public sealed class ModerationController : ControllerBase {
     /// <summary>Null when the reader may moderate now; otherwise the answer
     /// that says what they must do first.</summary>
     private async Task<IActionResult?> GateAsync() {
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         if (!_options.Enabled || !_options.StaffEnabled || !_comments) { return NotFound(); }
         if (User.Identity?.IsAuthenticated != true) { return Unauthorized(new { ok = false, signin = true, error = "You're signed out. Sign in again to carry on." }); }
         if (!await _staff.ModeratesAsync(User, confirmed: false)) { return NotFound(); }

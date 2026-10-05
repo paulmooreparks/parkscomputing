@@ -115,7 +115,7 @@ public sealed class IndexModel : PageModel {
         if (User.Identity?.IsAuthenticated != true) { return Challenge(); }
         var data = await _lifecycle.ExportAsync(_users.GetUserId(User)!);
         if (data is null) { return NotFound(); }
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         // A file the member reads, sent as an attachment, so its text is
         // written as it is rather than escaped for embedding in HTML.
         var json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(data, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web) {

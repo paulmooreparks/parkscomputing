@@ -36,7 +36,7 @@ public sealed class AccountAuthController : ControllerBase {
     /// script request would fail with; js/accounts.js asks for a new one.</summary>
     [HttpGet("/api/account/token")]
     public IActionResult Token([FromServices] Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery) {
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         return Ok(new { token = antiforgery.GetAndStoreTokens(HttpContext).RequestToken, signedIn = User.Identity?.IsAuthenticated == true });
     }
 

@@ -22,7 +22,7 @@ public sealed class PinsController : ControllerBase {
     public async Task<IActionResult> Get() {
         var id = _options.Enabled ? _users.GetUserId(User) : null;
         if (id is null) { return Unauthorized(new { signin = true }); }
-        Response.Headers.CacheControl = "no-store";
+        Response.Headers.CacheControl = "no-cache, no-store";
         return Ok(new { pins = await _pins.GetAsync(id) });
     }
 

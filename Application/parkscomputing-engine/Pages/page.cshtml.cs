@@ -75,7 +75,7 @@ namespace ParksComputing.Engine.Pages {
                     return Task.FromResult<IActionResult>(NotFound());
                 }
                 Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
-                Response.Headers.CacheControl = "no-store";
+                Response.Headers.CacheControl = "no-cache, no-store";
                 ViewData["PageId"] = draft.Slug;
                 // A draft's preview shows no discussion (Pages/Shared/_DiscussionMount.cshtml).
                 ViewData["Draft"] = true;
