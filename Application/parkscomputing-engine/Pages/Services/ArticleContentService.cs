@@ -122,13 +122,17 @@ public class ArticleContentService {
     private ArticleWindowContent? ModerationWindow() => !_accounts ? null :
         new ArticleWindowContent(ModerationKey, "Moderation",
             "<div data-applet=\"moderation\" data-applet-page=\"/moderation\" aria-label=\"Moderation\"><noscript><p>The queue needs JavaScript in a window. <a href=\"/moderation\">Open it as a page</a>.</p></noscript></div>",
-            false, false, IsApplet: true, WindowSize: "content");
+            // An ordinary window, not one sized to its content: the queue
+            // grows and shrinks, and PUDL maximises, snaps and docks only an
+            // ordinary window.
+            false, false, IsApplet: true);
 
     public ArticleWindowContent? Load(string? slug) {
         // The privacy policy and the terms of use are part of the
         // application, not content files (Identity/PolicyDocuments.cs).
         if (ParksComputing.Engine.Identity.PolicyDocuments.IsPolicy(slug) && _policies?.Get(slug!) is { } policy) {
-            return new ArticleWindowContent(policy.Slug, policy.Title, policy.BodyHtml, false, false);
+            // Prepared as any article is, so its links to the site open windows.
+            return new ArticleWindowContent(policy.Slug, policy.Title, PrepareWindowBody(policy.Slug, policy.BodyHtml), false, false);
         }
         if (slug == AccountKey && AccountWindow() is { } account) { return account; }
         if (slug == PinsKey) { return PinsWindow; }
@@ -326,7 +330,7 @@ public class ArticleContentService {
                 continue;
             }
             var slug = InternalSlugOf(anchor.GetAttributeValue("href", string.Empty));
-            if (slug is null || !ContentExists(slug)) { continue; }
+            if (slug is null || !IsWindow(slug)) { continue; }
             anchor.SetAttributeValue("data-win-open", slug);
         }
     }
@@ -358,6 +362,18 @@ public class ArticleContentService {
         var candidate = segments[^1];
         return SlugPattern.IsMatch(candidate) ? candidate : null;
     }
+
+    /// <summary>Whether the window view has a window by this key: an article
+    /// in content/, or one of the windows the site serves itself (the
+    /// privacy policy and terms, the Account applet, the Pin manager and the
+    /// moderation queue). This is the one place that decides whether a link
+    /// inside a window opens a window, so every kind of window is known here
+    /// rather than to each link.</summary>
+    private bool IsWindow(string slug) =>
+        ContentExists(slug)
+        || (ParksComputing.Engine.Identity.PolicyDocuments.IsPolicy(slug) && _policies?.Get(slug) is not null)
+        || slug == PinsKey
+        || (_accounts && (slug == AccountKey || slug == ModerationKey));
 
     private bool ContentExists(string slug) {
         var baseDir = Path.Combine(_environment.WebRootPath, "content");
