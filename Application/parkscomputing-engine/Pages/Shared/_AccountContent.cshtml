@@ -1,5 +1,6 @@
 @model ParksComputing.Engine.Pages.Account.IndexModel
 @inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions> AccountConfig
+@inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.CommentOptions> CommentConfig
 @* The Account applet's body (js/account.js), the same on the classic
    /account page and in the window view's Account window. *@
 <div class="account" data-account-panel>
@@ -92,6 +93,8 @@ else
         <p class="form-error" data-passkey-status role="alert" hidden></p>
     </section>
 
+    @if (CommentConfig.Value.Enabled)
+    {
     <section class="account-section" id="comments" aria-labelledby="account-comments">
         <h2 class="account-subtitle" id="account-comments">Your comments</h2>
         @if (Model.Moderates)
@@ -120,6 +123,7 @@ else
             </ul>
         }
     </section>
+    }
 
     <section class="account-section" aria-labelledby="account-sessions">
         <h2 class="account-subtitle" id="account-sessions">Where you're signed in</h2>

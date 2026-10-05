@@ -17,8 +17,10 @@ namespace ParksComputing.Engine.Pages;
 /// </summary>
 public sealed class ModerationModel : PageModel {
     private readonly Discussions _discussions; private readonly StaffAccess _staff; private readonly UserManager<IdentityUser> _users;
-    public ModerationModel(Discussions discussions, StaffAccess staff, UserManager<IdentityUser> users) {
-        _discussions = discussions; _staff = staff; _users = users;
+    private readonly bool _enabled;
+    public ModerationModel(Discussions discussions, StaffAccess staff, UserManager<IdentityUser> users,
+        Microsoft.Extensions.Options.IOptions<CommentOptions> comments) {
+        _discussions = discussions; _staff = staff; _users = users; _enabled = comments.Value.Enabled;
     }
 
     /// <summary>signin, confirm or ready.</summary>
@@ -32,6 +34,7 @@ public sealed class ModerationModel : PageModel {
     private async Task<bool> LoadAsync() {
         Response.Headers.CacheControl = "no-store";
         ViewData["Title"] = "Moderation";
+        if (!_enabled) { return false; }
         if (User.Identity?.IsAuthenticated != true) { Stage = "signin"; return true; }
         if (!await _staff.ModeratesAsync(User, confirmed: false)) { return false; }
         if (!await _staff.ModeratesAsync(User)) { Stage = "confirm"; return true; }

@@ -18,9 +18,10 @@ namespace ParksComputing.Engine.Pages.Comments;
 /// </summary>
 public sealed class DiscussionModel : PageModel {
     private readonly Discussions _discussions; private readonly UserManager<IdentityUser> _users;
-    private readonly SessionPolicy _policy; private readonly AccountOptions _options;
-    public DiscussionModel(Discussions discussions, UserManager<IdentityUser> users, SessionPolicy policy, IOptions<AccountOptions> options) {
-        _discussions = discussions; _users = users; _policy = policy; _options = options.Value;
+    private readonly SessionPolicy _policy; private readonly bool _enabled;
+    public DiscussionModel(Discussions discussions, UserManager<IdentityUser> users, SessionPolicy policy,
+        IOptions<AccountOptions> options, IOptions<CommentOptions> comments) {
+        _discussions = discussions; _users = users; _policy = policy; _enabled = options.Value.Enabled && comments.Value.Enabled;
     }
 
     public DiscussionView View { get; private set; } = default!;
@@ -42,7 +43,7 @@ public sealed class DiscussionModel : PageModel {
     }
 
     private async Task<bool> LoadAsync(string slug) {
-        if (!_options.Enabled) { return false; }
+        if (!_enabled) { return false; }
         var view = await _discussions.ReadAsync(slug, await ReaderAsync(), moderator: false);
         if (view is null || view.Policy == "disabled") { return false; }
         View = view;
