@@ -57,7 +57,27 @@ The site keeps its titles, descriptions, `sitemap.xml`, structured data, canonic
 
 The engine version and the converted content run first on a beta address for Paul and Padma to review. The cutover changes the tunnel's route from the WordPress container to the engine. WordPress stays stopped but intact for two weeks, so going back is one change to the tunnel.
 
-## Open questions
+### No advertising, so no Google tracking
 
-1. **Analytics and advertising.** The current site loads Google Analytics, Google Site Kit and Google Ads remarketing tags. If Padma is not running advertising, the new site leaves out every Google tag and uses Plausible, which sets no cookies; the cookie policy then shrinks to a statement that the site sets only the cookies sign-in needs, and the site needs no consent banner. If she is advertising, the tags and a consent banner stay.
-2. **The engine work comes first.** Step 1 is a refactor of parkscomputing.com's engine, which every later step depends on, and it gets its own review before content is converted.
+Padma is not advertising (Paul, 5 October 2026). The new site carries none of the Google Analytics, Site Kit or Ads tags, and counts visits with Plausible, which sets no cookies. The cookie policy can therefore shrink to a statement of the cookies sign-in needs, and the site needs no consent banner. The Google map on the home and Directions pages is the one Google element left, and whether it stays as an embed or becomes a link to the map is still to be decided.
+
+### The look keeps her layout, made to PUDL's rules
+
+Padma likes the present layout and colours, so the new site keeps them: the light header with the lotus logo, phone number and contact links, the teal bar of places, the page on a panel over the grey background with Recent Thoughts beside it, and the black footer. PUDL's palette tokens carry her colours (teal `#367588` as the accent, the `#cccccc` page, Lato as the face), and PUDL's rules give links their underline, mark the reader's place in the bar with a bar and bold text rather than colour alone, and keep the panels flat, since they display and are not pressed.
+
+The readers include people living with anxiety, depression, OCD and other conditions, so the page asks as little of them as it can. It has one calm palette, with the purple hover and the orange buttons of the old theme gone; no motion, pop-ups or consent banner; text at 17 pixels in lines of at most 72 characters; a skip link; and the same places in the same order on every page.
+
+## The first preview, 5 October 2026
+
+The engine gained a brochure mode, set by configuration, which leaves parkscomputing.com as it was:
+
+- `Site:Mode=brochure` puts the site's home page (`content/index`) at `/` in place of the window view, sends `/home` to `/`, and gives every page `Pages/Shared/_BrochureLayout.cshtml` in place of `_Layout` (`Pages/Services/BrochureLayoutExpander.cs`). The layout belongs to no one site: its header, footer, fonts, stylesheet and analytics come from the site's `content/head-section.html`, `header-section.html` and `footer-section.html`, its bar from the top level of `sitenav.xfer`, and its Recent list from the first feed section.
+- `Site:PageUrl=/{slug}/` gives each page in the navigation WordPress's address (`Pages/Services/SiteOptions.cs`, used by `NavService`).
+- On a brochure site only an article, an entry of a feed section, shows its date and tags.
+- The engine's old built-in `/about` and `/contact` pages, which held Paul's text from before the content files, are gone, since they would have answered her `/about/` and `/contact/`. On parkscomputing.com `/about` now shows `content/about.md`, and `/contact` has no page.
+
+Her content is in `C:\Users\paul\OneDrive\Documents\padmajairam.com\wwwroot`, converted by `tools\convert.js` beside it from the WordPress REST API: eight pages and eight articles as HTML content files with their titles, descriptions and dates, ten images as WebP (651 KB in all), the Thoughts page listing the articles, and `sitenav.xfer`. The earlier attempt is set aside in `wwwroot-2025-attempt`. Her own stylesheet is `css/site.css`.
+
+The preview runs from the image `padmajairam-local:preview` as the container `padmajairam-preview` on `http://localhost:8089`, with no accounts, the content mounted read-only, and the accounts database `PadmaJairamSite`. Its pages begin to arrive in about 20 milliseconds, against 8 seconds for the WordPress site.
+
+Not yet done: sign-in at `/admin` for Paul and Padma, an editing path for an Admin (the engine's article workspace edits database revisions, not the content files the site serves), canonical links and the trailing-slash redirect, `sitemap.xml`, structured data and social-sharing tags, the cookie policy's rewrite, the map decision, and the Thoughts list built from the navigation rather than written into the page.

@@ -44,7 +44,12 @@ namespace ParksComputing.Engine {
 
             services.AddTransient<AppServices>();
 
+            // What kind of site this is (Pages/Services/SiteOptions.cs). A
+            // brochure site's pages take its own layout in place of _Layout.
+            services.Configure<SiteOptions>(Configuration.GetSection(SiteOptions.Section));
             services.AddRazorPages();
+            services.Configure<Microsoft.AspNetCore.Mvc.Razor.RazorViewEngineOptions>(o =>
+                o.ViewLocationExpanders.Add(new BrochureLayoutExpander(Configuration.GetSection(SiteOptions.Section).Get<SiteOptions>() ?? new SiteOptions())));
             services.AddControllers().AddJsonOptions(o => {
                 o.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
             })
@@ -261,6 +266,20 @@ namespace ParksComputing.Engine {
         }
 
         public void ConfigureRedirects(IApplicationBuilder app, IWebHostEnvironment env) {
+            // A brochure site's home page is its root: / is served as /home,
+            // and /home goes to /. It has no window view to put there.
+            var site = Configuration.GetSection(SiteOptions.Section).Get<SiteOptions>() ?? new SiteOptions();
+            if (site.Brochure) {
+                app.Use(async (ctx, next) => {
+                    if (ctx.Request.Path.Equals("/home", StringComparison.OrdinalIgnoreCase)) {
+                        ctx.Response.Redirect("/" + ctx.Request.QueryString, permanent: true);
+                        return;
+                    }
+                    if (ctx.Request.Path == "/") { ctx.Request.Path = "/home"; }
+                    await next();
+                });
+            }
+
             // The desktop moved from /desktop to the site root; old links follow.
             app.Use(async (ctx, next) => {
                 if (ctx.Request.Path.Equals("/desktop", StringComparison.OrdinalIgnoreCase)) {

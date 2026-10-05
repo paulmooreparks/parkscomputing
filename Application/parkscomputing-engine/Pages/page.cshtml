@@ -56,14 +56,20 @@
     // applet keeps both.
     bool isApplet = Model.MetaElements?.Any(m => m.OuterHtml.Contains("applet-page", System.StringComparison.OrdinalIgnoreCase)) ?? false;
 }
+@inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Pages.Services.SiteOptions> SiteConfig
 @{
     // A page framed in a window (?frame) leaves its tags to the window,
     // whose row opens a menu in the window view.
     bool framed = ViewContext.HttpContext.Request.Query.ContainsKey("frame");
     var pageId = ViewData["PageId"]?.ToString() ?? string.Empty;
     var pageTags = Model.NavService.GetNavNode(pageId)?.Tags ?? Array.Empty<string>();
+    // Whether the page shows its tags and dates: an applet page doesn't,
+    // and on a brochure site only an article (an entry of a feed section)
+    // does, so a page such as About or Directions has neither.
+    bool dated = !isApplet && (!SiteConfig.Value.Brochure || ParksComputing.Engine.Pages.Services.NavService.Articles(Model.NavService.GetRoot())
+            .Any(n => string.Equals(n.Slug, pageId, System.StringComparison.OrdinalIgnoreCase)));
 }
-@if (!isApplet && !framed && ViewData["Draft"] is null)
+@if (dated && !framed && ViewData["Draft"] is null)
 {
     @* The tag row (Pages/Shared/_TagRow.cshtml): each tag leads to the
        tag's classic page, staying in the classic view, and Comments, at the
@@ -86,7 +92,7 @@
         {
             <h1 class="post-title">@Html.Raw(Model.Title)</h1>
         }
-        @if (!isApplet)
+        @if (dated)
         {
             <div class="post-meta">
                 <time datetime="@Model.CreatedGmt">@Model.Created</time>

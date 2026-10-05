@@ -1,0 +1,112 @@
+@using System
+@using System.Linq
+@using ParksComputing.Engine.Pages.Services
+@inject StaticFileReaderService FileReaderService
+@inject INavService Nav
+@* A brochure site's layout (Pages/Services/SiteOptions.cs), which
+   BrochureLayoutExpander gives every page that asks for _Layout: the
+   classic view only, with no window view, applets, menus of commands or
+   account chrome. Nothing in it belongs to one site. The site's own content
+   supplies the rest:
+
+   - content/head-section.html: fonts, analytics and the site's stylesheet;
+   - content/header-section.html: the name, logo and contact links;
+   - sitenav.xfer: the main navigation, one link for each top-level entry
+     that has a title, and the Recent list from the first feed section;
+   - content/footer-section.html: the footer.
+
+   The page is a header, a bar of links to the site's places, the page
+   itself on a raised panel with the Recent list beside it on a wide screen
+   (below it on a narrow one), and the footer. It moves nothing on its own
+   and needs no script. *@
+@{
+    var root = Nav.GetRoot();
+    var path = Context.Request.Path.Value ?? "/";
+    string Norm(string? p) => (p ?? "").TrimEnd('/').ToLowerInvariant();
+    var current = Norm(path == "/home" ? "/" : path);
+    var places = (root.Nav ?? Array.Empty<NavNode>())
+        .Where(n => !string.IsNullOrWhiteSpace(n.Title) && !string.IsNullOrWhiteSpace(n.Url))
+        .ToList();
+    var feed = NavService.Sections(root).FirstOrDefault(s => s.Feed);
+    var recent = feed is null ? new List<NavNode>()
+        : feed.Nav!.OrderByDescending(n => NavService.EffectiveDate(n) ?? DateTime.MinValue).Take(5).ToList();
+    // The section a page belongs to is marked as the reader's place too, so
+    // an article marks Thoughts.
+    bool Here(NavNode n) =>
+        Norm(n.Url) == current || (n.Nav?.Any(c => Norm(c.Url) == current) ?? false);
+}
+<!DOCTYPE html>
+<html lang="@(ViewData["Lang"] as string ?? "en")" data-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    @{
+        // The page's own title, then the site's (sitenav.xfer's root
+        // title), as a browser tab or a search result shows it.
+        var pageTitle = ViewData["Title"]?.ToString() ?? "";
+        var siteTitle = root.Title ?? "";
+        var tabTitle = string.IsNullOrWhiteSpace(siteTitle) || pageTitle.Contains(siteTitle, StringComparison.OrdinalIgnoreCase)
+            ? pageTitle : string.IsNullOrWhiteSpace(pageTitle) ? siteTitle : pageTitle + " - " + siteTitle;
+    }
+    <title>@Html.Raw(tabTitle)</title>
+    <link rel="stylesheet" href="~/pudl/pudl.css" asp-append-version="true" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    @RenderSection("Meta", required: false)
+    @RenderSection("Links", required: false)
+    @RenderSection("Style", required: false)
+    @RenderSection("HeadScripts", required: false)
+    @Html.RenderStaticFile("/content/head-section.html", FileReaderService)
+</head>
+<body class="brochure">
+    <a class="skip-link" href="#main">Skip to the page</a>
+    <header class="brochure-header">
+        <div class="brochure-inner">
+            @Html.RenderStaticFile("/content/header-section.html", FileReaderService)
+        </div>
+    </header>
+    @if (places.Count > 0)
+    {
+        <nav class="brochure-nav" aria-label="Main">
+            <ul class="brochure-inner">
+                @foreach (var p in places)
+                {
+                    <li><a href="@p.Url" aria-current="@(Here(p) ? "page" : null)">@p.Title</a></li>
+                }
+            </ul>
+        </nav>
+    }
+    <div class="brochure-inner brochure-body@(recent.Count > 0 ? " has-aside" : "")">
+        <main id="main" class="brochure-page" tabindex="-1">
+            @RenderBody()
+        </main>
+        @if (recent.Count > 0)
+        {
+            <aside class="brochure-aside" aria-labelledby="recent-title">
+                <h2 class="brochure-aside-title" id="recent-title">Recent @feed!.Title</h2>
+                <ul class="md-list">
+                    @foreach (var r in recent)
+                    {
+                        var date = NavService.EffectiveDate(r);
+                        <li>
+                            <a class="md-item" href="@r.Url" aria-current="@(Norm(r.Url) == current ? "page" : null)">
+                                @Html.Raw(r.Title)
+                                @if (date is not null)
+                                {
+                                    <span class="md-meta"><time datetime="@date.Value.ToString("yyyy-MM-dd")">@date.Value.ToString("d MMMM yyyy")</time></span>
+                                }
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </aside>
+        }
+    </div>
+    <footer class="brochure-footer">
+        <div class="brochure-inner">
+            @Html.RenderStaticFile("/content/footer-section.html", FileReaderService)
+        </div>
+    </footer>
+</body>
+</html>

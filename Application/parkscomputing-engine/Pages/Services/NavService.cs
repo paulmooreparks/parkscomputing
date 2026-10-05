@@ -30,9 +30,12 @@ namespace ParksComputing.Engine.Pages.Services {
            passes into the container without change notices, so the files
            are looked at every few seconds instead (a documented
            PhysicalFileProvider mode); an edit shows within seconds. */
-        public NavService(IWebHostEnvironment environment, ILogger<NavService> logger) {
+        private readonly SiteOptions _site;
+
+        public NavService(IWebHostEnvironment environment, ILogger<NavService> logger, Microsoft.Extensions.Options.IOptions<SiteOptions> site) {
             Environment = environment;
             _logger = logger;
+            _site = site.Value;
             _files = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(environment.WebRootPath) {
                 UsePollingFileWatcher = true,
                 UseActivePolling = true
@@ -106,7 +109,7 @@ namespace ParksComputing.Engine.Pages.Services {
                     entry.Target ??= twin.Target;
                     if (string.IsNullOrWhiteSpace(entry.Url)) { entry.Url = twin.Url; entry.External = twin.External; entry.DerivedUrl = twin.DerivedUrl; }
                 }
-                if (string.IsNullOrWhiteSpace(entry.Url)) { entry.Url = $"/page/{entry.Slug}"; entry.DerivedUrl = true; }
+                if (string.IsNullOrWhiteSpace(entry.Url)) { entry.Url = _site.UrlOf(entry.Slug); entry.DerivedUrl = true; }
                 else if (Uri.TryCreate(entry.Url, UriKind.Absolute, out var abs) && (abs.Scheme == Uri.UriSchemeHttp || abs.Scheme == Uri.UriSchemeHttps)) { entry.External = true; }
             }
         }
@@ -135,7 +138,9 @@ namespace ParksComputing.Engine.Pages.Services {
                 }
             } else if (!isTreeRoot) {
                 bool hasChildren = node.Nav != null && node.Nav.Length > 0;
-                node.Url = hasChildren ? $"/nav/{node.Slug}" : $"/page/{node.Slug}";
+                // A brochure site's section is a page of its own, such as
+                // Thoughts at /articles/, which lists what is under it.
+                node.Url = hasChildren && !_site.Brochure ? $"/nav/{node.Slug}" : _site.UrlOf(node.Slug);
                 node.DerivedUrl = true;
             }
             if (!node.Updated.HasValue && node.Date.HasValue) { node.Updated = node.Date; }
