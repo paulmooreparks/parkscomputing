@@ -30,14 +30,20 @@ services:
       # Accounts on the site itself (Architecture/unified-identity-design.md):
       # parkscomputing.com is the one origin, for readers, members and the
       # super-user's server tools. www keeps its address on the way there;
-      # the retired edit origin goes to the home page. Public sign-up stays
-      # closed until comments and the policy pages ship. The admin origin
-      # settings name the same origin, since the SSH relay and previews
-      # accept their own pages from it. Mail goes through Resend.
+      # the retired edit origin goes to the home page. Public sign-up and
+      # comments opened together on 2026-10-05, with the privacy policy and
+      # terms already live. Cloudflare Turnstile guards sign-up and sign-in
+      # link requests once its keys are in .env; until then there is no
+      # challenge. The admin origin settings name the same origin, since the
+      # SSH relay and previews accept their own pages from it. Mail goes
+      # through Resend.
       - Accounts__Enabled=true
       - Accounts__Origin=https://parkscomputing.com
       - Accounts__StaffEnabled=true
-      - Accounts__Registration=false
+      - Accounts__Registration=true
+      - Comments__Enabled=true
+      - Accounts__TurnstileSiteKey=${TURNSTILE_SITE_KEY:-}
+      - Accounts__TurnstileSecret=${TURNSTILE_SECRET:-}
       - Accounts__RedirectHosts__0=www.parkscomputing.com
       - Accounts__RetiredHosts__0=edit.parkscomputing.com
       - Admin__EditOrigin=https://parkscomputing.com
@@ -67,6 +73,13 @@ services:
       sqlserver:
         condition: service_healthy
     restart: unless-stopped
+    # The error log is limited in size, as the privacy policy says
+    # (Legal/privacy.md): old entries go as new ones arrive.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
       interval: 30s
