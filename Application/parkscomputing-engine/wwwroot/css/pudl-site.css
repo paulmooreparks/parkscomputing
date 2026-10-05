@@ -26,6 +26,16 @@
    right; a rule stood before it until 2026-10-05. */
 .view-seg, .view-seg + .seg-menu { margin-inline-start: auto; }
 .status-area { margin-inline-start: var(--space-2); }
+/* WORKAROUND for PUDL 0.48.0 (Architecture/pudl-issue-status-area-look.md):
+   PUDL draws the status area with the topbar pill's lighter gradient, so
+   beside the menu bar's groups it looks like a different kind of control.
+   The proposal asked for it to be drawn as those groups are; this draws it
+   with their surface, border and shadow. Delete when PUDL does the same. */
+.status-area {
+  border: var(--menubar-group-border-width, 1px) solid var(--menubar-group-border, var(--raise-border));
+  background: var(--menubar-group-bg, var(--recess-bg));
+  box-shadow: var(--menubar-group-shadow, var(--raise-shadow));
+}
 /* PUDL sizes an item's picture when it is an img; the site's generic
    picture, for an account without one, is an svg. */
 .status-account .account-avatar { width: 24px; height: 24px; flex: none; }
