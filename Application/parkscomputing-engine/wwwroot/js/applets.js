@@ -117,7 +117,7 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: pcWorkspacePages + 'terminal',
-    ver: '31',
+    ver: '33',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
     instances: 4
 });
@@ -136,7 +136,7 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
-    ver: '18',
+    ver: '19',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } }
 });
 

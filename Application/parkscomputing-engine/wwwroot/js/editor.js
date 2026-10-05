@@ -763,7 +763,31 @@
                 if (fromList && b) { b.focus(); }
             });
         });
+        /* View on the site, in the window view, opens a page of this site as
+           a window rather than a browser tab, and one already open comes to
+           the front with its content fetched again, so it shows what was
+           just saved. Anywhere else, or for an address that is not a page
+           of this site, the link opens a new tab as the browser chooses. */
+        function viewOnSite(e) {
+            var link = e.target.closest('[data-role="view"]');
+            if (!link || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) { return false; }
+            if (!window.pudlWindows || !document.querySelector('[data-win-layer]')) { return false; }
+            var url = new URL(link.href, location.href);
+            var page = url.origin === location.origin && /^\/page\/([A-Za-z0-9_-]+)$/.exec(url.pathname);
+            if (!page) { return false; }
+            e.preventDefault();
+            var key = page[1], win = document.querySelector('.win[data-win="' + key + '"]');
+            if (win && window.pudlWindows.state().open.indexOf(key) >= 0) {
+                window.pudlWindows.raise(key);
+                if (window.pcLoadWindow) { window.pcLoadWindow(win, '', true).catch(function () { }); }
+            } else {
+                window.pudlWindows.open(key);
+            }
+            return true;
+        }
+
         root.addEventListener('click', function (e) {
+            if (viewOnSite(e)) { return; }
             var tabBtn = e.target.closest('[data-tab]');
             if (tabBtn) { activate(+tabBtn.getAttribute('data-tab')); view.focus(); return; }
             var a = e.target.closest('[data-action]');

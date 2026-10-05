@@ -201,18 +201,25 @@
 
     /* Splits a line into pipeline stages of words, honouring single and
        double quotes and backslash escapes. An unquoted > or >> becomes a
-       redirection token. */
+       redirection token. A word with an unquoted *, ? or [ is a pattern,
+       { glob, word }: glob is the word with its quoted and escaped
+       characters escaped, so only the unquoted ones are wild, and word is
+       what it says, for when nothing matches (expandGlobs). */
     function parse(line) {
-        var stages = [[]], word = '', inWord = false, quote = null;
-        function flush() { if (inWord) { stages[stages.length - 1].push(word); word = ''; inWord = false; } }
+        var stages = [[]], word = '', pat = '', globbed = false, inWord = false, quote = null;
+        function lit(ch) { word += ch; pat += /[*?[\]\\]/.test(ch) ? '\\' + ch : ch; }
+        function flush() {
+            if (inWord) { stages[stages.length - 1].push(globbed ? { glob: pat, word: word } : word); word = ''; pat = ''; globbed = false; inWord = false; }
+        }
         for (var i = 0; i < line.length; i++) {
             var ch = line[i];
             if (quote) {
-                if (ch === quote) { quote = null; } else if (ch === '\\' && quote === '"' && i + 1 < line.length) { word += line[++i]; } else { word += ch; }
+                if (ch === quote) { quote = null; } else if (ch === '\\' && quote === '"' && i + 1 < line.length) { lit(line[++i]); } else { lit(ch); }
                 continue;
             }
             if (ch === '"' || ch === "'") { quote = ch; inWord = true; continue; }
-            if (ch === '\\' && i + 1 < line.length) { word += line[++i]; inWord = true; continue; }
+            if (ch === '\\' && i + 1 < line.length) { lit(line[++i]); inWord = true; continue; }
+            if (ch === '*' || ch === '?' || ch === '[') { word += ch; pat += ch; globbed = true; inWord = true; continue; }
             if (ch === '|') { flush(); stages.push([]); continue; }
             if (ch === '>') {
                 flush();
@@ -221,7 +228,7 @@
                 continue;
             }
             if (/\s/.test(ch)) { flush(); continue; }
-            word += ch; inWord = true;
+            word += ch; pat += ch; inWord = true;
         }
         if (quote) { return { error: 'unterminated quote' }; }
         flush();
@@ -230,6 +237,74 @@
 
     function globToRegex(glob) {
         return new RegExp('^' + glob.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$', 'i');
+    }
+
+    /* === Patterns ==========================================================
+       Pathname expansion, as a shell does it before a command runs: * is
+       any run of characters, ? any one, and [abc], [a-z] or [!abc] one from
+       (or not from) a set, within one name, never across a /. A name
+       starting with . matches only a pattern that starts with one. The
+       matches come sorted; a pattern that matches nothing stays as typed,
+       so the command can say it found no such file. */
+
+    /* One name's pattern (a part between slashes, with \ escaping a
+       character) as a regular expression, or null when nothing in it is
+       wild. */
+    function segmentRegex(seg) {
+        var re = '', wild = false;
+        for (var i = 0; i < seg.length; i++) {
+            var ch = seg[i];
+            if (ch === '\\' && i + 1 < seg.length) { re += seg[++i].replace(/[.*+?^${}()|[\]\\/]/g, '\\$&'); continue; }
+            if (ch === '*') { re += '[^/]*'; wild = true; continue; }
+            if (ch === '?') { re += '[^/]'; wild = true; continue; }
+            if (ch === '[') {
+                var end = seg.indexOf(']', i + 2);
+                if (end > i) {
+                    var body = seg.slice(i + 1, end), neg = body[0] === '!' || body[0] === '^';
+                    if (neg) { body = body.slice(1); }
+                    re += '[' + (neg ? '^' : '') + body.replace(/\\(.)/g, '$1').replace(/[\\\]^]/g, '\\$&') + ']';
+                    wild = true; i = end; continue;
+                }
+            }
+            re += ch.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+        }
+        return wild ? new RegExp('^' + re + '$') : null;
+    }
+
+    function unescapeGlob(s) { return s.replace(/\\(.)/g, '$1'); }
+
+    /* The words of one stage with each pattern replaced by what it
+       matches, found from cwd. */
+    function expandGlobs(words, cwd) {
+        var out = [];
+        words.forEach(function (w) {
+            if (!w || typeof w !== 'object' || w.glob == null) { out.push(w); return; }
+            var segs = w.glob.split('/'), absolute = segs[0] === '';
+            var found = [];
+            (function walk(prefix, i) {
+                if (i === segs.length) { found.push(prefix); return; }
+                var seg = segs[i];
+                if (seg === '' && i < segs.length - 1) { walk(prefix, i + 1); return; }
+                var re = segmentRegex(seg);
+                var join = function (name) { return prefix === '' ? name : prefix === '/' ? '/' + name : prefix + '/' + name; };
+                if (!re) {
+                    var name = unescapeGlob(seg), next = join(name);
+                    if (i === segs.length - 1 || resolve(null, cwd, next)) { walk(next, i + 1); }
+                    return;
+                }
+                var dir = resolve(null, cwd, prefix === '' ? '.' : prefix);
+                if (!dir || !dir.children) { return; }
+                var dotOk = seg[0] === '.';
+                dir.children.map(function (c) { return c.name; })
+                    .filter(function (n) { return (dotOk || n[0] !== '.') && re.test(n); })
+                    .sort()
+                    .forEach(function (n) { walk(join(n), i + 1); });
+            })(absolute ? '/' : '', absolute ? 1 : 0);
+            // A match must exist, whatever its last part was.
+            found = found.filter(function (p) { return resolve(null, cwd, p); });
+            if (found.length) { out.push.apply(out, found); } else { out.push(w.word); }
+        });
+        return out;
     }
 
     /* Wraps prose at word boundaries to a width, keeping indented lines
@@ -293,12 +368,14 @@
         });
     }
 
-    function styledName(n) {
-        var k = realOf(n).kind;
-        if (n.children) { return paint('blue', C.bold + n.name) + '/'; }
-        if (k === 'app' || k === 'command' || isScript(n)) { return paint('green', n.name) + '*'; }
-        if (k === 'link') { return paint('cyan', n.name) + '@'; }
-        return n.name;
+    /* A node's name, or the path it was named by, coloured and marked by
+       its kind. */
+    function styledName(n, label) {
+        var k = realOf(n).kind, name = label || n.name;
+        if (n.children) { return paint('blue', C.bold + name) + '/'; }
+        if (k === 'app' || k === 'command' || isScript(n)) { return paint('green', name) + '*'; }
+        if (k === 'link') { return paint('cyan', name) + '@'; }
+        return name;
     }
 
     function columns(names, width) {
@@ -374,24 +451,34 @@
             args.forEach(function (a) { if (/^-[a-z]+$/.test(a)) { if (a.indexOf('l') >= 0) { long = true; } if (a.indexOf('a') >= 0) { all = true; } } else { paths.push(a); } });
             if (!paths.length) { paths.push('.'); }
             var status = 0;
-            paths.forEach(function (p, idx) {
+            /* As a shell's ls does: files named on the line are listed
+               together, as they were named, and then each directory, under
+               its own heading when there is more than one thing to list. */
+            var files = [], dirs = [];
+            paths.forEach(function (p) {
                 var n = needNode(io, p, 'ls: ' + p);
                 if (!n) { status = 1; return; }
-                var list = n.children ? n.children.filter(function (c) { return all || c.name.charAt(0) !== '.'; }) : [n];
-                if (paths.length > 1) { io.out((idx ? '\n' : '') + p + ':\n'); }
+                (n.children ? dirs : files).push({ node: n, label: p });
+            });
+            function emit(entries) {
                 if (long) {
-                    list.forEach(function (c) {
-                        var r = realOf(c);
+                    entries.forEach(function (e) {
+                        var c = e.node, r = realOf(c);
                         var kind = c.children ? 'dir ' : isScript(c) ? 'script' : r.home ? 'file' : r.kind === 'app' ? 'app ' : r.kind === 'link' ? 'link' : r.kind === 'command' ? 'cmd ' : 'page';
                         var extra = r.home ? (c.children ? '' : fmtSize(F.size(r))) : (r.title && r.title !== c.name ? r.title : '');
-                        io.out(paint('dim', fmtDate(r.home ? r.mtime : r.date)) + '  ' + kind + '  ' + styledName(c) + (extra ? '  ' + paint('dim', extra) : '') + '\n');
+                        io.out(paint('dim', fmtDate(r.home ? r.mtime : r.date)) + '  ' + kind + '  ' + styledName(c, e.label) + (extra ? '  ' + paint('dim', extra) : '') + '\n');
                     });
-                } else if (list.length && !io.interactive) {
+                } else if (entries.length && !io.interactive) {
                     /* Into a pipe, one name a line, as ls does in a shell. */
-                    list.forEach(function (c) { io.out(c.name + '\n'); });
-                } else if (list.length) {
-                    io.out(columns(list.map(styledName), io.cols) + '\n');
+                    entries.forEach(function (e) { io.out((e.label || e.node.name) + '\n'); });
+                } else if (entries.length) {
+                    io.out(columns(entries.map(function (e) { return styledName(e.node, e.label); }), io.cols) + '\n');
                 }
+            }
+            emit(files);
+            dirs.forEach(function (d, i) {
+                if (files.length + dirs.length > 1) { io.out((files.length || i ? '\n' : '') + d.label + ':\n'); }
+                emit(d.node.children.filter(function (c) { return all || c.name.charAt(0) !== '.'; }).map(function (c) { return { node: c }; }));
             });
             return status;
         }
@@ -1121,7 +1208,8 @@
             var partial = m[1];
             var head = before.slice(0, before.length - partial.length);
             var parsed = parse(head);
-            var words = parsed.stages ? parsed.stages[parsed.stages.length - 1] : [];
+            var words = (parsed.stages ? parsed.stages[parsed.stages.length - 1] : [])
+                .map(function (w) { return w && typeof w === 'object' && w.glob != null ? w.word : w; });
             var list = completions(words, partial);
             if (!list.length) { return; }
             if (list.length === 1) {
@@ -1343,10 +1431,12 @@
             var redirect = null;
             for (var s = 0; s < stages.length; s++) {
                 var at = -1;
-                stages[s].forEach(function (w, j) { if (typeof w === 'object' && at < 0) { at = j; } });
+                stages[s].forEach(function (w, j) { if (w && typeof w === 'object' && w.redirect && at < 0) { at = j; } });
                 if (at < 0) { continue; }
                 if (s !== stages.length - 1) { return fail('a redirection (> or >>) can only end the line'); }
                 var target = stages[s][at + 1];
+                // A file name with a wild character in it is taken as written.
+                if (target && typeof target === 'object' && target.glob != null) { target = target.word; }
                 if (typeof target !== 'string' || stages[s].length !== at + 2) { return fail('a redirection needs one file name after it'); }
                 redirect = { mode: stages[s][at].redirect, path: target };
                 stages[s] = stages[s].slice(0, at);
@@ -1356,7 +1446,8 @@
             var stdin = ctx ? ctx.stdin : null;
             var status = 0;
             for (var i = 0; i < stages.length && !interrupted; i++) {
-                var words = stages[i], c = COMMANDS[words[0]] || programAt(fs, cwd, words[0]);
+                // Patterns are matched as each stage starts, from where it runs.
+                var words = expandGlobs(stages[i], cwd), c = COMMANDS[words[0]] || programAt(fs, cwd, words[0]);
                 if (!c) { write(paint('red', words[0] + ': command not found. Type "help" for the list.') + '\n'); return 127; }
                 var last = i === stages.length - 1;
                 var sink = last && !redirect ? null : [];
