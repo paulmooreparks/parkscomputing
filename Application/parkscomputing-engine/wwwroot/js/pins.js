@@ -34,14 +34,32 @@
     function indexOf(p) { for (var i = 0; i < pins.length; i++) { if (same(pins[i], p)) { return i; } } return -1; }
     function token() { var m = document.querySelector('meta[name="request-verification-token"]'); return m ? m.content : ''; }
 
-    function save() {
-        if (channel) { channel.postMessage(pins); }
-        if (store === 'local') { writeLocal(pins); return; }
-        fetch('/api/account/pins', {
+    function put() {
+        return fetch('/api/account/pins', {
             method: 'PUT', credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json', RequestVerificationToken: token() },
             body: JSON.stringify({ pins: pins })
-        }).catch(function () { /* kept here until the next change */ });
+        });
+    }
+
+    /* Saves the pins where they are kept. An account's save that is
+       refused because the session ended while the page was open (the
+       server then refuses the page's old token before it says who is
+       signed in) asks the reader to sign in again, through the same
+       dialog the file tools use, and saves once more, the pins as they are
+       by then. Anything else leaves the pins here until the next change. */
+    async function save() {
+        if (channel) { channel.postMessage(pins); }
+        if (store === 'local') { writeLocal(pins); return; }
+        var r = await put().catch(function () { return null; });
+        if (r && r.ok) { return; }
+        var acc = window.pcAccounts;
+        if (!r || !acc || !acc.freshToken || !acc.signIn) { return; }
+        try {
+            var now = await acc.freshToken();
+            if (!now.signedIn) { await acc.signIn(); }
+            await put();
+        } catch (err) { /* they chose not to sign in */ }
     }
 
     if (store === 'account') {

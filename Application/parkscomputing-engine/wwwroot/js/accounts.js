@@ -125,7 +125,11 @@
         } finally { button.disabled = false; }
     }
 
-    window.pcAccounts = { press: press, ceremony: ceremony };
+    /* signIn and freshToken are for any script whose request finds the
+       session gone, such as saving pins (js/pins.js): freshToken says
+       whether the reader is still signed in and replaces the page's token,
+       and signIn asks them to sign in again and resolves when they have. */
+    window.pcAccounts = { press: press, ceremony: ceremony, signIn: signInAgain, freshToken: freshToken };
 
     /* The super-user's server tools (js/sitefs.js, the terminal's ssh, the
        settings that write /etc) ask for a fresh passkey tap through

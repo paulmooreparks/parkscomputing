@@ -96,7 +96,11 @@
         else if (Model.OwnDocument)
         {
             @* Content with its own scripts or styles gets its page in a
-               frame, where they run with a full document lifecycle. *@
+               frame, where they run with a full document lifecycle. The
+               window still gets the article's menus, as every article window
+               does: the empty page menu below is what PUDL builds its first
+               title from, and the frame's document is not the window's. *@
+            <nav data-page-menu hidden aria-label="Page menu"><ul></ul></nav>
             <iframe class="win-app-frame" src="@(Model.PageUrl)?frame" title="@Model.Title"></iframe>
         }
         else if (Model.Parent is null)
