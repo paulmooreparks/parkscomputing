@@ -444,11 +444,16 @@
 
     command('ls', {
         summary: 'list a directory',
-        help: 'ls [-l] [-a] [path...]\n\nLists a directory, or the current one. Directories end in /, applets and commands in *, and links to other sites in @. Names starting with a dot, such as ~/.config, are hidden unless you ask for them.\n\n  -l   one entry per line, with its date, kind, and title or size\n  -a   show the hidden entries too',
+        help: 'ls [-l] [-a] [-d] [path...]\n\nLists a directory, or the current one, in alphabetical order. Directories end in /, applets and commands in *, and links to other sites in @. Names starting with a dot, such as ~/.config, are hidden unless you ask for them. A directory named on the line is listed by its contents, so ls b* lists what is in bin; -d lists the directory itself.\n\n  -l   one entry per line, with its date, kind, and title or size\n  -a   show the hidden entries too\n  -d   list directories themselves, not what is in them',
         complete: 'path',
         run: function (args, io) {
-            var long = false, all = false, paths = [];
-            args.forEach(function (a) { if (/^-[a-z]+$/.test(a)) { if (a.indexOf('l') >= 0) { long = true; } if (a.indexOf('a') >= 0) { all = true; } } else { paths.push(a); } });
+            var long = false, all = false, self = false, paths = [];
+            args.forEach(function (a) {
+                if (/^-[a-z]+$/.test(a)) { if (a.indexOf('l') >= 0) { long = true; } if (a.indexOf('a') >= 0) { all = true; } if (a.indexOf('d') >= 0) { self = true; } }
+                else { paths.push(a); }
+            });
+            /* Alphabetical, ignoring case, as a shell's ls is in most locales. */
+            var byName = function (x, y) { return (x.label || x.node.name).localeCompare(y.label || y.node.name, undefined, { sensitivity: 'base', numeric: true }); };
             if (!paths.length) { paths.push('.'); }
             var status = 0;
             /* As a shell's ls does: files named on the line are listed
@@ -458,8 +463,10 @@
             paths.forEach(function (p) {
                 var n = needNode(io, p, 'ls: ' + p);
                 if (!n) { status = 1; return; }
-                (n.children ? dirs : files).push({ node: n, label: p });
+                (n.children && !self ? dirs : files).push({ node: n, label: p });
             });
+            files.sort(byName);
+            dirs.sort(byName);
             function emit(entries) {
                 if (long) {
                     entries.forEach(function (e) {
@@ -478,7 +485,7 @@
             emit(files);
             dirs.forEach(function (d, i) {
                 if (files.length + dirs.length > 1) { io.out((files.length || i ? '\n' : '') + d.label + ':\n'); }
-                emit(d.node.children.filter(function (c) { return all || c.name.charAt(0) !== '.'; }).map(function (c) { return { node: c }; }));
+                emit(d.node.children.filter(function (c) { return all || c.name.charAt(0) !== '.'; }).map(function (c) { return { node: c }; }).sort(byName));
             });
             return status;
         }
