@@ -375,6 +375,10 @@ The URL parameters `sidebarRestore` (comma-separated window keys) and `sidebarTo
 
 The Docker build and desktop/mobile browser checks passed on the staging container, localhost, and parkscomputing.com. The mobile restoration check includes reloading the list before returning to the previous windows. Served CSS, sidebar runtime, and host adapter were compared with the deployed source. Real-device touch and assistive-technology checks remain unperformed.
 
+### D62. PUDL 0.48.0 in the checkout, on beta first: the status area and docking at any edge
+
+Version 0.48.0 ships two of the site's proposals (`pudl-proposal-status-area.md`, `pudl-proposal-dock-edges.md`); only `pudl.css` and `pudl-windows.js` changed. The status area is now PUDL's `nav.status-area` of `.status-item`s, the class names the site had used, so the site's markup stands and its own status-area styles and its `--pc-glyph-comments` are gone in favour of PUDL's and `--glyph-comments`. The site keeps two small rules: the status area's gap after the view switch, and the size of its generic profile picture, which is an svg, where PUDL sizes an item's picture when it is an img. The window menu now offers Dock at Top, Bottom, Left and Right, and Undock on a docked window, so the moderation queue docks at any edge from its menu. The changed command IDs (`dock` became a list) touch nothing the site reads: `js/applets.js` reads only `page`, `copy-link` and `close`. Beta serves it; production keeps 0.47.0 until Paul promotes beta.
+
 ### D61. PUDL 0.47.0 pinned: selects drawn by PUDL, on beta and production
 
 Version 0.47.0 lets PUDL draw a select when it sits in a `span.form-select-wrap`: the browser's own drawing is turned off and the wrap draws the caret, so a select is sunken and 36px tall in every engine, where WebKit had drawn it raised and clipped its text. Only `pudl.css` changed for a page. 0.46.0 added `pudl-components.json`, a description of the components for design tools, which no page loads, so the site does not copy it.

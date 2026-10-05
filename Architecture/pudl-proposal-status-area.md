@@ -1,5 +1,7 @@
 # Proposal to PUDL: a status area in the top bar, and a comments glyph
 
+**Shipped in PUDL 0.48.0** (`pudl-adoption.md`, D62), with PUDL's class names the same as the site's and the glyph as `--glyph-comments`. What follows is the text as it was sent.
+
 From parkscomputing.com, 2026-10-05. Paul wants applets that live in the top bar: an applet registers a part of itself that runs on every page, constantly or now and then, keeps an icon up to date and answers presses on it. The icons sit together at the top bar's far right, and the site's account button is one of them, a background applet like any other that may have notifications of its own one day. The site has built this (`Architecture/status-area-design.md`, `Pages/Shared/_StatusArea.cshtml`, `js/status.js`), and it works on beta. This proposal asks PUDL to make the status area a component of the top bar, so other projects have it and it follows PUDL's rules wherever it appears, and to add a glyph for comments.
 
 ## Why PUDL should own it

@@ -18,7 +18,7 @@
             var label = s.ModerationCount > 0 ? $"Moderation: {s.ModerationCount} waiting" : "Moderation: nothing waiting";
             <a class="status-item" data-status="moderation" href="@Href("moderation", "/moderation")"
                @(desktop ? Html.Raw("data-win-open=\"moderation\"") : null) aria-label="@label" title="@label">
-                <span class="glyph status-glyph" style="--glyph: var(--pc-glyph-comments)" aria-hidden="true"></span>
+                <span class="glyph" style="--glyph: var(--glyph-comments)" aria-hidden="true"></span>
                 <span class="badge warn status-count" data-status-count aria-hidden="true" @(s.ModerationCount == 0 ? "hidden" : null)>@s.ModerationCount</span>
             </a>
         }

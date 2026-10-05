@@ -1,5 +1,7 @@
 # Proposal to PUDL: docking at any edge from the window menu
 
+**Shipped in PUDL 0.48.0** (`pudl-adoption.md`, D62): the window menu lists Dock at Top, Bottom, Left and Right, and Undock. PUDL left content-sized windows undockable, as its specification says. What follows is the text as it was sent.
+
 From parkscomputing.com, 2026-10-05. Paul wants to dock the moderation queue's window at the top, the bottom or a side of the desktop. PUDL 0.47.0 already docks a window at any of the four edges: the modes `dock-top`, `dock-bottom`, `dock-left` and `dock-right` exist, `pudlWindows.dock(key, edge)` takes all four, and `docs/proposals/docked-windows.md` sets out how each behaves. But a reader can reach only one of them. The window menu offers Dock at the bottom, and dragging a window to the desktop's foot docks it there; nothing offers the top or the sides. This proposal asks for the other three in the window menu.
 
 ## Behavior

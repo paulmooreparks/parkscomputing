@@ -17,42 +17,19 @@
   --tb-fg: #1b1f24;
   --pc-glyph-windowed: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linejoin='round'%3E%3Cpath d='M5 4V1.5h9.5V11H12'/%3E%3Crect x='1.5' y='4.5' width='10' height='10' rx='1'/%3E%3Cpath d='M2 7.5h9'/%3E%3C/svg%3E");
   --pc-glyph-classic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3'%3E%3Crect x='1.5' y='2.5' width='13' height='11' rx='1'/%3E%3Cpath d='M2 5.5h12'/%3E%3C/svg%3E");
-  /* Comments, for the moderation queue's status item, until PUDL has a glyph of its own for them
-     (Architecture/status-area-design.md). */
-  --pc-glyph-comments: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linejoin='round' stroke-linecap='round'%3E%3Cpath d='M2 3.5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1H7l-3 2.5V11H3a1 1 0 0 1-1-1z'/%3E%3Cpath d='M5 5.5h6M5 8h4'/%3E%3C/svg%3E");
 }
 
 /* === The status area ======================================================
-   The background applets' icons at the far right of the top bar
-   (Architecture/status-area-design.md): one raised group holding flat
-   controls, as the menu bar's groups are, so the group says these are
-   buttons; each control highlights on hover and is pressed in while held. */
-/* The view switch takes the bar's slack, so it and the status area sit at
-   the far right; a rule stood before it until 2026-10-05. */
+   PUDL's status area (0.48.0) at the far right of the top bar, holding the
+   background applets' icons (Architecture/status-area-design.md). The view
+   switch takes the bar's slack, so it and the status area sit at the far
+   right; a rule stood before it until 2026-10-05. */
 .view-seg, .view-seg + .seg-menu { margin-inline-start: auto; }
-.status-area {
-  margin-inline-start: var(--space-2);
-  display: inline-flex; align-items: center; flex: none; gap: 1px;
-  padding: calc(2px - var(--menubar-group-border-width, 1px)); border-radius: var(--radius-sm);
-  border: var(--menubar-group-border-width, 1px) solid var(--menubar-group-border, var(--raise-border));
-  background: var(--menubar-group-bg, var(--recess-bg)); box-shadow: var(--menubar-group-shadow, var(--raise-shadow));
-}
-.status-item {
-  display: inline-flex; align-items: center; gap: 4px; min-height: 26px; box-sizing: border-box;
-  padding: 2px 6px; border-radius: var(--radius-xs);
-  color: var(--tb-chrome-fg); text-decoration: none; font-size: var(--text-sm); font-weight: 600; white-space: nowrap;
-}
-.status-item:hover { color: var(--text); background: color-mix(in srgb, var(--text) 12%, transparent); }
-.status-item:active { color: var(--text); background: var(--raise-active-bg); box-shadow: var(--raise-active-shadow); }
-.status-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
-.status-account { padding: 2px; }
-.status-account .account-avatar { width: 24px; height: 24px; }
-.status-glyph { width: 16px; height: 16px; }
-.status-count[hidden] { display: none; }
-@media (forced-colors: active) {
-  .status-area { border: 1px solid ButtonText; }
-  .status-item:hover, .status-item:active { forced-color-adjust: none; background: Highlight; color: HighlightText; }
-}
+.status-area { margin-inline-start: var(--space-2); }
+/* PUDL sizes an item's picture when it is an img; the site's generic
+   picture, for an account without one, is an svg. */
+.status-account .account-avatar { width: 24px; height: 24px; flex: none; }
+.status-account { padding-inline: 2px; }
 
 [data-theme="dark"] {
   --accent: #4da3ff;

@@ -23,4 +23,4 @@ The logo menu keeps Moderation in the account's section, without a count, since 
 
 ## For PUDL
 
-The proposal would give the menu bar a status group, read from a hidden list as the pins group is, placed at the row's far end, whose items are links with an icon, an optional badge and a name; and a small script contract for a host to update an item's badge and name. PUDL would also gain a glyph for comments or messages, since it has none.
+The proposal would give the menu bar a status group, read from a hidden list as the pins group is, placed at the row's far end, whose items are links with an icon, an optional badge and a name; and a small script contract for a host to update an item's badge and name. PUDL would also gain a glyph for comments or messages, since it has none. Both shipped in PUDL 0.48.0 (`pudl-adoption.md`, D62), and the site now uses PUDL's status area and `--glyph-comments`.
