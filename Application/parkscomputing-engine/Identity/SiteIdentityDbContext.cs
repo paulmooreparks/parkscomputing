@@ -37,6 +37,7 @@ public sealed class SiteIdentityDbContext : IdentityDbContext<IdentityUser, Iden
 
     internal DbSet<SiteAccountProfile> AccountProfiles => Set<SiteAccountProfile>();
     internal DbSet<SiteAccountAvatar> AccountAvatars => Set<SiteAccountAvatar>();
+    internal DbSet<SiteAccountPins> AccountPins => Set<SiteAccountPins>();
 
     internal DbSet<SiteAccountLink> AccountLinks => Set<SiteAccountLink>();
 
@@ -50,6 +51,7 @@ public sealed class SiteIdentityDbContext : IdentityDbContext<IdentityUser, Iden
         SiteAccountLink.Configure(builder);
         SiteAccountProfile.Configure(builder);
         SiteAccountAvatar.Configure(builder);
+        SiteAccountPins.Configure(builder);
         SiteEmailBudget.Configure(builder);
         SiteStaffBootstrap.Configure(builder);
     }

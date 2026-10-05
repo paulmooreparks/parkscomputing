@@ -24,7 +24,7 @@ DST="$REPO/.local/beta/wwwroot"
 # and editor that ask a signed-out reader to sign in again, and the pinned
 # PUDL release. A static deploy to the live tree makes these the
 # same there, after which they can leave this list.
-OVERLAY="js/accounts.js js/account.js js/applets.js js/terminal.js js/sitefs.js js/terminal-text.js css/terminal.css js/editor.js js/files.js js/diff.js js/theme-studio.js js/window-bar.js js/commands.js css/account.css pudl"
+OVERLAY="js/accounts.js js/account.js js/applets.js js/terminal.js js/sitefs.js js/terminal-text.js css/terminal.css js/editor.js js/files.js js/diff.js js/theme-studio.js js/window-bar.js js/commands.js js/pins.js css/account.css css/pudl-site.css pudl"
 
 rm -rf "$DST"
 mkdir -p "$DST"

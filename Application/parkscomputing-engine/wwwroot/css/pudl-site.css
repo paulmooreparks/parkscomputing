@@ -17,6 +17,7 @@
   --tb-fg: #1b1f24;
   --pc-glyph-windowed: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linejoin='round'%3E%3Cpath d='M5 4V1.5h9.5V11H12'/%3E%3Crect x='1.5' y='4.5' width='10' height='10' rx='1'/%3E%3Cpath d='M2 7.5h9'/%3E%3C/svg%3E");
   --pc-glyph-classic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3'%3E%3Crect x='1.5' y='2.5' width='13' height='11' rx='1'/%3E%3Cpath d='M2 5.5h12'/%3E%3C/svg%3E");
+  --pc-glyph-pin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linejoin='round' stroke-linecap='round'%3E%3Cpath d='M10 1.5l4.5 4.5-2 .5L10 9l.5 3L9 13.5 2.5 7 4 5.5l3 .5L9.5 3.5z'/%3E%3Cpath d='M5.5 10.5l-4 4'/%3E%3C/svg%3E");
 }
 
 [data-theme="dark"] {
@@ -466,3 +467,43 @@ button.tag-link:focus-visible { outline: 2px solid var(--focus-ring); outline-of
 .tag-window { max-width: 68ch; margin: 0 auto; }
 .tag-window .card-desc { margin-bottom: 10px; }
 .tag-window .md-row { border-right: 0; }
+
+/* === The Pins bar (Architecture/pins-design.md, js/pins.js) =============
+   A third group after the menu bar's own, drawn as PUDL draws a menu
+   group: one raised surface of flat controls. It takes only the room the
+   menu bar leaves (flex-basis 0), so it never makes the menu bar collapse
+   early; the pins inside give way to the Items menu when they don't fit. */
+.pinbar { flex: 1 1 0; min-width: 0; display: flex; align-items: center; margin-inline-start: var(--space-2); }
+.pinbar[hidden] { display: none; }
+.pinbar-group {
+  display: inline-flex; align-items: center; gap: 1px; min-width: 0; max-width: 100%;
+  padding: calc(2px - var(--menubar-group-border-width, 1px)); border-radius: var(--radius-sm);
+  border: var(--menubar-group-border-width, 1px) solid var(--menubar-group-border, var(--raise-border));
+  background: var(--menubar-group-bg, var(--recess-bg)); box-shadow: var(--menubar-group-shadow, var(--raise-shadow));
+}
+.pinbar-items { display: flex; align-items: center; gap: 1px; min-width: 0; overflow: hidden; }
+.pinbar-collapsed .pinbar-items { display: none; }
+.pinbar:not(.pinbar-collapsed) .pinbar-more { display: none; }
+.pinbar-title, .pinbar-pin {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  padding: 4px 10px; border: 0; border-radius: var(--radius-xs);
+  background: none; cursor: pointer; white-space: nowrap; text-decoration: none;
+  font: 600 var(--text-sm) var(--font); color: color-mix(in srgb, var(--text) 80%, var(--surface-alt));
+}
+.pinbar-title:hover, .pinbar-pin:hover { color: var(--text); background: color-mix(in srgb, var(--text) 12%, transparent); }
+.pinbar-title[aria-expanded="true"] { color: var(--text); background: var(--raise-active-bg); box-shadow: var(--raise-active-shadow); }
+.pinbar-title:focus-visible, .pinbar-pin:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+.pinbar-pin-title { max-width: 12rem; overflow: hidden; text-overflow: ellipsis; }
+.pinbar-icon { width: 16px; height: 16px; flex: none; }
+img.pinbar-icon { object-fit: contain; }
+.pinbar-glyph { width: 16px; height: 16px; flex: none; background: currentColor; -webkit-mask: var(--pc-glyph-pin) center / contain no-repeat; mask: var(--pc-glyph-pin) center / contain no-repeat; }
+.pinbar-row-icon { display: inline-flex; width: 16px; height: 16px; margin-inline-end: 8px; vertical-align: -3px; }
+/* A pin in a menu is a menu row, as the menu bar's own links are, not a
+   link in text. */
+.pinbar-panel a.menu-action { text-decoration: none; color: inherit; display: flex; align-items: center; }
+/* On a phone the bar does as the menu bar does: the pin glyph alone, whose
+   menu then lists the pins. */
+@media (max-width: 640px) {
+  .pinbar .pinbar-items, .pinbar .pinbar-more, .pinbar .pinbar-label { display: none; }
+  .pinbar-title { padding: 4px 6px; }
+}

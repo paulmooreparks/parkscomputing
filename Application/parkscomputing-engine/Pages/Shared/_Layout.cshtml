@@ -5,6 +5,8 @@
 @inject INavService PaletteNav
 @inject ParksComputing.Engine.Identity.AccountMenu AccountMenu
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@inject ParksComputing.Engine.Identity.AccountPins PinStore
+@inject ArticleContentService PinArticles
 
 @{
     // Where the site has accounts, what the reader's account offers, for
@@ -31,6 +33,19 @@
     // A page of this site, which the window view can open as a window.
     private static bool IsSitePage(NavNode n) =>
         !n.External && !string.IsNullOrEmpty(n.Slug) && n.Url == $"/page/{n.Slug}";
+
+    // A page's icon as its window shows it in the taskbar (_Window's
+    // WindowIcon): the navigation's icon for that page, or none.
+    private string? PinIcon(string slug)
+    {
+        string? Find(NavNode n)
+        {
+            if (n.Url == $"/page/{slug}" && !string.IsNullOrEmpty(n.Icon)) { return n.Icon; }
+            foreach (var c in n.Nav ?? Array.Empty<NavNode>()) { if (Find(c) is { } i) { return i; } }
+            return null;
+        }
+        return Find(PaletteNav.GetRoot());
+    }
 }
 @{
     void RenderMenuItem(NavNode item)
@@ -170,6 +185,9 @@
                 </nav>
             </div>
             </nav>
+            @* The Pins bar (Architecture/pins-design.md): js/pins.js builds it
+               from the reader's pins; without script there is nothing to show. *@
+            <nav class="pinbar" data-pinbar aria-label="Pins" hidden></nav>
             @* The view switcher: one segmented control at the far right,
                after a rule. Each side is a link, because each view is a URL;
                ?view=window bypasses a classic default-view choice. The window
@@ -355,6 +373,42 @@
         <meta name="request-verification-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
         <script src="~/js/accounts.js" defer asp-append-version="true"></script>
     }
+    @{
+        // The reader's pins, as data for js/pins.js: an account's from the
+        // database, or none, meaning the browser keeps them. And on a page of
+        // the classic view, what pinning this page would pin.
+        System.Collections.Generic.IReadOnlyList<ParksComputing.Engine.Identity.Pin>? accountPins = accountState.SignedIn
+            ? await PinStore.GetAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value) : null;
+        object? currentPin = null;
+        if (!isDesktop && !isFrame)
+        {
+            if (ViewData["Book"] is BookService.Book pinBook)
+            {
+                var pinChapter = ViewData["BookChapter"] as string ?? "";
+                var pinChapterTitle = pinChapter.Length > 0 ? pinBook.Find(pinChapter)?.Title : null;
+                currentPin = new { key = pinBook.Slug, chapter = pinChapter.Length > 0 ? pinChapter : null,
+                    title = pinBook.Root.Title + (pinChapterTitle is null ? "" : " · " + pinChapterTitle), icon = PinIcon(pinBook.Slug) };
+            }
+            else if (ViewData["PageId"] is string pinSlug && !pinSlug.Contains('/'))
+            {
+                // The title its window and taskbar show, from the same service
+                // the window uses, so a page pinned here reads as it does pinned
+                // from its window.
+                currentPin = new { key = pinSlug, chapter = (string?)null,
+                    title = PinArticles.Load(pinSlug)?.Title ?? System.Net.WebUtility.HtmlDecode(ViewData["Title"]?.ToString() ?? pinSlug), icon = PinIcon(pinSlug) };
+            }
+            else if (Context.Request.Path == "/account" && accountState.Enabled)
+            {
+                currentPin = new { key = "account", chapter = (string?)null, title = "Your account", icon = (string?)null };
+            }
+        }
+    }
+    <script type="application/json" id="pc-pins-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new {
+        store = accountPins is null ? "local" : "account",
+        pins = accountPins,
+        current = currentPin
+    }, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)).Replace("<", "\\u003c"))</script>
+    <script src="~/js/pins.js" defer asp-append-version="true"></script>
     <script src="~/js/continuity.js" asp-append-version="true"></script>
     <script src="~/js/window-bar.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

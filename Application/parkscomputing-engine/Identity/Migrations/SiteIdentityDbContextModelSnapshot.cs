@@ -333,6 +333,25 @@ namespace ParksComputing.Engine.Identity.Migrations
                     b.ToTable("SiteAccountLinks", (string)null);
                 });
 
+            modelBuilder.Entity("ParksComputing.Engine.Identity.SiteAccountPins", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Pins")
+                        .IsRequired()
+                        .HasMaxLength(32768)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("SiteAccountPins", (string)null);
+                });
+
             modelBuilder.Entity("ParksComputing.Engine.Identity.SiteAccountProfile", b =>
                 {
                     b.Property<string>("UserId")
@@ -787,6 +806,15 @@ namespace ParksComputing.Engine.Identity.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ParksComputing.Engine.Identity.SiteAccountPins", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                        .WithOne()
+                        .HasForeignKey("ParksComputing.Engine.Identity.SiteAccountPins", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

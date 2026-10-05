@@ -128,6 +128,7 @@ public partial class Startup {
         services.AddSingleton<StaffBootstrap>();
         services.AddSingleton<AccountMenu>();
         services.AddSingleton<AccountAvatars>();
+        services.AddSingleton<AccountPins>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<DurableSessions>();
         services.AddSingleton<AccountLinks>();
