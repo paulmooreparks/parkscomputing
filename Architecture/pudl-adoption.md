@@ -375,13 +375,13 @@ The URL parameters `sidebarRestore` (comma-separated window keys) and `sidebarTo
 
 The Docker build and desktop/mobile browser checks passed on the staging container, localhost, and parkscomputing.com. The mobile restoration check includes reloading the list before returning to the previous windows. Served CSS, sidebar runtime, and host adapter were compared with the deployed source. Real-device touch and assistive-technology checks remain unperformed.
 
-### D61. PUDL 0.47.0 in the checkout, on beta first
+### D61. PUDL 0.47.0 pinned: selects drawn by PUDL, on beta and production
 
 Version 0.47.0 lets PUDL draw a select when it sits in a `span.form-select-wrap`: the browser's own drawing is turned off and the wrap draws the caret, so a select is sunken and 36px tall in every engine, where WebKit had drawn it raised and clipped its text. Only `pudl.css` changed for a page. 0.46.0 added `pudl-components.json`, a description of the components for design tools, which no page loads, so the site does not copy it.
 
 Every select on the site is now wrapped: Sudoku's difficulty, the barcode tool's symbology, module width, Start, Stop, error correction and list fields, the scanner's layout, format, lookup source and decoded-barcode choice, Terminal's text size, the desktop Settings' picture size, Theme Studio's preview, the admin article editor's source format (which had been styled as a text field) and the select demo in the TDL reference article. The wrap must be exactly as wide as its select, or the caret floats past the select's end. In a flex row the wrap sizes itself to the select, so most rules stand; in the barcode tool's field cards the select now fills its stretched wrap, and the scanner's layout row sizes the wrap rather than the select. The repo's `barcode-tool.css` turned out to be older than the live copy, which has the layout editor's styles the committed script already uses, so the live copy came into the repo with this change.
 
-Browser checks on beta found every visible select wrapped, drawn by PUDL, 36px tall and with its caret at its own end, on each page above and in Terminal's settings dialog, with no page errors. Beta serves it; production keeps 0.45.0 until Paul promotes beta.
+Browser checks on beta found every visible select wrapped, drawn by PUDL, 36px tall and with its caret at its own end, on each page above and in Terminal's settings dialog, with no page errors. Paul promoted it to production on 2026-10-05, where the same checks pass.
 
 ### D60. PUDL 0.45.0 pinned: the pins group, on beta and production
 
