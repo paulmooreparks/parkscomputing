@@ -1,10 +1,12 @@
 /* The Account applet (Architecture/unified-identity-design.md): the
-   reader's profile, passkeys and sessions, in a window or on the classic
+   reader's profile, picture, passkeys, moderation, comments, sessions and
+   data, as PUDL's settings panel of cards, in a window or on the classic
    /account page. Its body is server-rendered (Pages/Shared/_AccountContent);
    a mount that arrives empty, as a window does, loads it. Whatever the
-   reader changes here, the applet reloads its body afterwards rather than
-   leaving the page, so a window stays where it is. Signing out leaves the
-   page, because the whole page changes with it. Passkey ceremonies are
+   reader changes here, the applet posts it in place, reloads the body, and
+   says in that card's status line what happened, so a window stays where
+   it is. Choosing a picture saves it at once. Signing out leaves the page,
+   because the whole page changes with it. Passkey ceremonies are
    js/accounts.js's (window.pcAccounts). */
 (function () {
     'use strict';
@@ -16,8 +18,6 @@
             .catch(function () { if (root.isConnected) { root.textContent = 'Your account could not be loaded. Reload the page to try again.'; } });
     }
 
-    /* The top bar's account button shows the same picture as the applet,
-       so a new or removed picture shows there at once. */
     /* The status area's account item (js/status/account.js) shows the same
        picture as the applet, so a new or removed picture shows there at once. */
     function syncPill(root) {
@@ -42,41 +42,83 @@
         });
     }
 
+    /* What each form says, in its card's status line, once it has done its work. */
+    var DONE = {
+        Profile: 'Your display name is saved.',
+        Avatar: 'Your new picture is saved. It shows beside your comments and at the top of every page.',
+        RemoveAvatar: 'Your picture is removed.',
+        Notices: 'Saved.',
+        Revoke: 'That browser is signed out.'
+    };
+
+    function say(root, cardId, text) {
+        var line = root.querySelector('#' + cardId + ' [data-account-status]');
+        if (line) { line.textContent = text; }
+    }
+
     pudlApplets.register('account', {
         init: function (root) {
+            // Choose a picture… and its kin stand in for the file field (css/account.css).
+            root.setAttribute('data-account-js', '');
             if (!root.querySelector('[data-account-panel]')) { load(root); }
 
             async function onClick(e) {
+                var choose = e.target.closest('[data-account-choose]');
+                if (choose && root.contains(choose)) {
+                    var input = choose.form && choose.form.querySelector('input[type="file"]');
+                    if (input) { input.value = ''; input.click(); }
+                    return;
+                }
                 var button = e.target.closest('[data-passkey], [data-remove-key]');
                 if (!button || !root.contains(button) || !window.pcAccounts) { return; }
                 if (await window.pcAccounts.press(button, root)) { load(root); }
             }
 
-            async function onSubmit(e) {
-                var form = e.target;
-                if (/\/account\/signout$/.test(new URL(form.action, location.href).pathname)) { return; }
-                e.preventDefault();
+            /* Choosing a picture saves it straight away. */
+            function onChange(e) {
+                var input = e.target;
+                if (input.type !== 'file' || !root.contains(input) || !input.files.length) { return; }
+                var form = input.closest('[data-account-avatar-form]');
+                if (form) { send(form); }
+            }
+
+            async function send(form) {
+                var card = form.closest('.card');
+                var cardId = card ? card.id : null;
+                var handler = new URL(form.action, location.href).searchParams.get('handler') || '';
                 var body = new FormData(form);
                 if (form.hasAttribute('data-account-avatar-form')) {
                     var file = form.querySelector('input[type="file"]').files[0];
-                    if (file) {
-                        try { body.set('Picture', await square(file), 'picture.webp'); }
-                        catch (err) { /* A picture the browser can't read goes as it is, for the server to judge. */ }
-                    }
+                    if (!file) { return; }
+                    if (cardId) { say(root, cardId, 'Saving your picture…'); }
+                    try { body.set('Picture', await square(file), 'picture.webp'); }
+                    catch (err) { /* A picture the browser can't read goes as it is, for the server to judge. */ }
                 }
-                fetch(form.action, { method: 'POST', body: body, credentials: 'same-origin', headers: { Accept: 'text/html' } })
-                    .then(function (r) {
-                        // A refused form comes back as the page, with what went wrong.
-                        if (r.redirected) { return load(root); }
-                        return r.text().then(function (html) {
-                            var panel = new DOMParser().parseFromString(html, 'text/html').querySelector('[data-account-panel]');
-                            if (panel && root.isConnected) { root.replaceChildren(document.importNode(panel, true)); } else { load(root); }
-                        });
-                    })
-                    .catch(function () { form.submit(); });
+                form.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+                try {
+                    var r = await fetch(form.action, { method: 'POST', body: body, credentials: 'same-origin', headers: { Accept: 'text/html' } });
+                    if (r.redirected) {
+                        await load(root);
+                        if (cardId && DONE[handler]) { say(root, cardId, DONE[handler]); }
+                        return;
+                    }
+                    // A refused form comes back as the page, with what went wrong.
+                    var panel = new DOMParser().parseFromString(await r.text(), 'text/html').querySelector('[data-account-panel]');
+                    if (panel && root.isConnected) { root.replaceChildren(document.importNode(panel, true)); } else { load(root); }
+                } catch (err) {
+                    form.submit();
+                }
+            }
+
+            function onSubmit(e) {
+                var form = e.target;
+                if (/\/account\/signout$/.test(new URL(form.action, location.href).pathname)) { return; }
+                e.preventDefault();
+                send(form);
             }
 
             root.addEventListener('click', onClick);
+            root.addEventListener('change', onChange);
             root.addEventListener('submit', onSubmit);
             return {
                 /* The applet's identity menu, as every applet has. Its work
@@ -85,7 +127,12 @@
                 menus: function () {
                     return { titles: [{ label: 'Your account', items: window.pcAppletIdentity ? window.pcAppletIdentity(root) : [] }] };
                 },
-                destroy: function () { root.removeEventListener('click', onClick); root.removeEventListener('submit', onSubmit); }
+                destroy: function () {
+                    root.removeEventListener('click', onClick);
+                    root.removeEventListener('change', onChange);
+                    root.removeEventListener('submit', onSubmit);
+                    root.removeAttribute('data-account-js');
+                }
             };
         }
     });

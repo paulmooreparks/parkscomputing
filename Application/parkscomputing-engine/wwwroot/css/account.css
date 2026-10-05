@@ -12,30 +12,41 @@
 .account-page form.stack > .btn { justify-self: start; }
 .account-page article { overflow-wrap: anywhere; }
 .account-page article pre { overflow: auto; }
-
-/* The applet's body, on its page and in its window. */
-.account { display: grid; gap: var(--space-5); font-size: var(--text-md); }
-.account p { margin: 0; line-height: 1.55; overflow-wrap: anywhere; }
-.account form { display: grid; gap: var(--space-3); margin: 0; }
-.account-section { display: grid; gap: var(--space-3); }
-.account-section + .account-section { border-top: 1px solid var(--border); padding-top: var(--space-5); }
-.account-subtitle { margin: 0; font-size: var(--text-lg); }
+/* The emailed links' pages (Link, Delete): a row of actions. */
 .account-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.account-buttons { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.account-list { list-style: none; margin: 0; padding: 0; }
+/* The Account applet's page is as wide as its panel of cards. */
+.account-page:has(.settings-panel) { max-width: 720px; }
+.account-page .settings-panel { padding-inline: 0; }
+
+/* The applet's body, on its page and in its window: PUDL's settings panel
+   of cards (Pages/Shared/_AccountContent.cshtml). These rules only place
+   what is inside the cards. */
+.account p { overflow-wrap: anywhere; }
+.account .kv-table { margin-bottom: var(--space-2); }
+.account-list { list-style: none; margin: var(--space-2) 0 0; padding: 0; }
 .account-list li { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); padding-block: var(--space-2); border-top: 1px solid var(--border); }
 .account-list li:last-child { border-bottom: 1px solid var(--border); }
-.account-list form { display: block; }
+.account-list form { display: block; margin: 0; }
 @media (max-width: 540px) { .account-list li { flex-direction: column; align-items: flex-start; } }
+/* The picture's form sits in the actions row beside Remove picture. */
+.account-picture-form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+/* With script, Choose a picture… stands for the file field and Save
+   picture; without it, they stand for themselves. js/account.js marks the
+   mount data-account-js. */
+.account-js-only { display: none; }
+[data-account-js] .account-js-only:not(.visually-hidden) { display: inline-flex; }
+[data-account-js] .account-no-js { display: none; }
 
-/* In a window the body scrolls inside the window's own padding. */
-.win-body [data-applet="account"] { padding: var(--space-4); width: min(38rem, 100%); box-sizing: border-box; }
+/* In a window the panel is the window's width, which is the panel's own. */
+.win-body [data-applet="account"] { width: min(720px, 100%); box-sizing: border-box; }
+.win-body [data-applet="account"] .settings-panel { margin: 0; }
 
 /* A reader's picture, round. In the top bar it is the account's item in
    the status area (css/pudl-site.css). */
 .account-avatar { display: block; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
 .account-avatar-placeholder { color: var(--text); }
 .account-picture { display: flex; align-items: center; gap: var(--space-4); }
+.account-picture .card-desc { margin: 0; }
 .account-avatar-large { width: 72px; height: 72px; flex: none; }
 
 /* Sign in and Create account: PUDL's dialog, with room for a form. */
