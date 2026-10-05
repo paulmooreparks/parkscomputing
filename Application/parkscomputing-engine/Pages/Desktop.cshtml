@@ -75,12 +75,17 @@
     }
 }
 
-<div class="md-layout" data-md-persistent data-md-default-width="300" data-md-min="40" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
-    @* A stored sidebar width applies before the first paint, per PUDL's
-       0.14.0 pattern; a later script would let the default width flash. *@
+@* data-md-peek (PUDL 0.52.0): resting the pointer on the collapsed
+   sidebar's handle shows the list over the windows until the pointer
+   leaves. *@
+<div class="md-layout" data-md-persistent data-md-peek data-md-default-width="300" data-md-min="40" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
+    @* A stored sidebar width, and the side Settings puts the sidebar on,
+       apply before the first paint, per PUDL's 0.14.0 pattern; a later
+       script would let the defaults flash. *@
     <script>
         (function (layout) {
             try {
+                if (localStorage.getItem('pc-sidebar-side') === 'end') { layout.setAttribute('data-md-side', 'end'); }
                 layout.toggleAttribute('data-md-collapsed', localStorage.getItem('pc-focus') === '1');
                 var w = localStorage.getItem('pc-sidebar-w');
                 if (w) { layout.style.setProperty('--md-sidebar-w', w); }

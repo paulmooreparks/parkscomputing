@@ -30,7 +30,8 @@
 .pc-set-custom input { width: 36px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; }
 .pc-set-image { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .pc-set-image-name { color: var(--text-muted); overflow-wrap: anywhere; }
-.pc-set-fit { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.pc-set-side-label { margin: var(--space-3) 0 var(--space-2); }
+.pc-set-fit {display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .pc-set-fit-label { margin: 0 0 0 8px; }
 
 /* Timeouts. */

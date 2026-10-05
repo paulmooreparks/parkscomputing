@@ -60,6 +60,21 @@
         try { var v = localStorage.getItem('pc-' + name); return v == null ? fallback : v === '1'; } catch (err) { return fallback; }
     }
 
+    /* Which side the window view's article list is on: PUDL's data-md-side
+       (0.52.0), which Pages/Desktop.cshtml sets from this key before the
+       first paint, and which this moves at once on a page that has one. */
+    function sideChoice() {
+        try { return localStorage.getItem('pc-sidebar-side') === 'end' ? 'end' : 'start'; } catch (err) { return 'start'; }
+    }
+    function setSide(side) {
+        try {
+            if (side === 'end') { localStorage.setItem('pc-sidebar-side', 'end'); } else { localStorage.removeItem('pc-sidebar-side'); }
+        } catch (err) { }
+        document.querySelectorAll('.md-layout[data-md-persistent]').forEach(function (layout) {
+            if (side === 'end') { layout.setAttribute('data-md-side', 'end'); } else { layout.removeAttribute('data-md-side'); }
+        });
+    }
+
     function settingsMenus(root) {
         return { titles: [{ label: 'Settings', items: window.pcAppletIdentity(root, []) }] };
     }
@@ -91,6 +106,11 @@
               '<h2 class="card-title">Windows</h2>' +
               '<label class="check"><input type="checkbox" data-pref="maximize-new" /> Maximize new windows</label>' +
               '<label class="check"><input type="checkbox" data-pref="resume-windows" data-pref-default="1" /> Reopen last session\'s windows</label>' +
+              '<p class="form-label pc-set-side-label" id="pc-set-side-' + n + '">Article list</p>' +
+              '<div class="seg" role="group" aria-labelledby="pc-set-side-' + n + '">' +
+                '<button type="button" data-side-choice="start">On the left</button>' +
+                '<button type="button" data-side-choice="end">On the right</button>' +
+              '</div>' +
             '</section>' +
             (more.middle || '') +
             '<section class="card pc-set-card">' +
@@ -106,6 +126,7 @@
             root.querySelectorAll('[data-theme-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-choice') === theme)); });
             root.querySelectorAll('[data-view-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-view-choice') === viewChoice())); });
             root.querySelectorAll('[data-pref]').forEach(function (box) { box.checked = pref(box.getAttribute('data-pref'), box.getAttribute('data-pref-default') === '1'); });
+            root.querySelectorAll('[data-side-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-side-choice') === sideChoice())); });
         }
 
         function forget() {
@@ -122,6 +143,7 @@
             try { if (window.indexedDB) { indexedDB.deleteDatabase('pc-barcodes'); } } catch (err) { }
             document.cookie = 'pc-list=; path=/; max-age=0; SameSite=Lax';
             setView('window');
+            setSide('start');
             /* Forgetting lands the theme on System: the device decides. */
             if (window.pudlSetTheme) { window.pudlSetTheme('system'); }
             mark();
@@ -133,6 +155,7 @@
             if (!t || !root.contains(t)) { return; }
             if (t.hasAttribute('data-theme-choice') && window.pudlSetTheme) { window.pudlSetTheme(t.getAttribute('data-theme-choice')); }
             else if (t.hasAttribute('data-view-choice')) { setView(t.getAttribute('data-view-choice')); }
+            else if (t.hasAttribute('data-side-choice')) { setSide(t.getAttribute('data-side-choice')); }
             else if (t.hasAttribute('data-forget')) { forget(); }
             mark();
         }

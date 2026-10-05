@@ -160,7 +160,7 @@ pudlApplets.define('settings', {
     src: '/js/settings.js',
     css: '/css/settings.css',
     page: pcWorkspacePages + 'settings',
-    ver: '8'
+    ver: '9'
 });
 
 /* The scanner shares the engine and layout library with the Barcode Tool. */
