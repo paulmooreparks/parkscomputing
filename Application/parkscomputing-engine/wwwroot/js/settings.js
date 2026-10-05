@@ -185,10 +185,13 @@
                       '<div class="pc-set-image" data-role="image-row">' +
                         '<button type="button" class="btn" data-role="choose">Choose a picture…</button>' +
                         '<span class="pc-set-image-name mono" data-role="image-name"></span>' +
-                        '<label class="form-label pc-set-fit-label" for="pc-set-fit-' + n + '">Size</label>' +
-                        '<span class="form-select-wrap"><select class="form-select" id="pc-set-fit-' + n + '" data-role="fit">' +
-                          FITS.map(function (f) { return '<option value="' + f[0] + '">' + f[1] + '</option>'; }).join('') +
-                        '</select></span>' +
+                        /* Size and its select wrap together, never apart. */
+                        '<span class="pc-set-fit">' +
+                          '<label class="form-label pc-set-fit-label" for="pc-set-fit-' + n + '">Size</label>' +
+                          '<span class="form-select-wrap"><select class="form-select" id="pc-set-fit-' + n + '" data-role="fit">' +
+                            FITS.map(function (f) { return '<option value="' + f[0] + '">' + f[1] + '</option>'; }).join('') +
+                          '</select></span>' +
+                        '</span>' +
                       '</div>' +
                     '</div>' +
                   '</div>' +
