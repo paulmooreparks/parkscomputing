@@ -1509,11 +1509,15 @@
            its own takes a query instead. */
         function openEntry(n, state, pageQuery) {
             if (n.kind === 'link') { window.open(n.url, '_blank', 'noopener'); return; }
-            /* On the edit origin the pages and the other applets live on the
-               public site, so they open there, in a tab of their own, even
-               from a window of the admin desktop. */
+            /* On a separate edit origin the pages and the other applets live
+               on the public site, so they open there, in a tab of their own,
+               even from a window of the admin desktop. That origin's layout
+               gives the public site's in pc-public-origin; where the server
+               tools are on the public site itself, as they are now, things
+               open here, as they do for anyone. */
             var q = pageQuery || state;
-            if (F.mounted) {
+            var publicOrigin = document.querySelector('meta[name="pc-public-origin"]');
+            if (F.mounted && publicOrigin && publicOrigin.content && publicOrigin.content !== location.origin) {
                 var url = F.publicUrl(n);
                 if (url) { window.open(url + (q ? '?' + q : ''), '_blank', 'noopener'); }
                 return;
