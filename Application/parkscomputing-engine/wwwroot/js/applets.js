@@ -1,6 +1,6 @@
 
 /* Identity actions use PUDL's documented capability snapshots. */
-pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '8' });
+pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '9' });
 /* The Pin manager, reached from the Pins menu's Manage pins (js/pins.js). */
 pudlApplets.define('pins', { src: '/js/pins-manager.js', css: '/css/pins-manager.css', page: '/pins', ver: '2' });
 /* An article's discussion, under the article in both views and at
