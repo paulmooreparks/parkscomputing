@@ -90,6 +90,7 @@ namespace ParksComputing.Engine {
             // the count of AI agents' visits (Identity/AiVisits.cs).
             services.AddSingleton<MarkdownPages>();
             services.AddSingleton<SiteRedirects>();
+            services.AddSingleton<SiteEditor>();
             services.AddSingleton<ParksComputing.Engine.Identity.AiVisitCounter>();
             services.AddHostedService<ParksComputing.Engine.Identity.AiVisitWriter>();
             // The recent log for the super-user's Server log applet (Identity/RecentLogs.cs).

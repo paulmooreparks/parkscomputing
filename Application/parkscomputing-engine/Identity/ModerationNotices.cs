@@ -139,10 +139,10 @@ public sealed class ModerationNotices {
         var parts = new List<string>();
         if (waiting.Count > 0) { parts.Add(Plural(waiting.Count, "comment", "comments") + " waiting for review"); }
         if (reports.Count > 0) { parts.Add(Plural(reports.Count, "report", "reports")); }
-        var subject = string.Join(" and ", parts) + " on Parks Computing";
+        var subject = string.Join(" and ", parts) + " on " + _options.SiteName;
         var origin = _options.Origin.TrimEnd('/');
         var text = new StringBuilder();
-        text.Append("Here is what is waiting for the moderators on Parks Computing.\n\n");
+        text.Append("Here is what is waiting for the moderators on " + _options.SiteName + ".\n\n");
         foreach (var slug in waiting.Concat(reports).Distinct().OrderBy(s => s)) {
             var line = new List<string>();
             int w = waiting.Count(x => x == slug), r = reports.Count(x => x == slug);

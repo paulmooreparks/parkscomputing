@@ -31,7 +31,11 @@ namespace ParksComputing.Engine.Pages.Services {
         /// data; unset, the site's title from sitenav.xfer.</summary>
         public string? Author { get; set; }
 
-        public bool Brochure =>string.Equals(Mode, "brochure", StringComparison.OrdinalIgnoreCase);
+        /// <summary>The time zone the site's staff keep, such as
+        /// Asia/Singapore, for the times its editing pages show; unset, UTC.</summary>
+        public string? TimeZone { get; set; }
+
+        public bool Brochure => string.Equals(Mode, "brochure", StringComparison.OrdinalIgnoreCase);
 
         public string UrlOf(string slug) => PageUrl.Replace("{slug}", slug, StringComparison.Ordinal);
     }

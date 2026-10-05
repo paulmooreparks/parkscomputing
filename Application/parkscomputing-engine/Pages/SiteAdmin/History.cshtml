@@ -1,0 +1,45 @@
+@page "/admin/pages/history"
+@model ParksComputing.Engine.Pages.SiteAdmin.HistoryModel
+@inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AdminOptions> AdminConfig
+@{
+    ViewData["Title"] = "History of " + Model.FileInfo?.Title;
+}
+<partial name="_AdminBar" model="Model" />
+<h1>History of @Model.FileInfo!.Title</h1>
+<p class="site-admin-file">@Model.FileInfo.Path · <a href="/admin/pages/edit?file=@Uri.EscapeDataString(Model.FileInfo.Path)">Edit the current version</a></p>
+@if (Model.Message is not null)
+{
+    <div class="notice positive site-admin-message" role="status"><div class="notice-content"><p class="notice-body">@Model.Message</p></div></div>
+}
+@if (Model.Shown is not null)
+{
+    <section class="site-admin-shown" aria-labelledby="shown-title">
+        <h2 id="shown-title">The version from @Model.When(Model.ShownTime!.Value)</h2>
+        <label class="visually-hidden" for="site-admin-shown-text">Text of that version</label>
+        <textarea class="form-textarea site-admin-text" id="site-admin-shown-text" rows="20" readonly>@Model.Shown</textarea>
+        <form method="post" class="settings-actions">
+            <input type="hidden" name="file" value="@Model.FileInfo.Path" />
+            <input type="hidden" name="v" value="@Model.VersionId" />
+            <button class="btn btn-primary" type="submit" asp-page-handler="Restore">Put this version back</button>
+            <a href="/admin/pages/history?file=@Uri.EscapeDataString(Model.FileInfo.Path)">Back to the list</a>
+        </form>
+    </section>
+}
+else if (Model.Versions.Count == 0)
+{
+    <p>No earlier versions yet. Each save keeps the version it replaces here.</p>
+}
+else
+{
+    <p>Each save kept the version it replaced. Earlier versions are kept for @AdminConfig.Value.HistoryDays days.</p>
+    <ul class="site-admin-list">
+        @foreach (var v in Model.Versions)
+        {
+            <li>
+                <span class="site-admin-name">@Model.When(v.Time)</span>
+                <span class="site-admin-file">@(v.Size < 1024 ? v.Size + " bytes" : (v.Size / 1024) + " KB")</span>
+                <span class="site-admin-actions"><a class="btn btn-sm" href="/admin/pages/history?file=@Uri.EscapeDataString(Model.FileInfo.Path)&amp;v=@v.Id">View</a></span>
+            </li>
+        }
+    </ul>
+}

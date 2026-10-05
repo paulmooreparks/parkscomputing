@@ -35,8 +35,11 @@ public sealed class EditOriginGate {
     private readonly string _csp;
     private readonly AccountOptions _accounts;
 
-    public EditOriginGate(RequestDelegate next, IOptions<AdminOptions> options, IOptions<AccountOptions> accounts) {
-        _next = next; _options = options.Value; _accounts = accounts.Value;
+    private readonly ParksComputing.Engine.Pages.Services.SiteOptions _site;
+
+    public EditOriginGate(RequestDelegate next, IOptions<AdminOptions> options, IOptions<AccountOptions> accounts,
+        IOptions<ParksComputing.Engine.Pages.Services.SiteOptions> site) {
+        _next = next; _options = options.Value; _accounts = accounts.Value; _site = site.Value;
         // Only the public site's previews may be framed here (A11). The SSH
         // client is WebAssembly, which 'wasm-unsafe-eval' lets the page
         // compile without allowing eval itself (A16).
@@ -97,13 +100,18 @@ public sealed class EditOriginGate {
         }
         ctx.Request.Scheme = _accounts.Scheme;
         var path = ctx.Request.Path;
-        bool workspace = _accounts.StaffEnabled &&
-            (path.StartsWithSegments("/admin/articles", StringComparison.OrdinalIgnoreCase) || path.StartsWithSegments("/articles", StringComparison.OrdinalIgnoreCase));
+        // The staff's workspace: on a brochure site its pages and site files
+        // (Pages/Admin/Pages), and elsewhere the revision workspace, whose
+        // /articles would otherwise take a brochure site's public article
+        // list for a private page.
+        bool workspace = _accounts.StaffEnabled && (_site.Brochure
+            ? path.StartsWithSegments("/admin/pages", StringComparison.OrdinalIgnoreCase)
+            : path.StartsWithSegments("/admin/articles", StringComparison.OrdinalIgnoreCase) || path.StartsWithSegments("/articles", StringComparison.OrdinalIgnoreCase));
         // The server's own tools, which Terminal, Files and the Editor use
         // for the super-user (the admin mount, SSH and its client, a draft's
         // preview). Each answers 404 to anyone else itself.
         bool serverTools = ServerToolPrefixes.Any(p => path.StartsWithSegments(p, StringComparison.OrdinalIgnoreCase));
-        if (_accounts.StaffEnabled && path == "/admin") { ctx.Response.Redirect("/admin/articles"); return; }
+        if (_accounts.StaffEnabled && path == "/admin") { ctx.Response.Redirect(_site.Brochure ? "/admin/pages" : "/admin/articles"); return; }
         if (IsAdminPath(path) && !workspace && !serverTools) { ctx.Response.StatusCode = StatusCodes.Status404NotFound; return; }
 
         bool account = path.StartsWithSegments("/account", StringComparison.OrdinalIgnoreCase) ||

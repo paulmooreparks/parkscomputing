@@ -1,0 +1,33 @@
+@page "/admin/pages"
+@model ParksComputing.Engine.Pages.SiteAdmin.IndexModel
+@inject ParksComputing.Engine.Pages.Services.MarkdownPages SiteMarkdown
+@{
+    ViewData["Title"] = "Edit the site";
+}
+@* The site's pages, grouped as its navigation groups them, each with
+   Edit, History and a link to the page itself. *@
+<partial name="_AdminBar" model="Model" />
+<h1>Edit the site</h1>
+<p>Choose a page to change its text. Every save keeps the version it replaces, so any change can be undone from the page’s history.</p>
+@foreach (var group in Model.Files.GroupBy(f => f.Group))
+{
+    <h2>@(group.Key == "Optional" ? "Other pages" : group.Key)</h2>
+    <ul class="site-admin-list">
+        @foreach (var f in group)
+        {
+            var slug = System.IO.Path.GetFileNameWithoutExtension(f.Path);
+            <li>
+                <span class="site-admin-name">@f.Title</span>
+                <span class="site-admin-file">@f.Path</span>
+                <span class="site-admin-actions">
+                    <a class="btn btn-sm" href="/admin/pages/edit?file=@Uri.EscapeDataString(f.Path)">Edit</a>
+                    <a href="/admin/pages/history?file=@Uri.EscapeDataString(f.Path)">History</a>
+                    @if (!f.SuperOnly)
+                    {
+                        <a href="@SiteMarkdown.PageUrlOf(slug)">View</a>
+                    }
+                </span>
+            </li>
+        }
+    </ul>
+}

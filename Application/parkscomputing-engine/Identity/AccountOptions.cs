@@ -10,6 +10,9 @@ public sealed class AccountOptions {
     /// pages (Architecture/unified-identity-design.md).</summary>
     public bool Registration { get; set; }
     public string Origin { get; set; } = "https://parkscomputing.com";
+    /// <summary>The site's name as its account pages and emails give it,
+    /// such as "Sign in to Parks Computing".</summary>
+    public string SiteName { get; set; } = "Parks Computing";
     /// <summary>Other names for the site, such as www, which redirect to
     /// Origin keeping the path and query.</summary>
     public string[] RedirectHosts { get; set; } = Array.Empty<string>();

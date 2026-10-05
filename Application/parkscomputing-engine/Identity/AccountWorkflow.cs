@@ -123,7 +123,7 @@ public sealed class AccountWorkflow {
             (string.IsNullOrEmpty(returnUrl) || returnUrl == "/" ? "" : "&return=" + Uri.EscapeDataString(returnUrl));
         using var mailScope = _scopes.CreateScope();
         var sent = await mailScope.ServiceProvider.GetRequiredService<ResendMailer>().SendAsync(email,
-            purpose == AccountLinkPurpose.VerifyEmail ? "Verify your Parks Computing account" : "Sign in to Parks Computing",
+            purpose == AccountLinkPurpose.VerifyEmail ? "Verify your " + _options.SiteName + " account" : "Sign in to " + _options.SiteName,
             "Open this link within 15 minutes, then press the confirmation button:\n\n" + url +
             "\n\nIf you did not request this email, ignore it.");
         if (!sent) { await _links.CancelAsync(userId, purpose, token); NotSent(signUp, "the mail service did not take the message"); }

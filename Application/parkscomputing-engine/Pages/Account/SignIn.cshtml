@@ -2,7 +2,7 @@
 @model ParksComputing.Engine.Pages.Account.SignInModel
 @inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions> AccountConfig
 @{
-    ViewData["Title"] = "Sign in | Parks Computing";
+    ViewData["Title"] = "Sign in | " + SiteAccounts.Value.SiteName;
     bool emailWrong = ViewData.ModelState["Email"]?.Errors.Count > 0;
 }
 @* Sign in is a modal dialog in both views (Architecture/unified-identity-design.md).

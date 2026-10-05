@@ -1,0 +1,53 @@
+@page "/admin/pages/edit"
+@model ParksComputing.Engine.Pages.SiteAdmin.EditModel
+@{
+    ViewData["Title"] = "Edit " + Model.FileInfo?.Title;
+}
+<partial name="_AdminBar" model="Model" />
+<h1>@Model.FileInfo!.Title</h1>
+<p class="site-admin-file">@Model.FileInfo.Path · <a href="/admin/pages/history?file=@Uri.EscapeDataString(Model.FileInfo.Path)">History</a></p>
+@if (Model.Message is not null)
+{
+    <div class="notice @(Model.Message.StartsWith("Saved") ? "positive" : "warn") site-admin-message" role="status">
+        <div class="notice-content">
+            <p class="notice-body">@Model.Message</p>
+            @if (Model.Conflict)
+            {
+                <div class="notice-actions"><a class="btn" href="/admin/pages/edit?file=@Uri.EscapeDataString(Model.FileInfo.Path)" target="_blank" rel="noopener">Open the latest version</a></div>
+            }
+        </div>
+    </div>
+}
+<form method="post" class="site-admin-editor">
+    <input type="hidden" name="file" value="@Model.FileInfo.Path" />
+    <input type="hidden" name="Version" value="@Model.Version" />
+    <div class="form-group">
+        <label class="form-label" for="site-admin-text">Text of the page</label>
+        <textarea class="form-textarea site-admin-text" id="site-admin-text" name="Text" spellcheck="true" rows="28">@Model.Text</textarea>
+        <p class="form-help">
+            @if (Model.FileInfo.Path.EndsWith(".html"))
+            {
+                <text>The page is HTML: paragraphs go in &lt;p&gt;…&lt;/p&gt;, headings in &lt;h2&gt;…&lt;/h2&gt;, and links are &lt;a href="…"&gt;…&lt;/a&gt;. The title in &lt;title&gt; names the browser tab, and the description is what search engines show.</text>
+            }
+            else if (Model.FileInfo.Path.EndsWith(".md"))
+            {
+                <text>The page is Markdown, with its title and description in the lines between --- at the top.</text>
+            }
+        </p>
+    </div>
+    <div class="settings-actions">
+        @if (Model.IsPage)
+        {
+            <button class="btn" type="submit" asp-page-handler="Preview">Preview</button>
+        }
+        <button class="btn btn-primary" type="submit" asp-page-handler="Save">Save</button>
+        <a href="/admin/pages">Back to the pages</a>
+    </div>
+</form>
+@if (Model.PreviewHtml is not null)
+{
+    <section class="site-admin-preview" aria-labelledby="preview-title">
+        <h2 id="preview-title" class="site-admin-preview-title">Preview, not saved</h2>
+        <div class="post-body">@Html.Raw(Model.PreviewHtml)</div>
+    </section>
+}

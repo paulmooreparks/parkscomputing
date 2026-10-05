@@ -5,6 +5,8 @@
 @inject INavService Nav
 @inject MarkdownPages MarkdownExport
 @inject Microsoft.Extensions.Options.IOptions<SiteOptions> SiteConfig
+@inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions> AccountsConfig
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @* A brochure site's layout (Pages/Services/SiteOptions.cs), which
    BrochureLayoutExpander gives every page that asks for _Layout: the
    classic view only, with no window view, applets, menus of commands or
@@ -30,7 +32,9 @@
         .Where(n => !string.IsNullOrWhiteSpace(n.Title) && !string.IsNullOrWhiteSpace(n.Url))
         .ToList();
     var feed = NavService.Sections(root).FirstOrDefault(s => s.Feed);
-    var recent = feed is null ? new List<NavNode>()
+    // The editing pages (Pages/SiteAdmin) take the whole width.
+    bool workspace = ViewData["Workspace"] as bool? ?? false;
+    var recent = feed is null || workspace ? new List<NavNode>()
         : feed.Nav!.OrderByDescending(n => NavService.EffectiveDate(n) ?? DateTime.MinValue).Take(5).ToList();
     // The section a page belongs to is marked as the reader's place too, so
     // an article marks Thoughts.
@@ -104,6 +108,19 @@
         <link rel="alternate" type="text/markdown" href="@MarkdownExport.MarkdownUrlOf(mdPage.Slug)" title="This page as Markdown" />
     }
     <link rel="alternate" type="text/plain" href="/llms.txt" title="This site for AI readers" />
+    @if (AccountsConfig.Value.Enabled && (workspace || User.Identity?.IsAuthenticated == true
+        || path.StartsWith("/account", StringComparison.OrdinalIgnoreCase)))
+    {
+        @* Signing in, passkeys and the account page (js/accounts.js and
+           css/account.css, copied into the site as PUDL is). The token lets
+           a script's request pass the antiforgery check. Only the account
+           and editing pages, and someone signed in, get them: the token
+           sets a cookie, and a reader of the public pages gets none. The
+           staff go to /admin. *@
+        <meta name="request-verification-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
+        <link rel="stylesheet" href="~/css/account.css" asp-append-version="true" />
+        <script src="~/js/accounts.js" defer asp-append-version="true"></script>
+    }
     @RenderSection("Meta", required: false)
     @RenderSection("Links", required: false)
     @RenderSection("Style", required: false)

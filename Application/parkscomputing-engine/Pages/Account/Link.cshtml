@@ -1,13 +1,13 @@
 @page
 @model ParksComputing.Engine.Pages.Account.LinkModel
-@{ ViewData["Title"] = "Confirm sign-in | Parks Computing"; }
+@{ ViewData["Title"] = "Confirm sign-in | " + SiteAccounts.Value.SiteName; }
 @* The page an emailed link opens. Opening it spends nothing, so a mail
    scanner that follows the link cannot use it up; the button does. *@
 <div class="account-page">
 @if (Model.Valid)
 {
     <h1>@(Model.Purpose == ParksComputing.Engine.Identity.AccountLinkPurpose.VerifyEmail ? "Confirm your email address" : "Sign in")</h1>
-    <p>Press the button to finish signing in to Parks Computing in this browser.</p>
+    <p>Press the button to finish signing in to @SiteAccounts.Value.SiteName in this browser.</p>
     <form method="post" asp-antiforgery="true">
         <input type="hidden" name="Uid" value="@Model.Uid" />
         <input type="hidden" name="Token" value="@Model.Token" />

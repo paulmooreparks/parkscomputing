@@ -1,0 +1,55 @@
+@model ParksComputing.Engine.Pages.SiteAdmin.SiteAdminModel
+@* The bar at the top of every editing page: where the reader is, who they
+   are, and the way out. When the session is not yet confirmed with a
+   passkey, it says so and offers the tap, which js/accounts.js carries out
+   and then reloads the page. *@
+@* The editing pages' own few rules, here rather than in a stylesheet,
+   because a brochure site's wwwroot holds only its own files. Everything
+   else is PUDL's and the site's. *@
+<style>
+    .site-admin-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2) var(--space-4);
+        padding-bottom: var(--space-3); margin-bottom: var(--space-4); border-bottom: 1px solid var(--border); font-size: var(--text-base); }
+    .site-admin-crumbs, .site-admin-who { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+    .site-admin-signout { margin: 0; }
+    .site-admin-confirm, .site-admin-message { margin-bottom: var(--space-4); }
+    .site-admin-file { font-family: var(--mono); font-size: var(--text-sm); color: var(--text-muted); }
+    .site-admin-list { list-style: none; padding: 0 !important; margin: 0 0 var(--space-5); }
+    .site-admin-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); padding: var(--space-2) 0; border-top: 1px solid var(--surface-alt); max-width: none; }
+    .site-admin-name { flex: 1 1 16rem; font-weight: 700; }
+    .site-admin-actions { display: flex; align-items: center; gap: var(--space-3); }
+    .brochure-page .site-admin-text { width: 100%; box-sizing: border-box; font-family: var(--mono); font-size: var(--text-md); line-height: 1.55; }
+    .brochure-page .site-admin-editor .post-body, .site-admin-preview { max-width: none; }
+    .site-admin-preview { margin-top: var(--space-6); padding: var(--space-5); border: 2px dashed var(--accent); border-radius: var(--radius); }
+    .site-admin-preview-title { margin-top: 0 !important; font-size: var(--text-lg) !important; color: var(--accent); }
+    .brochure-page:has(.site-admin-bar) { max-width: none; }
+    .brochure-page:has(.site-admin-bar) p { max-width: none; }
+</style>
+<div class="site-admin-bar">
+    <nav class="site-admin-crumbs" aria-label="Editing">
+        <a href="/admin/pages">Pages</a>
+        @if (ViewData["Crumb"] is string crumb)
+        {
+            <span aria-hidden="true">›</span> <span>@crumb</span>
+        }
+    </nav>
+    <div class="site-admin-who">
+        <span>Signed in as @Model.Who@(Model.Superuser ? " (super-user)" : "")</span>
+        <a href="/account">Your account</a>
+        <form method="post" action="/account/signout" class="site-admin-signout">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnUrl" value="/" />
+            <button class="btn btn-sm" type="submit">Sign out</button>
+        </form>
+    </div>
+</div>
+@if (!Model.Confirmed)
+{
+    <div class="notice warn site-admin-confirm" role="status" data-account-panel>
+        <div class="notice-content">
+            <p class="notice-title">Confirm it’s you to make changes</p>
+            <p class="notice-body">You can look at everything now. Saving or restoring needs a tap of your passkey.</p>
+            <div class="notice-actions"><button class="btn btn-primary" type="button" data-passkey="confirm">Confirm with your passkey</button></div>
+            <p class="form-error" data-passkey-status role="alert" hidden></p>
+        </div>
+    </div>
+}

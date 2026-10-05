@@ -23,6 +23,10 @@ namespace ParksComputing.Engine {
                 using var bootstrapHost = CreateHostBuilder(Array.Empty<string>()).ConfigureLogging(logging => logging.ClearProviders()).Build();
                 return ParksComputing.Engine.Identity.StaffBootstrap.RunAsync(bootstrapHost.Services, args).GetAwaiter().GetResult();
             }
+            if (ParksComputing.Engine.Identity.AccountCommands.Matches(args)) {
+                using var accountHost = CreateHostBuilder(Array.Empty<string>()).ConfigureLogging(logging => logging.ClearProviders()).Build();
+                return ParksComputing.Engine.Identity.AccountCommands.RunAsync(accountHost.Services, args).GetAwaiter().GetResult();
+            }
             if (ParksComputing.Engine.Publishing.ArticleImportCommand.Matches(args)) {
                 using var importHost = CreateHostBuilder(Array.Empty<string>())
                     .ConfigureLogging(logging => logging.ClearProviders()).Build();

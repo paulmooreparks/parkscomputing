@@ -67,8 +67,8 @@ public sealed class AccountLifecycle {
         var url = _options.Origin.TrimEnd('/') + "/account/delete?uid=" + Uri.EscapeDataString(userId) + "&token=" + Uri.EscapeDataString(token);
         using var scope = _scopes.CreateScope();
         var sent = await scope.ServiceProvider.GetRequiredService<ResendMailer>().SendAsync(email,
-            "Confirm deleting your Parks Computing account",
-            "Someone, probably you, asked to delete your Parks Computing account. To delete it, open this link within 15 minutes and press the button on the page:\n\n" + url +
+            "Confirm deleting your " + _options.SiteName + " account",
+            "Someone, probably you, asked to delete your " + _options.SiteName + " account. To delete it, open this link within 15 minutes and press the button on the page:\n\n" + url +
             "\n\nDeleting the account removes your email address, passkeys, sessions, pins and picture, and erases the text of your comments. It can't be undone.\n\nIf you didn't ask for this, ignore this email; nothing changes.");
         if (!sent) { await _links.CancelAsync(userId, AccountLinkPurpose.DeleteAccount, token); }
         return sent;

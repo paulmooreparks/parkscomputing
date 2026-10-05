@@ -1,6 +1,6 @@
 @page "/account/superuser"
 @model ParksComputing.Engine.Pages.Account.SuperUserModel
-@{ ViewData["Title"] = "Super-user setup | Parks Computing"; }
+@{ ViewData["Title"] = "Super-user setup | " + SiteAccounts.Value.SiteName; }
 @functions {
     // A step's state, as a glyph and in words, so colour is never the only sign.
     static Microsoft.AspNetCore.Html.IHtmlContent Mark(bool done) => new Microsoft.AspNetCore.Html.HtmlString(done

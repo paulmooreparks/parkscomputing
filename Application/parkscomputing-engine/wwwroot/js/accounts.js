@@ -217,12 +217,15 @@
         };
     }
 
-    /* A passkey button outside the Account applet, which handles its own:
-       signing in reloads the page the reader is on, or on a dialog's own
-       page goes back where it leads; anything else follows the server. */
+    /* A passkey button outside a running Account applet, which handles its
+       own (js/account.js marks its mount data-account-js); on a site that
+       has the account page but not the applet, such as a brochure site,
+       the page's buttons are this script's. Signing in reloads the page the
+       reader is on, or on a dialog's own page goes back where it leads;
+       anything else follows the server. */
     document.addEventListener('click', async function (e) {
         var button = e.target.closest && e.target.closest('[data-passkey], [data-remove-key]');
-        if (!button || button.closest('[data-applet="account"]')) { return; }
+        if (!button || button.closest('[data-applet="account"][data-account-js]')) { return; }
         var scope = button.closest('dialog, .account-page, [data-account-panel]') || document;
         var result = await press(button, scope);
         if (!result) { return; }

@@ -1,6 +1,6 @@
 @page
 @model ParksComputing.Engine.Pages.Account.DeleteModel
-@{ ViewData["Title"] = "Delete your account | Parks Computing"; }
+@{ ViewData["Title"] = "Delete your account | " + SiteAccounts.Value.SiteName; }
 @* The page the deletion email opens. Opening it spends nothing, so a mail
    scanner that follows the link cannot delete anything; the button does. *@
 <div class="account-page">
