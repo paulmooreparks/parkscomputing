@@ -179,11 +179,32 @@
         return li;
     }
 
-    /* Writes the pins after the Pins menu, which the menu bar redraws from. */
+    /* Writes the pins after the Pins menu, which the menu bar redraws from,
+       and tells whoever is listening, such as the Pins applet. */
+    var listeners = [];
     function render() {
         while (list.children.length > 1) { list.removeChild(list.lastElementChild); }
         pins.forEach(function (p) { list.appendChild(pinItem(p)); });
+        listeners.slice().forEach(function (fn) { try { fn(pins.slice()); } catch (err) { if (window.console) { console.warn('pins:', err); } } });
     }
+
+    /* For the Pins applet (js/pins-manager.js), which reorders, removes and
+       adds pins through the same list, so the bar, the applet, every window
+       menu and other tabs agree, and the pins are kept as they always are. */
+    window.pcPins = {
+        list: function () { return pins.slice(); },
+        has: function (p) { return indexOf(p) >= 0; },
+        add: function (p) { if (indexOf(p) < 0) { pins.push(p); save(); render(); } },
+        remove: function (p) { var i = indexOf(p); if (i >= 0) { pins.splice(i, 1); save(); render(); } },
+        move: function (from, to) {
+            if (from < 0 || from >= pins.length || to < 0 || to >= pins.length || from === to) { return; }
+            pins.splice(to, 0, pins.splice(from, 1)[0]);
+            save(); render();
+        },
+        open: function (p) { return open(p); },
+        href: hrefOf,
+        onChange: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
+    };
 
     /* The Pins menu's command names what is in front as the menu opens:
        Pin "title" or Unpin "title", there but unavailable when nothing

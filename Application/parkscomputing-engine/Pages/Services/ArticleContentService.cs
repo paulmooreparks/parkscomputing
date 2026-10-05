@@ -98,8 +98,20 @@ public class ArticleContentService {
 
     /// <summary>An article prepared for a window: internal links become
     /// window openers.</summary>
+    /// <summary>The window key of the Pins applet (Architecture/pins-design.md),
+    /// which the site serves itself, as it does the Account applet. Its page
+    /// is /pins.</summary>
+    public const string PinsKey = "pins";
+
+    /// <summary>The Pins applet's window: an empty mount the applet fills
+    /// from the reader's pins (js/pins-manager.js), the same for everyone.</summary>
+    private static readonly ArticleWindowContent PinsWindow = new(PinsKey, "Pin manager",
+        "<div data-applet=\"pins\" data-applet-page=\"/pins\" aria-label=\"Pin manager\"><noscript><p>Managing pins needs JavaScript.</p></noscript></div>",
+        false, false, IsApplet: true, WindowSize: "content");
+
     public ArticleWindowContent? Load(string? slug) {
         if (slug == AccountKey && AccountWindow() is { } account) { return account; }
+        if (slug == PinsKey) { return PinsWindow; }
         var raw = LoadRaw(slug);
         if (raw is null) { return null; }
         return raw with { BodyHtml = PrepareWindowBody(raw.Slug, raw.BodyHtml) };

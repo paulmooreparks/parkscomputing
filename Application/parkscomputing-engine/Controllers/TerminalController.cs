@@ -43,10 +43,12 @@ public class TerminalController : ControllerBase {
     /// <summary>One entry in the terminal's filesystem. A script carries its
     /// source, so the terminal can run it and show its help without another
     /// request.</summary>
+    /// <summary>Icon is the page's own icon, as its window shows it in the
+    /// taskbar (Pages/Shared/_Window's WindowIcon), for the Pins applet.</summary>
     public record Entry(
         string Name, string Kind, string? Title, string? Description,
         string[]? Tags, DateTime? Date, string? Url, List<Entry>? Children,
-        string? Source = null);
+        string? Source = null, string? Icon = null);
 
     private static readonly Regex ScriptName = new(@"^[a-z0-9][a-z0-9_-]{0,39}$", RegexOptions.Compiled);
     private const int ScriptMax = 16 * 1024;
@@ -185,7 +187,8 @@ public class TerminalController : ControllerBase {
         return new Entry(
             n.Slug!, external ? "link" : "page", n.Title ?? n.Slug, n.Description ?? n.Excerpt,
             n.Tags is { Length: > 0 } ? n.Tags : null, NavService.EffectiveDate(n),
-            external ? n.Url : null, null);
+            external ? n.Url : null, null,
+            Icon: !external && !string.IsNullOrEmpty(n.Icon) && n.Url == $"/page/{n.Slug}" ? n.Icon : null);
     }
 
     private static IEnumerable<Entry> Flatten(Entry e) {

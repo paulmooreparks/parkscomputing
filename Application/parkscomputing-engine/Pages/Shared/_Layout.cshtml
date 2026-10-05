@@ -151,7 +151,18 @@
                it between the site's menus and the front ones, and redraws it
                as the list changes. *@
             <ul data-menubar-pins hidden>
-                <li>Pins<ul><li><button type="button" data-pin-command disabled>Pin</button></li></ul></li>
+                <li>Pins<ul>
+                    <li><button type="button" data-pin-command disabled>Pin</button></li>
+                    <li>-</li>
+                    @if (isDesktop)
+                    {
+                        <li><a href="/?open=pins&amp;top=pins" data-win-open="pins">Manage pins</a></li>
+                    }
+                    else
+                    {
+                        <li><a href="/pins">Manage pins</a></li>
+                    }
+                </ul></li>
             </ul>
             <div class="menu site-menu">
                 <button type="button" class="brand topbar-pill menu-btn site-menu-btn" popovertarget="site-menu" aria-label="Parks Computing menu">

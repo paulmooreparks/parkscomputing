@@ -1,6 +1,8 @@
 
 /* Identity actions use PUDL's documented capability snapshots. */
 pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '4' });
+/* The Pin manager, reached from the Pins menu's Manage pins (js/pins.js). */
+pudlApplets.define('pins', { src: '/js/pins-manager.js', css: '/css/pins-manager.css', page: '/pins', ver: '1' });
 window.pcAppletIdentity = function (root, entries) {
     var result = (entries || []).slice(), win = root.closest('[data-win]');
     if (win && window.pudlWindows) {

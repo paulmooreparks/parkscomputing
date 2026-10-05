@@ -12,6 +12,10 @@ When the buttons are too wide for the room the bar has, they all give way to one
 
 The Pins menu holds one command for whatever is in front: Pin "title" when it is not pinned and Unpin "title" when it is. In the window view that is the front window; in the classic view it is the page. The command is there but disabled when nothing pinnable is in front, as PUDL asks of a supported command that is momentarily unavailable. Each window's own menu offers Pin or Unpin as well, next to Reload, which is the quickest way to pin something already open.
 
+## The Pin manager
+
+The Pins menu ends, after a separator, with Manage pins, which opens the Pin manager: a window in the window view and the page `/pins` in the classic view, served by the site itself as the Account applet is (`ArticleContentService.PinsKey`). It is not called Pins, because PUDL leaves out an applet's menu whose title repeats one of the bar's own. It lists the reader's pins in order, each with Move up, Move down and Remove, and focus stays with a moved pin's button, so a pin can be walked along with the keyboard. Below them, Add a pin lists every page and applet of the site by section, from the same tree the terminal's `/site` is built from (`/api/site/tree`, which now carries each page's own icon), narrowed by a filter, each with Pin, or Pinned once it is. The manager changes the pins through `window.pcPins` in `js/pins.js`, so the menu bar's group, every window menu and other tabs follow at once, and a change made anywhere else shows in the manager at once too.
+
 ## What can be pinned
 
 An article, an applet, a book (at the chapter it shows), and the Account window can be pinned. A pin records the item's window key, a book's chapter, the title and the icon its window shows. The title and icon are refreshed whenever the item's window opens, so a renamed article's pin follows it. A numbered copy of a window, such as a second Terminal or a second window of a book, pins the item itself. Tag lists and framed external sites are not pinnable: they are views of something else, not items.

@@ -1,0 +1,12 @@
+@page "/pins"
+@{ ViewData["Title"] = "Pin manager | Parks Computing"; }
+@* The Pins applet (js/pins-manager.js, Architecture/pins-design.md) on a
+   page of its own, for the classic view and for the window's Open as a
+   page. The applet draws itself from the reader's pins, which js/pins.js
+   keeps, so there is nothing for the server to render inside it. *@
+<div class="pins-page">
+    <h1>Pin manager</h1>
+    <div data-applet="pins" data-applet-page="/pins" aria-label="Pin manager">
+        <noscript><p>Managing pins needs JavaScript.</p></noscript>
+    </div>
+</div>
