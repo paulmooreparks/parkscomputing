@@ -89,6 +89,7 @@ namespace ParksComputing.Engine {
             // The site for AI readers: llms.txt and each page as Markdown, and
             // the count of AI agents' visits (Identity/AiVisits.cs).
             services.AddSingleton<MarkdownPages>();
+            services.AddSingleton<SiteRedirects>();
             services.AddSingleton<ParksComputing.Engine.Identity.AiVisitCounter>();
             services.AddHostedService<ParksComputing.Engine.Identity.AiVisitWriter>();
             // The recent log for the super-user's Server log applet (Identity/RecentLogs.cs).
@@ -223,7 +224,21 @@ namespace ParksComputing.Engine {
                 contentTypeProvider.Mappings[".xferlang"] = "text/plain";
             }
 
-            app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = contentTypeProvider });
+            app.UseStaticFiles(new StaticFileOptions {
+                ContentTypeProvider = contentTypeProvider,
+                // A font file never changes in place, so a browser keeps it
+                // for a year; a picture for a day. Stylesheets and scripts
+                // keep asking each time (by ETag), because an edit to one
+                // must show at once.
+                OnPrepareResponse = c => {
+                    var ext = System.IO.Path.GetExtension(c.File.Name).ToLowerInvariant();
+                    if (ext is ".woff2" or ".woff") {
+                        c.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+                    } else if (ext is ".webp" or ".png" or ".jpg" or ".jpeg" or ".gif" or ".svg" or ".ico" or ".avif") {
+                        c.Context.Response.Headers.CacheControl = "public, max-age=86400";
+                    }
+                }
+            });
 
             // Serve extensionless files under /content/ (e.g., Linux/macOS binaries) as octet-stream downloads.
             // The default FileExtensionContentTypeProvider refuses to serve files with no recognized extension,
@@ -288,6 +303,26 @@ namespace ParksComputing.Engine {
                     await next();
                 });
             }
+
+            // A site's own moved addresses (wwwroot/redirects.txt), and, where
+            // a page's address ends in a slash (Site:PageUrl "/{slug}/"), the
+            // page's address without it, so each page has one address.
+            app.Use(async (ctx, next) => {
+                var path = ctx.Request.Path.Value ?? "/";
+                var moved = ctx.RequestServices.GetRequiredService<SiteRedirects>().Find(path);
+                if (moved is not null) {
+                    ctx.Response.Redirect(moved + ctx.Request.QueryString, permanent: true);
+                    return;
+                }
+                if (site.PageUrl.EndsWith('/') && path.Length > 1 && !path.EndsWith('/') && path.IndexOf('/', 1) < 0 && path.IndexOf('.') < 0) {
+                    var slug = path[1..];
+                    if (ctx.RequestServices.GetRequiredService<MarkdownPages>().IsReadable(slug)) {
+                        ctx.Response.Redirect(site.UrlOf(slug) + ctx.Request.QueryString, permanent: true);
+                        return;
+                    }
+                }
+                await next();
+            });
 
             // The desktop moved from /desktop to the site root; old links follow.
             app.Use(async (ctx, next) => {

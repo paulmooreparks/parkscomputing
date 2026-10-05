@@ -10,18 +10,40 @@ using Microsoft.Extensions.Options;
 
 namespace ParksComputing.Engine.Pages.Services;
 
-/// <summary>A page as an AI reader gets it: its title, description, date,
-/// address and Markdown body.</summary>
-public sealed record MarkdownPage(string Slug, string Title, string? Description, DateTime? Date, string Body);
+/// <summary>A page as an AI reader or a search engine gets it: its title,
+/// description, when it was written and last changed, its first picture,
+/// and its Markdown body.</summary>
+public sealed record MarkdownPage(string Slug, string Title, string? Description, DateTime? Date, DateTime Modified, string? Image, string Body) {
+    /// <summary>The description, or else the page's opening words, for a
+    /// page that gives none.</summary>
+    public string Summary {
+        get {
+            if (!string.IsNullOrWhiteSpace(Description)) { return Description!; }
+            var para = Body.Split("\n\n").Select(p => p.Trim())
+                .FirstOrDefault(p => p.Length > 0 && !p.StartsWith('#') && !p.StartsWith('!') && !p.StartsWith('|') && !p.StartsWith('>'));
+            if (para is null) { return Title; }
+            var text = Regex.Replace(para, @"!\[[^\]]*\]\([^)]*\)", "");
+            text = Regex.Replace(text, @"\[([^\]]*)\]\([^)]*\)", "$1");
+            text = Regex.Replace(text, @"[*_`]+", "").Replace('\n', ' ').Trim();
+            return text.Length <= 200 ? text : Regex.Replace(text[..200], @"\s+\S*$", "") + "…";
+        }
+    }
+}
+
+/// <summary>A page in the order the site gives its pages, with the group it
+/// belongs to: "Pages" for the top level, a section's title for that
+/// section's pages, and "Optional" for content pages the navigation does not
+/// list, such as policies.</summary>
+public sealed record SitePage(string Slug, string Title, string? Description, string Group);
 
 /// <summary>
-/// The site in a form AI readers take best (Architecture/padmajairam-port-
-/// design.md, "Readable by AI"): each page as Markdown at its own address
-/// with .md added, and /llms.txt, which says what the site is and lists its
-/// pages' Markdown, as llmstxt.org proposes. A page written in Markdown is
-/// given as it is written; one written in HTML is turned into Markdown. A
-/// page that is part of the layout (a "-section" file) or an applet is not
-/// a page to read, and has no Markdown.
+/// The site in the forms machines read (Architecture/padmajairam-port-
+/// design.md, "Readable by AI" and "Search engines"): each page as Markdown
+/// at its own address with .md added, /llms.txt, which lists the pages'
+/// Markdown as llmstxt.org proposes, and the page list behind /sitemap.xml.
+/// A page written in Markdown is given as it is written; one written in HTML
+/// is turned into Markdown. A page that is part of the layout (a "-section"
+/// file) or an applet is not a page to read.
 /// </summary>
 public sealed class MarkdownPages {
     private static readonly Regex SlugPattern = new(@"^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
@@ -34,6 +56,12 @@ public sealed class MarkdownPages {
     }
 
     private string ContentDir => Path.Combine(_env.WebRootPath, "content");
+
+    /// <summary>The site's own origin for whole addresses: Site:Origin when
+    /// it is set, since behind a tunnel the request says http and an
+    /// internal host, or else the request's.</summary>
+    public string OriginOr(string requestOrigin) =>
+        string.IsNullOrWhiteSpace(_site.Origin) ? requestOrigin : _site.Origin!.TrimEnd('/');
 
     /// <summary>Whether a slug is a page someone reads: a content file that
     /// is not part of the layout and is not an applet.</summary>
@@ -50,13 +78,13 @@ public sealed class MarkdownPages {
     public MarkdownPage? Load(string slug) {
         if (!SlugPattern.IsMatch(slug) || slug.EndsWith("-section", StringComparison.OrdinalIgnoreCase)) { return null; }
         var md = Path.Combine(ContentDir, slug + ".md");
-        if (File.Exists(md)) { return FromMarkdown(slug, File.ReadAllText(md)); }
+        if (File.Exists(md)) { return FromMarkdown(slug, File.ReadAllText(md), File.GetLastWriteTimeUtc(md)); }
         var html = Path.Combine(ContentDir, slug + ".html");
-        if (File.Exists(html)) { return FromHtml(slug, File.ReadAllText(html)); }
+        if (File.Exists(html)) { return FromHtml(slug, File.ReadAllText(html), File.GetLastWriteTimeUtc(html)); }
         return null;
     }
 
-    private static MarkdownPage FromMarkdown(string slug, string raw) {
+    private static MarkdownPage FromMarkdown(string slug, string raw, DateTime written) {
         string body = raw;
         var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (raw.StartsWith("---")) {
@@ -73,11 +101,15 @@ public sealed class MarkdownPages {
         var title = fields.GetValueOrDefault("title") ?? Regex.Match(body, @"^#\s+(.+)$", RegexOptions.Multiline).Groups[1].Value.Trim();
         // The page's own first heading is its title, which the export puts
         // first itself.
-        body = Regex.Replace(body, @"\A\s*#\s+.+\r?\n", "");
-        return new MarkdownPage(slug, title.Length > 0 ? title : slug, fields.GetValueOrDefault("description"), ParseDate(fields.GetValueOrDefault("date")), body.Trim());
+        body = Regex.Replace(body, @"\A\s*#\s+.+\r?\n", "").Trim();
+        var date = ParseDate(fields.GetValueOrDefault("date"));
+        var modified = ParseDate(fields.GetValueOrDefault("lastmodified")) ?? date ?? written;
+        var image = Regex.Match(body, @"!\[[^\]]*\]\(([^)\s]+)").Groups[1].Value;
+        return new MarkdownPage(slug, title.Length > 0 ? title : slug, fields.GetValueOrDefault("description"), date, modified,
+            image.Length > 0 ? image : null, body);
     }
 
-    private static MarkdownPage? FromHtml(string slug, string raw) {
+    private static MarkdownPage? FromHtml(string slug, string raw, DateTime written) {
         var doc = new HtmlDocument();
         doc.LoadHtml(raw);
         if (doc.DocumentNode.SelectSingleNode("//meta[@name='applet-page']") is not null) { return null; }
@@ -89,7 +121,9 @@ public sealed class MarkdownPages {
         var h1 = body.SelectSingleNode(".//h1");
         if (h1 is not null) { title = WebDecode(h1.InnerText) ?? title; h1.Remove(); }
         var description = WebDecode(doc.DocumentNode.SelectSingleNode("//meta[@name='description']")?.GetAttributeValue("content", null));
-        var date = ParseDate(doc.DocumentNode.SelectSingleNode("//meta[translate(@http-equiv,'DATE','date')='date' or @name='date']")?.GetAttributeValue("content", null));
+        var date = ParseDate(Meta(doc, "date"));
+        var modified = ParseDate(Meta(doc, "last-modified")) ?? date ?? written;
+        var image = body.SelectSingleNode(".//img[@src]")?.GetAttributeValue("src", null);
         var converter = new ReverseMarkdown.Converter(new ReverseMarkdown.Config {
             UnknownTags = ReverseMarkdown.Config.UnknownTagsOption.Bypass,
             GithubFlavored = true,
@@ -98,13 +132,53 @@ public sealed class MarkdownPages {
         });
         var md = converter.Convert(body.InnerHtml);
         md = Regex.Replace(md, @"\n{3,}", "\n\n").Trim();
-        return new MarkdownPage(slug, title ?? slug, description, date, md);
+        return new MarkdownPage(slug, title ?? slug, description, date, modified, image, md);
     }
+
+    /// <summary>A meta element's content by http-equiv or name, either case.</summary>
+    private static string? Meta(HtmlDocument doc, string key) =>
+        doc.DocumentNode.SelectNodes("//meta")?.FirstOrDefault(m =>
+            string.Equals(m.GetAttributeValue("http-equiv", ""), key, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(m.GetAttributeValue("name", ""), key, StringComparison.OrdinalIgnoreCase))
+        ?.GetAttributeValue("content", null);
 
     private static string? WebDecode(string? s) => s is null ? null : System.Net.WebUtility.HtmlDecode(s).Trim();
 
     private static DateTime? ParseDate(string? s) =>
-        DateTime.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var d) ? d : null;
+        DateTime.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var d) ? d : null;
+
+    /// <summary>Every page of the site in order: the home page and the other
+    /// top-level pages, then each section's pages, then any other content
+    /// page, each once, and only pages there is something to read on.</summary>
+    public IReadOnlyList<SitePage> Pages() {
+        var root = _nav.GetRoot();
+        var list = new List<SitePage>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Add(string slug, string? title, string? description, string group) {
+            if (seen.Contains(slug)) { return; }
+            var page = Load(slug);
+            if (page is null) { return; }
+            seen.Add(slug);
+            list.Add(new SitePage(slug, title ?? page.Title, description ?? page.Description, group));
+        }
+        Add("index", "Home", root.Description, "Pages");
+        foreach (var n in (root.Nav ?? Array.Empty<NavNode>()).Where(n => !string.IsNullOrEmpty(n.Slug) && !n.External && n.Url != "/")) {
+            if (n.Nav is { Length: > 0 }) { continue; }
+            Add(n.Slug!, n.Title, n.Description, "Pages");
+        }
+        foreach (var section in NavService.Sections(root)) {
+            var group = section.Title ?? section.Slug!;
+            Add(section.Slug!, section.Title, section.Description, group);
+            foreach (var n in section.Nav!.Where(n => !string.IsNullOrEmpty(n.Slug) && !n.External)) { Add(n.Slug!, n.Title, n.Description, group); }
+        }
+        if (Directory.Exists(ContentDir)) {
+            foreach (var slug in Directory.EnumerateFiles(ContentDir).Where(f => f.EndsWith(".md") || f.EndsWith(".html"))
+                         .Select(Path.GetFileNameWithoutExtension).OfType<string>().Distinct().OrderBy(s => s)) {
+                Add(slug, null, null, "Optional");
+            }
+        }
+        return list;
+    }
 
     /// <summary>A page's Markdown as it is served: its title, its
     /// description as a quotation, where it lives and when it was written,
@@ -125,52 +199,38 @@ public sealed class MarkdownPages {
         Regex.Replace(md, @"\]\((/[^)\s]*)", m => "](" + origin + m.Groups[1].Value);
 
     /// <summary>/llms.txt: the site's name and description, then its pages
-    /// in the order its navigation gives them, each section under its own
-    /// heading, and last any other pages, such as policies, under Optional,
-    /// which llmstxt.org reserves for what a reader may skip.</summary>
+    /// in the order Pages() gives them, each group under its own heading;
+    /// Optional is the heading llmstxt.org reserves for what a reader may
+    /// skip.</summary>
     public string LlmsTxt(string origin) {
         var root = _nav.GetRoot();
         var sb = new StringBuilder();
         sb.Append("# ").AppendLine(root.Title ?? "This site").AppendLine();
         if (!string.IsNullOrWhiteSpace(root.Description)) { sb.Append("> ").AppendLine(root.Description).AppendLine(); }
-        sb.AppendLine("Each page below is also available as Markdown at the address listed. The site's pages are the same text in HTML at the same address without .md.").AppendLine();
+        sb.AppendLine("Each page below is also available as Markdown at the address listed. The site's pages are the same text in HTML at the same address without .md.");
+        foreach (var group in Pages().GroupBy(p => p.Group)) {
+            sb.AppendLine().Append("## ").AppendLine(group.Key).AppendLine();
+            foreach (var p in group) {
+                sb.Append("- [").Append(p.Title).Append("](").Append(origin).Append(MarkdownUrlOf(p.Slug)).Append(')');
+                if (!string.IsNullOrWhiteSpace(p.Description)) { sb.Append(": ").Append(p.Description); }
+                sb.AppendLine();
+            }
+        }
+        return sb.ToString();
+    }
 
-        var listed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        void Line(string slug, string? title, string? description) {
-            var page = Load(slug);
-            if (page is null || !listed.Add(slug)) { return; }
-            sb.Append("- [").Append(title ?? page.Title).Append("](").Append(origin).Append(MarkdownUrlOf(slug)).Append(')');
-            var desc = description ?? page.Description;
-            if (!string.IsNullOrWhiteSpace(desc)) { sb.Append(": ").Append(desc); }
-            sb.AppendLine();
+    /// <summary>/sitemap.xml: every page's address and when it last
+    /// changed, as sitemaps.org defines.</summary>
+    public string SitemapXml(string origin) {
+        var sb = new StringBuilder();
+        sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+        sb.AppendLine("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">");
+        foreach (var p in Pages()) {
+            var page = Load(p.Slug)!;
+            sb.Append("  <url><loc>").Append(System.Security.SecurityElement.Escape(origin + PageUrlOf(p.Slug))).Append("</loc>")
+              .Append("<lastmod>").Append(page.Modified.ToString("yyyy-MM-dd")).AppendLine("</lastmod></url>");
         }
-
-        sb.AppendLine("## Pages").AppendLine();
-        Line("index", "Home", root.Description);
-        foreach (var n in (root.Nav ?? Array.Empty<NavNode>()).Where(n => !string.IsNullOrEmpty(n.Slug) && !n.External)) {
-            if (n.Nav is { Length: > 0 }) { continue; }
-            if (n.Url == "/") { continue; }
-            Line(n.Slug!, n.Title, n.Description);
-        }
-        sb.AppendLine();
-        foreach (var section in NavService.Sections(root)) {
-            var before = sb.Length;
-            sb.Append("## ").AppendLine(section.Title ?? section.Slug).AppendLine();
-            var start = sb.Length;
-            Line(section.Slug!, section.Title, section.Description);
-            foreach (var n in section.Nav!.Where(n => !string.IsNullOrEmpty(n.Slug) && !n.External)) { Line(n.Slug!, n.Title, n.Description); }
-            if (sb.Length == start) { sb.Length = before; } else { sb.AppendLine(); }
-        }
-        // The rest: content pages the navigation does not list.
-        var others = Directory.Exists(ContentDir)
-            ? Directory.EnumerateFiles(ContentDir).Where(f => f.EndsWith(".md") || f.EndsWith(".html"))
-                .Select(Path.GetFileNameWithoutExtension).Where(s => s is not null && !listed.Contains(s!)).Distinct().OrderBy(s => s).ToList()
-            : new List<string?>();
-        var restStart = sb.Length;
-        sb.AppendLine("## Optional").AppendLine();
-        var restItems = sb.Length;
-        foreach (var slug in others) { Line(slug!, null, null); }
-        if (sb.Length == restItems) { sb.Length = restStart; }
-        return sb.ToString().TrimEnd() + "\n";
+        sb.AppendLine("</urlset>");
+        return sb.ToString();
     }
 }

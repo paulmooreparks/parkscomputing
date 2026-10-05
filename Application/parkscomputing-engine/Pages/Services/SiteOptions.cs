@@ -20,7 +20,18 @@ namespace ParksComputing.Engine.Pages.Services {
         /// "/{slug}/" for a site that keeps WordPress's addresses.</summary>
         public string PageUrl { get; set; } = "/page/{slug}";
 
-        public bool Brochure => string.Equals(Mode, "brochure", StringComparison.OrdinalIgnoreCase);
+        /// <summary>The site's public origin, such as https://padmajairam.com,
+        /// for whole addresses in canonical links, the sitemap, llms.txt and
+        /// shared links. Behind the tunnel a request arrives as plain http
+        /// on an internal host, so the request cannot say it. Unset, the
+        /// request's own origin is used.</summary>
+        public string? Origin { get; set; }
+
+        /// <summary>Who writes the site's articles, for their structured
+        /// data; unset, the site's title from sitenav.xfer.</summary>
+        public string? Author { get; set; }
+
+        public bool Brochure =>string.Equals(Mode, "brochure", StringComparison.OrdinalIgnoreCase);
 
         public string UrlOf(string slug) => PageUrl.Replace("{slug}", slug, StringComparison.Ordinal);
     }

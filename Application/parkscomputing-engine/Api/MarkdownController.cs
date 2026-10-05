@@ -4,20 +4,31 @@ using ParksComputing.Engine.Pages.Services;
 namespace ParksComputing.Engine.Api;
 
 /// <summary>
-/// The site for AI readers (Pages/Services/MarkdownPages.cs): /llms.txt, and
-/// each page's Markdown at its address with .md added, /index.md for the
-/// home page. A file of the same name in wwwroot is served instead, so a
-/// site can write its own llms.txt.
+/// The site for machines (Pages/Services/MarkdownPages.cs): /llms.txt and
+/// each page's Markdown at its address with .md added (/index.md for the
+/// home page) for AI readers, and /sitemap.xml and /robots.txt for search
+/// engines. A file of the same name in wwwroot is served instead, so a site
+/// can write its own.
 /// </summary>
 [ApiExplorerSettings(IgnoreApi = true)]
 public sealed class MarkdownController : Controller {
     private readonly MarkdownPages _pages;
     public MarkdownController(MarkdownPages pages) { _pages = pages; }
 
-    private string Origin => $"{Request.Scheme}://{Request.Host}";
+    private string Origin => _pages.OriginOr($"{Request.Scheme}://{Request.Host}");
 
     [HttpGet("/llms.txt")]
     public IActionResult Llms() => Content(_pages.LlmsTxt(Origin), "text/plain; charset=utf-8");
+
+    [HttpGet("/sitemap.xml")]
+    public IActionResult Sitemap() => Content(_pages.SitemapXml(Origin), "application/xml; charset=utf-8");
+
+    /// <summary>Every crawler may read everything, and is told where the
+    /// sitemap is. The site's private places answer no one who is not
+    /// signed in, so there is nothing to hide from crawlers here.</summary>
+    [HttpGet("/robots.txt")]
+    public IActionResult Robots() =>
+        Content($"User-agent: *\nAllow: /\n\nSitemap: {Origin}/sitemap.xml\n", "text/plain; charset=utf-8");
 
     [HttpGet("/index.md")]
     public IActionResult Home() => Page("index");

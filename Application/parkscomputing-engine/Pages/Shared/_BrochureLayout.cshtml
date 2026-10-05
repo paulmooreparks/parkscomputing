@@ -4,6 +4,7 @@
 @inject StaticFileReaderService FileReaderService
 @inject INavService Nav
 @inject MarkdownPages MarkdownExport
+@inject Microsoft.Extensions.Options.IOptions<SiteOptions> SiteConfig
 @* A brochure site's layout (Pages/Services/SiteOptions.cs), which
    BrochureLayoutExpander gives every page that asks for _Layout: the
    classic view only, with no window view, applets, menus of commands or
@@ -55,12 +56,52 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     @{
-        // The page as Markdown, for AI readers (Pages/Services/MarkdownPages.cs).
+        // The page as machines read it (Pages/Services/MarkdownPages.cs):
+        // its one address, its description, how a shared link to it looks,
+        // and its Markdown for AI readers.
         var mdSlug = ViewData["PageId"] as string ?? (path == "/home" ? "index" : null);
+        var mdPage = mdSlug is null ? null : MarkdownExport.Load(mdSlug);
+        var origin = MarkdownExport.OriginOr($"{Context.Request.Scheme}://{Context.Request.Host}");
+        bool isArticle = mdSlug is not null && NavService.Articles(root).Any(n => string.Equals(n.Slug, mdSlug, StringComparison.OrdinalIgnoreCase));
     }
-    @if (mdSlug is not null && MarkdownExport.IsReadable(mdSlug))
+    @if (mdPage is not null)
     {
-        <link rel="alternate" type="text/markdown" href="@MarkdownExport.MarkdownUrlOf(mdSlug)" title="This page as Markdown" />
+        var pageUrl = origin + MarkdownExport.PageUrlOf(mdPage.Slug);
+        var image = mdPage.Image is null ? null : mdPage.Image.StartsWith("/") ? origin + mdPage.Image : mdPage.Image;
+        <link rel="canonical" href="@pageUrl" />
+        @* A page that gives no description of its own already has one from
+           its opening words (Pages/page.cshtml.cs). *@
+        <meta property="og:site_name" content="@siteTitle" />
+        <meta property="og:type" content="@(isArticle ? "article" : "website")" />
+        <meta property="og:title" content="@mdPage.Title" />
+        <meta property="og:description" content="@mdPage.Summary" />
+        <meta property="og:url" content="@pageUrl" />
+        @if (image is not null)
+        {
+            <meta property="og:image" content="@image" />
+        }
+        <meta name="twitter:card" content="@(image is null ? "summary" : "summary_large_image")" />
+        @if (isArticle)
+        {
+            @* An article's structured data (schema.org), from its own file. *@
+            var article = new Dictionary<string, object?> {
+                ["@context"] = "https://schema.org",
+                ["@type"] = "BlogPosting",
+                ["headline"] = mdPage.Title,
+                ["description"] = mdPage.Summary,
+                ["url"] = pageUrl,
+                ["mainEntityOfPage"] = pageUrl,
+                ["datePublished"] = mdPage.Date?.ToString("yyyy-MM-dd"),
+                ["dateModified"] = mdPage.Modified.ToString("yyyy-MM-dd"),
+                ["author"] = new Dictionary<string, object?> { ["@type"] = "Person", ["name"] = SiteConfig.Value.Author ?? siteTitle, ["url"] = origin + "/" },
+                ["image"] = image
+            };
+            var articleJson = System.Text.Json.JsonSerializer.Serialize(article.Where(kv => kv.Value is not null).ToDictionary(kv => kv.Key, kv => kv.Value),
+                new System.Text.Json.JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }).Replace("</", "<\\/");
+            @* Written whole: Razor would encode the + in the type. *@
+            @Html.Raw("<script type=\"application/ld+json\">" + articleJson + "</script>")
+        }
+        <link rel="alternate" type="text/markdown" href="@MarkdownExport.MarkdownUrlOf(mdPage.Slug)" title="This page as Markdown" />
     }
     <link rel="alternate" type="text/plain" href="/llms.txt" title="This site for AI readers" />
     @RenderSection("Meta", required: false)
