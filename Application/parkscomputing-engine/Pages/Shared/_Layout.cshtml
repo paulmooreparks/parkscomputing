@@ -267,6 +267,8 @@
         {
         <footer class="site-footer">
             @Html.RenderStaticFile("/content/footer-section.html", FileReaderService)
+            @* The legal pages are the application's own (Identity/PolicyDocuments.cs). *@
+            <p class="site-legal"><a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of use</a></p>
         </footer>
         }
     }

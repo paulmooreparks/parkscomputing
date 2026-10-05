@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ParksComputing.Engine.Identity;
 
-public enum AccountLinkPurpose { VerifyEmail, SignIn, RecoverMember, EnrollStaff }
+public enum AccountLinkPurpose { VerifyEmail, SignIn, RecoverMember, EnrollStaff, DeleteAccount }
 
 internal sealed class SiteAccountLink {
     public string UserId { get; set; } = "";

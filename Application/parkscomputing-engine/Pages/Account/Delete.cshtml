@@ -1,0 +1,32 @@
+@page
+@model ParksComputing.Engine.Pages.Account.DeleteModel
+@{ ViewData["Title"] = "Delete your account | Parks Computing"; }
+@* The page the deletion email opens. Opening it spends nothing, so a mail
+   scanner that follows the link cannot delete anything; the button does. *@
+<div class="account-page">
+@if (Model.Deleted)
+{
+    <h1>Your account has been deleted</h1>
+    <p>Your email address, passkeys, sessions, pins and picture are gone, and the text of your comments has been erased. Thank you for having been part of the discussion.</p>
+    <p><a class="btn" href="/">Go to the home page</a></p>
+}
+else if (Model.Valid)
+{
+    <h1>Delete your account?</h1>
+    <p>This removes your email address, passkeys, sessions, pins and picture, and erases the text of your comments. Where someone replied to one of your comments, a note says it was withdrawn. It can't be undone.</p>
+    <p>If you'd like a copy of your data first, <a href="/account?handler=Export" download>download it</a> while you're still signed in.</p>
+    <form method="post" asp-antiforgery="true">
+        <input type="hidden" name="Uid" value="@Model.Uid" />
+        <input type="hidden" name="Token" value="@Model.Token" />
+        <div class="account-actions">
+            <a class="btn" href="/account">Keep my account</a>
+            <button class="btn btn-danger" type="submit">Delete my account</button>
+        </div>
+    </form>
+}
+else
+{
+    <h1>This link has already been used or has expired</h1>
+    <p>Each link works once, within 15 minutes. To try again, ask for a new one from <a href="/account#your-data">your account</a>.</p>
+}
+</div>

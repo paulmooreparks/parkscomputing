@@ -21,9 +21,10 @@ namespace ParksComputing.Engine.Pages.Account;
 [RequestSizeLimit(AccountAvatars.MaxBytes + 64 * 1024)]
 public sealed class IndexModel : PageModel {
     private readonly SiteIdentityDbContext _db; private readonly UserManager<IdentityUser> _users; private readonly StaffBootstrap _bootstrap; private readonly AccountAvatars _avatars;
-    private readonly Discussions _discussions;
-    public IndexModel(SiteIdentityDbContext db, UserManager<IdentityUser> users, StaffBootstrap bootstrap, AccountAvatars avatars, Discussions discussions) {
-        _db = db; _users = users; _bootstrap = bootstrap; _avatars = avatars; _discussions = discussions;
+    private readonly Discussions _discussions; private readonly AccountLifecycle _lifecycle;
+    public IndexModel(SiteIdentityDbContext db, UserManager<IdentityUser> users, StaffBootstrap bootstrap, AccountAvatars avatars,
+        Discussions discussions, AccountLifecycle lifecycle) {
+        _db = db; _users = users; _bootstrap = bootstrap; _avatars = avatars; _discussions = discussions; _lifecycle = lifecycle;
     }
     /// <summary>The reader's own comments, newest first, with where each stands.</summary>
     public IReadOnlyList<MyComment> Comments { get; private set; } = Array.Empty<MyComment>();
@@ -93,6 +94,36 @@ public sealed class IndexModel : PageModel {
         await _avatars.RemoveAsync(_users.GetUserId(User)!);
         return Redirect("/account");
     }
+
+    /// <summary>Everything the site holds about the member, as a JSON file
+    /// to keep (Identity/AccountLifecycle.cs).</summary>
+    public async Task<IActionResult> OnGetExportAsync() {
+        if (User.Identity?.IsAuthenticated != true) { return Challenge(); }
+        var data = await _lifecycle.ExportAsync(_users.GetUserId(User)!);
+        if (data is null) { return NotFound(); }
+        Response.Headers.CacheControl = "no-store";
+        // A file the member reads, sent as an attachment, so its text is
+        // written as it is rather than escaped for embedding in HTML.
+        var json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(data, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web) {
+            WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        });
+        return File(json, "application/json", "parkscomputing-account.json");
+    }
+
+    /// <summary>Emails a link that confirms deleting the account; nothing is
+    /// deleted until it is followed (Pages/Account/Delete.cshtml).</summary>
+    public async Task<IActionResult> OnPostRequestDeletionAsync() {
+        if (User.Identity?.IsAuthenticated != true) { return Challenge(); }
+        var userId = _users.GetUserId(User)!;
+        DeletionRefusal = await _lifecycle.DeletionRefusalAsync(userId);
+        if (DeletionRefusal is null) {
+            DeletionSent = await _lifecycle.RequestDeletionAsync(userId);
+            if (!DeletionSent) { DeletionRefusal = "The email could not be sent. Try again in a few minutes."; }
+        }
+        await LoadAsync(true); return Page();
+    }
+    public bool DeletionSent { get; private set; }
+    public string? DeletionRefusal { get; private set; }
 
     public async Task<IActionResult> OnPostRevokeAsync(string sessionId) {
         if (User.Identity?.IsAuthenticated != true) { return Challenge(); }

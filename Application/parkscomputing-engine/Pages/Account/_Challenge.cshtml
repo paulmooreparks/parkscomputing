@@ -1,0 +1,12 @@
+@inject ParksComputing.Engine.Identity.Turnstile Turnstile
+@* Cloudflare Turnstile's widget (Identity/Turnstile.cs), when the site has
+   a challenge. js/accounts.js draws it, in a dialog or on the page, since a
+   dialog's script never runs; its token travels with the form. Without
+   script the challenge cannot be passed, and the form says so. *@
+@if (Turnstile.On)
+{
+    <div class="form-group account-challenge">
+        <div data-turnstile-sitekey="@Turnstile.SiteKey"></div>
+        <noscript><p class="form-help">This form needs JavaScript, for a check that you're a person.</p></noscript>
+    </div>
+}

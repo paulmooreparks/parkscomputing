@@ -102,9 +102,9 @@ Comments are Markdown with raw HTML off, rendered by Markdig and then cleaned by
 
 ### Gaps closed before sign-up opens
 
-- **Policy pages and consent.** `/privacy` and `/terms` are content files Paul edits, each with a `policy-version` in its front matter. Creating an account requires agreeing to the terms and acknowledging the privacy notice, and the account records which versions and when. A member whose accepted terms are older than the current ones is asked to accept them again before their next comment.
+- **The privacy policy and terms of use.** They follow YAVCHN's (`privacy-and-terms.md`, "Decisions, following YAVCHN"): part of the application in `Legal/`, shown at `/privacy` and `/terms` and as windows, linked from the footer and the Help menu. Creating an account accepts the terms shown with the form, and the account records the versions in force and when.
 - **Deleting and exporting an account.** The Account applet downloads everything the site holds about the member as JSON, and deletes the account after an emailed confirmation link. Deletion removes the email address, passkeys, sessions, pins and picture, and withdraws the member's comments, leaving a placeholder where a reply depends on one. A staff account is deleted from the host, so the last super-admin cannot be removed from a browser.
-- **Unverified sign-ups expire.** An account that never verified its email is removed seven days after it was made.
+- **Unverified sign-ups expire, and short-lived records go.** An account that never verified its email is removed seven days after it was made. Every hour the site also deletes spent sign-in links, the hashed email-limit counts and ended sessions, and erases the text the moderation record keeps once it is 90 days old (`Identity/AccountLifecycle.cs`).
 - **A challenge on sign-up.** Creating an account, and asking for a sign-in link, pass Cloudflare Turnstile, whose site key and secret come from configuration; without them the challenge is off, as on a developer's machine. The server checks each token with Cloudflare's documented `siteverify` call.
 
 ### Running beta

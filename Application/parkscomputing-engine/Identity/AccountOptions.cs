@@ -18,6 +18,12 @@ public sealed class AccountOptions {
     /// dropped, since an old enrollment or sign-in link carries a credential
     /// that must not be forwarded.</summary>
     public string[] RetiredHosts { get; set; } = Array.Empty<string>();
+    /// <summary>Cloudflare Turnstile's site key and secret for the challenge
+    /// on Create account and on asking for a sign-in link
+    /// (Identity/Turnstile.cs). Without both, there is no challenge.</summary>
+    public string? TurnstileSiteKey { get; set; }
+    public string? TurnstileSecret { get; set; }
+    public bool Challenge => !string.IsNullOrWhiteSpace(TurnstileSiteKey) && !string.IsNullOrWhiteSpace(TurnstileSecret);
     public string Host => new Uri(Origin).Host;
     public string Scheme => new Uri(Origin).Scheme;
     public void Validate() {

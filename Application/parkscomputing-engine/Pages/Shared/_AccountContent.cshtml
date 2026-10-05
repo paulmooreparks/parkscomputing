@@ -139,5 +139,27 @@ else
         </ul>
         <form method="post" asp-antiforgery="true" action="/account/signout"><div class="account-actions"><button class="btn" type="submit">Sign out of this browser</button></div></form>
     </section>
+
+    <section class="account-section" id="your-data" aria-labelledby="account-data">
+        <h2 class="account-subtitle" id="account-data">Your data</h2>
+        <p>Download everything this site holds about your account: your email address, profile, picture, passkey names, sessions, pins, and every version of your comments. The <a href="/privacy" data-win-open="privacy">privacy policy</a> says how it's used.</p>
+        <div class="account-actions"><a class="btn" href="/account?handler=Export" download>Download your data</a></div>
+        <h3 class="account-subtitle" id="account-delete">Delete your account</h3>
+        <p>Deleting your account removes your email address, passkeys, sessions, pins and picture, and erases the text of your comments. Where someone replied to one of your comments, a note says it was withdrawn. It can't be undone, so the site first emails you a link to confirm it.</p>
+        @if (Model.DeletionSent)
+        {
+            <div class="notice positive" role="status"><div class="notice-content"><p class="notice-body">Check your email. The link to confirm deleting your account works once, within 15 minutes.</p></div></div>
+        }
+        else
+        {
+            @if (Model.DeletionRefusal is not null)
+            {
+                <p class="form-error" role="alert">@Model.DeletionRefusal</p>
+            }
+            <form method="post" asp-antiforgery="true" action="/account?handler=RequestDeletion">
+                <div class="account-actions"><button class="btn btn-danger" type="submit">Email me a link to delete my account…</button></div>
+            </form>
+        }
+    </section>
 }
 </div>

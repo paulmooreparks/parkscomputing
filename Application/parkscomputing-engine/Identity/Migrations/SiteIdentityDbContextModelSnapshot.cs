@@ -366,12 +366,23 @@ namespace ParksComputing.Engine.Identity.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("nvarchar(80)");
 
+                    b.Property<DateTime?>("PoliciesAcceptedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PrivacyVersion")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
                     b.Property<DateTime?>("SuspendedUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("SuspensionReason")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("TermsVersion")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
 
                     b.Property<Guid>("Version")
                         .IsConcurrencyToken()

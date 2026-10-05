@@ -32,12 +32,15 @@ public class ArticleContentService {
     private readonly IWebHostEnvironment _environment;
     private readonly BookService _books;
     private readonly bool _accounts;
+    private readonly ParksComputing.Engine.Identity.PolicyDocuments? _policies;
 
     public ArticleContentService(IWebHostEnvironment environment, BookService books,
-        Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions>? accounts = null) {
+        Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions>? accounts = null,
+        ParksComputing.Engine.Identity.PolicyDocuments? policies = null) {
         _environment = environment;
         _books = books;
         _accounts = accounts?.Value.Enabled ?? false;
+        _policies = policies;
     }
 
     /// <summary>Where an article's source is in the admin mount, such as
@@ -122,6 +125,11 @@ public class ArticleContentService {
             false, false, IsApplet: true, WindowSize: "content");
 
     public ArticleWindowContent? Load(string? slug) {
+        // The privacy policy and the terms of use are part of the
+        // application, not content files (Identity/PolicyDocuments.cs).
+        if (ParksComputing.Engine.Identity.PolicyDocuments.IsPolicy(slug) && _policies?.Get(slug!) is { } policy) {
+            return new ArticleWindowContent(policy.Slug, policy.Title, policy.BodyHtml, false, false);
+        }
         if (slug == AccountKey && AccountWindow() is { } account) { return account; }
         if (slug == PinsKey) { return PinsWindow; }
         if (slug == ModerationKey && ModerationWindow() is { } moderation) { return moderation; }

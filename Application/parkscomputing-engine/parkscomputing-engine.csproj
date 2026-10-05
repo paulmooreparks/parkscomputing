@@ -69,6 +69,12 @@
 		 <Folder Include="wwwroot\src\" />
 	 </ItemGroup>
 
+	<!-- The privacy policy and the terms of use ship with the code whose
+	     behaviour they describe (Identity/PolicyDocuments.cs). -->
+	<ItemGroup>
+		<None Update="Legal\*.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+	</ItemGroup>
+
 	 <!-- Removed SmartSamComments project references temporarily -->
 
 	<!-- Bypass duplicate static asset key failure by overriding the DiscoverPrecompressedAssets target (no-op). -->

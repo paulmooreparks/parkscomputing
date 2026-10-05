@@ -61,7 +61,9 @@ public sealed class AccountWorkflow {
     /// address the caller has already checked, rides in the link, so that
     /// following it brings the reader back to the page they asked from, such
     /// as their window view with its windows, rather than to a page of ours.</summary>
-    public async Task RequestAsync(string email, string? displayName, string ip, string? returnUrl = null) {
+    /// <param name="agreed">For a new account, the versions of the terms and
+    /// privacy notice the reader agreed to on the form, recorded with it.</param>
+    public async Task RequestAsync(string email, string? displayName, string ip, string? returnUrl = null, PolicyVersions? agreed = null) {
         email = Email(email);
         if (displayName is not null) { displayName = DisplayName(displayName); }
         if (!await BudgetAsync(email, ip)) { return; }
@@ -82,7 +84,9 @@ public sealed class AccountWorkflow {
                 var result = await users.CreateAsync(user);
                 if (!result.Succeeded) { return; }
                 db.AccountProfiles.Add(new SiteAccountProfile {
-                    UserId = user.Id, DisplayName = displayName, Version = Guid.NewGuid(), CreatedUtc = _clock.GetUtcNow().UtcDateTime
+                    UserId = user.Id, DisplayName = displayName, Version = Guid.NewGuid(), CreatedUtc = _clock.GetUtcNow().UtcDateTime,
+                    TermsVersion = agreed?.Terms, PrivacyVersion = agreed?.Privacy,
+                    PoliciesAcceptedUtc = agreed?.Any == true ? _clock.GetUtcNow().UtcDateTime : null
                 });
                 await db.SaveChangesAsync();
             }

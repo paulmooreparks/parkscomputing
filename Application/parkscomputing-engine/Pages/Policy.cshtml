@@ -1,0 +1,9 @@
+@page "/{doc:regex(^(privacy|terms)$)}"
+@model ParksComputing.Engine.Pages.PolicyModel
+@* The privacy policy or the terms of use as a page (Pages/Policy.cshtml.cs). *@
+<article class="post-content policy-page">
+    <h1>@Model.Document.Title</h1>
+    <div class="post-body">
+        @Html.Raw(Model.Document.BodyHtml)
+    </div>
+</article>

@@ -250,6 +250,45 @@
         location.assign(url.pathname + url.search);
     });
 
+    /* === The challenge ================================================= */
+
+    /* Cloudflare Turnstile on Create account and on asking for a sign-in
+       link (Identity/Turnstile.cs). Its script is loaded from Cloudflare
+       the first time a form needs it, and draws each widget explicitly,
+       since a dialog's markup arrives by fetch and its scripts never run.
+       The widget puts its token in the form, as cf-turnstile-response. */
+    var turnstileLoad = null;
+    function loadTurnstile() {
+        if (window.turnstile) { return Promise.resolve(window.turnstile); }
+        if (!turnstileLoad) {
+            turnstileLoad = new Promise(function (resolve, reject) {
+                var s = document.createElement('script');
+                s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+                s.async = true;
+                s.onload = function () { resolve(window.turnstile); };
+                s.onerror = function () { turnstileLoad = null; reject(new Error('the check could not be loaded')); };
+                document.head.appendChild(s);
+            });
+        }
+        return turnstileLoad;
+    }
+    function challenge(scope) {
+        var spots = Array.prototype.slice.call(scope.querySelectorAll('[data-turnstile-sitekey]:not([data-turnstile-drawn])'));
+        if (!spots.length) { return; }
+        loadTurnstile().then(function (ts) {
+            spots.forEach(function (spot) {
+                if (!spot.isConnected) { return; }
+                spot.setAttribute('data-turnstile-drawn', '');
+                ts.render(spot, { sitekey: spot.getAttribute('data-turnstile-sitekey') });
+            });
+        }).catch(function () {
+            spots.forEach(function (spot) {
+                spot.textContent = 'The check that you’re a person could not be loaded. Reload the page to try again.';
+                spot.className = 'form-error';
+            });
+        });
+    }
+
     /* === Dialogs ======================================================= */
 
     var opener = null;
@@ -272,6 +311,7 @@
             document.body.appendChild(dialog);
         }
         dialog.replaceChildren(document.importNode(panel, true));
+        challenge(dialog);
         var title = dialog.querySelector('.dialog-title');
         if (title && title.id) { dialog.setAttribute('aria-labelledby', title.id); }
         if (!dialog.open) { dialog.showModal(); }
@@ -325,6 +365,7 @@
     function upgrade() {
         var dialog = document.querySelector('dialog[data-account-page-dialog][open]');
         if (!dialog) { return; }
+        challenge(dialog);
         dialog.close();
         dialog.showModal();
         dialog.addEventListener('cancel', function (e) {

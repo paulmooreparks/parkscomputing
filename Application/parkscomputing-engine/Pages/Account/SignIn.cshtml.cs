@@ -20,14 +20,17 @@ internal static class AccountReturn {
 
 [EnableRateLimiting(AdminAuthController.RateLimitPolicy)]
 public sealed class SignInModel : PageModel {
-    private readonly AccountWorkflow _workflow;
-    public SignInModel(AccountWorkflow workflow) { _workflow = workflow; }
+    private readonly AccountWorkflow _workflow; private readonly Turnstile _turnstile;
+    public SignInModel(AccountWorkflow workflow, Turnstile turnstile) { _workflow = workflow; _turnstile = turnstile; }
     [BindProperty] public string Email { get; set; } = "";
     [BindProperty(SupportsGet = true)] public string? ReturnUrl { get; set; }
     public string Back => AccountReturn.Of(ReturnUrl, Url);
     public bool Sent { get; private set; }
     public IActionResult OnGet() => User.Identity?.IsAuthenticated == true ? LocalRedirect(Back) : Page();
     public async Task<IActionResult> OnPostAsync() {
+        if (!await _turnstile.PassesAsync(Request.Form[Turnstile.FieldName], AdminOptions.ClientIp(HttpContext))) {
+            ModelState.AddModelError("", Turnstile.Refusal); return Page();
+        }
         try { await _workflow.RequestAsync(Email, null, AdminOptions.ClientIp(HttpContext), Back); Sent = true; }
         catch (ArgumentException ex) { ModelState.AddModelError(ex.Message.StartsWith("Use a display") ? "DisplayName" : "Email", ex.Message); }
         return Page();

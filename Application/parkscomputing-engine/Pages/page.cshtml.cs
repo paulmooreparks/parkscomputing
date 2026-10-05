@@ -103,6 +103,10 @@ namespace ParksComputing.Engine.Pages {
                 if (slug == ArticleContentService.PinsKey && draft is null) {
                     return Task.FromResult<IActionResult>(Redirect("/pins"));
                 }
+                // The privacy policy and the terms of use are /privacy and /terms; their windows' Open as a page names /page/privacy and /page/terms.
+                if (ParksComputing.Engine.Identity.PolicyDocuments.IsPolicy(slug) && draft is null) {
+                    return Task.FromResult<IActionResult>(Redirect("/" + slug));
+                }
                 // The moderation queue's page is /moderation; its window's Open as a page names /page/moderation.
                 if (slug == ArticleContentService.ModerationKey && draft is null) {
                     return Task.FromResult<IActionResult>(Redirect("/moderation"));

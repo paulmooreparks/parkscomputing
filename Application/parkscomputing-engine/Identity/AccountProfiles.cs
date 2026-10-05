@@ -12,6 +12,11 @@ internal sealed class SiteAccountProfile {
     public DateTime CreatedUtc { get; set; }
     public DateTime? SuspendedUtc { get; set; }
     public string? SuspensionReason { get; set; }
+    /// <summary>The versions of the terms of use and the privacy notice the
+    /// member last agreed to, and when (Architecture/privacy-and-terms.md).</summary>
+    public string? TermsVersion { get; set; }
+    public string? PrivacyVersion { get; set; }
+    public DateTime? PoliciesAcceptedUtc { get; set; }
 
     internal static void Configure(ModelBuilder builder) {
         var profile = builder.Entity<SiteAccountProfile>();
@@ -20,6 +25,8 @@ internal sealed class SiteAccountProfile {
         profile.Property(p => p.UserId).HasMaxLength(450);
         profile.Property(p => p.DisplayName).HasMaxLength(80);
         profile.Property(p => p.SuspensionReason).HasMaxLength(1000);
+        profile.Property(p => p.TermsVersion).HasMaxLength(40);
+        profile.Property(p => p.PrivacyVersion).HasMaxLength(40);
         profile.Property(p => p.Version).IsConcurrencyToken();
         profile.HasOne<IdentityUser>().WithOne().HasForeignKey<SiteAccountProfile>(p => p.UserId).OnDelete(DeleteBehavior.Restrict);
     }
