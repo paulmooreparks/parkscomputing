@@ -107,7 +107,11 @@ window.pcFileBrowserCss = '/css/filebrowser.css?v=7';
 
 /* The settings files in ~/.config (js/config.js), which each applet with
    settings of its own reads and writes; one copy a page, like the above. */
-window.pcConfigSrc = '/js/config.js?v=1';
+window.pcConfigSrc = '/js/config.js?v=2';
+
+/* The desktop's background (js/desktop-background.js), which the window
+   view and Settings draw; one copy a page, like the above. */
+window.pcDesktopBackgroundSrc = '/js/desktop-background.js?v=1';
 
 /* Where the terminal, Files and the editor have their pages: /page/ on the
    public site, and on the edit origin the admin workspace's, which its
@@ -156,7 +160,7 @@ pudlApplets.define('settings', {
     src: '/js/settings.js',
     css: '/css/settings.css',
     page: pcWorkspacePages + 'settings',
-    ver: '6'
+    ver: '7'
 });
 
 /* The scanner shares the engine and layout library with the Barcode Tool. */

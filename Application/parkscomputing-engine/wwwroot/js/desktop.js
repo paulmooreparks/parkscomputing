@@ -242,6 +242,46 @@
         history.replaceState(history.state, '', location.pathname + location.search + sep + saved);
     }
 
+    /* === The background ===================================================
+       Someone with a home directory on the server (the page then carries
+       pc-fs-mount) may give the desktop a colour or a picture in Settings,
+       kept in ~/.config/desktop.json so it follows them to any browser.
+       js/desktop-background.js draws it behind the windows, and again
+       whenever Settings changes it. */
+    function loadScript(src) {
+        return new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = function () { reject(new Error('could not load ' + src)); };
+            document.head.appendChild(s);
+        });
+    }
+    function need(global, src) { return window[global] ? Promise.resolve() : loadScript(src); }
+
+    function initBackground() {
+        var stage = document.querySelector('.reader-stage');
+        if (!stage || !document.querySelector('meta[name="pc-fs-mount"]')) { return; }
+        var url = null, shown = {};
+        function apply(s) {
+            if (s.bgKind === shown.bgKind && s.bgColor === shown.bgColor && s.bgImage === shown.bgImage && s.bgFit === shown.bgFit) { return; }
+            shown = s;
+            window.pcDesktopBackground(stage, s, url).then(function (next) { url = next; });
+        }
+        Promise.all([
+            need('pcSiteFs', window.pcSiteFsSrc || '/js/sitefs.js'),
+            need('pcConfig', window.pcConfigSrc || '/js/config.js'),
+            need('pcDesktopBackground', window.pcDesktopBackgroundSrc || '/js/desktop-background.js')
+        ]).then(function () {
+            return window.pcSiteFs.load();
+        }).then(function () {
+            return window.pcConfig.load('desktop', { bgKind: 'none' });
+        }).then(function (s) {
+            apply(s);
+            window.pcConfig.onChange('desktop', apply);
+        }).catch(function () { /* The theme's own background stays. */ });
+    }
+
     function init() {
         var layer = document.querySelector('[data-win-layer]');
         if (!layer) { return; }
@@ -254,6 +294,7 @@
         layer.querySelectorAll(':scope > .win[data-win]').forEach(enhance);
 
         initPrefs(layer);
+        initBackground();
 
         /* Close-all is js/window-bar.js's, shared with the admin desktop. */
     }

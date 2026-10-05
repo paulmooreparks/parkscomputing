@@ -1,19 +1,17 @@
 /* Settings, as an applet, so it opens as a window beside the tools rather
-   than over them, and so it is an ordinary entry in the Applets menu. On
-   the public site it holds that site's settings, all kept in this browser
-   (initPublic, below). On the edit origin it holds the admin desktop's
-   (Architecture/admin-and-identity-design.md, A12 and A14). Each tool keeps
-   its own settings behind its own controls; these are the desktop's:
+   than over them, and so it is an ordinary entry in the Applets menu. Each
+   tool keeps its own settings behind its own controls; these are the
+   site's:
 
-   - how new windows open, floating or maximized;
-   - the theme;
-   - the background, a colour or a picture;
-   - the file tree at the side;
-   - the sign-in timeouts, which the server keeps and bounds.
-
-   All but the timeouts live in ~/.config/desktop.json (js/config.js), so
-   they follow the admin; js/admin-desktop.js applies them. The timeouts
-   go through /api/admin/settings/timeouts. */
+   - the theme, the default view and how windows open, kept in this
+     browser (initPublic, below);
+   - for someone with a home directory on the server (the page carries
+     pc-fs-mount), the desktop's background, a colour or a picture, kept in
+     ~/.config/desktop.json (js/config.js) so it follows them, and drawn by
+     js/desktop-background.js;
+   - for them too, the sign-in timeouts, which the server keeps and bounds,
+     through /api/admin/settings/timeouts
+     (Architecture/admin-and-identity-design.md, A12 and A14). */
 (function () {
     'use strict';
 
@@ -30,8 +28,8 @@
     }
     function need(global, src) { return window[global] ? Promise.resolve() : loadScript(src); }
 
-    /* What desktop.json holds when it says nothing. */
-    var DEFAULTS = { newWindows: 'floating', theme: '', bgKind: 'none', bgColor: '#20303f', bgImage: '', bgFit: 'fill', treeWwwroot: false, treeHidden: false };
+    /* What desktop.json holds about the background when it says nothing. */
+    var DEFAULTS = { bgKind: 'none', bgColor: '#20303f', bgImage: '', bgFit: 'fill' };
     var SWATCHES = ['#20303f', '#1f3a2e', '#3b2745', '#40302a', '#2c2c2c', '#dfe6ee', '#e9e2d4', '#d9e4d6'];
     var FITS = [['fill', 'Fill'], ['fit', 'Fit'], ['center', 'Centre'], ['tile', 'Tile']];
     var IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif'];
@@ -66,7 +64,10 @@
         return { titles: [{ label: 'Settings', items: window.pcAppletIdentity(root, []) }] };
     }
 
-    function initPublic(root, opts, n) {
+    /* more.middle goes after the Windows card and more.end after the
+       last, for the cards init adds. */
+    function initPublic(root, opts, n, more) {
+        more = more || {};
         root.classList.add('pc-settings');
         if (opts.fit === 'fill') { root.classList.add('pc-settings-fill'); }
         root.innerHTML =
@@ -91,12 +92,14 @@
               '<label class="check"><input type="checkbox" data-pref="maximize-new" /> Maximize new windows</label>' +
               '<label class="check"><input type="checkbox" data-pref="resume-windows" data-pref-default="1" /> Reopen last session\'s windows</label>' +
             '</section>' +
+            (more.middle || '') +
             '<section class="card pc-set-card">' +
               '<h2 class="card-title">This browser</h2>' +
               '<p class="card-desc">These choices, the window arrangement, the applets\' saves and your home directory in the terminal are kept only in this browser. Forgetting erases them all.</p>' +
               '<button type="button" class="btn btn-danger" data-forget>Forget this browser\'s data</button>' +
-              '<p class="pc-set-status" data-role="status" role="status" aria-live="polite"></p>' +
-            '</section>';
+              '<p class="pc-set-status" data-role="forget-status" role="status" aria-live="polite"></p>' +
+            '</section>' +
+            (more.end || '');
 
         function mark() {
             var theme = window.pudlThemePreference ? window.pudlThemePreference() : 'system';
@@ -122,7 +125,7 @@
             /* Forgetting lands the theme on System: the device decides. */
             if (window.pudlSetTheme) { window.pudlSetTheme('system'); }
             mark();
-            root.querySelector('[data-role="status"]').textContent = 'This browser\'s data for this site is erased.';
+            root.querySelector('[data-role="forget-status"]').textContent = 'This browser\'s data for this site is erased.';
         }
 
         function onClick(e) {
@@ -154,37 +157,19 @@
 
     function init(root, opts) {
         opts = opts || {};
-        /* Off the edit origin there is no mount, and the settings are the
-           public site's, all in this browser. */
+        /* Without a home directory on the server, the settings are all in
+           this browser. */
         if (!meta('pc-fs-mount')) { return initPublic(root, opts, ++count); }
         var n = ++count, destroyed = false, F = null, FB = null, C = null, s = Object.assign({}, DEFAULTS), unConfig = null;
-        root.classList.add('pc-settings');
-        if (opts.fit === 'fill') { root.classList.add('pc-settings-fill'); }
-        root.innerHTML = '<p class="pc-settings-loading">Loading your settings…</p>';
 
         function radio(name, value, label, checked) {
             return '<label class="check"><input type="radio" name="' + name + '-' + n + '" value="' + value + '"' + (checked ? ' checked' : '') + ' /> ' + esc(label) + '</label>';
         }
 
-        function build(mounted) {
-            root.innerHTML =
-                '<section class="card pc-set-card">' +
-                  '<h2 class="card-title">Windows</h2>' +
-                  '<fieldset class="pc-set-group"><legend class="form-label">New windows open</legend>' +
-                    radio('newWindows', 'floating', 'Floating, beside the others', true) +
-                    radio('newWindows', 'maximized', 'Maximized, filling the desktop', false) +
-                  '</fieldset>' +
-                '</section>' +
-                '<section class="card pc-set-card">' +
-                  '<h2 class="card-title">Theme</h2>' +
-                  '<div class="seg" role="group" aria-label="Theme" data-role="theme">' +
-                    '<button type="button" data-theme-choice="light">Light</button>' +
-                    '<button type="button" data-theme-choice="dark">Dark</button>' +
-                    '<button type="button" data-theme-choice="system">Follow the system</button>' +
-                  '</div>' +
-                '</section>' +
-                '<section class="card pc-set-card">' +
+        function backgroundCard() {
+            return '<section class="card pc-set-card" data-role="background">' +
                   '<h2 class="card-title">Background</h2>' +
+                  '<p class="card-desc">The desktop behind the windows. It is kept in your home directory on the server, so it follows you to any browser where you sign in.</p>' +
                   '<div class="pc-set-bg">' +
                     '<div class="pc-set-preview" data-role="preview" aria-hidden="true"></div>' +
                     '<div class="pc-set-bg-controls">' +
@@ -205,17 +190,14 @@
                           FITS.map(function (f) { return '<option value="' + f[0] + '">' + f[1] + '</option>'; }).join('') +
                         '</select></span>' +
                       '</div>' +
-                      (mounted ? '' : '<p class="form-help">A picture needs a home directory on the server, so it is offered only when you are signed in to edit.</p>') +
                     '</div>' +
                   '</div>' +
-                '</section>' +
-                '<section class="card pc-set-card">' +
-                  '<h2 class="card-title">File tree</h2>' +
-                  '<label class="check"><input type="checkbox" data-role="treeWwwroot" /> Open /wwwroot in the tree when the desktop starts</label>' +
-                  '<label class="check"><input type="checkbox" data-role="treeHidden" /> Show hidden files, whose names start with a dot</label>' +
-                '</section>' +
-                (mounted ?
-                '<section class="card pc-set-card" data-role="timeouts">' +
+                  '<p class="pc-set-status" data-role="status" role="status" aria-live="polite"></p>' +
+                '</section>';
+        }
+
+        function timeoutsCard() {
+            return '<section class="card pc-set-card" data-role="timeouts">' +
                   '<h2 class="card-title">Sign-in and timeouts</h2>' +
                   '<p class="card-desc">You can shorten any of these at any time. Lengthening one needs a session you began with a passkey, and a passkey tap. Each change is recorded and emailed to you. The server sets the limits.</p>' +
                   '<form class="pc-set-timeouts" data-role="timeouts-form">' +
@@ -226,8 +208,7 @@
                     '<div class="pc-set-actions"><button type="submit" class="btn btn-primary">Save timeouts</button> <button type="button" class="btn" data-role="timeouts-defaults">Use the defaults</button></div>' +
                     '<p class="pc-set-status" data-role="timeouts-status" role="status"></p>' +
                   '</form>' +
-                '</section>' : '') +
-                '<p class="pc-set-status" data-role="status" role="status" aria-live="polite"></p>';
+                '</section>';
         }
 
         function field(key, label, unit) {
@@ -237,7 +218,13 @@
                 ' <span class="pc-set-limits" data-limits="' + key + '"></span></span></div>';
         }
 
+        /* The browser's own cards, with Background after Windows and the
+           timeouts last. Background waits, disabled, until desktop.json is
+           read. */
+        var pub = initPublic(root, opts, n, { middle: backgroundCard(), end: timeoutsCard() });
         var q = function (sel) { return root.querySelector(sel); };
+        var bgCard = q('[data-role="background"]');
+        bgCard.querySelectorAll('input, select, button').forEach(function (c) { c.disabled = true; });
 
         function say(msg, isError) {
             var el = q('[data-role="status"]');
@@ -253,9 +240,6 @@
         /* === Showing the settings ======================================== */
 
         function show() {
-            root.querySelectorAll('input[name="newWindows-' + n + '"]').forEach(function (r) { r.checked = r.value === s.newWindows; });
-            var theme = s.theme || (window.pudlThemePreference ? window.pudlThemePreference() : 'system');
-            root.querySelectorAll('[data-theme-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-choice') === theme)); });
             root.querySelectorAll('input[name="bgKind-' + n + '"]').forEach(function (r) { r.checked = r.value === s.bgKind; });
             q('[data-role="swatches"]').hidden = s.bgKind !== 'color';
             q('[data-role="image-row"]').hidden = s.bgKind !== 'image';
@@ -263,18 +247,13 @@
             q('[data-role="color"]').value = /^#[0-9a-f]{6}$/i.test(s.bgColor) ? s.bgColor : DEFAULTS.bgColor;
             q('[data-role="image-name"]').textContent = s.bgImage || 'None chosen';
             q('[data-role="fit"]').value = s.bgFit;
-            q('[data-role="treeWwwroot"]').checked = !!s.treeWwwroot;
-            q('[data-role="treeHidden"]').checked = !!s.treeHidden;
             preview();
         }
 
-        /* The preview is drawn the way the desktop draws the background,
-           by the same function in js/admin-desktop.js when it is there. */
+        /* The preview is drawn as the desktop is (js/desktop-background.js). */
         var previewUrl = null;
         async function preview() {
-            var box = q('[data-role="preview"]');
-            if (window.pcDesktopBackground) { previewUrl = await window.pcDesktopBackground(box, s, previewUrl); }
-            else { box.style.background = s.bgKind === 'color' ? s.bgColor : ''; }
+            previewUrl = await window.pcDesktopBackground(q('[data-role="preview"]'), s, previewUrl);
         }
 
         /* === Timeouts ===================================================== */
@@ -329,11 +308,7 @@
         function onClick(e) {
             var t = e.target.closest('button');
             if (!t || !root.contains(t)) { return; }
-            if (t.hasAttribute('data-theme-choice')) {
-                var theme = t.getAttribute('data-theme-choice');
-                if (window.pudlSetTheme) { window.pudlSetTheme(theme); }
-                s.theme = theme; show(); save({ theme: theme });
-            } else if (t.hasAttribute('data-color')) {
+            if (t.hasAttribute('data-color')) {
                 s.bgColor = t.getAttribute('data-color'); show(); save({ bgColor: s.bgColor });
             } else if (t.getAttribute('data-role') === 'choose') {
                 choosePicture();
@@ -343,12 +318,9 @@
         }
         function onChange(e) {
             var t = e.target;
-            if (t.name === 'newWindows-' + n) { s.newWindows = t.value; save({ newWindows: t.value }); }
-            else if (t.name === 'bgKind-' + n) { s.bgKind = t.value; show(); save({ bgKind: t.value }); if (t.value === 'image' && !s.bgImage) { choosePicture(); } }
+            if (t.name === 'bgKind-' + n) { s.bgKind = t.value; show(); save({ bgKind: t.value }); if (t.value === 'image' && !s.bgImage) { choosePicture(); } }
             else if (t.getAttribute('data-role') === 'color') { s.bgColor = t.value; show(); save({ bgColor: t.value }); }
             else if (t.getAttribute('data-role') === 'fit') { s.bgFit = t.value; show(); save({ bgFit: t.value }); }
-            else if (t.getAttribute('data-role') === 'treeWwwroot') { s.treeWwwroot = t.checked; save({ treeWwwroot: t.checked }); }
-            else if (t.getAttribute('data-role') === 'treeHidden') { s.treeHidden = t.checked; save({ treeHidden: t.checked }); }
         }
         function onSubmit(e) {
             if (e.target.getAttribute('data-role') !== 'timeouts-form') { return; }
@@ -383,27 +355,29 @@
         var boot = Promise.all([
             need('pcSiteFs', window.pcSiteFsSrc || beside('sitefs.js')),
             need('pcFileBrowser', window.pcFileBrowserSrc || beside('filebrowser.js')),
-            need('pcConfig', window.pcConfigSrc || beside('config.js'))
+            need('pcConfig', window.pcConfigSrc || beside('config.js')),
+            need('pcDesktopBackground', window.pcDesktopBackgroundSrc || beside('desktop-background.js'))
         ]).then(function () {
             F = window.pcSiteFs; FB = window.pcFileBrowser; C = window.pcConfig;
+            loadTimeouts();
             return F.load();
         }).then(function () {
             return C.load('desktop', DEFAULTS);
         }).then(function (got) {
             if (destroyed) { return; }
             s = got;
-            build(F.mounted);
+            bgCard.querySelectorAll('input, select, button').forEach(function (c) { c.disabled = false; });
             show();
             unConfig = C.onChange('desktop', function (next) { s = next; show(); });
-            if (F.mounted) { loadTimeouts(); }
         }).catch(function (err) {
-            if (!destroyed) { root.innerHTML = '<p class="pc-settings-failed">Settings could not start: ' + esc(err.message) + '.</p>'; }
+            if (!destroyed) { say('Your background could not be read: ' + err.message + '.', true); }
         });
 
         return {
-            menus: function () { return settingsMenus(root); },
+            menus: pub.menus,
             destroy: function () {
                 destroyed = true;
+                pub.destroy();
                 if (unConfig) { unConfig(); }
                 if (previewUrl) { URL.revokeObjectURL(previewUrl); }
                 root.removeEventListener('click', onClick);

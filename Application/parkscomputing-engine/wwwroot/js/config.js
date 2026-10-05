@@ -100,18 +100,23 @@
     }
 
     function entry(name) {
-        return entries[name] || (entries[name] = { defaults: {}, values: {}, text: undefined, loaded: false, listeners: [], version: 0, saving: 0 });
+        return entries[name] || (entries[name] = { defaults: {}, values: {}, text: undefined, loaded: false, listeners: [], version: 0, saving: 0, queue: null });
     }
 
     function get(name) { var e = entries[name]; return e ? merged(e) : {}; }
 
+    /* Saves of one file go one at a time, each after the last has
+       finished, so two changes made in quick succession don't both write
+       the file at once and collide; each merges into what the last wrote. */
     async function set(name, changes) {
         var F = await fs();
         var e = entry(name);
         if (!e.loaded) { await load(name, {}); }
         e.version++;
         e.saving++;
-        try { return await save(F, name, e, changes); }
+        var turn = (e.queue || Promise.resolve()).then(function () { return save(F, name, e, changes); });
+        e.queue = turn.catch(function () { });
+        try { return await turn; }
         finally { e.saving--; }
     }
 

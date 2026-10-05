@@ -24,7 +24,7 @@ DST="$REPO/.local/beta/wwwroot"
 # and editor that ask a signed-out reader to sign in again, and the pinned
 # PUDL release. A static deploy to the live tree makes these the
 # same there, after which they can leave this list.
-OVERLAY="js/accounts.js js/account.js js/applets.js js/terminal.js js/sitefs.js js/terminal-text.js css/terminal.css js/editor.js js/files.js js/diff.js js/theme-studio.js js/window-bar.js js/commands.js js/pins.js js/pins-manager.js css/account.css css/pins-manager.css css/pudl-site.css pudl js/sudoku.js js/settings.js js/barcode-tool.js js/barcode-scanner.js js/barcode-lookup-ui.js css/barcode-tool.css css/barcode-scanner.css theme-studio/preview.html js/comments.js js/moderation.js css/comments.css js/status.js js/status js/logs.js css/logs.css"
+OVERLAY="js/accounts.js js/account.js js/applets.js js/terminal.js js/sitefs.js js/terminal-text.js css/terminal.css js/editor.js js/files.js js/diff.js js/theme-studio.js js/window-bar.js js/commands.js js/pins.js js/pins-manager.js css/account.css css/pins-manager.css css/pudl-site.css pudl js/sudoku.js js/settings.js js/config.js js/desktop.js js/desktop-background.js js/admin-desktop.js js/barcode-tool.js js/barcode-scanner.js js/barcode-lookup-ui.js css/barcode-tool.css css/barcode-scanner.css theme-studio/preview.html js/comments.js js/moderation.js css/comments.css js/status.js js/status js/logs.js css/logs.css"
 
 rm -rf "$DST"
 mkdir -p "$DST"

@@ -136,41 +136,14 @@
     var settings = {}, bgUrl = null, browser = null;
     var stage = document.querySelector('.admin-stage');
 
-    var IMAGE_TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif' };
-    var FIT = {
-        fill: 'center / cover no-repeat', fit: 'center / contain no-repeat',
-        center: 'center / auto no-repeat', tile: 'top left / auto repeat'
-    };
-
-    /* Draws a background on an element: a colour, or a picture from ~ read
-       through the mount and shown from a blob address. Resolves to the new
-       address, and lets the old one go. Settings' preview uses it too. */
-    async function paint(el, s, oldUrl) {
-        var url = null;
-        el.style.background = '';
-        if (s.bgKind === 'color' && /^#[0-9a-f]{3,8}$/i.test(s.bgColor || '')) {
-            el.style.background = s.bgColor;
-        } else if (s.bgKind === 'image' && s.bgImage && F) {
-            var n = F.resolve(F.home(), s.bgImage);
-            var ext = String(s.bgImage).split('.').pop().toLowerCase();
-            if (n && !n.children && IMAGE_TYPES[ext]) {
-                try {
-                    url = URL.createObjectURL(new Blob([await F.readBytes(n)], { type: IMAGE_TYPES[ext] }));
-                    el.style.background = 'url("' + url + '") ' + (FIT[s.bgFit] || FIT.fill);
-                } catch (err) { url = null; }
-            }
-        }
-        if (oldUrl) { URL.revokeObjectURL(oldUrl); }
-        return url;
-    }
-    window.pcDesktopBackground = paint;
-
+    /* The background is drawn by js/desktop-background.js, which the window
+       view and Settings' preview share. */
     async function apply(s) {
         var before = settings;
         settings = s;
         if (s.theme && window.pudlSetTheme && window.pudlThemePreference && window.pudlThemePreference() !== s.theme) { window.pudlSetTheme(s.theme); }
-        if (stage && (s.bgKind !== before.bgKind || s.bgColor !== before.bgColor || s.bgImage !== before.bgImage || s.bgFit !== before.bgFit)) {
-            bgUrl = await paint(stage, s, bgUrl);
+        if (stage && window.pcDesktopBackground && (s.bgKind !== before.bgKind || s.bgColor !== before.bgColor || s.bgImage !== before.bgImage || s.bgFit !== before.bgFit)) {
+            bgUrl = await window.pcDesktopBackground(stage, s, bgUrl);
         }
         if (browser && !!s.treeHidden !== !!before.treeHidden) { browser.showHidden(!!s.treeHidden); }
         if (layout && s.sidebarWidth !== before.sidebarWidth) {
@@ -208,7 +181,8 @@
     var fs = window.pcSiteFs ? Promise.resolve() : loadScript(window.pcSiteFsSrc || '/js/sitefs.js');
     var fb = window.pcFileBrowser ? Promise.resolve() : loadScript(window.pcFileBrowserSrc || '/js/filebrowser.js');
     var cf = window.pcConfig ? Promise.resolve() : loadScript(window.pcConfigSrc || '/js/config.js');
-    Promise.all([fs, fb, cf]).then(function () {
+    var bg = window.pcDesktopBackground ? Promise.resolve() : loadScript(window.pcDesktopBackgroundSrc || '/js/desktop-background.js');
+    Promise.all([fs, fb, cf, bg]).then(function () {
         F = window.pcSiteFs; FB = window.pcFileBrowser;
         return F.load();
     }).then(function () {
