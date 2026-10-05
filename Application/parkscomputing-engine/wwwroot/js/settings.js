@@ -60,19 +60,14 @@
         try { var v = localStorage.getItem('pc-' + name); return v == null ? fallback : v === '1'; } catch (err) { return fallback; }
     }
 
-    /* Which side the window view's article list is on: PUDL's data-md-side
-       (0.52.0), which Pages/Desktop.cshtml sets from this key before the
-       first paint, and which this moves at once on a page that has one. */
+    /* Which side the window view's article list is on. The View menu's
+       command, sidebar-side in js/commands.js, keeps and applies it; this
+       card offers the same choice through it. */
     function sideChoice() {
         try { return localStorage.getItem('pc-sidebar-side') === 'end' ? 'end' : 'start'; } catch (err) { return 'start'; }
     }
     function setSide(side) {
-        try {
-            if (side === 'end') { localStorage.setItem('pc-sidebar-side', 'end'); } else { localStorage.removeItem('pc-sidebar-side'); }
-        } catch (err) { }
-        document.querySelectorAll('.md-layout[data-md-persistent]').forEach(function (layout) {
-            if (side === 'end') { layout.setAttribute('data-md-side', 'end'); } else { layout.removeAttribute('data-md-side'); }
-        });
+        if (window.pcCommands) { window.pcCommands.run('sidebar-side', { value: side }); }
     }
 
     function settingsMenus(root) {
@@ -167,6 +162,7 @@
         root.addEventListener('click', onClick);
         root.addEventListener('change', onChange);
         document.addEventListener('pudl:theme-change', mark);
+        document.addEventListener('pc:sidebar-side', mark);
         mark();
         return {
             menus: function () { return settingsMenus(root); },
@@ -174,6 +170,7 @@
                 root.removeEventListener('click', onClick);
                 root.removeEventListener('change', onChange);
                 document.removeEventListener('pudl:theme-change', mark);
+                document.removeEventListener('pc:sidebar-side', mark);
             }
         };
     }

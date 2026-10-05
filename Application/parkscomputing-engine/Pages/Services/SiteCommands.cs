@@ -98,9 +98,11 @@ public static class SiteCommands {
                 break;
             }
         }
-        // theme, find, and any command a script of the site's defines.
+        // theme, find, the sidebar's, and any command a script of the
+        // site's defines. The ones that can be ticked start unticked, and
+        // js/commands.js ticks them.
         Data();
-        if (command == "theme") { Add("aria-checked", "false"); }
+        if (command is "theme" or "sidebar" or "sidebar-side") { Add("aria-checked", "false"); }
         return new("button", attrs);
     }
 }

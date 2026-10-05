@@ -61,7 +61,11 @@
         checked: function (a) { return (window.pudlThemePreference ? window.pudlThemePreference() : 'system') === a.value; }
     });
 
-    /* find: focus in the window view's list filter. */
+    function sidebarLayout() { return document.querySelector('.md-layout[data-md-persistent]'); }
+
+    /* sidebar: hide or show the window view's article list, as the window
+       bar's sidebar button does. js/window-bar.js ticks it while the list
+       is hidden, and disables it with the button. */
     define('sidebar', {
         run: function () {
             var button = document.querySelector('[data-sidebar-toggle]');
@@ -69,6 +73,32 @@
             return true;
         }
     });
+
+    /* sidebar-side { value }: put the window view's article list on the
+       right (end) or the left (start), PUDL's data-md-side (0.52.0); with no
+       value, on the other side. The choice is kept in this browser under
+       pc-sidebar-side, which Pages/Desktop.cshtml applies before the first
+       paint. Settings' Windows card offers the same choice through this
+       command, and hears of a change from pc:sidebar-side. Ticked while the
+       list is on the right. */
+    function sideNow() {
+        try { return localStorage.getItem('pc-sidebar-side') === 'end' ? 'end' : 'start'; } catch (err) { return 'start'; }
+    }
+    define('sidebar-side', {
+        run: function (a) {
+            var side = a.value === 'end' || a.value === 'start' ? a.value : sideNow() === 'end' ? 'start' : 'end';
+            try {
+                if (side === 'end') { localStorage.setItem('pc-sidebar-side', 'end'); } else { localStorage.removeItem('pc-sidebar-side'); }
+            } catch (err) { }
+            var l = sidebarLayout();
+            if (l) { if (side === 'end') { l.setAttribute('data-md-side', 'end'); } else { l.removeAttribute('data-md-side'); } }
+            document.dispatchEvent(new CustomEvent('pc:sidebar-side', { detail: { side: side } }));
+            return true;
+        },
+        checked: function () { return sideNow() === 'end'; }
+    });
+
+    /* find: focus in the window view's list filter. */
 
     define('find', {
         run: function () {

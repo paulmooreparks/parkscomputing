@@ -31,11 +31,11 @@
             button.setAttribute('data-tooltip', label);
             button.title = label;
             button.disabled = !!(narrowLayout() && !hidden && (!window.pudlWindows || !window.pudlWindows.state().open.length));
-            /* View's Show sidebar keeps its words and is ticked while the
-               list shows, as every other on-and-off command in the menus is;
-               the button's label says what pressing it will do. */
+            /* View's Hide the article list keeps its words and is ticked
+               while the list is hidden, as every other on-and-off command in
+               the menus is; the button's label says what pressing it will do. */
             document.querySelectorAll('[data-command="sidebar"]').forEach(function (command) {
-                command.setAttribute('aria-checked', hidden ? 'false' : 'true');
+                command.setAttribute('aria-checked', hidden ? 'true' : 'false');
                 command.disabled = button.disabled;
             });
         });
