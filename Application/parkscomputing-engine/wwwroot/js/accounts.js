@@ -24,13 +24,20 @@
 
     /* === Passkeys ====================================================== */
 
-    async function post(action, body) {
+    async function post(action, body, retried) {
         var r = await fetch('/api/account/passkey/' + action, {
             method: 'POST', credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'RequestVerificationToken': token() },
             body: JSON.stringify(body || {})
         });
         if (r.status === 429) { throw new Error('Too many tries. Wait a minute, then try again.'); }
+        /* An antiforgery token belongs to whoever the reader was when it was
+           made, so one from before the session lapsed is refused with a bare
+           400. The request goes once more with a token for who they are now. */
+        if (r.status === 400 && !retried && !(r.headers.get('Content-Type') || '').includes('application/json')) {
+            await freshToken();
+            return post(action, body, true);
+        }
         if (!(r.headers.get('Content-Type') || '').includes('application/json')) { throw new Error('That did not work. Reload the page and try again.'); }
         var value = await r.json();
         if (!r.ok) {
@@ -172,7 +179,10 @@
                 '</div></section>';
             var status = dialog.querySelector('[data-reauth-status]'), done = false;
             function say(text) { status.textContent = text; status.hidden = !text; }
-            function finish(ok) { done = true; dialog.close(); dialog.remove(); if (ok) { resolve(); } else { reject(new Error('you cancelled signing in')); } }
+            function finish(ok) {
+                done = true; dialog.close(); dialog.remove();
+                if (ok) { document.dispatchEvent(new CustomEvent('pc:signed-in')); resolve(); } else { reject(new Error('you cancelled signing in')); }
+            }
             dialog.addEventListener('close', function () { if (!done) { done = true; dialog.remove(); reject(new Error('you cancelled signing in')); } });
             dialog.addEventListener('click', async function (e) {
                 var b = e.target.closest('[data-reauth]');
@@ -232,6 +242,21 @@
         // A confirmation opens what the page was waiting on.
         if (button.dataset.passkey === 'confirm') { location.reload(); return; }
         if (button.dataset.passkey === 'signin') {
+            /* Signing in again as the account the page was made for, after
+               the session lapsed, needs no reload: the page already shows
+               what that account sees, and a reload would lose the work in
+               its windows. Scripts get a token for the new session, and
+               pc:signed-in tells anything that showed the reader signed out. */
+            var made = document.querySelector('meta[name="pc-account"]');
+            var live = button.closest('dialog[data-account-live]');
+            if (made && live) {
+                var now = await freshToken().catch(function () { return null; });
+                if (now && now.signedIn && now.account === made.content) {
+                    live.close();
+                    document.dispatchEvent(new CustomEvent('pc:signed-in'));
+                    return;
+                }
+            }
             var pageDialog = button.closest('[data-account-page-dialog]');
             var back = pageDialog && pageDialog.querySelector('[data-account-cancel]');
             if (back) { location.assign(back.getAttribute('href')); } else { location.reload(); }

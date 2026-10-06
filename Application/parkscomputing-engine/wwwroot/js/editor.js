@@ -322,7 +322,7 @@
                     roComp.of([CM.EditorState.readOnly.of(!!tab.readOnly), CM.EditorView.editable.of(!tab.readOnly)]),
                     CM.EditorView.contentAttributes.of({ 'aria-label': 'Text of ' + tab.name }),
                     CM.EditorView.updateListener.of(function (u) {
-                        if (u.docChanged && tabs[active] === tab) { markModified(tab); }
+                        if (u.docChanged && tabs[active] === tab) { markModified(tab); keep(); }
                         if (u.selectionSet || u.docChanged) { showPos(); }
                     })
                 ]
@@ -362,6 +362,7 @@
             var viewLink = q('[data-role="view"]');
             viewLink.hidden = !url;
             if (url) { viewLink.href = url; } else { viewLink.removeAttribute('href'); }
+            keep();
         }
 
         /* An article's source under /wwwroot/content can be previewed (A11). */
@@ -772,6 +773,100 @@
             openPath(f).then(function (opened) { if (!opened && !F.resolve(F.home(), f)) { newNamed(f); } });
         }
 
+        /* === Keeping the work through a reload ============================ */
+
+        /* The open tabs, and the text of any with unsaved changes, are kept
+           in this browser tab's session storage as they change, so reloading
+           the page (to sign in again, say) brings them back as they were.
+           Session storage belongs to the one browser tab, so two pages that
+           each have an Editor keep apart, and the browser restores it with a
+           tab it reopens. Closing the Editor on purpose forgets the work. A
+           draft for a file that can't be reached when the Editor starts, as
+           a server file can't while signed out, waits until it can. */
+        var KEEP = 'pc-editor-work', keepTimer = null, forgotten = false, waiting = [], restoring = false;
+        function keep() { if (!keepTimer && !forgotten) { keepTimer = setTimeout(keepNow, 400); } }
+        function keepNow() {
+            clearTimeout(keepTimer);
+            keepTimer = null;
+            /* Until the kept work is all back, what is kept is still the
+               whole of it. */
+            if (forgotten || restoring || !view) { return; }
+            var list = tabs.map(function (t, i) {
+                var text = (i === active ? view.state : t.state).doc.toString();
+                return { path: t.path, name: t.name, lang: t.lang, mtime: t.mtime, fresh: !!t.fresh, draft: t.modified ? text : null };
+            }).filter(function (k) { return k.path || k.draft !== null; });
+            try { sessionStorage.setItem(KEEP, JSON.stringify({ tabs: list, waiting: waiting })); } catch (err) { /* Too large, or storage is off. */ }
+        }
+        function forget() {
+            forgotten = true;
+            clearTimeout(keepTimer);
+            try { sessionStorage.removeItem(KEEP); } catch (err) { /* Storage is off. */ }
+        }
+        function readKept() {
+            try {
+                var v = JSON.parse(sessionStorage.getItem(KEEP) || 'null');
+                return v && Array.isArray(v.tabs) ? v : null;
+            } catch (err) { return null; }
+        }
+
+        function putDraft(t, text) {
+            view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+            markModified(t);
+        }
+
+        /* Reopens the kept tabs, and puts back their unsaved text; resolves
+           to what to tell the reader, or null when there was nothing kept. */
+        async function restoreKept() {
+            var kept = readKept();
+            if (!kept) { return null; }
+            var back = [], all = (kept.waiting || []).concat(kept.tabs);
+            restoring = true;
+            try { await reopen(all, back); } finally { restoring = false; }
+            var msg = back.length ? 'Your unsaved changes to ' + back.join(', ') + ' are back.' : '';
+            if (waiting.length) {
+                msg += (msg ? ' ' : '') + 'Unsaved changes to ' + waiting.map(function (k) { return k.path; }).join(', ') +
+                    ' are kept until the file can be reached again; you may need to sign in, then reload.';
+            }
+            keepNow();
+            return { text: msg, error: waiting.length > 0 };
+        }
+        async function reopen(all, back) {
+            for (var i = 0; i < all.length; i++) {
+                var k = all[i];
+                if (!k || typeof k !== 'object') { continue; }
+                if (!k.path) {
+                    if (typeof k.draft !== 'string') { continue; }
+                    var n = /^untitled-(\d+)$/.exec(k.name || '');
+                    if (n) { untitled = Math.max(untitled, +n[1]); }
+                    addTab({ path: null, name: k.name || 'untitled', lang: k.lang || 'text', readOnly: false }, '');
+                    putDraft(current(), k.draft);
+                    back.push(current().name);
+                    continue;
+                }
+                var node = F.resolve(F.home(), F.upgradePath(k.path));
+                if (!node && k.fresh) {
+                    newNamed(k.path);
+                    var made = current();
+                    if (made && made.path === k.path && typeof k.draft === 'string') { putDraft(made, k.draft); back.push(made.name); }
+                    continue;
+                }
+                if (!node || !(await openPath(k.path))) {
+                    if (typeof k.draft === 'string') { waiting.push(k); }
+                    continue;
+                }
+                var t = current();
+                if (typeof k.draft === 'string' && k.draft !== t.saved) {
+                    putDraft(t, k.draft);
+                    back.push(t.name);
+                    /* The file was saved somewhere else since: the reader's
+                       text stays, and saving would replace that version. */
+                    if (k.mtime != null && t.mtime != null && k.mtime !== t.mtime) { t.external = true; }
+                }
+            }
+        }
+        function onPageHide() { keepNow(); }
+        window.addEventListener('pagehide', onPageHide);
+
         function onBeforeUnload(e) {
             if (tabs.some(function (t) { return t.modified; })) { e.preventDefault(); e.returnValue = ''; }
         }
@@ -785,7 +880,8 @@
         function onWindowClosing(e) {
             if (e.target !== win || closeAgreed) { return; }
             var changed = tabs.filter(function (t) { return t.modified; });
-            if (!changed.length) { return; }
+            /* Closing the Editor on purpose starts it afresh next time. */
+            if (!changed.length) { forget(); return; }
             e.preventDefault();
             var key = win.getAttribute('data-win');
             var names = changed.map(function (t) { return t.name; });
@@ -800,6 +896,7 @@
                             if (!(await save())) { return; }
                         }
                     } else if (choice !== 'discard') { return; }
+                    forget();
                     closeAgreed = true;
                     window.pudlWindows.close(key);
                 });
@@ -1051,10 +1148,14 @@
             keyComp = new CM.Compartment();
             view = new CM.EditorView({ parent: el.surface });
             unsubscribe = F.onChange(onFsChange);
+            var restored = await restoreKept();
+            /* The file the address or window asks for comes to the front,
+               which after a reload is the one that was in front. */
             var opened = startFile ? await openPath(startFile) : false;
             if (!opened) {
-                if (startFile && !F.resolve(F.home(), startFile)) { newNamed(startFile); } else { newTab(); }
+                if (startFile && !F.resolve(F.home(), startFile)) { newNamed(startFile); } else if (!tabs.length) { newTab(); }
             }
+            if (restored && restored.text) { say(restored.text, restored.error); }
             if (!(opts.ownsUrl || root.closest('.win.active'))) { view.contentDOM.blur(); }
         }).catch(function (err) {
             if (destroyed) { return; }
@@ -1067,6 +1168,8 @@
             menus: menus,
             destroy: function () {
                 destroyed = true;
+                keepNow();
+                window.removeEventListener('pagehide', onPageHide);
                 if (unsubscribe) { unsubscribe(); }
                 if (unConfig) { unConfig(); }
                 window.removeEventListener('beforeunload', onBeforeUnload);

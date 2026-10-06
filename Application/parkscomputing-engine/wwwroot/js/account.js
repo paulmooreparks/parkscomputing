@@ -117,9 +117,15 @@
                 send(form);
             }
 
+            /* Signing in again without a reload (js/accounts.js) brings the
+               account back, so a body that showed the reader signed out is
+               fetched again. */
+            function onSignedIn() { load(root); }
+
             root.addEventListener('click', onClick);
             root.addEventListener('change', onChange);
             root.addEventListener('submit', onSubmit);
+            document.addEventListener('pc:signed-in', onSignedIn);
             return {
                 /* The applet's identity menu, as every applet has. Its work
                    is in its own forms; signing out is the site's, in the logo
@@ -131,6 +137,7 @@
                     root.removeEventListener('click', onClick);
                     root.removeEventListener('change', onChange);
                     root.removeEventListener('submit', onSubmit);
+                    document.removeEventListener('pc:signed-in', onSignedIn);
                     root.removeAttribute('data-account-js');
                 }
             };

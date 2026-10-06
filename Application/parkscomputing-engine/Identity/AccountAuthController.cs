@@ -33,11 +33,18 @@ public sealed class AccountAuthController : ControllerBase {
     /// <summary>A fresh antiforgery token for whoever the reader is now, and
     /// whether they are signed in. A page open across a sign-in or a lapsed
     /// session holds a token for who the reader was, which the next form or
-    /// script request would fail with; js/accounts.js asks for a new one.</summary>
+    /// script request would fail with; js/accounts.js asks for a new one.
+    /// The account's id says whether a sign-in brought back the account the
+    /// page was made for (the layout's pc-account meta tag), in which case
+    /// the page can carry on as it is.</summary>
     [HttpGet("/api/account/token")]
     public IActionResult Token([FromServices] Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery) {
         Response.Headers.CacheControl = "no-cache, no-store";
-        return Ok(new { token = antiforgery.GetAndStoreTokens(HttpContext).RequestToken, signedIn = User.Identity?.IsAuthenticated == true });
+        var signedIn = User.Identity?.IsAuthenticated == true;
+        return Ok(new {
+            token = antiforgery.GetAndStoreTokens(HttpContext).RequestToken, signedIn,
+            account = signedIn ? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value : null
+        });
     }
 
     [HttpPost("request-options")]

@@ -374,6 +374,12 @@
            anywhere (js/accounts.js). The token lets a script's request pass
            the antiforgery check. *@
         <meta name="request-verification-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
+        @if (accountState.SignedIn)
+        {
+            @* Who the page was made for: signing in again as the same account
+               after the session lapses carries on without a reload. *@
+            <meta name="pc-account" content="@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value" />
+        }
         <script src="~/js/accounts.js" defer asp-append-version="true"></script>
         @* The status area's background applets (Architecture/status-area-design.md). *@
         <script src="~/js/status.js" defer asp-append-version="true"></script>
