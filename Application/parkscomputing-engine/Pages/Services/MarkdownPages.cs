@@ -50,9 +50,10 @@ public sealed class MarkdownPages {
     private readonly IWebHostEnvironment _env;
     private readonly INavService _nav;
     private readonly SiteOptions _site;
+    private readonly FileCache _cache;
 
-    public MarkdownPages(IWebHostEnvironment env, INavService nav, IOptions<SiteOptions> site) {
-        _env = env; _nav = nav; _site = site.Value;
+    public MarkdownPages(IWebHostEnvironment env, INavService nav, IOptions<SiteOptions> site, FileCache cache) {
+        _env = env; _nav = nav; _site = site.Value; _cache = cache;
     }
 
     private string ContentDir => Path.Combine(_env.WebRootPath, "content");
@@ -75,12 +76,16 @@ public sealed class MarkdownPages {
     /// <summary>The page's own address: / for the home page.</summary>
     public string PageUrlOf(string slug) => slug == "index" ? "/" : _site.UrlOf(slug);
 
+    /// <summary>A page as machines read it, made from its file only when the
+    /// file has changed since it was last made (FileCache), since the layout
+    /// asks for it on every page view and llms.txt and the sitemap for every
+    /// page at once.</summary>
     public MarkdownPage? Load(string slug) {
         if (!SlugPattern.IsMatch(slug) || slug.EndsWith("-section", StringComparison.OrdinalIgnoreCase)) { return null; }
         var md = Path.Combine(ContentDir, slug + ".md");
-        if (File.Exists(md)) { return FromMarkdown(slug, File.ReadAllText(md), File.GetLastWriteTimeUtc(md)); }
+        if (File.Exists(md)) { return _cache.Get(md, "markdown-page", p => FromMarkdown(slug, File.ReadAllText(p), File.GetLastWriteTimeUtc(p))); }
         var html = Path.Combine(ContentDir, slug + ".html");
-        if (File.Exists(html)) { return FromHtml(slug, File.ReadAllText(html), File.GetLastWriteTimeUtc(html)); }
+        if (File.Exists(html)) { return _cache.Get(html, "markdown-page", p => FromHtml(slug, File.ReadAllText(p), File.GetLastWriteTimeUtc(p))); }
         return null;
     }
 

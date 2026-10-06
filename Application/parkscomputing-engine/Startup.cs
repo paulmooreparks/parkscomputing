@@ -85,6 +85,9 @@ namespace ParksComputing.Engine {
             // file it comes from changes (Pages/Services/NavService.cs).
             services.AddSingleton<INavService, NavService>();
 
+            // What the engine makes from a file, kept until the file changes
+            // (Pages/Services/FileCache.cs).
+            services.AddSingleton<FileCache>();
             services.AddSingleton<StaticFileReaderService>();
             // The site for AI readers: llms.txt and each page as Markdown, and
             // the count of AI agents' visits (Identity/AiVisits.cs).
