@@ -233,14 +233,19 @@ namespace ParksComputing.Engine {
                 ContentTypeProvider = contentTypeProvider,
                 // A font file never changes in place, so a browser keeps it
                 // for a year; a picture for a day. Stylesheets and scripts
-                // keep asking each time (by ETag), because an edit to one
-                // must show at once.
+                // ask each time (by ETag), because an edit to one must show
+                // at once; a stamped address (?v=) still saves the download.
                 OnPrepareResponse = c => {
                     var ext = System.IO.Path.GetExtension(c.File.Name).ToLowerInvariant();
                     if (ext is ".woff2" or ".woff") {
                         c.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
                     } else if (ext is ".webp" or ".png" or ".jpg" or ".jpeg" or ".gif" or ".svg" or ".ico" or ".avif") {
                         c.Context.Response.Headers.CacheControl = "public, max-age=86400";
+                    } else if (ext is ".css" or ".js" or ".mjs") {
+                        // Said rather than left unsaid, so no cache in between
+                        // supplies a lifetime of its own: keep a copy, but ask
+                        // (by ETag) before each use, so an edit shows at once.
+                        c.Context.Response.Headers.CacheControl = "public, no-cache";
                     }
                 }
             });
