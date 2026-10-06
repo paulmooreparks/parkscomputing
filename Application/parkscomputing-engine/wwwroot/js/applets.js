@@ -152,7 +152,7 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
-    ver: '19',
+    ver: '20',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } }
 });
 

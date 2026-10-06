@@ -55,7 +55,53 @@
     /* The Editor's settings are its own toolbar's Wrap lines and Explorer
        controls, which remember themselves in ~/.config/editor.json
        (js/config.js), so they follow the reader wherever ~ does. */
-    var SETTINGS = { wrap: true, explorer: null, explorerWidth: null };
+    var SETTINGS = { wrap: true, explorer: null, explorerWidth: null, keys: null };
+
+    /* === Key bindings ===================================================
+       The Editor's commands have names, and a key is bound to a command by
+       name. These are the bindings it starts with; ~/.config/editor.json's
+       "keys" adds to them and overrides them, a key set to null does
+       nothing at all (which turns off CodeMirror's own binding for it), and
+       a change to the file applies at once. Keys are written as CodeMirror
+       writes them: Mod- is Ctrl (Cmd on a Mac), then Alt-, Shift-, and the
+       key, such as "Mod-Shift-;" or "Alt-d". */
+    var DEFAULT_KEYS = {
+        'Mod-s': 'save', 'Mod-o': 'open',
+        'Mod-;': 'insert-timestamp', 'Mod-Shift-;': 'stamp-modified'
+    };
+
+    /* Now, in local time with its offset, as ISO 8601 and RFC 3339 write
+       it (2026-10-06T16:12:00+08:00), or the local date alone, or in UTC
+       with no offset, which is how an HTML page's meta dates are kept and
+       read (Pages/page.cshtml.cs reads them in the "s" form). */
+    function two(n) { return String(Math.floor(Math.abs(n))).padStart(2, '0'); }
+    function now(form) {
+        var d = new Date();
+        if (form === 'utc') { return d.toISOString().slice(0, 19); }
+        var date = d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate());
+        if (form === 'date') { return date; }
+        var off = -d.getTimezoneOffset();
+        return date + 'T' + two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds()) +
+            (off >= 0 ? '+' : '-') + two(off / 60) + ':' + two(off % 60);
+    }
+
+    /* CodeMirror refuses a key with a modifier it doesn't know, and would
+       refuse it at the first keypress, so a key is checked as it is read:
+       its parts are those CodeMirror accepts (@codemirror/view's keymap). */
+    function validKey(key) {
+        var parts = String(key).split(/-(?!$)/), last = parts.pop();
+        return !!last && parts.every(function (m) { return /^(cmd|meta|m|a|alt|c|ctrl|control|s|shift|mod)$/i.test(m); });
+    }
+
+    /* A key as a menu shows it: Mod-Shift-; as Ctrl+Shift+;. */
+    function keyLabel(key) {
+        var mac = /Mac|iPhone|iPad/.test(navigator.platform || '');
+        var names = { mod: mac ? 'Cmd' : 'Ctrl', c: 'Ctrl', ctrl: 'Ctrl', control: 'Ctrl', a: 'Alt', alt: 'Alt', s: 'Shift', shift: 'Shift', m: mac ? 'Cmd' : 'Meta', meta: mac ? 'Cmd' : 'Meta', cmd: mac ? 'Cmd' : 'Meta' };
+        return String(key).split(/-(?!$)/).map(function (part, i, all) {
+            if (i === all.length - 1) { return part.length === 1 ? part.toUpperCase() : part; }
+            return names[part.toLowerCase()] || part;
+        }).join('+');
+    }
     var configReady = null;
     function loadConfig() {
         if (window.pcConfig) { return Promise.resolve(window.pcConfig); }
@@ -190,7 +236,7 @@
 
         var CM = null, F = null, view = null, destroyed = false, unsubscribe = null;
         var tabs = [], active = -1, untitled = 0;
-        var wrapComp = null, langComp = null, lintComp = null, roComp = null;
+        var wrapComp = null, langComp = null, lintComp = null, roComp = null, keyComp = null;
         var startFile = fileFrom(opts.state) || (opts.ownsUrl ? fileFrom(location.search) : null);
 
         function fileFrom(s) {
@@ -263,9 +309,10 @@
                     CM.history(), CM.drawSelection(), CM.dropCursor(), CM.indentOnInput(),
                     CM.bracketMatching(), CM.closeBrackets(), CM.rectangularSelection(), CM.crosshairCursor(),
                     CM.highlightActiveLine(), CM.highlightSelectionMatches(),
+                    /* The Editor's own bindings come first, so they win over
+                       CodeMirror's for the same key. */
+                    keyComp.of(keyBindings()),
                     CM.keymap.of([].concat(
-                        [{ key: 'Mod-s', preventDefault: true, run: function () { save(); return true; } },
-                         { key: 'Mod-o', preventDefault: true, run: function () { openDialog(); return true; } }],
                         CM.closeBracketsKeymap, CM.defaultKeymap, CM.searchKeymap, CM.historyKeymap, CM.lintKeymap, [CM.indentWithTab])),
                     CM.search({ top: true }),
                     makeTheme(CM),
@@ -338,6 +385,9 @@
             var t = current();
             if (!t) { view.setState(CM.EditorState.create({ doc: '' })); renderTabs(); announce(); return; }
             view.setState(t.state);
+            /* A tab kept from before the key bindings last changed takes
+               the bindings as they are now. */
+            view.dispatch({ effects: keyComp.reconfigure(keyBindings()) });
             renderTabs();
             showPos();
             announce();
@@ -600,6 +650,10 @@
             }
             if (explorer && typeof settings.explorer === 'boolean' && el.explorer.hidden === settings.explorer) { showExplorer(settings.explorer); }
             if (explorerSplit) { explorerSplit.set(typeof settings.explorerWidth === 'number' ? settings.explorerWidth : null); }
+            if (view && keyComp) {
+                view.dispatch({ effects: keyComp.reconfigure(keyBindings()) });
+                if (keyProblems) { say(keyProblems, true); }
+            }
         }
 
         /* The Explorer's width, dragged at its divider and kept with the
@@ -815,28 +869,161 @@
                 }
             }
         });
+        /* === Commands and their keys ===================================== */
+
+        /* Every command a key can be bound to, by the name ~/.config/editor.json
+           uses for it. */
+        var COMMANDS = {
+            'new': newTab,
+            'open': openDialog,
+            'save': save,
+            'save-as': saveAs,
+            'close-document': function () { if (current()) { closeTab(active); } },
+            'undo': function () { CM.undo(view); },
+            'redo': function () { CM.redo(view); },
+            'find': function () { CM.openSearchPanel(view); },
+            'go-to-line': goToLine,
+            'toggle-files': function () { el.explorerBtn.click(); },
+            'toggle-wrap': function () { el.wrap.click(); },
+            'preview': preview,
+            'insert-timestamp': function () { insertText(now()); },
+            'insert-date': function () { insertText(now('date')); },
+            'stamp-modified': stampModified,
+            'key-bindings': editKeys
+        };
+
+        function goToLine() {
+            var binding = CM.searchKeymap.find(function (key) { return key.key === 'Mod-Alt-g'; });
+            if (binding) { binding.run(view); }
+        }
+
+        /* The bindings in force: the Editor's own, with the settings file's
+           over them. A key set to null runs nothing and goes no further. */
+        var keyProblems = '';
+        function effectiveKeys() {
+            var own = settings.keys && typeof settings.keys === 'object' && !Array.isArray(settings.keys) ? settings.keys : {};
+            return Object.assign({}, DEFAULT_KEYS, own);
+        }
+        function keyBindings() {
+            var map = effectiveKeys(), list = [], problems = [];
+            Object.keys(map).forEach(function (key) {
+                var name = map[key];
+                if (!validKey(key)) { problems.push('"' + key + '" isn\'t a key CodeMirror knows'); return; }
+                if (name === null) { list.push({ key: key, preventDefault: true, run: function () { return true; } }); return; }
+                var run = COMMANDS[name];
+                if (!run) { problems.push('there is no command called "' + name + '"'); return; }
+                list.push({ key: key, preventDefault: true, run: function () { run(); return true; } });
+            });
+            keyProblems = problems.length ? 'In the key bindings, ' + problems.join(', and ') + '.' : '';
+            return CM.keymap.of(list);
+        }
+
+        /* The key for a command, as a menu shows it. */
+        function shortcutFor(name) {
+            var map = effectiveKeys();
+            var key = Object.keys(map).find(function (k) { return map[k] === name && validKey(k); });
+            return key ? keyLabel(key) : undefined;
+        }
+
+        function insertText(text) {
+            var t = current();
+            if (!t || t.readOnly) { say('This file is read-only, so nothing can be added to it.', true); return; }
+            view.dispatch(view.state.replaceSelection(text), { scrollIntoView: true, userEvent: 'input' });
+            view.focus();
+        }
+
+        /* Sets the page's last-modified date to now: the lastModified line
+           of a Markdown page's front matter, in local time with its offset,
+           or an HTML page's last-modified meta tag, in UTC as those are
+           kept. Either is added if the page has none. */
+        function stampModified() {
+            var t = current();
+            if (!t || t.readOnly) { say('This file is read-only, so its date can\'t be changed.', true); return; }
+            var doc = view.state.doc.toString(), eol = /\r\n/.test(doc) ? '\r\n' : '\n', change, stamp;
+            if (t.lang === 'markdown') {
+                var fm = /^---[ \t]*\r?\n([\s\S]*?\r?\n)?---[ \t]*(?:\r?\n|$)/.exec(doc);
+                if (!fm) { say('This page has no front matter (the lines between --- at its top), so there is no last-modified date to set.', true); return; }
+                stamp = now();
+                var body = fm[1] || '', from = fm[0].indexOf('\n') + 1;
+                var line = /^lastmodified[ \t]*:.*$/im.exec(body);
+                if (line) {
+                    change = { from: from + line.index, to: from + line.index + line[0].length, insert: line[0].replace(/:.*$/, ': ' + stamp) };
+                } else {
+                    var date = /^date[ \t]*:.*(?:\r?\n|$)/im.exec(body);
+                    change = { from: from + (date ? date.index + date[0].length : body.length), insert: 'lastModified: ' + stamp + eol };
+                }
+            } else if (/\.html?$/i.test(t.path || t.name)) {
+                stamp = now('utc');
+                var tag = '<meta http-equiv="last-modified" content="' + stamp + '" />';
+                var meta = /<meta\s+http-equiv\s*=\s*["']last-modified["'][^>]*>/i.exec(doc);
+                if (meta) {
+                    change = { from: meta.index, to: meta.index + meta[0].length, insert: tag };
+                } else {
+                    var head = /<\/head\s*>/i.exec(doc);
+                    if (!head) { say('This page has no <head>, so there is nowhere to put its last-modified date.', true); return; }
+                    var indent = /[ \t]*$/.exec(doc.slice(0, head.index))[0];
+                    change = { from: head.index, insert: tag + eol + indent };
+                }
+                stamp += ' UTC';
+            } else {
+                say('Update last-modified works in a Markdown or HTML page.', true);
+                return;
+            }
+            view.dispatch({ changes: change, userEvent: 'input' });
+            view.focus();
+            say('Last modified ' + stamp + '.');
+        }
+
+        /* Opens the settings file at its key bindings, writing the Editor's
+           own bindings into it first if it has none, so there is something
+           to change. */
+        async function editKeys() {
+            if (!settings.keys) {
+                var err = await loadConfig().then(function (c) { return c.set('editor', { keys: Object.assign({}, DEFAULT_KEYS) }); })
+                    .catch(function (e) { return e.message; });
+                if (err) { say('The key bindings could not be written: ' + err, true); return; }
+            }
+            if (await openPath('~/.config/editor.json')) {
+                say('Under "keys", each key runs the command after it, and a key set to null does nothing. Saved changes apply at once. The commands are ' +
+                    Object.keys(COMMANDS).join(', ') + '.');
+            }
+        }
+
         function menus() {
             var ready = !!(CM && view), tab = current();
-            function action(name, label) { return window.pcAppletAction(root, '[data-action="' + name + '"]', label); }
+            /* Each item shows the key bound to its command, or failing one,
+               CodeMirror's own key for it. */
+            function keyed(item, name, builtIn) {
+                var key = ready ? shortcutFor(name) || (builtIn && keyLabel(builtIn)) : null;
+                if (key) { item.shortcut = key; }
+                return item;
+            }
+            function action(name, label, builtIn) { return keyed(window.pcAppletAction(root, '[data-action="' + name + '"]', label), name, builtIn); }
+            function command(name, label, disabled, builtIn) {
+                return keyed({ label: label, disabled: !ready || !!disabled, run: function () { COMMANDS[name](); } }, name, builtIn);
+            }
+            var editable = !!(tab && !tab.readOnly);
             var file = [action('new', 'New document'), action('open', 'Open…'),
                 action('save', 'Save'), action('save-as', 'Save as…'), '-',
-                { label: 'Close document', disabled: !ready || !tab, run: function () { closeTab(active); } }];
+                command('close-document', 'Close document', !tab)];
             var viewItems = [
-                { label: 'Show the files', disabled: !ready, checked: !el.explorer.hidden,
-                    run: function () { el.explorerBtn.click(); } },
-                { label: 'Wrap lines', disabled: !ready, checked: el.wrap.checked,
-                    run: function () { el.wrap.click(); } }
+                keyed({ label: 'Show the files', disabled: !ready, checked: !el.explorer.hidden,
+                    run: function () { el.explorerBtn.click(); } }, 'toggle-files'),
+                keyed({ label: 'Wrap lines', disabled: !ready, checked: el.wrap.checked,
+                    run: function () { el.wrap.click(); } }, 'toggle-wrap')
             ];
             var previewButton = q('[data-action="preview"]');
             if (previewButton && !previewButton.hidden) { viewItems.push(action('preview', 'Preview document')); }
             return { titles: [
                 { label: 'Editor', items: window.pcAppletIdentity(root) },
                 { id: 'file', label: 'File', items: file },
-                { id: 'edit', label: 'Edit', items: [action('undo', 'Undo'), action('redo', 'Redo'), '-', action('find', 'Find and replace…')] }
-            ], into: { view: viewItems, go: [{ label: 'Go to line…', shortcut: 'Ctrl+Alt+G', disabled: !ready,
-                run: function () { var binding = CM.searchKeymap.find(function (key) { return key.key === 'Mod-Alt-g'; });
-                    if (binding) { binding.run(view); } }
-            }] } };
+                { id: 'edit', label: 'Edit', items: [action('undo', 'Undo', 'Mod-z'), action('redo', 'Redo', 'Mod-y'), '-',
+                    action('find', 'Find and replace…', 'Mod-f'), '-',
+                    command('insert-timestamp', 'Insert date and time', !editable),
+                    command('insert-date', 'Insert date', !editable),
+                    command('stamp-modified', 'Update last-modified', !editable), '-',
+                    command('key-bindings', 'Key bindings…')] }
+            ], into: { view: viewItems, go: [command('go-to-line', 'Go to line…', false, 'Mod-Alt-g')] } };
         }
 
         el.wrap.addEventListener('change', function () {
@@ -861,6 +1048,7 @@
             setupExplorer();
             setupExplorerSplit();
             wrapComp = new CM.Compartment(); langComp = new CM.Compartment(); lintComp = new CM.Compartment(); roComp = new CM.Compartment();
+            keyComp = new CM.Compartment();
             view = new CM.EditorView({ parent: el.surface });
             unsubscribe = F.onChange(onFsChange);
             var opened = startFile ? await openPath(startFile) : false;
