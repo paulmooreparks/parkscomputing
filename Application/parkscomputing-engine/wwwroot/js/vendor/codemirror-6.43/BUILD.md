@@ -12,6 +12,8 @@ npx esbuild entry.js --bundle --format=iife --global-name=CM --minify \
   --legal-comments=eof --outfile=codemirror.js
 ```
 
+It was rebuilt on 2026-10-07 from the same package versions, with `Transaction`, `historyField`, `searchPanelOpen`, `getSearchQuery`, `setSearchQuery` and `SearchQuery` added to the exports, so the editor can keep its undo history and its search across a reload. Before the change, a rebuild from those versions matched the old bundle byte for byte. Installing exact versions needs `--save-exact` and npm `overrides` for the indirect packages, at the versions `LICENSE.txt` lists.
+
 The main versions are `@codemirror/view` 6.43.13 and `@codemirror/state` 6.7.6; `LICENSE.txt` lists every package in the bundle with its version and licence. The bundle is about 600 KB, or 200 KB compressed, most of it the Markdown language, which brings in the HTML, CSS and JavaScript highlighters for HTML inside Markdown.
 
 To upgrade, repeat the build in a scratch directory with the new versions, replace the three files here in a new directory named for the `@codemirror/view` version, and update the path in `js/editor.js`.

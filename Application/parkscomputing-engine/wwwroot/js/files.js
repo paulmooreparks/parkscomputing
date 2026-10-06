@@ -69,7 +69,12 @@
         root.innerHTML = '<p class="fm-loading">Loading…</p>';
 
         var F = null, FB = null, b = null, el = null, destroyed = false;
-        var startPath = pathFrom(opts.state) || (opts.ownsUrl ? pathFrom(location.search) : null) || '/site';
+        /* A folder handed over or in the address comes first; then, after
+           a reload, the folder the snapshot was taken in (js/snapshot.js),
+           since a window's address doesn't keep it. */
+        var snap = window.pcSnapshot ? window.pcSnapshot.join(root, function () { return b ? b.snapshot() : null; }) : null;
+        var startPath = pathFrom(opts.state) || (opts.ownsUrl ? pathFrom(location.search) : null) ||
+            (snap && snap.kept && typeof snap.kept.cwd === 'string' ? snap.kept.cwd : null) || '/site';
 
         function pathFrom(s) {
             if (!s) { return null; }
@@ -541,9 +546,15 @@
                 onResize: function (w) { if (cfg) { cfg.set('files', { treeWidth: w }); } },
                 emptyText: function (dir) { return inHome(dir) ? 'This folder is empty. Make a file or a folder, or drop files here.' : 'This folder is empty.'; }
             });
+            /* A reload brings back the selection, the open folders and the
+               scroll (js/snapshot.js). */
+            if (snap) {
+                if (snap.kept) { b.restore(snap.kept); }
+                b.onChange(snap.changed);
+            }
             afterRender();
             announce();
-            if (opts.ownsUrl || root.closest('.win.active')) { b.focusList(); }
+            if ((snap && snap.focused) || opts.ownsUrl || root.closest('.win.active')) { b.focusList(); }
         }).catch(function (err) {
             if (destroyed) { return; }
             root.innerHTML = '<p class="fm-failed">Files could not start: ' + esc(err.message) + '.</p>';
@@ -557,6 +568,7 @@
             menus: menus,
             destroy: function () {
                 destroyed = true;
+                if (snap) { snap.leave(); }
                 if (unConfig) { unConfig(); }
                 if (b) { b.destroy(); }
                 root.removeEventListener('click', onClick);

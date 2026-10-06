@@ -22,7 +22,7 @@
     function loadCodeMirror() {
         if (window.CM && window.CM.EditorView) { return Promise.resolve(window.CM); }
         if (!cmReady) {
-            cmReady = loadScript(beside('vendor/codemirror-6.43/codemirror.js'))
+            cmReady = loadScript(beside('vendor/codemirror-6.43/codemirror.js?v=2'))
                 .then(function () { return window.CM; })
                 .catch(function (err) { cmReady = null; throw err; });
         }
@@ -302,9 +302,10 @@
         }
 
         function stateFor(tab, text) {
-            return CM.EditorState.create({
-                doc: text,
-                extensions: [
+            return CM.EditorState.create({ doc: text, extensions: extensionsFor(tab) });
+        }
+        function extensionsFor(tab) {
+            return [
                     CM.lineNumbers(), CM.highlightActiveLineGutter(), CM.highlightSpecialChars(),
                     CM.history(), CM.drawSelection(), CM.dropCursor(), CM.indentOnInput(),
                     CM.bracketMatching(), CM.closeBrackets(), CM.rectangularSelection(), CM.crosshairCursor(),
@@ -322,11 +323,12 @@
                     roComp.of([CM.EditorState.readOnly.of(!!tab.readOnly), CM.EditorView.editable.of(!tab.readOnly)]),
                     CM.EditorView.contentAttributes.of({ 'aria-label': 'Text of ' + tab.name }),
                     CM.EditorView.updateListener.of(function (u) {
-                        if (u.docChanged && tabs[active] === tab) { markModified(tab); keep(); }
+                        if (u.docChanged && tabs[active] === tab) { markModified(tab); }
                         if (u.selectionSet || u.docChanged) { showPos(); }
+                        if (tabs[active] === tab && (u.selectionSet || u.docChanged ||
+                            CM.searchPanelOpen(u.state) !== CM.searchPanelOpen(u.startState))) { keep(); }
                     })
-                ]
-            });
+            ];
         }
 
         /* === Tabs ======================================================== */
@@ -379,7 +381,7 @@
 
         function activate(i) {
             var prev = current();
-            if (prev && view) { prev.state = view.state; }
+            if (prev && view) { prev.state = view.state; prev.scroll = scrollAnchor(); }
             /* A preview belongs to the file it was made for. */
             if (i !== active) { hidePreview(); }
             active = i;
@@ -389,6 +391,10 @@
             /* A tab kept from before the key bindings last changed takes
                the bindings as they are now. */
             view.dispatch({ effects: keyComp.reconfigure(keyBindings()) });
+            /* Each tab keeps its place, and a search panel kept open from
+               before a reload opens again. */
+            scrollTo(t.scroll);
+            if (t.openSearch) { t.openSearch = false; CM.openSearchPanel(view); }
             renderTabs();
             showPos();
             announce();
@@ -418,7 +424,7 @@
             if (!node) { say(path + ': no such file', true); return false; }
             if (node.children) { say(path + ' is a folder', true); return false; }
             var r = F.realOf(node), display = F.displayPath(r);
-            for (var i = 0; i < tabs.length; i++) { if (tabs[i].path === display) { activate(i); view.focus(); return true; } }
+            for (var i = 0; i < tabs.length; i++) { if (tabs[i].path === display) { if (i !== active) { activate(i); } view.focus(); return true; } }
             if (!F.isText(r)) { say(display + ' isn\'t a text file, so the editor can\'t open it.', true); return false; }
             var text;
             try { text = await F.read(r); } catch (err) { say(err.message, true); return false; }
@@ -638,6 +644,7 @@
             });
             showExplorer(explorerWanted(settings));
             markExplorer();
+            explorer.onChange(keep);
         }
 
         /* The settings, as last read or changed, and a change arriving from
@@ -751,13 +758,28 @@
             renderTabs();
         }
 
+        /* A change made somewhere else, as the text between what the two
+           versions share at their start and at their end, so the cursor
+           and the place in the file stay where they were. It isn't the
+           reader's edit, so undo doesn't take it back. */
+        function outsideChange(state, text) {
+            var old = state.doc.toString(), start = 0, end = 0;
+            var max = Math.min(old.length, text.length);
+            while (start < max && old.charCodeAt(start) === text.charCodeAt(start)) { start++; }
+            while (end < max - start && old.charCodeAt(old.length - 1 - end) === text.charCodeAt(text.length - 1 - end)) { end++; }
+            return {
+                changes: { from: start, to: old.length - end, insert: text.slice(start, text.length - end) },
+                annotations: CM.Transaction.addToHistory.of(false)
+            };
+        }
+
         function takeOutside(t, i, text) {
             if (i < 0 || text === t.saved) { return; }
             var edited = (i === active ? view.state.doc.toString() : t.state.doc.toString()) !== t.saved;
             if (!edited) {
                 t.saved = text;
-                if (i === active) { view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } }); t.modified = false; }
-                else { t.state = stateFor(t, text); }
+                if (i === active) { view.dispatch(outsideChange(view.state, text)); t.modified = false; }
+                else { t.state = t.state.update(outsideChange(t.state, text)).state; }
             } else {
                 t.external = true;
                 if (i === active) { say(t.path + ' was changed somewhere else. Saving will replace that version with yours.', true); }
@@ -775,97 +797,187 @@
 
         /* === Keeping the work through a reload ============================ */
 
-        /* The open tabs, and the text of any with unsaved changes, are kept
-           in this browser tab's session storage as they change, so reloading
-           the page (to sign in again, say) brings them back as they were.
-           Session storage belongs to the one browser tab, so two pages that
-           each have an Editor keep apart, and the browser restores it with a
-           tab it reopens. Closing the Editor on purpose forgets the work. A
-           draft for a file that can't be reached when the Editor starts, as
-           a server file can't while signed out, waits until it can. */
-        var KEEP = 'pc-editor-work', keepTimer = null, forgotten = false, waiting = [], restoring = false;
-        function keep() { if (!keepTimer && !forgotten) { keepTimer = setTimeout(keepNow, 400); } }
-        function keepNow() {
-            clearTimeout(keepTimer);
-            keepTimer = null;
-            /* Until the kept work is all back, what is kept is still the
-               whole of it. */
-            if (forgotten || restoring || !view) { return; }
-            var list = tabs.map(function (t, i) {
-                var text = (i === active ? view.state : t.state).doc.toString();
-                return { path: t.path, name: t.name, lang: t.lang, mtime: t.mtime, fresh: !!t.fresh, draft: t.modified ? text : null };
-            }).filter(function (k) { return k.path || k.draft !== null; });
-            try { sessionStorage.setItem(KEEP, JSON.stringify({ tabs: list, waiting: waiting })); } catch (err) { /* Too large, or storage is off. */ }
+        /* The Editor's snapshot (js/snapshot.js): each open tab with its
+           unsaved text, cursor and selection, how far it is scrolled, its
+           undo history and its search, and which tab is in front and whether
+           the preview is showing. A reload brings all of it back. A draft
+           for a file that can't be reached when the Editor starts, as a
+           server file can't while signed out, waits in the snapshot until it
+           can. Closing the Editor's window on purpose forgets it. */
+        var snap = window.pcSnapshot ? window.pcSnapshot.join(root, takeSnapshot) : null;
+        var waiting = [], restoring = false;
+        function keep() { if (snap && !restoring) { snap.changed(); } }
+
+        /* Whether a file is the one a snapshot was taken against: its
+           length and an FNV-1a hash of its text. */
+        function fingerprint(text) {
+            var h = 0x811c9dc5;
+            for (var i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+            return text.length + ':' + (h >>> 0).toString(16);
         }
-        function forget() {
-            forgotten = true;
-            clearTimeout(keepTimer);
-            try { sessionStorage.removeItem(KEEP); } catch (err) { /* Storage is off. */ }
+
+        /* Where a tab is scrolled to, as the line at the top of the view and
+           how far into it, which survives a window of another size. */
+        var pendingScroll = null;
+        function scrollAnchor() {
+            if (!view) { return null; }
+            /* A place asked for and not yet reached is still the place. */
+            if (pendingScroll != null) { return pendingScroll; }
+            var top = view.scrollDOM.scrollTop, block = view.lineBlockAtHeight(top);
+            return block ? { at: block.from, off: Math.round(top - block.top) } : null;
         }
+        function scrollTo(place) {
+            pendingScroll = null;
+            if (!place || typeof place !== 'object' || !view) { return; }
+            var at = Math.min(place.at || 0, view.state.doc.length), off = place.off || 0, tab = current();
+            var asked = pendingScroll = { at: at, off: off };
+            requestAnimationFrame(function () {
+                /* Unless another place was asked for meanwhile, or another
+                   tab came to the front. */
+                if (pendingScroll !== asked) { return; }
+                pendingScroll = null;
+                if (current() !== tab) { return; }
+                /* The line is brought into view, which measures it, and the
+                   offset into it then set in the same terms it was read in. */
+                view.dispatch({ effects: CM.EditorView.scrollIntoView(at, { y: 'start', yMargin: 0 }) });
+                requestAnimationFrame(function () {
+                    if (current() === tab && view.state.doc.length >= at) { view.scrollDOM.scrollTop = view.lineBlockAt(at).top + off; }
+                });
+            });
+        }
+
+        function searchOf(state) {
+            var q = CM.getSearchQuery(state), open = CM.searchPanelOpen(state);
+            if (!open && !q.search) { return null; }
+            return { open: open, search: q.search, replace: q.replace, caseSensitive: q.caseSensitive, regexp: q.regexp, wholeWord: q.wholeWord };
+        }
+
+        var SNAPSHOT_MAX = 1500000;
+        function takeSnapshot() {
+            /* Until what was kept is all back, it is still the whole of it. */
+            if (restoring) { return snap.kept; }
+            if (!view || !CM) { return null; }
+            var front = current();
+            if (front) { front.state = view.state; front.scroll = scrollAnchor(); }
+            var list = [], frontAt = -1;
+            tabs.forEach(function (t) {
+                var st = t.state, text = st.doc.toString();
+                if (!t.path && !t.modified) { return; }
+                if (t === front) { frontAt = list.length; }
+                var json = st.toJSON({ history: CM.historyField });
+                list.push({
+                    path: t.path, name: t.name, lang: t.lang, mtime: t.mtime, fresh: !!t.fresh,
+                    draft: t.modified ? text : null, sum: t.modified ? null : fingerprint(text),
+                    selection: json.selection, history: json.history, scroll: t.scroll == null ? null : t.scroll,
+                    search: searchOf(st)
+                });
+            });
+            var out = { tabs: list, front: frontAt, waiting: waiting, preview: !el.preview.hidden, explorer: explorer ? explorer.snapshot() : null };
+            /* Undo history is the first thing let go when the whole would be
+               too large for the browser to keep. */
+            if (JSON.stringify(out).length > SNAPSHOT_MAX) { list.forEach(function (k) { k.history = null; }); }
+            return out;
+        }
+
+        /* A tab's kept state on the text it now has. Its cursor and undo
+           history only fit the text they were taken from: the draft, or for
+           a tab without changes, the file as it was then. A file changed
+           since keeps its cursor near where it was, without its history. */
+        function applyKept(t, k) {
+            var text = typeof k.draft === 'string' ? k.draft : t.saved;
+            var exact = typeof k.draft === 'string' || (k.sum != null && k.sum === fingerprint(t.saved));
+            var state = null;
+            if (exact && k.selection) {
+                try {
+                    var json = { doc: text, selection: k.selection };
+                    if (k.history) { json.history = k.history; }
+                    state = CM.EditorState.fromJSON(json, { extensions: extensionsFor(t) }, k.history ? { history: CM.historyField } : undefined);
+                } catch (err) { state = null; }
+            }
+            if (!state) {
+                state = stateFor(t, text);
+                var head = k.selection && k.selection.ranges && k.selection.ranges[k.selection.main || 0];
+                if (head) {
+                    var at = Math.min(head.head, text.length);
+                    state = state.update({ selection: { anchor: at } }).state;
+                }
+            }
+            if (k.search && k.search.search) {
+                state = state.update({ effects: CM.setSearchQuery.of(new CM.SearchQuery(k.search)) }).state;
+            }
+            t.state = state;
+            t.scroll = k.scroll;
+            t.openSearch = !!(k.search && k.search.open);
+            t.modified = text !== t.saved;
+            /* The tab in front takes its new state through activate(), which
+               would otherwise keep the old one. */
+            var i = tabs.indexOf(t);
+            if (i === active) { active = -1; activate(i); }
+        }
+
+        /* The snapshot kept before the reload, or the Editor's own record
+           from before snapshots, which it kept the same way. */
         function readKept() {
+            if (snap && snap.kept && Array.isArray(snap.kept.tabs)) { return snap.kept; }
             try {
-                var v = JSON.parse(sessionStorage.getItem(KEEP) || 'null');
-                return v && Array.isArray(v.tabs) ? v : null;
+                var old = JSON.parse(sessionStorage.getItem('pc-editor-work') || 'null');
+                sessionStorage.removeItem('pc-editor-work');
+                return old && Array.isArray(old.tabs) ? old : null;
             } catch (err) { return null; }
         }
 
-        function putDraft(t, text) {
-            view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
-            markModified(t);
-        }
-
-        /* Reopens the kept tabs, and puts back their unsaved text; resolves
-           to what to tell the reader, or null when there was nothing kept. */
+        /* Reopens the kept tabs as they were; resolves to what to tell the
+           reader, or null when there was nothing kept. */
         async function restoreKept() {
             var kept = readKept();
             if (!kept) { return null; }
-            var back = [], all = (kept.waiting || []).concat(kept.tabs);
+            var back = [], all = (kept.waiting || []).concat(kept.tabs), frontTab = null;
             restoring = true;
-            try { await reopen(all, back); } finally { restoring = false; }
+            try { frontTab = await reopen(all, back, kept.tabs[kept.front] || null); } finally { restoring = false; }
+            if (frontTab) { var fi = tabs.indexOf(frontTab); if (fi >= 0) { activate(fi); } }
             var msg = back.length ? 'Your unsaved changes to ' + back.join(', ') + ' are back.' : '';
             if (waiting.length) {
                 msg += (msg ? ' ' : '') + 'Unsaved changes to ' + waiting.map(function (k) { return k.path; }).join(', ') +
                     ' are kept until the file can be reached again; you may need to sign in, then reload.';
             }
-            keepNow();
-            return { text: msg, error: waiting.length > 0 };
+            if (explorer && kept.explorer) { explorer.restore(kept.explorer); }
+            keep();
+            return { text: msg, error: waiting.length > 0, preview: !!kept.preview };
         }
-        async function reopen(all, back) {
+        async function reopen(all, back, frontKept) {
+            var frontTab = null;
             for (var i = 0; i < all.length; i++) {
-                var k = all[i];
+                var k = all[i], t = null;
                 if (!k || typeof k !== 'object') { continue; }
                 if (!k.path) {
                     if (typeof k.draft !== 'string') { continue; }
                     var n = /^untitled-(\d+)$/.exec(k.name || '');
                     if (n) { untitled = Math.max(untitled, +n[1]); }
                     addTab({ path: null, name: k.name || 'untitled', lang: k.lang || 'text', readOnly: false }, '');
-                    putDraft(current(), k.draft);
-                    back.push(current().name);
-                    continue;
+                    t = current();
+                } else {
+                    var node = F.resolve(F.home(), F.upgradePath(k.path));
+                    if (!node && k.fresh) {
+                        newNamed(k.path);
+                        t = current() && current().path === k.path ? current() : null;
+                    } else if (node && await openPath(k.path)) {
+                        t = current();
+                        /* The file was saved somewhere else since: the
+                           reader's text stays, and saving would replace
+                           that version. */
+                        if (typeof k.draft === 'string' && k.mtime != null && t.mtime != null && k.mtime !== t.mtime) { t.external = true; }
+                    } else if (typeof k.draft === 'string') {
+                        waiting.push(k);
+                    }
                 }
-                var node = F.resolve(F.home(), F.upgradePath(k.path));
-                if (!node && k.fresh) {
-                    newNamed(k.path);
-                    var made = current();
-                    if (made && made.path === k.path && typeof k.draft === 'string') { putDraft(made, k.draft); back.push(made.name); }
-                    continue;
-                }
-                if (!node || !(await openPath(k.path))) {
-                    if (typeof k.draft === 'string') { waiting.push(k); }
-                    continue;
-                }
-                var t = current();
-                if (typeof k.draft === 'string' && k.draft !== t.saved) {
-                    putDraft(t, k.draft);
-                    back.push(t.name);
-                    /* The file was saved somewhere else since: the reader's
-                       text stays, and saving would replace that version. */
-                    if (k.mtime != null && t.mtime != null && k.mtime !== t.mtime) { t.external = true; }
-                }
+                if (!t) { continue; }
+                applyKept(t, k);
+                if (t.modified) { back.push(t.name); }
+                if (k === frontKept) { frontTab = t; }
             }
+            renderTabs();
+            return frontTab;
         }
-        function onPageHide() { keepNow(); }
-        window.addEventListener('pagehide', onPageHide);
 
         function onBeforeUnload(e) {
             if (tabs.some(function (t) { return t.modified; })) { e.preventDefault(); e.returnValue = ''; }
@@ -880,8 +992,7 @@
         function onWindowClosing(e) {
             if (e.target !== win || closeAgreed) { return; }
             var changed = tabs.filter(function (t) { return t.modified; });
-            /* Closing the Editor on purpose starts it afresh next time. */
-            if (!changed.length) { forget(); return; }
+            if (!changed.length) { return; }
             e.preventDefault();
             var key = win.getAttribute('data-win');
             var names = changed.map(function (t) { return t.name; });
@@ -896,7 +1007,6 @@
                             if (!(await save())) { return; }
                         }
                     } else if (choice !== 'discard') { return; }
-                    forget();
                     closeAgreed = true;
                     window.pudlWindows.close(key);
                 });
@@ -1147,6 +1257,7 @@
             wrapComp = new CM.Compartment(); langComp = new CM.Compartment(); lintComp = new CM.Compartment(); roComp = new CM.Compartment();
             keyComp = new CM.Compartment();
             view = new CM.EditorView({ parent: el.surface });
+            view.scrollDOM.addEventListener('scroll', keep, { passive: true });
             unsubscribe = F.onChange(onFsChange);
             var restored = await restoreKept();
             /* The file the address or window asks for comes to the front,
@@ -1156,7 +1267,13 @@
                 if (startFile && !F.resolve(F.home(), startFile)) { newNamed(startFile); } else if (!tabs.length) { newTab(); }
             }
             if (restored && restored.text) { say(restored.text, restored.error); }
-            if (!(opts.ownsUrl || root.closest('.win.active'))) { view.contentDOM.blur(); }
+            /* A preview showing before the reload is made again, which asks
+               the server, so it is not waited for. */
+            if (restored && restored.preview && !q('[data-action="preview"]').hidden) { preview(); }
+            /* The keyboard goes back where it was: into the text, unless the
+               search panel had it, which opening it did. */
+            if (snap && snap.focused) { if (!view.dom.contains(document.activeElement)) { view.focus(); } }
+            else if (!(opts.ownsUrl || root.closest('.win.active'))) { view.contentDOM.blur(); }
         }).catch(function (err) {
             if (destroyed) { return; }
             root.innerHTML = '<p class="ed-failed">The editor could not start: ' + esc(err.message) + '.</p>';
@@ -1168,8 +1285,7 @@
             menus: menus,
             destroy: function () {
                 destroyed = true;
-                keepNow();
-                window.removeEventListener('pagehide', onPageHide);
+                if (snap) { snap.leave(); }
                 if (unsubscribe) { unsubscribe(); }
                 if (unConfig) { unConfig(); }
                 window.removeEventListener('beforeunload', onBeforeUnload);

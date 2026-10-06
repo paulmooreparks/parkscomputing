@@ -28,7 +28,7 @@
     }
     var xtermReady = null;
     function loadXterm() {
-        if (window.Terminal && window.FitAddon) { return Promise.resolve(); }
+        if (window.Terminal && window.FitAddon && window.SerializeAddon) { return Promise.resolve(); }
         if (!xtermReady) {
             if (!document.querySelector('link[data-xterm-css]')) {
                 var css = document.createElement('link');
@@ -39,6 +39,10 @@
             }
             xtermReady = loadScript(beside('vendor/xterm-6.0.0/xterm.js'))
                 .then(function () { return loadScript(beside('vendor/xterm-6.0.0/addon-fit.js')); })
+                /* xterm's own add-on for writing out what the screen shows,
+                   from the same release (0.14.0), which a reload brings
+                   back (js/snapshot.js). */
+                .then(function () { return loadScript(beside('vendor/xterm-6.0.0/addon-serialize.js')); })
                 .catch(function (err) { xtermReady = null; throw err; });
         }
         return xtermReady;
@@ -1772,6 +1776,40 @@
             term.focus();
         }
 
+        /* === Snapshots ================================================
+
+           The terminal's snapshot (js/snapshot.js) is what its screen
+           shows, scrollback and colours included, written out by xterm's
+           serialize add-on, and the command line being typed. A reload
+           draws the screen again and puts the line back to carry on with.
+           A program running at the time, such as ssh, ended with the page,
+           which the screen then says. The folder is the state's, in the
+           address. */
+        var serializer = null;
+        var snap = window.pcSnapshot ? window.pcSnapshot.join(root, takeSnapshot) : null;
+        var SCREEN_MAX = 600000;
+        function takeSnapshot() {
+            if (!term || !serializer) { return null; }
+            var text;
+            try {
+                /* A full-screen program's own screen goes with it. */
+                text = serializer.serialize({ scrollback: 2000, excludeAltBuffer: true, excludeModes: true });
+                if (text.length > SCREEN_MAX) { text = serializer.serialize({ scrollback: 300, excludeAltBuffer: true, excludeModes: true }); }
+            } catch (err) { return null; }
+            return { screen: text, line: busy ? '' : line, cursor: busy ? 0 : cursor, busy: busy };
+        }
+        function restoreScreen(kept) {
+            term.write(kept.screen);
+            if (kept.busy) {
+                write('\n\nThe page was reloaded, which ended the program that was running here.\n');
+                term.write(prompt());
+                return;
+            }
+            line = typeof kept.line === 'string' ? kept.line : '';
+            cursor = Math.max(0, Math.min(+kept.cursor || 0, line.length));
+            redraw();
+        }
+
         var boot = Promise.all([loadXterm(), loadSiteFs().then(function (fsApi) { return fsApi.load(); }), loadExtras()]).then(async function (results) {
             if (destroyed) { return; }
             fs = results[1];
@@ -1804,6 +1842,8 @@
             });
             fit = new window.FitAddon.FitAddon();
             term.loadAddon(fit);
+            serializer = new window.SerializeAddon.SerializeAddon();
+            term.loadAddon(serializer);
             term.open(screen);
             try { fit.fit(); } catch (err) { }
             term.onData(onData);
@@ -1811,11 +1851,16 @@
                 ro = new ResizeObserver(function () { try { fit.fit(); } catch (err) { } });
                 ro.observe(screen);
             }
-            write(paint('bold', 'parkscomputing.com') + ' in terminal mode. Type ' + paint('green', 'help') + ' for the commands, or ' + paint('green', 'guide') + ' for the full guide; your own files are in ' + paint('blue', '~') + '.\n\n');
-            term.write(prompt());
+            var kept = snap && snap.kept;
+            if (kept && typeof kept.screen === 'string') { restoreScreen(kept); }
+            else {
+                write(paint('bold', 'parkscomputing.com') + ' in terminal mode. Type ' + paint('green', 'help') + ' for the commands, or ' + paint('green', 'guide') + ' for the full guide; your own files are in ' + paint('blue', '~') + '.\n\n');
+                term.write(prompt());
+            }
             if (prefill) { insert(prefill); }
+            if (snap) { term.onWriteParsed(snap.changed); }
             announce();
-            if (opts.ownsUrl || root.closest('.win.active')) { term.focus(); }
+            if ((snap && snap.focused) || opts.ownsUrl || root.closest('.win.active')) { term.focus(); }
         }).catch(function (err) {
             if (destroyed) { return; }
             screen.textContent = 'The terminal could not start: ' + err.message + '.';
@@ -1836,6 +1881,7 @@
             },
             destroy: function () {
                 destroyed = true;
+                if (snap) { snap.leave(); }
                 if (raw && raw.close) { raw.close(); }
                 if (unConfig) { unConfig(); }
                 document.removeEventListener('pudl:theme-change', applyTheme);

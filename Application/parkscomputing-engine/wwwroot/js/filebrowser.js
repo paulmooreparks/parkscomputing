@@ -99,6 +99,7 @@
             splitter.set(o.treeWidth);
         }
         var cwd = null, selected = null, expanded = {}, currentPath = null, destroyed = false;
+        var changed = function () { };
         var say = o.say || function () { };
         var linkFor = o.linkFor || function () { return '#'; };
 
@@ -114,6 +115,7 @@
             if (!keepStatus) { say(''); }
             render();
             if (o.onNavigate) { o.onNavigate(cwd); }
+            changed();
         }
 
         function goPath(path) {
@@ -203,6 +205,7 @@
         function onToggle(e) {
             var a = e.target, path = a.getAttribute('data-path');
             expanded[path] = !!(e.detail && e.detail.open);
+            changed();
             var drawn = a.nextElementSibling && a.nextElementSibling.tagName === 'UL';
             if (!expanded[path] || drawn) { return; }
             var node = F.resolve(null, path);
@@ -261,6 +264,7 @@
             }
             if (o.onSelect) { o.onSelect(selected); }
             if (focus !== false && name) { var r = rowFor(name); if (r) { r.focus(); } }
+            changed();
         }
         function focusList() {
             if (!el.rows) { return; }
@@ -320,7 +324,7 @@
             }
         }
 
-        function onRowSelect(e) { selected = F.childNamed(cwd, e.target.getAttribute('data-name')); if (o.onSelect) { o.onSelect(selected); } }
+        function onRowSelect(e) { selected = F.childNamed(cwd, e.target.getAttribute('data-name')); if (o.onSelect) { o.onSelect(selected); } changed(); }
         function onRowOpen(e) { var c = F.childNamed(cwd, e.target.getAttribute('data-name')); if (c) { selected = c; open(c); } }
         function onRowKey(e) {
             if (e.target.tagName !== 'TR') { return; }
@@ -395,6 +399,8 @@
             el.rows.addEventListener('dragend', onDragEnd);
         }
         var unsubscribe = F.onChange(function () { if (!destroyed) { refresh(); } });
+        function onScroll() { changed(); }
+        ['tree', 'list', 'main'].forEach(function (k) { if (el[k]) { el[k].addEventListener('scroll', onScroll, { passive: true }); } });
 
         /* === Start ======================================================= */
 
@@ -420,6 +426,30 @@
             showHidden: function (on) { o.showHidden = !!on; render(); },
             /* Sets the tree's width, as when another window changed it. */
             treeWidth: function (w) { if (splitter) { splitter.set(w); } },
+            /* What a reload loses, for the host's snapshot (js/snapshot.js):
+               the folder, for a host whose address doesn't keep it, the
+               selection, the open folders of the tree, and how far the tree
+               and list are scrolled. restore() takes back all but the
+               folder, which the host starts in, as far as it still fits: a
+               folder or file gone since is let go. */
+            snapshot: function () {
+                return {
+                    cwd: cwd ? F.pathOf(cwd) : null,
+                    selected: selected ? selected.name : null,
+                    expanded: Object.keys(expanded).filter(function (p) { return expanded[p]; }),
+                    scroll: ['tree', 'list', 'main'].map(function (k) { return el[k] ? el[k].scrollTop : 0; })
+                };
+            },
+            restore: function (s) {
+                if (!s || typeof s !== 'object') { return; }
+                (s.expanded || []).forEach(function (p) { var n = F.resolve(null, p); if (n && n.children) { expanded[F.pathOf(n)] = true; } });
+                render();
+                if (s.selected && F.childNamed(cwd, s.selected)) { select(s.selected, false); }
+                var scroll = s.scroll || [];
+                ['tree', 'list', 'main'].forEach(function (k, i) { if (el[k] && scroll[i]) { el[k].scrollTop = scroll[i]; } });
+            },
+            /* Says when something a snapshot holds changes. */
+            onChange: function (fn) { changed = fn; },
             destroy: function () {
                 destroyed = true;
                 if (unsubscribe) { unsubscribe(); }
