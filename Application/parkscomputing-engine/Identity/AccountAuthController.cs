@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -44,6 +45,30 @@ public sealed class AccountAuthController : ControllerBase {
         return Ok(new {
             token = antiforgery.GetAndStoreTokens(HttpContext).RequestToken, signedIn,
             account = signedIn ? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value : null
+        });
+    }
+
+    public const string SessionPath = "/api/account/session";
+
+    /// <summary>Whether a request only asks after its session, which the
+    /// cookie's validation then leaves as it is (Startup.Identity.cs). With
+    /// active=1 the page says its reader has been at work in it since it
+    /// last asked, typing or clicking, which counts as activity as any other
+    /// request does.</summary>
+    public static bool IsQuietSessionCheck(HttpRequest request) =>
+        request.Path.Equals(SessionPath, StringComparison.OrdinalIgnoreCase) && request.Query["active"] != "1";
+
+    /// <summary>Whether the reader is still signed in, and for how many
+    /// seconds more if nothing happens, for js/accounts.js's heartbeat,
+    /// which asks the reader to sign in again when the session ends.</summary>
+    [HttpGet(SessionPath)]
+    public async Task<IActionResult> Session() {
+        Response.Headers.CacheControl = "no-cache, no-store";
+        var left = User.Identity?.IsAuthenticated == true ? await _policy.LeftAsync(User) : null;
+        return Ok(new {
+            signedIn = left is not null,
+            account = left is not null ? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value : null,
+            secondsLeft = left is { } l ? Math.Max(0, (int)l.TotalSeconds) : 0
         });
     }
 

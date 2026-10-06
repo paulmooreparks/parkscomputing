@@ -85,6 +85,19 @@ public sealed class DurableSessions {
             await active.AnyAsync();
     }
 
+    /// <summary>How long the session has before its idle limit or its
+    /// absolute lifetime ends it, whichever comes first, without counting as
+    /// activity; null when it has already ended.</summary>
+    public async Task<TimeSpan?> LeftAsync(ClaimsPrincipal principal, Timeouts limits) {
+        await using var db = await _factory.CreateDbContextAsync();
+        var now = _clock.GetUtcNow().UtcDateTime;
+        var times = await Active(db, principal, limits, now).Select(s => new { s.LastSeenUtc, s.StartedUtc }).SingleOrDefaultAsync();
+        if (times is null) { return null; }
+        var ends = times.LastSeenUtc.AddMinutes(limits.IdleMinutes);
+        var absolute = times.StartedUtc.AddHours(limits.AbsoluteHours);
+        return (ends < absolute ? ends : absolute) - now;
+    }
+
     public async Task<bool> ConfirmAsync(ClaimsPrincipal principal, Timeouts limits) {
         await using var db = await _factory.CreateDbContextAsync();
         var now = _clock.GetUtcNow().UtcDateTime;

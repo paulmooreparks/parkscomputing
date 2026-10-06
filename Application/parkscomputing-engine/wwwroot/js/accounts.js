@@ -227,6 +227,68 @@
         };
     }
 
+    /* === The heartbeat ================================================= */
+
+    /* A page made for a signed-in reader (the pc-account meta tag) asks
+       once a minute whether its session is still there, and asks the reader
+       to sign in again over whatever they were doing as soon as it is not,
+       rather than at their next save. Asking is not activity, so a page
+       left alone still signs out on time. Typing or clicking in the page
+       since the last asking is, as any request would be, so a long stretch
+       of writing that never reaches the server doesn't end the session
+       under the writer. Only the top page asks; a page framed in one of its
+       windows passes its reader's input up to it. */
+    var madeFor = document.querySelector('meta[name="pc-account"]');
+    var topPage = null;
+    try { topPage = window.top !== window && window.top.pcAccountsInput ? window.top : null; } catch (err) { topPage = null; }
+    function onInput() {
+        if (topPage) { try { topPage.pcAccountsInput(); } catch (err) { topPage = null; } return; }
+        lastInput = Date.now();
+    }
+    ['keydown', 'pointerdown', 'wheel'].forEach(function (type) {
+        document.addEventListener(type, onInput, { capture: true, passive: true });
+    });
+    var lastInput = 0, lastBeat = Date.now(), beatTimer = null, beating = false, waitingForReader = false;
+    if (madeFor && window.top === window) {
+        window.pcAccountsInput = function () { lastInput = Date.now(); };
+        scheduleBeat(60);
+        /* Coming back to the page asks at once. */
+        document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { waitingForReader = false; beat(); } });
+        window.addEventListener('focus', function () { waitingForReader = false; beat(); });
+    }
+    function scheduleBeat(seconds) {
+        clearTimeout(beatTimer);
+        beatTimer = setTimeout(beat, Math.max(5, seconds) * 1000);
+    }
+    async function beat() {
+        if (beating || signingIn || waitingForReader) { return; }
+        beating = true;
+        var active = lastInput > lastBeat, next = 60;
+        lastBeat = Date.now();
+        try {
+            var r = await fetch('/api/account/session' + (active ? '?active=1' : ''), { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } });
+            if (r.ok) {
+                var v = await r.json();
+                if (!v.signedIn) { ended(); return; }
+                next = Math.min(60, v.secondsLeft + 2);
+            }
+        } catch (err) { /* The site may be restarting; it is asked again shortly. */ }
+        finally { beating = false; }
+        scheduleBeat(next);
+    }
+    function ended() {
+        clearTimeout(beatTimer);
+        signInAgain().then(async function () {
+            /* Someone else signing in here gets a page made for them. */
+            var now = await freshToken().catch(function () { return null; });
+            if (now && now.account && now.account !== madeFor.content) { location.reload(); return; }
+            scheduleBeat(60);
+        }, function () {
+            /* Cancelled: the page is left alone until the reader comes back to it. */
+            waitingForReader = true;
+        });
+    }
+
     /* A passkey button outside a running Account applet, which handles its
        own (js/account.js marks its mount data-account-js); on a site that
        has the account page but not the applet, such as a brochure site,

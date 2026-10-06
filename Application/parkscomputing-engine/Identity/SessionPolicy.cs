@@ -98,6 +98,9 @@ public sealed class SessionPolicy {
     public async Task<bool> ValidAsync(ClaimsPrincipal principal, bool touch = false) =>
         await _sessions.ValidAsync(principal, await ForAsync(principal), touch);
 
+    public async Task<TimeSpan?> LeftAsync(ClaimsPrincipal principal) =>
+        await _sessions.LeftAsync(principal, await ForAsync(principal));
+
     public async Task<bool> ConfirmAsync(ClaimsPrincipal principal) =>
         await _sessions.ConfirmAsync(principal, await ForAsync(principal));
 

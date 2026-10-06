@@ -87,11 +87,15 @@ public partial class Startup {
             o.Events.OnRedirectToLogin = ctx => ApiOrRedirect(ctx, StatusCodes.Status401Unauthorized);
             o.Events.OnRedirectToAccessDenied = ctx => ApiOrRedirect(ctx, StatusCodes.Status403Forbidden);
             // Identity's own check, then the session's absolute lifetime and
-            // its admin's idle limit.
+            // its admin's idle limit. A page asking whether its session is
+            // still there (AccountAuthController.Session) is not activity, so
+            // asking neither extends the session nor renews the cookie.
             o.Events.OnValidatePrincipal = async ctx => {
                 await SecurityStampValidator.ValidatePrincipalAsync(ctx);
                 var policy = ctx.HttpContext.RequestServices.GetRequiredService<SessionPolicy>();
-                if (ctx.Principal is not null && await AdminSessions.ExpiredAsync(ctx.Principal, policy)) {
+                var quiet = AccountAuthController.IsQuietSessionCheck(ctx.HttpContext.Request);
+                if (quiet) { ctx.ShouldRenew = false; }
+                if (ctx.Principal is not null && await (quiet ? AdminSessions.ExpiredWithoutActivityAsync(ctx.Principal, policy) : AdminSessions.ExpiredAsync(ctx.Principal, policy))) {
                     ctx.RejectPrincipal();
                     await ctx.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
                 }
