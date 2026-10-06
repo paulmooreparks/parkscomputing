@@ -137,8 +137,19 @@ public class ArticleContentService {
             "<div data-applet=\"logs\" data-applet-page=\"/logs\" aria-label=\"Server log\"><noscript><p>The log needs JavaScript in a window. <a href=\"/logs\">Open it as a page</a>.</p></noscript></div>",
             false, false, IsApplet: true);
 
+    /// <summary>The window key of Visits (Identity/VisitReport.cs), the
+    /// automated readers the site counts, for its staff on a site with
+    /// accounts. Its page is /visits.</summary>
+    public const string VisitsKey = "visits";
+
+    private ArticleWindowContent? VisitsWindow() => !_accounts ? null :
+        new ArticleWindowContent(VisitsKey, "Visits",
+            "<div data-applet=\"visits\" data-applet-page=\"/visits\" aria-label=\"Visits\"><noscript><p>Visits needs JavaScript in a window. <a href=\"/visits\">Open it as a page</a>.</p></noscript></div>",
+            false, false, IsApplet: true);
+
     public ArticleWindowContent? Load(string? slug) {
         if (slug == LogsKey && LogsWindow() is { } logs) { return logs; }
+        if (slug == VisitsKey && VisitsWindow() is { } visits) { return visits; }
         // The privacy policy and the terms of use are part of the
         // application, not content files (Identity/PolicyDocuments.cs).
         if (ParksComputing.Engine.Identity.PolicyDocuments.IsPolicy(slug) && _policies?.Get(slug!) is { } policy) {
@@ -384,7 +395,7 @@ public class ArticleContentService {
         ContentExists(slug)
         || (ParksComputing.Engine.Identity.PolicyDocuments.IsPolicy(slug) && _policies?.Get(slug) is not null)
         || slug == PinsKey
-        || (_accounts && (slug == AccountKey || slug == ModerationKey || slug == LogsKey));
+        || (_accounts && (slug == AccountKey || slug == ModerationKey || slug == LogsKey || slug == VisitsKey));
 
     private bool ContentExists(string slug) {
         var baseDir = Path.Combine(_environment.WebRootPath, "content");

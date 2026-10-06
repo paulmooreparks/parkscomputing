@@ -111,6 +111,10 @@ namespace ParksComputing.Engine.Pages {
                 if (slug == ArticleContentService.LogsKey && draft is null) {
                     return Task.FromResult<IActionResult>(Redirect("/logs"));
                 }
+                // Visits' page is /visits.
+                if (slug == ArticleContentService.VisitsKey && draft is null) {
+                    return Task.FromResult<IActionResult>(Redirect("/visits"));
+                }
                 // The moderation queue's page is /moderation; its window's Open as a page names /page/moderation.
                 if (slug == ArticleContentService.ModerationKey && draft is null) {
                     return Task.FromResult<IActionResult>(Redirect("/moderation"));

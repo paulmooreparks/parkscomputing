@@ -95,6 +95,7 @@ namespace ParksComputing.Engine {
             services.AddSingleton<SiteRedirects>();
             services.AddSingleton<SiteEditor>();
             services.AddSingleton<ParksComputing.Engine.Identity.AiVisitCounter>();
+            services.AddSingleton<ParksComputing.Engine.Identity.VisitReport>();
             services.AddHostedService<ParksComputing.Engine.Identity.AiVisitWriter>();
             // The recent log for the super-user's Server log applet (Identity/RecentLogs.cs).
             services.AddSingleton<ParksComputing.Engine.Identity.RecentLogs>();

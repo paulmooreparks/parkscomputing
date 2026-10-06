@@ -1,0 +1,14 @@
+@page "/visits"
+@model ParksComputing.Engine.Pages.VisitsModel
+@* Visits as a page (Pages/Visits.cshtml.cs), the classic view's twin of the
+   visits applet's window. *@
+<div class="visits-page">
+    <h1>Visits</h1>
+    <div data-applet="visits">
+        <partial name="_VisitsContent" model="Model.View" />
+    </div>
+</div>
+<style>
+    .visits-page { max-width: 64rem; margin: 0 auto; padding: var(--space-5) 0; }
+    .visits-page > h1 { margin: 0 0 var(--space-4); }
+</style>

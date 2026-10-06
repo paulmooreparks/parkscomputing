@@ -9,6 +9,10 @@ pudlApplets.define('comments', { src: '/js/comments.js', css: '/css/comments.css
 pudlApplets.define('moderation', { src: '/js/moderation.js', css: '/css/comments.css', page: '/moderation', ver: '3' });
 /* The super-user's Server log (Identity/RecentLogs.cs). */
 pudlApplets.define('logs', { src: '/js/logs.js', css: '/css/logs.css', page: '/logs', ver: '1' });
+/* Visits, the automated readers the site counts, for its staff
+   (Identity/VisitReport.cs). Its panel brings its own rules, so it has no
+   stylesheet. */
+pudlApplets.define('visits', { src: '/js/visits.js', page: '/visits', ver: '1' });
 window.pcAppletIdentity = function (root, entries) {
     var result = (entries || []).slice(), win = root.closest('[data-win]');
     if (win && window.pudlWindows) {

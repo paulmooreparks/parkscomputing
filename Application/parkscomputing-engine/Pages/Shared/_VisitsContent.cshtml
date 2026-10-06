@@ -1,0 +1,125 @@
+@model ParksComputing.Engine.Identity.VisitsView
+@using ParksComputing.Engine.Identity
+@* The Visits panel (Identity/VisitReport.cs): the same on the Visits page,
+   in the Visits applet's window (js/visits.js), and on a brochure site's
+   /admin/stats. The server draws all of it. The period is a plain GET form,
+   so it works without script and the choice is the address. Its few rules
+   are here rather than in a stylesheet, so the panel is whole wherever an
+   engine site draws it; PUDL draws the controls and cards. *@
+<style>
+    .visits { display: grid; gap: var(--space-4); font-size: var(--text-md); container-type: inline-size; }
+    .win-body .visits { padding: var(--space-4); }
+    .visits p { margin: 0; max-width: none; }
+    .visits h2 { margin: var(--space-3) 0 0; font-size: var(--text-lg); }
+    .visits-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2) var(--space-3); }
+    .visits-filters .form-group { margin: 0; min-width: 12rem; }
+    .visits-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-3); }
+    .visits-totals .card { margin: 0; padding: var(--space-3); }
+    .visits-number { display: block; font-size: var(--text-2xl); font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+    .visits-label { font-size: var(--text-sm); color: var(--text-muted); }
+    .visits-days { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(2px, 1fr); align-items: end; gap: 1px; height: 110px;
+        padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+    .visits-day { display: flex; flex-direction: column-reverse; min-height: 1px; }
+    .visits-day span { display: block; }
+    .visits-ai { background: var(--accent); }
+    .visits-search { background: color-mix(in srgb, var(--accent) 35%, var(--surface)); }
+    .visits-key { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); font-size: var(--text-sm); color: var(--text-muted); }
+    .visits-key i { display: inline-block; width: 12px; height: 12px; margin-right: var(--space-1); border-radius: 2px; vertical-align: -1px; }
+    .visits-scroll { overflow-x: auto; }
+    .visits-table { width: 100%; border-collapse: collapse; }
+    .visits-table th, .visits-table td { text-align: left; padding: var(--space-2) var(--space-3) var(--space-2) 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .visits-table th { font-size: var(--text-sm); color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+    .visits-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .visits-path { font-family: var(--mono); font-size: var(--text-sm); overflow-wrap: anywhere; }
+</style>
+<div class="visits" data-visits-panel>
+@if (Model.Stage == "signin")
+{
+    <p>Sign in as the site's staff to see its visits.</p>
+    <p><a class="btn btn-primary" href="/account/signin" data-account-dialog>Sign in…</a></p>
+}
+else if (Model.Report is { } r)
+{
+    <p>
+        The site counts the automated readers it can recognise, AI services and search engines, each by the name its company publishes.
+        It keeps only the reader’s name, the page and the day, never anything about a person.
+        @if (Model.AnalyticsUrl is not null)
+        {
+            <text>Visits by people are counted by <a href="@Model.AnalyticsUrl" rel="noopener">the site’s analytics</a>.</text>
+        }
+        New visits appear within a minute.
+    </p>
+    <form class="visits-filters" method="get" action="@Model.FormAction" data-visits-filters>
+        <div class="form-group">
+            <label class="form-label" for="visits-days">Period</label>
+            <span class="form-select-wrap"><select class="form-select" id="visits-days" name="days">
+                @foreach (var d in VisitReport.Ranges)
+                {
+                    <option value="@d" selected="@(d == r.Days)">@VisitReport.RangeLabel(d)</option>
+                }
+            </select></span>
+        </div>
+        <div><button class="btn" type="submit">Show</button></div>
+    </form>
+
+    <div class="visits-totals">
+        <div class="card"><span class="visits-number">@r.AiTotal.ToString("N0")</span><span class="visits-label">visits by AI services</span></div>
+        <div class="card"><span class="visits-number">@r.SearchTotal.ToString("N0")</span><span class="visits-label">visits by search engines</span></div>
+        <div class="card"><span class="visits-number">@r.ForAi.ToString("N0")</span><span class="visits-label">reads of llms.txt or a page’s Markdown</span></div>
+        <div class="card"><span class="visits-number">@r.NotFound.ToString("N0")</span><span class="visits-label">requests for pages that don’t exist</span></div>
+    </div>
+
+    <h2>Day by day</h2>
+    <div class="visits-days" role="img" aria-label="Visits each day over @VisitReport.RangeLabel(r.Days).ToLowerInvariant(), by AI services and search engines">
+        @foreach (var d in r.EachDay)
+        {
+            var height = ((d.Ai + d.Search) * 100.0 / r.MaxDay).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+            <div class="visits-day" style="height:@height%" title="@d.Day.ToString("d MMM yyyy"): @d.Ai AI, @d.Search search">
+                @if (d.Ai > 0) { <span class="visits-ai" style="flex:@d.Ai"></span> }
+                @if (d.Search > 0) { <span class="visits-search" style="flex:@d.Search"></span> }
+            </div>
+        }
+    </div>
+    <p class="visits-key"><span><i class="visits-ai"></i>AI services</span><span><i class="visits-search"></i>Search engines</span><span>@r.EachDay[0].Day.ToString("d MMM") to @r.EachDay[^1].Day.ToString("d MMM yyyy"), by UTC day</span></p>
+
+    <h2>By reader</h2>
+    @if (r.Agents.Count == 0)
+    {
+        <p>No automated readers in this period yet.</p>
+    }
+    else
+    {
+        <div class="visits-scroll">
+            <table class="visits-table">
+                <thead><tr><th scope="col">Reader</th><th scope="col">Kind</th><th scope="col" class="num">Visits</th><th scope="col" class="num">Pages</th><th scope="col">Last seen</th></tr></thead>
+                <tbody>
+                    @foreach (var a in r.Agents)
+                    {
+                        <tr><td>@a.Agent</td><td>@(a.Kind == AiAgents.Ai ? "AI" : "Search")</td><td class="num">@a.Count.ToString("N0")</td><td class="num">@a.Pages.ToString("N0")</td><td>@a.Last.ToString("d MMM yyyy")</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <h2>By page</h2>
+    @if (r.Pages.Count == 0)
+    {
+        <p>No pages read by automated readers in this period yet.</p>
+    }
+    else
+    {
+        <div class="visits-scroll">
+            <table class="visits-table">
+                <thead><tr><th scope="col">Page</th><th scope="col" class="num">AI</th><th scope="col" class="num">Search</th><th scope="col">Most often</th></tr></thead>
+                <tbody>
+                    @foreach (var p in r.Pages)
+                    {
+                        <tr><td class="visits-path">@p.Path</td><td class="num">@p.Ai.ToString("N0")</td><td class="num">@p.Search.ToString("N0")</td><td>@p.Top</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+</div>
