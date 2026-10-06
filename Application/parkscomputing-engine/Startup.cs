@@ -206,6 +206,11 @@ namespace ParksComputing.Engine {
 
             ConfigureRedirects(app, env);
 
+            // A page answers in Markdown to a request that prefers it, and
+            // otherwise links to its Markdown, llms.txt and the sitemap
+            // (Pages/Services/MarkdownNegotiation.cs).
+            app.UseMiddleware<MarkdownNegotiation>();
+
             // Redirect /swagger (no trailing slash) to /swagger/
             app.Use(async (ctx, next) => {
                 if (ctx.Request.Path.Equals("/swagger", StringComparison.OrdinalIgnoreCase)) {

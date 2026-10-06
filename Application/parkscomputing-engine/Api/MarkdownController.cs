@@ -25,10 +25,14 @@ public sealed class MarkdownController : Controller {
 
     /// <summary>Every crawler may read everything, and is told where the
     /// sitemap is. The site's private places answer no one who is not
-    /// signed in, so there is nothing to hide from crawlers here.</summary>
+    /// signed in, so there is nothing to hide from crawlers here. Where the
+    /// owner has said how the content may be used (Site:ContentSignal), the
+    /// rule carries it as a Content-Signal line.</summary>
     [HttpGet("/robots.txt")]
-    public IActionResult Robots() =>
-        Content($"User-agent: *\nAllow: /\n\nSitemap: {Origin}/sitemap.xml\n", "text/plain; charset=utf-8");
+    public IActionResult Robots([FromServices] Microsoft.Extensions.Options.IOptions<SiteOptions> site) {
+        var signal = string.IsNullOrWhiteSpace(site.Value.ContentSignal) ? "" : $"Content-Signal: {site.Value.ContentSignal.Trim()}\n";
+        return Content($"User-agent: *\n{signal}Allow: /\n\nSitemap: {Origin}/sitemap.xml\n", "text/plain; charset=utf-8");
+    }
 
     [HttpGet("/index.md")]
     public IActionResult Home() => Page("index");
