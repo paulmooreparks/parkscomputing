@@ -4,7 +4,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const origin = process.env.UI_SITE || 'http://localhost';
 
 (async () => {
-    const browser = await chromium.launch();
+    const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));

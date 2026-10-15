@@ -1,7 +1,7 @@
 /* Integration check against a running site, including the server-rendered window sizing contract. */
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert=require('node:assert/strict');
-(async()=>{const b=await chromium.launch();
+(async()=>{const b=await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const p=await b.newPage({viewport:{width:1280,height:900}});
 const errors=[];p.on('pageerror',e=>errors.push(e.message));
 await p.goto((process.env.BARCODE_SITE || 'http://localhost') + '/?open=barcode-scanner');

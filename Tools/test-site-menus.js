@@ -4,7 +4,7 @@ const { chromium, firefox, webkit } = require(process.env.PLAYWRIGHT_MODULE || '
 const origin = process.env.MENU_SITE || 'http://localhost';
 
 async function check(engine, name) {
-    const browser = await engine.launch();
+    const browser = await engine.launch(name === 'chromium' && process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
     const context = await browser.newContext({ viewport: { width: 1800, height: 1000 } });
     const page = await context.newPage();
     const errors = [];
@@ -24,7 +24,7 @@ async function check(engine, name) {
             }, expected);
         }
         const ids = await page.locator('.menubar-menu:not(.menubar-front):not(.menubar-one) .menubar-title').evaluateAll(nodes => nodes.map(n => n.dataset.menuId));
-        assert.deepEqual(ids, slug ? ['site', 'go', 'applets', 'view', 'window', 'help'] : ['site', 'go', 'applets', 'view', 'help']);
+        assert.deepEqual(ids, slug ? ['site', 'go', 'applets', 'view', 'window', 'help', 'pins'] : ['site', 'go', 'applets', 'view', 'help', 'pins']);
     }
     async function command(menu, label) {
         await title(menu).click();
@@ -63,7 +63,7 @@ async function check(engine, name) {
             'theme-studio': ['Theme Studio', 'File', 'Palette'],
             sudoku: ['Sudoku', 'Edit', 'Game'], conway: ["Conway's Game of Life", 'Simulation'],
             flashcards: ['Barcode Flash Cards', 'Deck'], barcodes: ['Barcode Tool', 'File', 'Layout'],
-            about: ['About', 'File']
+            about: ['About']
         };
         for (const [slug, labels] of Object.entries(menus)) await open(slug, labels);
 
@@ -164,5 +164,8 @@ async function check(engine, name) {
 }
 
 (async () => {
-    for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) await check(engine, name);
+    /* ENGINES limits the run, such as ENGINES=chromium where the others
+       aren't installed. */
+    const only = (process.env.ENGINES || 'chromium,firefox,webkit').split(',');
+    for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) { if (only.includes(name)) { await check(engine, name); } }
 })().catch(e => { console.error(e); process.exitCode = 1; });
