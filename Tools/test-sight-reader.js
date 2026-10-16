@@ -162,6 +162,22 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('then the right letter goes on, counted as a retry', i.pos === 'Bar 1 · 3 of 62' && /1 right first time, 1 after a retry/.test(i.tally), i.tally);
   await page.screenshot({ path: path.join(SHOTS, 'sr-ode-start.png') });
 
+  // 1b. The focus ring: not after the applet took the keyboard itself, as on
+  //     a refresh, and there once the reader has tabbed into it.
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
+  await page.waitForTimeout(500);
+  const ring = () => page.evaluate(() => { const r = document.querySelector('.pc-sight-reader'); return { focused: document.activeElement === r, outline: getComputedStyle(r).outlineStyle }; });
+  let rg = await ring();
+  log('after a refresh the applet has the keyboard and shows no ring', rg.focused && rg.outline === 'none', JSON.stringify(rg));
+  await page.focus('[data-sr="choose"]');
+  await page.keyboard.press('Shift+Tab');
+  rg = await ring();
+  log('tabbing into it shows the ring', rg.focused && rg.outline !== 'none', JSON.stringify(rg));
+  await page.click('.sr-score');
+  rg = await ring();
+  log('and a click in it takes the ring away', rg.focused && rg.outline === 'none', JSON.stringify(rg));
+
   // 2. Reveal after three wrong tries, and any key goes on.
   await type('bbb');
   i = await info();

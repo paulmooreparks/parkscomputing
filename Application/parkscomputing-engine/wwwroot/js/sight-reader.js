@@ -727,6 +727,12 @@
             openScore({ name: file.name.replace(/\.[^.]*$/, ''), file: file });
         }
 
+        /* Whether the keyboard moved the focus to the applet: Tab, anywhere on
+           the page, until a press in the applet says the pointer has it. */
+        function onTab(e) { if (e.key === 'Tab') { root.classList.add('sr-tabbed'); } }
+        document.addEventListener('keydown', onTab, true);
+        root.addEventListener('pointerdown', function () { root.classList.remove('sr-tabbed'); });
+
         el.file.addEventListener('change', function () { fromDevice(el.file.files && el.file.files[0]); el.file.value = ''; });
         root.addEventListener('click', onClick);
         root.addEventListener('change', onChange);
@@ -822,6 +828,7 @@
             menus: menus,
             destroy: function () {
                 destroyed = true;
+                document.removeEventListener('keydown', onTab, true);
                 clearTimeout(resizeTimer);
                 clearTimeout(flashTimer);
                 if (observer) { observer.disconnect(); }
