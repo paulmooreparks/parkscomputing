@@ -730,7 +730,16 @@
             if (!ready()) { return; }
             if (revealed) { advance(); return; }
             var key = settings.accidentals ? letter + accKey(pendingAlter) : letter;
-            attempt(steps[cur].notes.filter(function (s) { return s.key === key; }));
+            /* A letter names one note: of those with that name still unnamed,
+               the lowest, along with any note at the same pitch (a singer's
+               note doubled by the piano). The same letter again names the next,
+               so a B in two octaves takes two presses. A letter that is right
+               only for notes already named is not a wrong try. */
+            var all = steps[cur].notes.filter(function (s) { return s.key === key; });
+            var open = all.filter(function (s) { return s.state !== 'ok'; });
+            if (!open.length) { attempt(all); return; }
+            var low = Math.min.apply(null, open.map(function (s) { return s.midi; }));
+            attempt(open.filter(function (s) { return s.midi === low; }));
         }
 
         /* A key of the piano is the note and the octave, so it is right only if
@@ -747,7 +756,17 @@
             var semi = +button.getAttribute('data-semi'), midi = pianoStart + semi, pc = semi % 12;
             var letter = LETTER_OF_PC[pc], notes = steps[cur].notes;
             var sameNote = function (s) { return settings.accidentals ? s.pc === pc : s.key === letter; };
-            var hit = notes.filter(function (s) { return onKeyboard(s, pianoStart) ? target(s) === midi : sameNote(s); });
+            /* A key that is a note of the step on the keyboard names it. Only
+               when it is not does it name a note that is off the keyboard, one
+               at a time, so that B3 does not also name a B2 below the keys. */
+            var hit = notes.filter(function (s) { return onKeyboard(s, pianoStart) && target(s) === midi; });
+            if (!hit.length) {
+                var far = notes.filter(function (s) { return !onKeyboard(s, pianoStart) && s.state !== 'ok' && sameNote(s); });
+                if (far.length) {
+                    var low = Math.min.apply(null, far.map(function (s) { return s.midi; }));
+                    hit = far.filter(function (s) { return s.midi === low; });
+                }
+            }
             attempt(hit, button, notes.some(sameNote) ? 'Right note, wrong octave' : '');
         }
 

@@ -640,6 +640,15 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   i = await info();
   log('and the other octave is named by its own key', /^Finished/.test(i.fb) && (await greenNotes()) === 2, i.fb + " noteheads " + (await greenNotes()));
 
+  await menu('Practice', 'Restart');
+  await page.focus('.pc-sight-reader');
+  await type('c');
+  i = await info();
+  log('a typed letter names one note: the lower of two Cs, and the rest wait', /1 more/.test(i.fb) && (await greenNotes()) === 1, i.fb + ' noteheads ' + (await greenNotes()));
+  await type('c');
+  i = await info();
+  log('the same letter again names the other octave', /^Finished/.test(i.fb) && (await greenNotes()) === 2, i.fb);
+
   // 13d. Bars to practise: start part-way in, and go round again.
   await newTab();
   await page.setViewportSize({ width: 1300, height: 900 });
