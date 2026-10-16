@@ -34,11 +34,11 @@ A score is the reader's document, not the applet's, so it goes where Files shows
 
 ## Rendering
 
-**OpenSheetMusicDisplay (OSMD) draws the score.** Engraving music well is a large field of its own, and the applet should not attempt it. OSMD is BSD-licensed, renders MusicXML in the browser through VexFlow, and has a documented cursor that walks a score by time, giving at each step every note that starts there across the staves. That is the unit this quiz needs: one note, an interval or a chord. It would be vendored as a pinned bundle beside the applet, as CodeMirror and xterm are, and loaded only when the applet opens. Its size, about 1.5 MB before compression, is the main cost.
+**OpenSheetMusicDisplay (OSMD) draws the score.** Engraving music well is a large field of its own, and the applet should not attempt it. OSMD is BSD-licensed, renders MusicXML in the browser through VexFlow, and has a documented cursor that walks a score by time, giving at each step every note that starts there across the staves. That is the unit this quiz needs: one note, an interval or a chord. It is vendored as a pinned bundle beside the applet, version 2.2.1 (BSD-3-Clause), as CodeMirror and xterm are, and loaded only when the applet opens. Its size, 1.4 MB, or 360 KB compressed, is the main cost.
 
 ## Practising a piece
 
-**Choosing what to read.** A score may have several parts, and a part several staves, and a reader often wants only one of them: a pianist one hand at a time, a singer the voice of a song, a violist the viola line of a quartet. The applet lists the score's parts and staves as the score names them, with each staff's clef, and the reader ticks the ones to read; all are ticked at first. The applet knows nothing about which instrument a part is for, and needs to know nothing, since every staff is read the same way. A tablature staff, as guitar music often has, is not notation to read and gives the answer away, so it is hidden while quizzing, with a setting to show it.
+**Choosing what to read: by clef, and by part** (Paul, 2026-10-16). The reader chooses which clefs to practise from those the score uses, so for piano music treble, bass or both. The choice follows the clef in effect at each note, not the staff it is on, so a left hand that moves up into the treble clef for a few bars is treble while it is there. A score in one clef, as most single-staff music is, offers no choice and shows none. A score with several parts, such as a song or a quartet, also lets the reader tick the parts to read, so a singer can read the voice alone or a violist the viola line, with its alto clef. Everything is chosen at first. The applet knows nothing about which instrument a part is for, and needs to know nothing, since every clef is read the same way. A tablature staff, as guitar music often has, is not notation to read and gives the answer away, so it is hidden while quizzing, with a setting to show it.
 
 **Choosing the passage.** Real practice works on a few bars at a time. The reader can start from any measure, by clicking it or naming its number, and can set a passage from one measure to another that loops when it ends, so a hard phrase can be read over and over.
 
@@ -78,11 +78,23 @@ A prefix shows in the status line, and its button stays pressed, until its lette
 
 The applet is `sight-reader` in the registry, in a window and on its own page. Its state string, which a link carries, says which score and which measure. Its settings (scores folder, tablature, reveal-after, sound) are kept in `~/.config/sight-reader.json` through `pcConfig`, and each score's last position, passages and per-measure tally in `~/.sight-reader/`, as above. Its menus are Score (Open, Add a score, Samples), Practice (Start at measure, Set a passage, Practise weak bars, Show answer, Skip) and the applet's Settings.
 
-## To find out before building
+## What the spike found (2026-10-16)
 
-A short spike with a real piece of Paul's should confirm, using only documented OSMD calls, that marking named notes is quick enough to feel instant on a long score, that a page renders acceptably at phone width, that the cursor can be limited to the staves the reader chose, and that a guitar score's tablature staff can be hidden.
+The spike ran on the sample scores, with OpenSheetMusicDisplay loaded from its CDN for the test only, and used only calls in OSMD's documentation. Its script is kept in the session's scratch folder; the applet's own tests will replace it.
 
-Part of this is already known from choosing the samples (2026-10-16). OSMD 1.9.0, loaded from its CDN for the test only, rendered all nineteen samples without an error, and its cursor walked each from start to end, one note at a time in a single line and up to six notes at a step in a song's piano part. A song renders in under a second. A whole string quartet, Beethoven's Op. 18 No. 1 with 6,500 steps, took 23 seconds, so a long score needs care: the samples use a single quartet movement instead.
+**Version 2.2.1, not 1.9.** The documented API is 2.x: `GraphicalNote.setColor`, which marks a note without redrawing, is not in 1.9.0. The applet vendors 2.2.1. It also renders faster, Wolf's Nachtzauber in 342 ms against 724 in 1.9.0.
+
+**Every check passed:**
+
+- **Marking is instant.** Colouring each step's notes and moving the cursor on took a median of 0.3 ms and at most 0.9 ms a step, over all 787 steps and 1,501 notes of Nachtzauber, the longest sample song.
+- **Reading one clef or one part works.** The cursor gives every note starting at a step (`Cursor.NotesUnderCursor`, which also takes an instrument), and each note says which staff it is on (`Note.ParentStaff`). The clef in effect is followed through the score's clef instructions as the cursor walks, at the start of each measure (`SourceMeasure.FirstInstructionsStaffEntries`) and within it (`SourceStaffEntry.Instructions`): in Schumann's Frühlingsnacht it found four clef changes, and 1,414 notes in the treble clef and 100 in the bass, since the left hand spends much of the song up in the treble. A part can be hidden (`Instrument.Visible`), and the rest of the score still reads.
+- **Letters and accidentals** come from each note's pitch (`Pitch.FundamentalNote`, `Pitch.AccidentalHalfTones`): Frühlingsnacht's six sharps read as F♯, C♯ and A♯. A tied note's continuation is told apart by its tie (`Note.NoteTie`) and skipped, 14 of them in that song.
+- **The view follows the cursor** (the `followCursor` option): 200 steps into Strauss's Morgen!, the page had scrolled 1,662 pixels and the cursor was in view.
+- **Phone width works.** At 390 pixels wide, Ode to Joy and Schubert's Morgengruß render to the screen's width with no sideways scrolling. A song then shows one bar a line, with the part names taking much of the width, so on a narrow screen the applet should draw the score smaller and leave the part names out.
+
+**Still to check:** hiding a guitar score's tablature staff, since no sample has one. That waits for a guitar piece of Paul's.
+
+**A long score needs care.** A whole string quartet, Beethoven's Op. 18 No. 1 with 6,500 steps, took 23 seconds to render in 1.9.0, so the samples use a single quartet movement, which renders in under a second. For a long score of the reader's own, the applet can draw a range of measures at a time (`drawFromMeasureNumber`, `drawUpToMeasureNumber`), which also suits practising a passage.
 
 ## The sample scores
 
