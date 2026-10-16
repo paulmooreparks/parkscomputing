@@ -200,3 +200,4 @@ body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .post-content { max-width:
 .sr-staff-name { fill: currentColor; font-size: 11px; font-weight: 600; }
 .sr-staff-note.sr-mid { fill: #2e7d32; }
 .sr-staff-name.sr-mid { fill: #2e7d32; font-weight: 800; }
+.sr-clef-glyph path { fill: currentColor; stroke: none; }
