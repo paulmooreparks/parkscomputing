@@ -17,9 +17,12 @@
      treeFiles    the tree shows files as well as folders
      toggleFolders  a click on a folder in the tree opens or closes it
                   instead of going there (the Explorer pane)
+     navigate     false disables user navigation and sends folders to onOpen
+     navigationRoot  limits navigation to this absolute folder and descendants
+     parentEntry  shows a Parent Folder row when navigation upward is allowed
      draggable    entries in ~ can be dragged onto folders there to move them
      onUpload(files)  files dropped from the computer onto the list, in ~
-     onOpen(node) an entry that isn't a folder is opened
+     onOpen(node) an entry is opened (includes folders when navigate is false)
      onSelect(node)  the selection in the list changed (node may be null)
      onNavigate(dir) the current folder changed
      onRender()   after every redraw
@@ -37,6 +40,14 @@
    pcFileBrowser.pick(F, options) is the Open and Save as dialog built on
    it, which the Editor and the barcode tool share; its comment says what
    it takes and gives back. */
+/* GK Companion's changes, brought back (Architecture/applet-platform-design.md,
+   P1): a host may load folders as they are opened (F.load, F.lookup, both
+   optional, so the site's file system, which is all in memory, works as
+   before), page a long folder (node.nextStart, Load More), leave out Home,
+   bound navigation to one folder (navigationRoot), send folders to onOpen
+   instead of entering them (navigate: false), show a Parent Folder row
+   (parentEntry), and drop the links on rows (rowLinks: false). A redraw of
+   the tree alone tells the host, as any redraw does. */
 (function () {
     'use strict';
     if (window.pcFileBrowser) { return; }
@@ -98,29 +109,47 @@
             splitter = splitOf(splitHandle, o.onResize);
             splitter.set(o.treeWidth);
         }
-        var cwd = null, selected = null, expanded = {}, currentPath = null, destroyed = false;
+        var cwd = null, selected = null, expanded = {}, currentPath = null, destroyed = false, navigation = 0;
         var changed = function () { };
         var say = o.say || function () { };
         var linkFor = o.linkFor || function () { return '#'; };
+        var navigationRoot = o.navigationRoot && o.navigationRoot.replace(/\/$/, '') || '';
+        function allowed(path) {
+            if (!navigationRoot) return true;
+            if (path.split('/').some(function (part) { return part === '..' || part === '.'; })) return false;
+            return path === navigationRoot || path.indexOf(navigationRoot + '/') === 0;
+        }
+        function canUp() { return !!(cwd && cwd.parent && allowed(F.pathOf(cwd.parent))); }
+        function entry(name) { return name === '..' && o.parentEntry && canUp() ? cwd.parent : F.childNamed(cwd, name); }
 
         function inHome(node) { return !!F.realOf(node).home; }
 
         /* === Moving about ================================================ */
 
-        function go(node, keepStatus) {
-            if (!node || !node.children) { return; }
+        async function go(node, keepStatus) {
+            if (!node || !node.children || !allowed(F.pathOf(node))) { return; }
+            var request = ++navigation;
+            if (o.onLoading) { o.onLoading(true); }
+            try { if (F.load) { await F.load(node); } }
+            catch (error) { if (!destroyed && request === navigation) { say(String(error), true); if (o.onLoading) { o.onLoading(false); } } return; }
+            if (destroyed || request !== navigation || !allowed(F.pathOf(node))) { return; }
             cwd = node;
             selected = null;
             for (var x = node; x; x = x.parent) { expanded[F.pathOf(x)] = true; }
             if (!keepStatus) { say(''); }
             render();
             if (o.onNavigate) { o.onNavigate(cwd); }
+            if (o.onLoading) { o.onLoading(false); }
             changed();
         }
 
-        function goPath(path) {
-            var node = F.resolve(null, path);
-            if (node && node.children) { go(node); return true; }
+        async function goPath(path) {
+            if (!allowed(path)) return false;
+            var request = ++navigation, node;
+            try { node = F.lookup ? await F.lookup(path) : F.resolve(null, path); }
+            catch (error) { if (!destroyed && request === navigation) { say(String(error), true); } return false; }
+            if (destroyed || request !== navigation) { return false; }
+            if (node && node.children && allowed(F.pathOf(node))) { await go(node); return true; }
             say(path + ': no such folder', true);
             return false;
         }
@@ -129,11 +158,13 @@
            again by path, since a reload replaces the nodes it covers. */
         function refresh() {
             if (!cwd) { return; }
-            var path = F.pathOf(cwd), sel = selected ? selected.name : null;
+            var path = F.pathOf(cwd), sel = selected ? selected.name : null, previous = selected;
             var node = F.resolve(null, path);
-            while (!node && path !== '/') { path = path.slice(0, path.lastIndexOf('/')) || '/'; node = F.resolve(null, path); }
+            while (!node && path !== '/' && path !== navigationRoot) { path = path.slice(0, path.lastIndexOf('/')) || '/'; node = F.resolve(null, path); }
+            if (navigationRoot && (!node || !allowed(F.pathOf(node)))) { say('The starting folder is unavailable.', true); return; }
             cwd = node || F.root();
             selected = sel ? F.childNamed(cwd, sel) : null;
+            if (previous && selected && F.sameNode && !F.sameNode(previous, selected)) { selected = null; }
             render();
         }
 
@@ -149,7 +180,7 @@
         /* PUDL's path bar: the folders above this one, each an address. */
         function renderCrumbs() {
             var chain = [];
-            for (var x = cwd; x; x = x.parent) { chain.unshift(x); }
+            for (var x = cwd; x; x = x.parent) { chain.unshift(x); if (F.pathOf(x) === navigationRoot) break; }
             var h = chain.indexOf(F.home()), start = h >= 0 ? h : 0, html = '';
             for (var i = start; i < chain.length; i++) {
                 var c = chain[i], label = i === start && h >= 0 ? '~' : (c.parent ? c.name : '/');
@@ -182,10 +213,12 @@
             var current = !seen[path] && (currentPath != null ? path === currentPath : node === cwd);
             seen[path] = true;
             var label = !node.parent ? '/' : node === F.home() ? 'Home (~)' : node.name;
+            var expandable = kids.length || node.loaded === false || node.nextStart >= 0;
             return '<li><a href="' + esc(linkFor(node)) + '" data-path="' + esc(path) + '"' +
-                (kids.length ? ' aria-expanded="' + open + '"' : '') + (current ? ' aria-current="location"' : '') + '>' +
+                (expandable ? ' aria-expanded="' + open + '"' : '') + (current ? ' aria-current="location"' : '') + '>' +
                 glyph(node === F.home() ? 'home' : 'dir') + '<span class="fm-ti-label">' + esc(label) + '</span></a>' +
-                (kids.length && open ? branch(kids, seen) : '') + '</li>';
+                (expandable && open ? '<ul>' + kids.map(function (d) { return treeNode(d, seen); }).join('') +
+                    (node.nextStart >= 0 ? '<li><button type="button" class="btn btn-sm" data-more-path="' + esc(path) + '">Load More</button></li>' : '') + '</ul>' : '') + '</li>';
         }
         function branch(kids, seen) { return '<ul>' + kids.map(function (d) { return treeNode(d, seen); }).join('') + '</ul>'; }
 
@@ -194,7 +227,8 @@
             var seen = {};
             /* The home directory is a root of its own, first, since it is
                where the changes happen; the site follows. */
-            el.tree.innerHTML = treeNode(F.home(), seen) + treeNode(F.root(), seen);
+            var boundary = navigationRoot && F.resolve(null, navigationRoot);
+            el.tree.innerHTML = navigationRoot ? (boundary ? treeNode(boundary, seen) : '') : (F.home() ? treeNode(F.home(), seen) : '') + treeNode(F.root(), seen);
             if (window.pudlTree) { window.pudlTree.enhance(el.tree); }
             if (focusPath) {
                 var f = el.tree.querySelector('a[data-path="' + CSS.escape(focusPath) + '"]');
@@ -202,19 +236,35 @@
             }
         }
 
-        function onToggle(e) {
+        /* The tree drawn on its own, after a branch opens or the current
+           entry changes; the host is told as after any other redraw, since
+           what it adds to the tree, such as a mark for a read-only entry, is
+           lost with the old markup. */
+        function drawTree() {
+            renderTree();
+            if (o.onRender) { o.onRender(); }
+        }
+
+        async function onToggle(e) {
             var a = e.target, path = a.getAttribute('data-path');
             expanded[path] = !!(e.detail && e.detail.open);
             changed();
             var drawn = a.nextElementSibling && a.nextElementSibling.tagName === 'UL';
-            if (!expanded[path] || drawn) { return; }
+            if (!expanded[path]) { return; }
             var node = F.resolve(null, path);
+            if (F.load && node) {
+                try { await F.load(node); } catch (error) { if (!destroyed) { say(String(error), true); } return; }
+                if (!destroyed) { drawTree(); }
+                return;
+            }
+            if (drawn) { return; }
             a.insertAdjacentHTML('afterend', branch(node ? kidsOf(node) : [], {}));
             window.pudlTree.enhance(el.tree);
+            if (o.onRender) { o.onRender(); }
         }
 
         function entries() {
-            var kids = (cwd.children || []).filter(visible);
+            var kids = (F.listEntries ? F.listEntries(cwd) : cwd.children || []).filter(visible);
             /* Folders first; within each, the order the site gives, which
                for articles is newest first. */
             return kids.filter(function (c) { return c.children; }).concat(kids.filter(shownFile));
@@ -229,11 +279,12 @@
            through pudl:row-open. */
         function renderList() {
             var list = entries(), html = '';
+            if (o.parentEntry && canUp()) list.unshift(Object.assign({}, cwd.parent, {name:'..',title:'Parent Folder',special:true}));
             list.forEach(function (c) {
                 var r = F.realOf(c), kind = F.kindOf(c);
                 var date = r.home ? r.mtime : r.date;
                 var sel = selected === c;
-                var href = kind === 'dir' ? linkFor(c) : (o.addressOf ? o.addressOf(c) : null);
+                var href = o.rowLinks === false ? null : kind === 'dir' ? linkFor(c) : (o.addressOf ? o.addressOf(c) : null);
                 var name = esc(c.name) + (kind === 'dir' ? '/' : '');
                 html += '<tr class="fm-row" data-name="' + esc(c.name) + '" aria-selected="' + sel + '" tabindex="' + (sel || (!selected && c === list[0]) ? '0' : '-1') + '"' +
                     (o.draggable && inHome(c) && !r.special ? ' draggable="true"' : '') + '>' +
@@ -254,7 +305,7 @@
 
         function rowFor(name) { return el.rows ? el.rows.querySelector('tr[data-name="' + CSS.escape(name) + '"]') : null; }
         function select(name, focus) {
-            selected = name ? F.childNamed(cwd, name) : null;
+            selected = name ? entry(name) : null;
             if (el.rows) {
                 el.rows.querySelectorAll('tr').forEach(function (tr) {
                     var on = tr.getAttribute('data-name') === name;
@@ -280,18 +331,24 @@
                 var node = F.resolve(null, currentPath);
                 for (var x = node && node.parent; x; x = x.parent) { expanded[F.pathOf(x)] = true; }
             }
-            if (el.tree) { renderTree(); }
+            if (el.tree) { drawTree(); }
         }
 
         function open(node) {
             if (!node) { return; }
-            if (F.kindOf(node) === 'dir') { go(node); focusList(); return; }
+            if (F.kindOf(node) === 'dir' && o.navigate !== false) { go(node); focusList(); return; }
             if (o.onOpen) { o.onOpen(node); }
         }
 
         /* === Clicks and keys ============================================= */
 
         function onClick(e) {
+            var more = e.target.closest('[data-more-path]');
+            if (more && F.load) {
+                e.preventDefault(); more.disabled = true;
+                Promise.resolve(F.load(F.resolve(null, more.dataset.morePath), true)).then(function () { if (!destroyed) { render(); } }).catch(function (error) { if (!destroyed) { more.disabled = false; say(String(error), true); } });
+                return;
+            }
             /* Links in the tree, the path bar and the rows are addresses of
                their own, which a modified click opens as the browser would;
                a plain one is handled here. The tree's toggles are
@@ -312,6 +369,7 @@
                 /* Enter on a folder in the tree moves on to its contents;
                    asked before going there, which redraws the tree. */
                 var fromTree = e.detail === 0 && el.tree && el.tree.contains(link);
+                if (o.navigate === false) { if (o.onOpen) { o.onOpen(F.resolve(null, path)); } return; }
                 goPath(path);
                 if (fromTree) { focusList(); }
                 return;
@@ -324,15 +382,15 @@
             }
         }
 
-        function onRowSelect(e) { selected = F.childNamed(cwd, e.target.getAttribute('data-name')); if (o.onSelect) { o.onSelect(selected); } changed(); }
-        function onRowOpen(e) { var c = F.childNamed(cwd, e.target.getAttribute('data-name')); if (c) { selected = c; open(c); } }
+        function onRowSelect(e) { selected = entry(e.target.getAttribute('data-name')); if (o.onSelect) { o.onSelect(selected); } changed(); }
+        function onRowOpen(e) { var c = entry(e.target.getAttribute('data-name')); if (c) { selected = c; open(c); } }
         function onRowKey(e) {
             if (e.target.tagName !== 'TR') { return; }
-            if (e.key === 'Backspace') { up(); e.preventDefault(); return; }
+            if (e.key === 'Backspace') { if (o.navigate !== false) { up(); } e.preventDefault(); return; }
             if (o.onKey && o.onKey(e, selected)) { e.preventDefault(); }
         }
 
-        function up() { if (cwd && cwd.parent) { var from = cwd; go(cwd.parent); select(from.name); } }
+        function up() { if (canUp()) { var from = cwd; go(cwd.parent).then(function () { if (!destroyed && cwd === from.parent) { select(from.name); } }); } }
 
         /* === Dragging ==================================================== */
 
@@ -406,8 +464,9 @@
 
         var start = o.start ? F.resolve(null, o.start) : null;
         cwd = start && start.children ? start : F.root();
+        if (navigationRoot && !allowed(F.pathOf(cwd))) throw new Error('The starting folder is outside the navigation root.');
         for (var x = cwd; x; x = x.parent) { expanded[F.pathOf(x)] = true; }
-        expanded[F.pathOf(F.home())] = true;
+        if (F.home()) { expanded[F.pathOf(F.home())] = true; }
         (o.expand || []).forEach(function (p) { var n = F.resolve(null, p); if (n && n.children) { expanded[F.pathOf(n)] = true; } });
         render();
 
@@ -417,6 +476,7 @@
             go: go,
             goPath: goPath,
             up: up,
+            canUp: canUp,
             refresh: refresh,
             render: render,
             select: select,
@@ -440,8 +500,16 @@
                     scroll: ['tree', 'list', 'main'].map(function (k) { return el[k] ? el[k].scrollTop : 0; })
                 };
             },
-            restore: function (s) {
+            restore: async function (s) {
                 if (!s || typeof s !== 'object') { return; }
+                if (F.lookup && F.load) {
+                    for (var path of (s.expanded || []).slice(0, 100)) {
+                        if (destroyed) { return; }
+                        if (!allowed(path)) continue;
+                        try { var node = await F.lookup(path); if (node.children) { await F.load(node); } } catch (error) { /* Missing branches remain closed. */ }
+                    }
+                }
+                if (destroyed) { return; }
                 (s.expanded || []).forEach(function (p) { var n = F.resolve(null, p); if (n && n.children) { expanded[F.pathOf(n)] = true; } });
                 render();
                 if (s.selected && F.childNamed(cwd, s.selected)) { select(s.selected, false); }
@@ -465,7 +533,8 @@
 
        The browser in a dialog, with a field under it for the path (Open)
        or the name (Save as), and beside the buttons a way to use the
-       reader's computer instead. It only chooses: the host opens or writes.
+       reader's computer instead. It chooses; the host opens or writes,
+       either after the dialog closes or, with commit, while it waits.
 
          pcFileBrowser.pick(F, {
            mode       'open' or 'save'
@@ -483,6 +552,11 @@
                       Download instead is the main button
            computer   true for "From your computer…" (Open) or "Download
                       instead" (Save as)
+           commit(choice)  optional: does what was chosen while the dialog
+                      stays open and busy. It may throw, or reject, and the
+                      dialog shows why and stays open to choose again; it
+                      may answer false to stay open saying nothing. From GK
+                      Companion's Open and Save dialogs.
          })
 
        resolves to one of
@@ -491,8 +565,15 @@
                                already asked about replacing a file)
          { file }              Open: a File from the reader's computer
          { download: name }    Save as: download it under this name
-         null                  cancelled */
+         null                  cancelled
+
+       A folder that can't take a file is said so plainly under the list,
+       not as an error, and while it shows, the name and Save are off. New
+       folder makes a folder where files can be made, in ~ and, for an
+       admin, the server's folders. The dialog can be resized from its
+       corner, and keeps the size it was last given in this browser. */
     var pickCount = 0;
+    var PICK_SIZE_KEY = 'pc-picker-size';
     function pick(F, o) {
         o = o || {};
         var save = o.mode === 'save', id = 'fb-pick-' + (++pickCount);
@@ -509,8 +590,16 @@
                   '<button type="button" class="icon-btn" data-pick="up" aria-label="Up one folder" title="Up one folder"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3.5"/><path d="M4 7.5l4-4 4 4"/></svg></button>' +
                   '<button type="button" class="icon-btn" data-pick="home" aria-label="Your home directory" title="Your home directory">' + glyph('home') + '</button>' +
                   markup.pathBar() +
+                  '<button type="button" class="btn btn-sm" data-pick="newfolder" title="Make a folder here">New folder</button>' +
+                '</div>' +
+                '<div class="fb-pick-newfolder" data-pick="newrow" hidden>' +
+                  '<label class="form-label" for="' + id + '-nf">Name of the new folder</label>' +
+                  '<input class="form-input mono" id="' + id + '-nf" data-pick="newname" autocomplete="off" spellcheck="false" />' +
+                  '<button type="button" class="btn btn-sm" data-pick="make">Make</button>' +
+                  '<button type="button" class="btn btn-sm" data-pick="nomake">Cancel</button>' +
                 '</div>' +
                 '<div class="fb-pick-browse">' + markup.body({}) + '</div>' +
+                '<p class="fb-pick-note" data-pick="note" hidden></p>' +
                 '<div class="form-group fb-pick-field">' +
                   '<label class="form-label" for="' + id + '-input">' + (save ? 'File name' : 'Path') + '</label>' +
                   '<input class="form-input mono" id="' + id + '-input" data-pick="input" autocomplete="off" spellcheck="false"' +
@@ -530,34 +619,96 @@
             '</form>';
         (o.host || document.body).appendChild(dlg);
         var q = function (s) { return dlg.querySelector('[data-pick="' + s + '"]'); };
-        var input = q('input'), error = q('error'), ok = q('ok'), dl = q('download');
-        var okLabel = ok.textContent, replacing = null, done = null, b = null;
+        var input = q('input'), error = q('error'), note = q('note'), ok = q('ok'), dl = q('download');
+        var okLabel = ok.textContent, replacing = null, done = null, b = null, busy = false, readOnlyHere = false;
+
+        /* The size it was last given, as far as it fits the window. */
+        try {
+            var kept = JSON.parse(localStorage.getItem(PICK_SIZE_KEY) || 'null');
+            if (kept && kept.w > 0 && kept.h > 0) {
+                dlg.style.width = Math.min(kept.w, window.innerWidth - 16) + 'px';
+                dlg.style.height = Math.min(kept.h, window.innerHeight - 16) + 'px';
+            }
+        } catch (err) { /* A browser that keeps nothing opens it at its usual size. */ }
+        function keepSize() {
+            if (!dlg.style.width && !dlg.style.height && !dlg.dataset.resized) { return; }
+            try { localStorage.setItem(PICK_SIZE_KEY, JSON.stringify({ w: dlg.offsetWidth, h: dlg.offsetHeight })); } catch (err) { }
+        }
+        var sizeAtOpen = null;
 
         function say(msg) { error.textContent = msg || ''; error.hidden = !msg; }
+        function tidy(err) {
+            var m = String(err && err.message || err || 'That didn\'t work.').replace(/^Error: /, '').trim();
+            m = m.charAt(0).toUpperCase() + m.slice(1);
+            return /[.!?]$/.test(m) ? m : m + '.';
+        }
         function realName(v) { return v.indexOf('/') >= 0 ? v.slice(v.lastIndexOf('/') + 1) : v; }
-        function resetReplace() { replacing = null; ok.textContent = okLabel; }
+        function resetReplace() { replacing = null; if (!busy) { ok.textContent = okLabel; } }
 
-        /* Save as says at once when the folder shown can't take the file,
-           and makes downloading the way forward. */
+        /* Whether the folder shown can take a new file or folder: one of the
+           reader's own (~), or for an admin, the server's. */
+        function writable(dir) { return !!(dir && F.realOf(dir).home); }
+
+        /* Save as says at once, plainly, when the folder shown can't take the
+           file, and makes downloading the way forward. */
         function folderState() {
-            if (!save || !b) { return; }
-            var why = o.canSaveIn ? o.canSaveIn(F.realOf(b.cwd())) : null;
-            ok.disabled = !!why;
-            if (dl) { dl.classList.toggle('btn-primary', !!why); }
-            say(why);
+            if (!b) { return; }
+            var dir = F.realOf(b.cwd());
+            q('newfolder').disabled = busy || !writable(dir);
+            if (!save) { return; }
+            var why = !writable(dir) ? 'This folder is read-only here. Your own files are in ~' + (F.mounted ? ', and the server\'s in /wwwroot and /etc' : '') + '.'
+                : o.canSaveIn ? o.canSaveIn(dir) : null;
+            readOnlyHere = !!why;
+            note.textContent = why || '';
+            note.hidden = !why;
+            ok.disabled = busy || readOnlyHere;
+            input.disabled = busy || readOnlyHere;
+            if (dl) { dl.classList.toggle('btn-primary', readOnlyHere); }
+            if (why) { say(''); }
+        }
+
+        /* While the host does what was chosen, nothing in the dialog can be
+           pressed, and Escape doesn't close it. */
+        function setBusy(on) {
+            busy = on;
+            dlg.classList.toggle('fb-pick-busy', on);
+            dlg.setAttribute('aria-busy', String(on));
+            [].slice.call(dlg.querySelectorAll('button, input')).forEach(function (c) { c.disabled = on; });
+            ok.textContent = on ? (save ? 'Saving…' : 'Opening…') : (replacing ? 'Replace' : okLabel);
+            if (!on) { folderState(); }
         }
 
         function finish(value) {
             if (!done) { return; }
             var d = done;
             done = null;
+            keepSize();
             if (dlg.open) { dlg.close(); }
             if (b) { b.destroy(); }
             dlg.remove();
             d(value);
         }
 
+        /* A choice: done at once, or with commit, done while the dialog
+           waits, which closes only when it worked. */
+        function choose(value) {
+            if (!o.commit) { finish(value); return; }
+            say('');
+            setBusy(true);
+            Promise.resolve().then(function () { return o.commit(value); }).then(function (result) {
+                if (!done) { return; }
+                setBusy(false);
+                if (result === false) { return; }
+                finish(value);
+            }, function (err) {
+                if (!done) { return; }
+                setBusy(false);
+                say(tidy(err));
+            });
+        }
+
         function submit() {
+            if (busy) { return; }
             var v = input.value.trim(), dir = b.cwd();
             if (!save) {
                 var sel = b.selected();
@@ -569,7 +720,7 @@
                     : !fits(r.name) ? node.name + ' isn\'t a ' + accept.join(' or ') + ' file.'
                     : o.check ? o.check(r) : null;
                 if (why) { say(why); return; }
-                finish({ path: F.displayPath(r), node: r });
+                choose({ path: F.displayPath(r), node: r });
                 return;
             }
             if (!v) { say('Give it a name.'); return; }
@@ -596,7 +747,29 @@
                 say(base + ' already exists here. Replace it?');
                 return;
             }
-            finish({ path: path, dir: target, name: base });
+            choose({ path: path, dir: target, name: base });
+        }
+
+        /* New folder: a name, then a folder of that name here. */
+        function showNewFolder(on) {
+            q('newrow').hidden = !on;
+            if (on) { q('newname').value = ''; q('newname').focus(); } else if (!busy) { (save ? input : dlg.querySelector('[data-fb="list"]') || input).focus(); }
+        }
+        async function makeFolder() {
+            var name = q('newname').value.trim(), dir = F.realOf(b.cwd());
+            if (!name) { say('Give the new folder a name.'); q('newname').focus(); return; }
+            if (!F.validName(name)) { say(name + ' isn\'t a valid folder name.'); q('newname').focus(); return; }
+            if (F.childNamed(dir, name)) { say(name + ' already exists here.'); q('newname').focus(); return; }
+            setBusy(true);
+            var err = null;
+            try { err = await F.mkdir(dir, name, false); } catch (e) { err = tidy(e); }
+            if (!done) { return; }
+            setBusy(false);
+            if (err) { say(tidy(err)); return; }
+            say('');
+            showNewFolder(false);
+            b.refresh();
+            b.select(name);
         }
 
         return new Promise(function (resolve) {
@@ -605,12 +778,13 @@
                 start: o.start || F.displayPath(F.home()),
                 filter: accept.length ? function (n) { return fits(n.name); } : null,
                 onOpen: function (node) {
+                    if (busy) { return; }
                     input.value = save ? node.name : F.displayPath(F.realOf(node));
                     resetReplace();
                     submit();
                 },
                 onSelect: function (node) {
-                    if (!node || node.children) { return; }
+                    if (!node || node.children || busy) { return; }
                     input.value = save ? node.name : F.displayPath(F.realOf(node));
                     resetReplace();
                     say('');
@@ -619,29 +793,46 @@
                 say: function (m) { if (m) { say(m); } }
             });
             if (save) { input.value = o.name || ''; }
-            dlg.addEventListener('submit', function (e) { e.preventDefault(); submit(); });
+            dlg.addEventListener('submit', function (e) { e.preventDefault(); if (!q('newrow').hidden && document.activeElement === q('newname')) { makeFolder(); return; } submit(); });
+            dlg.addEventListener('cancel', function (e) { if (busy) { e.preventDefault(); } });
             dlg.addEventListener('close', function () { finish(null); });
-            input.addEventListener('input', function () { resetReplace(); if (!ok.disabled) { say(''); } });
+            input.addEventListener('input', function () { resetReplace(); say(''); });
+            /* A size set by dragging the corner is kept. */
+            if (window.ResizeObserver) {
+                var ro = new ResizeObserver(function () {
+                    var s = dlg.offsetWidth + 'x' + dlg.offsetHeight;
+                    if (sizeAtOpen && s !== sizeAtOpen) { dlg.dataset.resized = '1'; }
+                });
+                ro.observe(dlg);
+                dlg.addEventListener('close', function () { ro.disconnect(); });
+            }
             dlg.addEventListener('click', function (e) {
                 var t = e.target.closest('[data-pick]');
-                if (!t) { return; }
+                if (!t || busy) { return; }
                 switch (t.getAttribute('data-pick')) {
                     case 'cancel': finish(null); break;
                     case 'up': b.up(); break;
                     case 'home': b.go(F.home()); break;
+                    case 'newfolder': showNewFolder(q('newrow').hidden); break;
+                    case 'make': makeFolder(); break;
+                    case 'nomake': say(''); showNewFolder(false); break;
                     case 'computer': q('chooser').value = ''; q('chooser').click(); break;
                     case 'download': {
                         var name = realName(input.value.trim());
                         if (!name) { say('Give it a name.'); input.focus(); break; }
-                        finish({ download: name });
+                        choose({ download: name });
                         break;
                     }
                 }
             });
+            q('newname').addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); makeFolder(); }
+                else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); say(''); showNewFolder(false); }
+            });
             if (o.computer && !save) {
                 q('chooser').addEventListener('change', function () {
                     var f = this.files && this.files[0];
-                    if (f) { finish({ file: f }); }
+                    if (f) { choose({ file: f }); }
                 });
                 /* A file dropped from the computer anywhere on the dialog
                    is the same as choosing it. */
@@ -650,15 +841,16 @@
                 });
                 dlg.addEventListener('drop', function (e) {
                     var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-                    if (!f) { return; }
+                    if (!f || busy) { return; }
                     e.preventDefault();
                     if (!fits(f.name)) { say(f.name + ' isn\'t a ' + accept.join(' or ') + ' file.'); return; }
-                    finish({ file: f });
+                    choose({ file: f });
                 });
             }
             dlg.showModal();
+            sizeAtOpen = dlg.offsetWidth + 'x' + dlg.offsetHeight;
             folderState();
-            if (save) { input.focus(); var dot = input.value.lastIndexOf('.'); input.setSelectionRange(0, dot > 0 ? dot : input.value.length); }
+            if (save && !readOnlyHere) { input.focus(); var dot = input.value.lastIndexOf('.'); input.setSelectionRange(0, dot > 0 ? dot : input.value.length); }
             else { b.focusList(); }
         });
     }

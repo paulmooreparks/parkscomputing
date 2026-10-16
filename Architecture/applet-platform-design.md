@@ -79,3 +79,16 @@ The terminal on parkscomputing.com now has GK Companion's scripting, merged into
 - **Not yet.** Scripts cannot call applets' actions until P2; the host answers `applets` and `invoke` with that. The account pages' content security policy has no `'wasm-unsafe-eval'`, which WebAssembly needs; no terminal runs on those pages today, and one that did would need it added.
 
 Checks: `Tools/test-terminal-scripting.js` (24, on the test instance and the live site), with the snapshot suites and the applet sizing test unchanged.
+
+## Files, Open and Save as from GK Companion (2026-10-17)
+
+The shared file browser (`js/filebrowser.js`) is now GK Companion's `vendor/parks-files/filebrowser.js`, kept as the site's titles and subtitles show them. Going to a folder can now wait on a loader (`F.load`, `F.lookup`) and returns a promise, a host can fence the browser into one folder (`navigationRoot`, `allowed`), long folders page with Load More, and Home is optional. These are what an applet in its own repository needs from a browser whose files are not the site's, so they belong to the split described in P5.
+
+Open and Save as (`pcFileBrowser.pick`) gained four things from GK's dialogs:
+
+- An optional `commit(choice)` that does the opening or saving while the dialog stays open and busy. When it throws, the dialog shows why and stays open to choose again, and Escape does nothing while it runs. The Editor uses it for Open and for Save as, so a save that fails is no longer a closed dialog and a red status line.
+- A folder that can't take the file says so in a plain note under the list rather than as an error, turns off the name and Save, and makes Download the main button.
+- New folder, wherever a file could be saved.
+- The dialog can be resized from its corner, and opens at the size it was last given in that browser.
+
+Diff, Settings and the barcode tool call `pick` without `commit`, so they still close at once and act afterwards; they gain the other three. Checks: `Tools/test-file-dialogs.js` (18, on the test instance and the live site), with the snapshot suites unchanged.

@@ -416,18 +416,21 @@
         function inFront() { return opts.ownsUrl || !root.closest('.win') || !!root.closest('.win.active'); }
 
         /* Opens a file by path: switches to it if it is open already. */
-        async function openPath(path) {
+        /* With strict, a file that can't be opened throws, for the Open
+           dialog to show; otherwise the status line says why. */
+        async function openPath(path, strict) {
+            function fail(msg) { if (strict) { throw new Error(msg); } say(msg, true); return false; }
             /* An address or kept tab from before the site moved under /site
                still finds its file. */
             path = F.upgradePath(path);
             var node = F.resolve(F.home(), path);
-            if (!node) { say(path + ': no such file', true); return false; }
-            if (node.children) { say(path + ' is a folder', true); return false; }
+            if (!node) { return fail(path + ': no such file'); }
+            if (node.children) { return fail(path + ' is a folder'); }
             var r = F.realOf(node), display = F.displayPath(r);
             for (var i = 0; i < tabs.length; i++) { if (tabs[i].path === display) { if (i !== active) { activate(i); } view.focus(); return true; } }
-            if (!F.isText(r)) { say(display + ' isn\'t a text file, so the editor can\'t open it.', true); return false; }
+            if (!F.isText(r)) { return fail(display + ' isn\'t a text file, so the editor can\'t open it.'); }
             var text;
-            try { text = await F.read(r); } catch (err) { say(err.message, true); return false; }
+            try { text = await F.read(r); } catch (err) { return fail(err.message); }
             var readOnly = !r.home;
             /* A server file remembers its time, which tells a change made
                elsewhere from this tab's own save. */
@@ -494,11 +497,17 @@
             return writeTo(t, t.path);
         }
 
-        async function writeTo(t, path) {
+        /* With strict, a write that fails throws, for the Save as dialog to
+           show; otherwise the status line says why. */
+        async function writeTo(t, path, strict) {
             var text = view.state.doc.toString();
             say('Saving…');
             var res = await F.write(F.home(), path, text, false);
-            if (res.error) { say('Not saved: ' + res.error, true); return false; }
+            if (res.error) {
+                if (strict) { say(''); throw new Error('Not saved: ' + res.error); }
+                say('Not saved: ' + res.error, true);
+                return false;
+            }
             var display = F.displayPath(res.node);
             var renamed = t.path !== display;
             t.path = display;
@@ -529,9 +538,12 @@
             var node = t.path ? F.resolve(F.home(), t.path) : null, r = node ? F.realOf(node) : null;
             var startDir = r && r.home && !t.readOnly ? F.displayPath(r.parent) : '~';
             var name = t.readOnly ? t.name + (/\.[a-z0-9]+$/i.test(t.name) ? '' : '.txt') : t.name;
+            /* The dialog stays open while the file is written, and says
+               there why it couldn't be. */
             var res = await FB.pick(F, {
                 mode: 'save', title: t.readOnly ? 'Save a copy' : 'Save as', host: root,
-                start: startDir, name: name, current: t.readOnly ? null : t.path, computer: true
+                start: startDir, name: name, current: t.readOnly ? null : t.path, computer: true,
+                commit: function (c) { return c.download ? true : writeTo(t, c.path, true); }
             });
             if (!res) { return false; }
             if (res.download) {
@@ -539,7 +551,7 @@
                 say('Downloaded ' + res.download + '. The tab still holds your text.');
                 return false;
             }
-            return writeTo(t, res.path);
+            return true;
         }
 
         function download(name, blob) {
@@ -600,20 +612,21 @@
             var res = await FB.pick(F, {
                 mode: 'open', title: 'Open', host: root, computer: true,
                 start: node ? F.displayPath(F.realOf(node).parent) : '~',
-                check: function (r) { return F.isText(r) ? null : r.name + ' isn\'t a text file, so the editor can\'t open it.'; }
+                check: function (r) { return F.isText(r) ? null : r.name + ' isn\'t a text file, so the editor can\'t open it.'; },
+                /* The dialog stays open while the file is read, and says
+                   there why it couldn't be. */
+                commit: function (c) { return c.file ? openFromComputer(c.file, true) : openPath(c.path, true); }
             });
-            if (!res) { return; }
-            if (res.file) { await openFromComputer(res.file); return; }
-            await openPath(res.path);
         }
 
         /* A file from the reader's computer opens as a new tab that belongs
            nowhere yet, so saving it asks where. */
         var COMPUTER_MAX = 5 * 1024 * 1024;
-        async function openFromComputer(file) {
-            if (file.size > COMPUTER_MAX) { say(file.name + ' is larger than 5 MB, too large to edit here.', true); return; }
+        async function openFromComputer(file, strict) {
+            function fail(msg) { if (strict) { throw new Error(msg); } say(msg, true); }
+            if (file.size > COMPUTER_MAX) { return fail(file.name + ' is larger than 5 MB, too large to edit here.'); }
             var text = await file.text();
-            if (text.indexOf('\0') >= 0) { say(file.name + ' isn\'t a text file, so the editor can\'t open it.', true); return; }
+            if (text.indexOf('\0') >= 0) { return fail(file.name + ' isn\'t a text file, so the editor can\'t open it.'); }
             addTab({ path: null, name: file.name, lang: languageFor(file.name), readOnly: false }, text);
             /* It stays unsaved until it is saved somewhere on the site. */
             var t = current();

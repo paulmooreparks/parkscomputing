@@ -563,7 +563,7 @@
         return {
             state: function () { return b && F ? stateString() : null; },
             /* A folder handed over, by a browse request or a preset. */
-            setState: function (s) { var p = pathFrom(s); if (b && p) { if (b.goPath(F.upgradePath(p))) { b.focusList(); } } },
+            setState: function (s) { var p = pathFrom(s); if (b && p) { Promise.resolve(b.goPath(F.upgradePath(p))).then(function (went) { if (went) { b.focusList(); } }); } },
             commands: root.closest('.win') ? commands : undefined,
             menus: menus,
             destroy: function () {

@@ -109,8 +109,8 @@ window.pcSiteFsSrc = '/js/sitefs.js?v=7';
 /* The file browser Files, the editor and the barcode tool share (js/filebrowser.js), with its
    stylesheet; like the site filesystem, one copy a page, and a raised v on
    every change to either. */
-window.pcFileBrowserSrc = '/js/filebrowser.js?v=8';
-window.pcFileBrowserCss = '/css/filebrowser.css?v=7';
+window.pcFileBrowserSrc = '/js/filebrowser.js?v=9';
+window.pcFileBrowserCss = '/css/filebrowser.css?v=8';
 
 /* The settings files in ~/.config (js/config.js), which each applet with
    settings of its own reads and writes; one copy a page, like the above. */
@@ -146,7 +146,7 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: pcWorkspacePages + 'files',
-    ver: '23',
+    ver: '24',
     handles: { browse: { param: 'path' } }
 });
 
@@ -155,7 +155,7 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
-    ver: '23',
+    ver: '24',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } }
 });
 
