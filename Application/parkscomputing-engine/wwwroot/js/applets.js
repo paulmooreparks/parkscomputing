@@ -1,4 +1,30 @@
 
+/* PUDL WORKAROUND (Architecture/pudl-proposal-applet-actions.md): an
+   applet's define() may point to a manifest of the actions it publishes,
+   actions: '/js/actions/x.json', which the action broker
+   (js/applet-actions.js, Architecture/applet-platform-design.md, P2) reads.
+   PUDL keeps its definitions to itself, so this notes each applet's
+   manifest, stamped with its ver, and its handles and page for the broker,
+   before PUDL's own define() sees it. Delete it when PUDL keeps actions
+   and gives the broker a way to read them. A manifest or its module
+   changing bumps the applet's ver, like its script. */
+window.pcAppletActions = [];
+(function () {
+    var define = pudlApplets.define;
+    pudlApplets.define = function (name, cfg) {
+        if (cfg && cfg.actions) {
+            window.pcAppletActions.push({ applet: name, manifest: cfg.actions + (cfg.ver ? '?v=' + encodeURIComponent(cfg.ver) : ''), handles: cfg.handles || null, page: cfg.page || null });
+        }
+        return define.apply(this, arguments);
+    };
+})();
+/* The broker loads when something asks for it: the Terminal's applets
+   command, a script, and later the desktop's MCP queue. Raise its v on every
+   change. The page's own actions, a notice and a question for the person at
+   it, belong to no applet. */
+window.pcActionsSrc = '/js/applet-actions.js?v=1';
+window.pcAppletActions.push({ applet: null, manifest: '/js/actions/page.json?v=1', handles: null, page: null });
+
 /* Identity actions use PUDL's documented capability snapshots. */
 pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '19' });
 /* The Pin manager, reached from the Pins menu's Manage pins (js/pins.js). */
@@ -56,7 +82,8 @@ pudlApplets.define('sudoku', {
     src: '/js/sudoku.js',
     css: '/css/sudoku.css',
     page: '/page/sudoku',
-    ver: '19'
+    ver: '19',
+    actions: '/js/actions/sudoku.json'
 });
 
 /* Conway's page is its article, so the links shared since 2015 keep
@@ -76,7 +103,8 @@ pudlApplets.define('barcodes', {
     src: '/js/barcode-tool.js',
     css: '/css/barcode-tool.css',
     page: '/page/barcodes',
-    ver: '31'
+    ver: '31',
+    actions: '/js/actions/barcode.json'
 });
 
 pudlApplets.define('flashcards', {
@@ -136,8 +164,9 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: pcWorkspacePages + 'terminal',
-    ver: '38',
+    ver: '39',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
+    actions: '/js/actions/terminal.json',
     instances: 4
 });
 
@@ -147,7 +176,8 @@ pudlApplets.define('files', {
     css: '/css/files.css',
     page: pcWorkspacePages + 'files',
     ver: '24',
-    handles: { browse: { param: 'path' } }
+    handles: { browse: { param: 'path' } },
+    actions: '/js/actions/files.json'
 });
 
 /* The editor loads CodeMirror 6 from js/vendor beside itself. */
@@ -156,7 +186,8 @@ pudlApplets.define('editor', {
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
     ver: '24',
-    handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } }
+    handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } },
+    actions: '/js/actions/editor.json'
 });
 
 /* The admin desktop's Settings (Architecture/admin-and-identity-design.md,
@@ -182,16 +213,21 @@ pudlApplets.define('dice', {
    src: '/js/dice.js',
    css: '/css/dice.css',
    page: '/page/dice',
-   ver: '3'
+   ver: '3',
+   actions: '/js/actions/dice.json'
 });
 
 /* Sight Reader loads OpenSheetMusicDisplay from js/vendor when it opens
-   (Architecture/sight-reader-design.md). */
+   (Architecture/sight-reader-design.md). It opens the kind "score", a
+   sample score's path under content/scores, which nothing else opens, so
+   a request to open a file still goes to the editor. */
 pudlApplets.define('sight-reader', {
    src: '/js/sight-reader.js',
    css: '/css/sight-reader.css',
    page: '/page/sight-reader',
-   ver: '27'
+   ver: '27',
+   handles: { open: { param: 'score', kinds: ['score'] } },
+   actions: '/js/actions/sight-reader.json'
 });
 
 pudlApplets.define('theme-studio', {

@@ -203,7 +203,7 @@ var PRELUDE = [
   "  }",
   "end",
   "",
-  "-- applets: the actions the site's applets publish, when they do.",
+  "-- applets: the actions the site's applets publish, as the Terminal's",
   "-- applets command offers them. Input and output are Lua tables; invoke",
   "-- waits for the action to end, and a failed action raises an error.",
   "package.preload.applets = function()",

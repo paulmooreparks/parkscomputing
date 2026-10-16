@@ -1,0 +1,28 @@
+{
+  "id": "parks.editor",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "title": "Editor",
+  "description": "The site's text editor.",
+  "actions": [
+    {
+      "ref": "parks.editor/open@1",
+      "title": "Open in the Editor",
+      "description": "Open a file in the Editor for the person at the page, in a new tab of the Editor's window. A file in the reader's home (~) that does not exist yet opens as a new file, which saving creates. Files outside ~ open read-only unless the reader is an admin.",
+      "handles": "open",
+      "inputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 1024 },
+          "kind": { "enum": ["file", "script", "page"], "default": "file" }
+        }
+      },
+      "outputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["opened"],
+        "properties": { "opened": { "const": true }, "view": { "enum": ["window", "tab"] } }
+      },
+      "capabilities": ["window.open"],
+      "replay": "once"
+    }
+  ]
+}

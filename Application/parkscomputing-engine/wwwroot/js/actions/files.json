@@ -1,0 +1,85 @@
+{
+  "id": "parks.files",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "title": "Files",
+  "description": "The site's file system as the Terminal, Files and the Editor see it: the site under /site, the reader's own files under ~, and for a signed-in admin the server's folders.",
+  "module": "files.js",
+  "actions": [
+    {
+      "ref": "parks.files/list@1",
+      "title": "List a Folder",
+      "description": "List the entries of a folder. Paths are absolute (/site, /site/bin) or start at the reader's home (~, ~/notes).",
+      "inputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["path"],
+        "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 1024 } }
+      },
+      "outputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["path", "entries"],
+        "properties": {
+          "path": { "type": "string" },
+          "entries": { "type": "array", "items": { "$ref": "#/$defs/entry" } }
+        },
+        "$defs": {
+          "entry": {
+            "type": "object", "additionalProperties": false, "required": ["name", "path", "kind"],
+            "properties": {
+              "name": { "type": "string" }, "path": { "type": "string" },
+              "kind": { "type": "string", "description": "dir, file, page, script, app or link." },
+              "size": { "type": "integer", "minimum": 0 }, "modified": { "type": "string" }
+            }
+          }
+        }
+      },
+      "capabilities": ["files.read"],
+      "replay": "pure"
+    },
+    {
+      "ref": "parks.files/read@1",
+      "title": "Read a File",
+      "description": "Read a file as text. A page reads as its text; a link reads as its title and address.",
+      "inputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["path"],
+        "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 1024 } }
+      },
+      "outputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["path", "text"],
+        "properties": { "path": { "type": "string" }, "text": { "type": "string" } }
+      },
+      "capabilities": ["files.read"],
+      "replay": "pure"
+    },
+    {
+      "ref": "parks.files/write@1",
+      "title": "Write a File",
+      "description": "Write text to a file in the reader's home (~), or for an admin in the server's folders, replacing it or with append adding to its end. The folder must exist.",
+      "inputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["path", "text"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 1024 },
+          "text": { "type": "string" },
+          "append": { "type": "boolean", "default": false }
+        }
+      },
+      "outputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["path"],
+        "properties": { "path": { "type": "string" }, "size": { "type": "integer", "minimum": 0 } }
+      },
+      "capabilities": ["files.write"],
+      "replay": "once"
+    },
+    {
+      "ref": "parks.files/browse@1",
+      "title": "Browse a Folder",
+      "description": "Open a folder in the Files applet for the person at the page to see.",
+      "handles": "browse",
+      "inputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["path"],
+        "properties": { "path": { "type": "string", "minLength": 1, "maxLength": 1024 } }
+      },
+      "outputSchema": { "$ref": "#/$defs/opened", "$defs": { "opened": { "type": "object", "additionalProperties": false, "required": ["opened"], "properties": { "opened": { "const": true }, "view": { "enum": ["window", "tab"] } } } } },
+      "capabilities": ["window.open"],
+      "replay": "once"
+    }
+  ]
+}

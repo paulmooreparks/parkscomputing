@@ -841,6 +841,152 @@
             return status;
         }
     });
+    /* === Applets' actions ===================================================
+       The actions applets publish (Architecture/applet-platform-design.md,
+       P2), through the action broker, js/applet-actions.js, which loads the
+       first time it is asked for. The terminal grants an action everything
+       on the broker's list, because its reader could do all of it by hand. */
+    var actionsReady = null;
+    function actionBroker() {
+        if (!actionsReady) {
+            actionsReady = (window.pcActions ? Promise.resolve() : loadScript(window.pcActionsSrc || beside('applet-actions.js')))
+                .then(function () { return window.pcActions; }, function (err) { actionsReady = null; throw err; });
+        }
+        return actionsReady;
+    }
+
+    function invocationId() {
+        var b = new Uint8Array(16);
+        crypto.getRandomValues(b);
+        return Array.prototype.map.call(b, function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join('');
+    }
+
+    /* Runs an action to its end, a person's answer included, and gives its
+       output. Ctrl+C cancels it; the record keeps an id of the terminal's own,
+       so it can be cancelled before the broker answers. */
+    async function runAction(ref, input, io, waitForEnd) {
+        var A = await actionBroker(), id = invocationId(), stop = false;
+        var started = A.invoke(ref, input, { id: id, owner: { kind: 'terminal' } });
+        var ended = started.then(function (v) { return waitForEnd && (v.status === 'running' || v.status === 'waiting') ? A.wait(v.id) : v; });
+        for (;;) {
+            var tick = new Promise(function (resolve) { setTimeout(resolve, 200); });
+            var v = await Promise.race([ended, tick.then(function () { return null; })]);
+            if (v) { return v; }
+            if (io.interrupted() && !stop) {
+                stop = true;
+                try { A.cancel(id); } catch (e) { /* not recorded yet: the input was refused */ }
+            }
+        }
+    }
+
+    /* An action's input from the words after its reference: one word of JSON,
+       or name=value pairs. A value is text where the action's schema says the
+       property is text, so "data=0012" keeps its zeros, and JSON elsewhere,
+       so "dice=3" is a number. */
+    function actionInput(words, action) {
+        if (!words.length) { return {}; }
+        if (words.length === 1 && /^\s*\{/.test(words[0])) {
+            try { return JSON.parse(words[0]); } catch (err) { throw new Error('the input is not JSON: ' + err.message); }
+        }
+        var props = action.inputSchema && action.inputSchema.properties || {}, out = {};
+        words.forEach(function (w) {
+            var eq = w.indexOf('=');
+            if (eq < 1) { throw new Error('"' + w + '" is not name=value; give the input as name=value pairs or as one JSON object'); }
+            var k = w.slice(0, eq), v = w.slice(eq + 1), p = props[k] || {};
+            var types = [].concat(p.type || []), text = types.indexOf('string') >= 0 || (p.enum && p.enum.every(function (x) { return typeof x === 'string'; }));
+            if (text) { out[k] = v; return; }
+            try { out[k] = JSON.parse(v); } catch (err) { out[k] = v; }
+        });
+        return out;
+    }
+
+    var STATUS_COLOR = { done: 'green', failed: 'red', cancelled: 'yellow', waiting: 'yellow', running: 'blue' };
+    command('applets', {
+        summary: 'list and run the actions applets publish',
+        help: 'applets [list]\napplets actions [provider]\napplets describe <action>\napplets run <action> [input]\napplets invoke <action> [input]\napplets status <id>\napplets cancel <id>\napplets history\napplets artifact <id> [file]\n\n' +
+            'Applets publish actions that a script or an AI can call without opening their windows: parks.dice/roll@1 rolls dice, parks.barcode/generate@1 draws a barcode, parks.files/read@1 reads a file. ' +
+            'Each action says what input it takes and what it gives back, as JSON Schema, and "describe" shows it.\n\n' +
+            '  list        the applets that publish actions\n' +
+            '  actions     their actions, all of them or one provider\'s\n' +
+            '  describe    an action\'s title, description, input, output, capabilities and replay\n' +
+            '  run         runs an action, waits for it and prints its output as JSON\n' +
+            '  invoke      starts an action and prints its record, without waiting for a person\'s answer\n' +
+            '  status      an invocation\'s record\n' +
+            '  cancel      stops an invocation that is running or waiting\n' +
+            '  history     the invocations this page has made, the newest first\n' +
+            '  artifact    prints a file an action made, or saves it to a file\n\n' +
+            'The input is one JSON object, \'{"dice": 3}\', or name=value pairs, dice=3 sides=20. Ctrl+C cancels an action that is running. ' +
+            'In Lua, require "applets" gives list, actions and invoke; a shell script runs this command.',
+        run: async function (args, io) {
+            var op = args[0] || 'list', A;
+            try { A = await actionBroker(); } catch (err) { io.err('applets: ' + err.message); return 1; }
+            try {
+                switch (op) {
+                    case 'list': {
+                        var cat = await A.catalog(), problems = await A.problems();
+                        cat.forEach(function (m) {
+                            io.out(paint('green', m.id.padEnd(20)) + ' ' + m.title + paint('dim', '  (' + m.actions.length + (m.actions.length === 1 ? ' action' : ' actions') + ')') + '\n');
+                        });
+                        problems.forEach(function (p) { io.err('applets: ' + p); });
+                        return problems.length ? 1 : 0;
+                    }
+                    case 'actions': {
+                        var list = (await A.catalog()).filter(function (m) { return !args[1] || m.id === args[1]; });
+                        if (args[1] && !list.length) { io.err('applets: there is no provider ' + args[1]); return 1; }
+                        list.forEach(function (m) {
+                            m.actions.forEach(function (a) { io.out(paint('green', a.ref.padEnd(32)) + ' ' + a.title + '\n'); });
+                        });
+                        return 0;
+                    }
+                    case 'describe': {
+                        if (!args[1]) { io.err('applets: describe which action?'); return 1; }
+                        io.out(JSON.stringify(await A.describe(args[1]), null, 2) + '\n');
+                        return 0;
+                    }
+                    case 'run':
+                    case 'invoke': {
+                        if (!args[1]) { io.err('applets: ' + op + ' which action?'); return 1; }
+                        var input = actionInput(args.slice(2), await A.describe(args[1]));
+                        var v = await runAction(args[1], input, io, op === 'run');
+                        if (op === 'invoke') { io.out(JSON.stringify(v, null, 2) + '\n'); return v.status === 'failed' ? 1 : 0; }
+                        if (v.status !== 'done') { io.err('applets: ' + args[1] + ' ' + (v.status === 'cancelled' ? 'was cancelled' : 'failed') + (v.error && v.error !== 'cancelled' ? ': ' + v.error : '')); return v.status === 'cancelled' ? 130 : 1; }
+                        io.out(JSON.stringify(v.output, null, 2) + '\n');
+                        return 0;
+                    }
+                    case 'status': {
+                        if (!args[1]) { io.err('applets: the status of which invocation?'); return 1; }
+                        io.out(JSON.stringify(A.status(args[1]), null, 2) + '\n');
+                        return 0;
+                    }
+                    case 'cancel': {
+                        if (!args[1]) { io.err('applets: cancel which invocation?'); return 1; }
+                        if (!A.cancel(args[1])) { io.err('applets: ' + args[1] + ' has already finished'); return 1; }
+                        return 0;
+                    }
+                    case 'history': {
+                        A.invocations().forEach(function (r) {
+                            io.out(r.id + '  ' + paint(STATUS_COLOR[r.status] || 'dim', r.status.padEnd(9)) + ' ' + r.action + paint('dim', '  ' + r.created.replace('T', ' ').slice(0, 19)) + '\n');
+                        });
+                        return 0;
+                    }
+                    case 'artifact': {
+                        if (!args[1]) { io.err('applets: which artifact? Its id is in the output, under the artifact\'s key.'); return 1; }
+                        var art = A.artifact(args[1]);
+                        if (typeof art.data !== 'string') { io.err('applets: ' + art.name + ' is not text, and only text can be printed or saved here'); return 1; }
+                        if (args[2]) { await io.fs.saveText(args[2], art.data, false); return 0; }
+                        io.out(art.data + (/\n$/.test(art.data) ? '' : '\n'));
+                        return 0;
+                    }
+                }
+                io.err('applets: ' + op + ' is not something applets does (see "man applets")');
+                return 1;
+            } catch (err) {
+                io.err('applets: ' + (err && err.message || err));
+                return 1;
+            }
+        }
+    });
+
     command('basename', { summary: 'the last part of a path', help: 'basename <path>\n\nPrints the last part of a path.', run: function (args, io) { if (!args.length) { io.err('basename: which path?'); return 1; } var p = args[0].replace(/\/+$/, '') || '/'; io.out((p === '/' ? '/' : p.slice(p.lastIndexOf('/') + 1)) + '\n'); } });
     command('dirname', { summary: 'a path without its last part', help: 'dirname <path>\n\nPrints a path without its last part.', run: function (args, io) { if (!args.length) { io.err('dirname: which path?'); return 1; } var p = args[0].replace(/\/+$/, ''), i = p.lastIndexOf('/'); io.out((i < 0 ? '.' : i === 0 ? '/' : p.slice(0, i)) + '\n'); } });
     command('tee', {
@@ -1390,12 +1536,39 @@
                 ? paint('red', F.user() + '@' + location.hostname.replace(/\.com$/, '')) + ':' + paint('blue', C.bold + displayPath(cwd)) + '# '
                 : paint('green', 'guest@parkscomputing') + ':' + paint('blue', C.bold + displayPath(cwd)) + '$ ';
         }
+        /* A line longer than the terminal is wide wraps onto further rows,
+           so a redraw goes back up to the prompt's row before it clears and
+           writes. drawnAt is where the cursor was left, in cells from the
+           start of the prompt; the rows above it are worked out at the
+           terminal's width now, because xterm reflows wrapped rows when the
+           terminal is resized. */
+        var drawnAt = 0;
+        function cells(s) { return String(s).replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').length; }
         function redraw() {
-            term.write('\r\x1b[K' + prompt() + line);
-            var back = line.length - cursor;
-            if (back > 0) { term.write('\x1b[' + back + 'D'); }
+            var cols = Math.max(term.cols, 1), p = prompt(), plen = cells(p);
+            var up = Math.floor(drawnAt / cols);
+            var out = (up > 0 ? '\x1b[' + up + 'A' : '') + '\r\x1b[J' + p + line;
+            var end = plen + line.length, at = plen + cursor;
+            /* Text that fills its last row exactly leaves xterm's cursor
+               waiting to wrap; starting the next row puts it where the
+               arithmetic below expects it. */
+            if (end > 0 && end % cols === 0) { out += '\r\n'; }
+            var back = Math.floor(end / cols) - Math.floor(at / cols);
+            if (back > 0) { out += '\x1b[' + back + 'A'; }
+            out += '\r' + (at % cols ? '\x1b[' + (at % cols) + 'C' : '');
+            term.write(out);
+            drawnAt = at;
         }
-        function newPrompt() { line = ''; cursor = 0; histPos = -1; term.write(prompt()); }
+        /* Puts the screen's cursor after the whole typed line, for output that
+           starts on the next row, which the next redraw then starts from. */
+        function endOfInput() {
+            var keep = cursor;
+            cursor = line.length;
+            redraw();
+            cursor = keep;
+            drawnAt = 0;
+        }
+        function newPrompt() { line = ''; cursor = 0; histPos = -1; var p = prompt(); term.write(p); drawnAt = cells(p); }
 
         function pathCompletions(partial, dirsOnly) {
             var slash = partial.lastIndexOf('/');
@@ -1469,6 +1642,7 @@
             }
             var now = Date.now();
             if (now - lastTab < 800) {
+                endOfInput();
                 write('\n' + columns(list.map(function (x) { return x.word.replace(/.*\/(?=.)/, ''); }), term.cols) + '\n');
                 redraw();
             }
@@ -1514,15 +1688,17 @@
                 case '\x1b[3~':
                     if (cursor < line.length) { line = line.slice(0, cursor) + line.slice(cursor + 1); redraw(); }
                     return;
-                case '\x1b[D': if (cursor > 0) { cursor--; term.write(data); } return;
-                case '\x1b[C': if (cursor < line.length) { cursor++; term.write(data); } return;
+                case '\x1b[D': if (cursor > 0) { cursor--; redraw(); } return;
+                case '\x1b[C': if (cursor < line.length) { cursor++; redraw(); } return;
                 case '\x1b[H': case '\x01': case '\x1bOH': cursor = 0; redraw(); return;
                 case '\x1b[F': case '\x05': case '\x1bOF': cursor = line.length; redraw(); return;
                 case '\x1b[A': historyStep(-1); return;
                 case '\x1b[B': historyStep(1); return;
                 case '\t': complete(); return;
-                case '\x03': write('^C\n'); newPrompt(); return;
-                case '\x0c': term.clear(); redraw(); return;
+                case '\x03': endOfInput(); write('^C\n'); newPrompt(); return;
+                /* clear() keeps the cursor's row as the first, in its column,
+                   and drops the rows above it. */
+                case '\x0c': term.clear(); drawnAt %= Math.max(term.cols, 1); redraw(); return;
                 case '\x15': line = line.slice(cursor); cursor = 0; redraw(); return;
                 case '\x0b': line = line.slice(0, cursor); redraw(); return;
             }
@@ -1547,6 +1723,7 @@
 
         async function submit() {
             var text = line.trim();
+            endOfInput();
             write('\n');
             if (text) {
                 History.add(text);
@@ -1943,8 +2120,9 @@
 
         /* The host every interpreter's scripts use: files, directories,
            commands, variables and modules. Each answer is text, true or a
-           number; lists and entries are JSON. Applets' published actions
-           come with the action broker (the design's P2). */
+           number; lists and entries are JSON. applets and invoke reach the
+           actions applets publish, through the action broker (the design's
+           P2). */
         async function hostRequest(op, a, dir, io, depth) {
             function deep() { if (depth + 1 >= SCRIPT_DEPTH) { throw new Error('scripts call each other too deeply (the limit is ' + SCRIPT_DEPTH + ')'); } }
             switch (op) {
@@ -2007,9 +2185,16 @@
                     (lv === 'error' ? io.err : function (t) { io.out(paint('dim', t) + '\n'); })('[' + String(a[0] || 'script') + '] ' + String(a[2] || ''));
                     return '';
                 }
-                case 'applets':
-                case 'invoke':
-                    throw new Error('applets\' actions are not published on this site yet');
+                /* The catalog as JSON, and an action run to its end, its
+                   output as JSON; a failed action is an error. */
+                case 'applets': return JSON.stringify(await (await actionBroker()).catalog());
+                case 'invoke': {
+                    var input;
+                    try { input = JSON.parse(String(a[1] == null ? '{}' : a[1])); } catch (err) { throw new Error('the input to ' + a[0] + ' is not JSON'); }
+                    var v = await runAction(String(a[0]), input, io, true);
+                    if (v.status !== 'done') { throw new Error(a[0] + ' ' + (v.status === 'cancelled' ? 'was cancelled' : 'failed') + (v.error && v.error !== 'cancelled' ? ': ' + v.error : '')); }
+                    return JSON.stringify(v.output);
+                }
             }
             throw new Error('this script asked for something the terminal does not offer (' + op + ')');
         }
@@ -2339,11 +2524,13 @@
             term.write(kept.screen);
             if (kept.busy) {
                 write('\n\nThe page was reloaded, which ended the program that was running here.\n');
-                term.write(prompt());
+                newPrompt();
                 return;
             }
             line = typeof kept.line === 'string' ? kept.line : '';
             cursor = Math.max(0, Math.min(+kept.cursor || 0, line.length));
+            /* The screen brings back the cursor where the line had it. */
+            drawnAt = cells(prompt()) + cursor;
             redraw();
         }
 
@@ -2394,7 +2581,7 @@
                 write(paint('bold', 'parkscomputing.com') + ' in terminal mode. Type ' + paint('green', 'help') + ' for the commands, or ' + paint('green', 'guide') + ' for the full guide; your own files are in ' + paint('blue', '~') + '.\n\n');
                 await sourceProfile();
                 if (destroyed) { return; }
-                term.write(prompt());
+                newPrompt();
             }
             if (prefill) { insert(prefill); }
             if (snap) { term.onWriteParsed(snap.changed); }

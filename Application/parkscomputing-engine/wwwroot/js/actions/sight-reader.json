@@ -1,0 +1,28 @@
+{
+  "id": "parks.sight-reader",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "title": "Sight Reader",
+  "description": "Practise reading music: name each note of a score as a cursor reaches it.",
+  "actions": [
+    {
+      "ref": "parks.sight-reader/open@1",
+      "title": "Open a Score in Sight Reader",
+      "description": "Open one of the site's sample scores in Sight Reader for the person at the page. The path is relative to the sample scores, such as simple/Frere Jacques.musicxml, and the site's /content/scores/index.json lists them.",
+      "handles": "open",
+      "inputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^[^/.][^\\\\]*\\.(mxl|musicxml|xml)$" },
+          "kind": { "const": "score", "default": "score" }
+        }
+      },
+      "outputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["opened"],
+        "properties": { "opened": { "const": true }, "view": { "enum": ["window", "tab"] } }
+      },
+      "capabilities": ["window.open"],
+      "replay": "once"
+    }
+  ]
+}

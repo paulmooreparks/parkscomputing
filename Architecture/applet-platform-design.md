@@ -59,7 +59,7 @@ Releases are tagged and published as npm packages under one scope, and a site ta
 - **Repositories stay open.** Some applets may be bundled together and a large one such as the Terminal may get a repository of its own; the choice is kept in view, not made. For now everything stays in the parkscomputing.com repository, and the work is shaped so that applets can be split out later: each applet's files, manifest and host needs are kept self-contained, and nothing an applet needs from the site is reached except through the host interface (P5).
 - **Public npm packages** when applets are published (P5).
 - **Personal access tokens first, then OAuth** for MCP (P3).
-- Status: P1 (the Terminal port) is started.
+- Status: P1 (the Terminal port) and P2 (published actions) are built and live; P3 (tokens and `/mcp`) is next.
 
 ## Rules this follows
 
@@ -79,6 +79,46 @@ The terminal on parkscomputing.com now has GK Companion's scripting, merged into
 - **Not yet.** Scripts cannot call applets' actions until P2; the host answers `applets` and `invoke` with that. The account pages' content security policy has no `'wasm-unsafe-eval'`, which WebAssembly needs; no terminal runs on those pages today, and one that did would need it added.
 
 Checks: `Tools/test-terminal-scripting.js` (24, on the test instance and the live site), with the snapshot suites and the applet sizing test unchanged.
+
+## P2, published actions: the design as built (2026-10-17)
+
+An applet's actions are described in a manifest file of their own, beside the applet, rather than inside `js/applets.js`. Every page loads `applets.js`, and the barcode tool's schemas alone are several kilobytes that only a script or an AI ever reads. A manifest is also the part of an applet that the server will read for MCP (P3) and that `applet.json` will carry when applets leave the repository (P5), so it is plain JSON that any reader can parse without running the applet's code. The applet's `define` points to it:
+
+```js
+pudlApplets.define('barcodes', { src: '/js/barcode-tool.js', ..., ver: '31',
+    actions: '/js/actions/barcode.json' });
+```
+
+The manifest is GK's `Manifest` (`id`, `version`, `apiVersion: 1`, `title`, `description`, `actions`), and each action is GK's `Action` (`ref`, `title`, `description`, `inputSchema`, `outputSchema`, `capabilities`, `replay`). Two optional fields are the site's. `module` is a script beside the manifest whose handlers run the actions without a window, and an action's `handles` says that it is one of the applet's `handles` verbs, which the broker carries out by asking PUDL for the window rather than by calling a handler. That is how the existing verbs become ordinary actions.
+
+Provider ids start with `parks.`, as GK's barcode provider already did, so the barcode actions have the same references on both sites.
+
+**The broker** is `js/applet-actions.js`, loaded only when something asks for it (the Terminal's `applets` command, a Lua or shell script, and later the desktop's MCP queue). It is `window.pcActions`:
+
+- `catalog()` gives the manifests in GK's shape, and `describe(ref)` one action.
+- `invoke(ref, input, opts)` starts an invocation and resolves when it has finished, failed or begun waiting for a person. `run(ref, input, opts)` waits until the end and gives the output, or throws.
+- `status(id)`, `wait(id)`, `cancel(id)`, `artifact(id)` and `invocations()` read and control the records.
+- `provide(id, handlers)` is what an applet's module calls to hand over its handlers.
+
+Before a handler runs, the broker checks that the action exists, that the caller was granted every capability the action declares, and that the input is valid JSON of at most 1 MB that its input schema accepts. Afterwards it checks the output the same way. Artifacts are put into the output as descriptors (`id`, `invocationId`, `name`, `mime`, `size`, and `sha256` where the browser offers hashing), so the whole output, artifacts included, is checked against the schema. GK skips that check when an action makes artifacts. A handler that makes an artifact without declaring `artifact.create`, or asks a person a question without `attention.request` and `replay: "human"`, fails.
+
+**Capabilities** are a closed list in the broker: `artifact.create`, `attention.request` and `notification.post` from GK, and the site's `files.read`, `files.write` and `window.open`. A manifest that declares anything else is refused when the catalog loads. A handler's context contains only the services its action declared, so an action without `files.write` has no way to write. The caller's grant is the other half of the check: the Terminal grants the whole list, because its reader can do all of it by hand, and an MCP token (P3) will grant what the admin chose when minting it.
+
+**Replay** keeps GK's meaning. A `pure` action has no effects and can be run again. A `once` action has effects, so an invocation started with a caller's own `id` is never run twice: asking again with the same id returns the record. A `human` action waits for a person. In the page its question appears as a PUDL dialog with the fields the handler asked for, and nobody but the person at the page can answer it.
+
+**Records** live in the page for as long as the page does, the most recent 200 of them. GK keeps its records on disk, because its broker outlives any window. In the page there is nothing for a record to outlive, and the records that must survive (an MCP call queued for the desktop) will be the server's, in P3.
+
+**Validation** uses `@cfworker/json-schema` 4.1.1 (MIT), vendored in `js/vendor/cfworker-json-schema-4.1.1` and loaded as an ES module. Ajv was ruled out because it compiles schemas into code with `new Function`, which the admin pages' content security policy forbids. Schemas are draft 2020-12, as GK's are, and a `$ref` that points outside the schema is refused when the catalog loads, as GK's closed loader refuses one.
+
+**What publishes actions now.** Barcodes (`generate`, `interpret`, GK's own), Dice (`roll`), Sudoku (`solve`), Files (`list`, `read`, `write`, and `browse`, its verb), the Editor (`open`), the Terminal (`shell`), Sight Reader (`open`, a new verb for scores), and the page itself (`parks.page/notify` and `parks.page/ask`, which an MCP client will use to tell or ask the admin something).
+
+**From the Terminal.** `applets` lists the providers, `applets actions [id]` their actions, `applets describe <ref>` an action's whole manifest entry, `applets run <ref> [input]` runs one and prints its output, and `invoke`, `status`, `cancel`, `history` and `artifact <id> [file]` do the rest. The input is JSON, or `name=value` pairs for a flat object. Lua's `require "applets"` and the host's `applets` and `invoke` requests use the same broker, and a shell script runs the `applets` command like any other.
+
+**The PUDL proposal** is `Architecture/pudl-proposal-applet-actions.md`. Until PUDL takes it, `js/applets.js` wraps `pudlApplets.define` to note each `actions` and `handles` declaration for the broker, because PUDL keeps its definitions private; that wrapper is marked as the workaround to delete.
+
+**Two things found on the way.** The site never loaded PUDL's toasts, so the broker loads `pudl/pudl-toast.js` the first time a notice is posted. And the Terminal's line editor redrew only the row the cursor was on, so in a narrow window a typed line that wrapped was printed again on a new row at every key; it now goes back up over the wrapped rows before it redraws, and keeps working after the window is resized.
+
+Checks: `Tools/test-applet-actions.js` (33, on the test instance and the live site: the Terminal command, Lua and the shell, grants, replay, output validation, a question answered and declined, a notice, and window actions in both views), with the Terminal's suites unchanged.
 
 ## Files, Open and Save as from GK Companion (2026-10-17)
 

@@ -1,0 +1,28 @@
+{
+  "id": "parks.sudoku",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "title": "Sudoku",
+  "description": "Solve and check 9 by 9 sudoku puzzles.",
+  "module": "sudoku.js",
+  "actions": [
+    {
+      "ref": "parks.sudoku/solve@1",
+      "title": "Solve Sudoku",
+      "description": "Solve a 9 by 9 sudoku. The puzzle is 81 characters read row by row, left to right, with a digit for each clue and 0 or . for each empty cell. Says whether the puzzle has no solution, exactly one, or more than one, and gives the solution only when there is exactly one.",
+      "inputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["puzzle"],
+        "properties": { "puzzle": { "type": "string", "pattern": "^[0-9.]{81}$" } }
+      },
+      "outputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["solutions", "solution"],
+        "properties": {
+          "solutions": { "enum": ["none", "one", "many"] },
+          "solution": { "type": ["string", "null"], "pattern": "^[1-9]{81}$" }
+        }
+      },
+      "capabilities": [],
+      "replay": "pure"
+    }
+  ]
+}

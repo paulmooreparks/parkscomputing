@@ -1,0 +1,28 @@
+{
+  "id": "parks.terminal",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "title": "Terminal",
+  "description": "The site's command line, with scripts in its own language, Lua and a POSIX shell.",
+  "actions": [
+    {
+      "ref": "parks.terminal/shell@1",
+      "title": "Open a Terminal",
+      "description": "Open a new Terminal for the person at the page, in a folder, and optionally run a command line there for them to see. The command's output appears in that Terminal and is not returned.",
+      "handles": "shell",
+      "inputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 1024, "description": "The folder the Terminal starts in, such as ~ or /site." },
+          "run": { "type": "string", "maxLength": 4096, "description": "A command line to run once the Terminal is open." }
+        }
+      },
+      "outputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["opened"],
+        "properties": { "opened": { "const": true }, "view": { "enum": ["window", "tab"] } }
+      },
+      "capabilities": ["window.open"],
+      "replay": "once"
+    }
+  ]
+}

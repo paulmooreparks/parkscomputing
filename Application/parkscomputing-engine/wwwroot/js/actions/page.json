@@ -1,0 +1,64 @@
+{
+  "id": "parks.page",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "title": "This Page",
+  "description": "Tell or ask the person at the page something.",
+  "module": "page.js",
+  "actions": [
+    {
+      "ref": "parks.page/notify@1",
+      "title": "Show a Notice",
+      "description": "Show the person at the page a short notice. A warning or a danger notice stays until they dismiss it; information and positive notices leave by themselves.",
+      "inputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "kind": { "enum": ["info", "positive", "warn", "danger"], "default": "info" }
+        }
+      },
+      "outputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["shown"],
+        "properties": { "shown": { "const": true } }
+      },
+      "capabilities": ["notification.post"],
+      "replay": "once"
+    },
+    {
+      "ref": "parks.page/ask@1",
+      "title": "Ask the Person",
+      "description": "Ask the person at the page a question and wait for their answer. Only they can answer it. Each field is text, a yes or no (boolean), or a choice from a list. The answer is in response, by field name; it is cancelled if they decline or nobody answers within ten minutes.",
+      "inputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["title"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "body": { "type": "string", "maxLength": 4000 },
+          "fields": {
+            "type": "array", "maxItems": 20,
+            "items": {
+              "type": "object", "additionalProperties": false, "required": ["name", "type"],
+              "properties": {
+                "name": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$" },
+                "label": { "type": "string", "maxLength": 200 },
+                "type": { "enum": ["text", "boolean", "choice"] },
+                "required": { "type": "boolean" },
+                "choices": { "type": "array", "minItems": 1, "maxItems": 50, "items": { "type": "string", "maxLength": 200 } }
+              }
+            }
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object", "additionalProperties": false, "required": ["response"],
+        "properties": {
+          "response": {
+            "type": ["object", "null"],
+            "additionalProperties": { "type": ["string", "boolean"] }
+          }
+        }
+      },
+      "capabilities": ["attention.request"],
+      "replay": "human"
+    }
+  ]
+}
