@@ -1,0 +1,15 @@
+{
+    "id": "/page/sight-reader",
+    "name": "Sight Reader",
+    "short_name": "Sight Reader",
+    "description": "Practise reading music by naming each note of a score as the cursor reaches it",
+    "start_url": "/page/sight-reader?frame",
+    "scope": "/page/sight-reader",
+    "display": "standalone",
+    "background_color": "#121417",
+    "theme_color": "#121417",
+    "icons": [
+        { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
+    ]
+}

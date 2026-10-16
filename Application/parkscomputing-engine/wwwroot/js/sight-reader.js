@@ -52,7 +52,7 @@
 
     /* The settings are the applet's own, kept in ~/.config/sight-reader.json
        (js/config.js), so they follow the reader wherever ~ does. */
-    var SETTINGS = { revealAfter: 3, accidentals: false, sound: true };
+    var SETTINGS = { revealAfter: 3, accidentals: false, sound: true, lastScore: null };
     var REVEAL_CHOICES = [[0, 'Never'], [1, 'After 1 wrong try'], [2, 'After 2 wrong tries'], [3, 'After 3 wrong tries'], [5, 'After 5 wrong tries']];
 
     var SAMPLES = '/content/scores/';
@@ -127,7 +127,12 @@
         var pending = null, loadId = 0, needsDraw = false, resizeTimer = null, flashTimer = null, narrow = false, lastWidth = 0;
 
         root.classList.add('pc-sight-reader');
+        /* In a window the applet fills the window. The bare form of its own
+           page (?frame), which the installed app opens on, is the applet and
+           nothing else, so it fills the screen. */
+        var isApp = opts.fit !== 'fill' && ownUrl && new URLSearchParams(location.search).has('frame');
         if (opts.fit === 'fill') { root.classList.add('pc-sight-reader-fill'); }
+        if (isApp) { root.classList.add('pc-sight-reader-app'); }
         if (!root.hasAttribute('tabindex')) { root.tabIndex = 0; }
         root.innerHTML =
             '<div class="sr-top">' +
@@ -653,6 +658,9 @@
                 history.replaceState(history.state, '', location.pathname + (s ? '?' + s : '') + location.hash);
             }
             if (opts.changed) { opts.changed(stateString()); }
+            /* The last sample opened is kept, so the installed app, whose launch
+               address names no score, opens on it. */
+            if (score && score.rel && settings.lastScore !== score.rel) { saveSetting({ lastScore: score.rel }); }
         }
         /* The score a state string or an address asks for, as it was written. */
         function askedFor(s) {
@@ -829,6 +837,7 @@
             if (startAsked && !startRel) { say('That is not a score this applet can open.', 'danger'); return; }
             if (startRel) { return openScore({ name: startRel.replace(/^.*\//, '').replace(/\.[^.]*$/, ''), rel: startRel }, kept && kept.rel === startRel ? kept : null); }
             if (kept) { return openScore({ name: kept.name || kept.rel, rel: kept.rel }, kept); }
+            if (isApp && validRel(settings.lastScore)) { return openScore({ name: settings.lastScore.replace(/^.*\//, '').replace(/\.[^.]*$/, ''), rel: settings.lastScore }); }
         });
 
         return {

@@ -97,9 +97,9 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   /* A new tab starts with nothing remembered: the applet keeps its last score
      for the tab in session storage (js/snapshot.js), and writes it as the page
      unloads, so clearing it from the page cannot be relied on. */
-  const newTab = async () => {
+  const newTab = async context => {
     if (page) { await page.close(); }
-    page = await ctx.newPage();
+    page = await (context || ctx).newPage();
     /* Every tone the page starts, by frequency, so a check can hear what was
        played without a sound device. */
     await page.addInitScript(() => {
@@ -478,6 +478,49 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   const inWin = await page.evaluate(() => { const b = document.querySelector('.win[data-win="sight-reader"] .sr-score'); return { scroll: b.scrollWidth, client: b.clientWidth }; });
   log('and a window shows no horizontal scrollbar either', inWin.scroll <= inWin.client + 1, JSON.stringify(inWin));
   await page.screenshot({ path: path.join(SHOTS, 'sr-window.png') });
+
+  // 14. Installable: a manifest of its own, which the browser accepts, and
+  //     the bare form it launches on.
+  await newTab();
+  await page.setViewportSize({ width: 1000, height: 700 });
+  await page.goto(BASE + '/page/sight-reader', { waitUntil: 'networkidle' });
+  const links = await page.evaluate(() => [...document.querySelectorAll('link[rel="manifest"]')].map(l => l.getAttribute('href')));
+  log('the page links its own manifest first', links[0] === '/sight-reader.webmanifest', links.join());
+  const manifest = await page.evaluate(() => fetch('/sight-reader.webmanifest').then(r => r.json()));
+  log('the manifest names the app and opens it on the bare form', manifest.name === 'Sight Reader' && manifest.start_url === '/page/sight-reader?frame' && manifest.display === 'standalone' && manifest.scope === '/page/sight-reader', JSON.stringify(manifest).slice(0, 160));
+  const icons = await page.evaluate(m => Promise.all(m.icons.map(i => fetch(i.src).then(r => r.status))), manifest);
+  log('its icons are there', icons.length >= 2 && icons.every(s => s === 200), icons.join());
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send('Page.enable');
+  const installable = await cdp.send('Page.getInstallabilityErrors');
+  /* The test browser is a private window, which a browser will not install
+     from and says so; that is the one objection allowed. */
+  const obstacles = installable.installabilityErrors.filter(e => e.errorId !== 'in-incognito');
+  log('the browser finds nothing in the way of installing it', obstacles.length === 0, JSON.stringify(installable.installabilityErrors));
+  const parsed = await cdp.send('Page.getAppManifest');
+  log('and reads the manifest without complaint', !(parsed.errors || []).length && /sight-reader\.webmanifest/.test(parsed.url), JSON.stringify(parsed.errors || []));
+  // Launched bare with nothing opened yet, in a browser that has never run it: no score, then choose one.
+  const fresh = await browser.newContext({ viewport: { width: 1000, height: 700 } });
+  await newTab(fresh);
+  await page.goto(BASE + '/page/sight-reader?frame', { waitUntil: 'networkidle' });
+  const bare = await page.evaluate(() => ({ app: !!document.querySelector('.pc-sight-reader-app'), headerHidden: !document.querySelector('.post-header') || getComputedStyle(document.querySelector('.post-header')).display === 'none', pageScroll: document.documentElement.scrollHeight - window.innerHeight }));
+  log('the bare form fills the screen with nothing else, and the page does not scroll', bare.app && bare.headerHidden && bare.pageScroll <= 1, JSON.stringify(bare));
+  await page.click('.sr-empty [data-sr="choose"]');
+  await page.waitForSelector('.sr-pick');
+  await page.click('.sr-pick[data-sr-name="Ode to Joy"]');
+  await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
+  await page.waitForTimeout(800);
+  const fits = await page.evaluate(() => { const k = document.querySelector('.sr-keys').getBoundingClientRect(); return { keysBottom: Math.round(k.bottom), vh: window.innerHeight }; });
+  log('the keys are on the screen without scrolling', fits.keysBottom <= fits.vh, JSON.stringify(fits));
+  await newTab(fresh);
+  await page.goto(BASE + '/page/sight-reader?frame', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
+  i = await info();
+  log('launched again with no score named, it opens the last one', i.title === 'Ode to Joy' && i.pos === 'Bar 1 · 1 of 62', JSON.stringify(i));
+  await newTab(fresh);
+  await page.goto(BASE + '/page/sight-reader', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+  log('but the ordinary page still starts empty', await page.isVisible('.sr-empty'));
 
   log('no page errors', errors.length === 0, errors.join(' | '));
   await browser.close();
