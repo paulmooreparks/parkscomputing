@@ -226,6 +226,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.goto(BASE + '/page/sight-reader', { waitUntil: 'networkidle' });
   await page.waitForTimeout(500);
   log('with no score, the page offers to choose one', await page.isVisible('.sr-empty'));
+  log('and the Restart button waits for a score', await page.isDisabled('[data-sr="restart"]'));
   await page.setInputFiles('.sr-file', fixture);
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(500);
@@ -253,6 +254,14 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('finishing says how it went', /^Finished: 4 of 4 right first time/.test(i.fb), i.fb);
   await type('c');
   log('a key after the end changes nothing', (await info()).fb === i.fb);
+  const restartState = await page.evaluate(() => { const b = document.querySelector('[data-sr="restart"]'); return { disabled: b.disabled, primary: b.classList.contains('btn-primary') }; });
+  log('at the end the Restart button is the highlighted one', !restartState.disabled && restartState.primary, JSON.stringify(restartState));
+  await page.click('[data-sr="restart"]');
+  i = await info();
+  log('pressing it starts again from the top, with nothing marked', i.pos === 'Bar 1 · 1 of 4' && i.green === 0 && i.tally === '', JSON.stringify(i));
+  log('and it is no longer highlighted', await page.evaluate(() => !document.querySelector('[data-sr="restart"]').classList.contains('btn-primary')));
+  await type('ceg');
+  log('the keyboard works straight away, with no click first', (await info()).pos === 'Bar 1 · 2 of 4', (await info()).pos);
 
   // 6. Restart, from the Practice menu, clears the marks and the tally.
   await menu('Practice', 'Restart');

@@ -166,6 +166,7 @@
             '<div class="sr-top">' +
               '<button type="button" class="btn" data-sr="choose">Scores…</button>' +
               '<button type="button" class="btn" data-sr="options">Options…</button>' +
+              '<button type="button" class="btn" data-sr="restart" title="Start the piece again from the beginning">Restart</button>' +
               '<span class="sr-title" data-role="title"></span>' +
             '</div>' +
             '<div class="sr-score" data-role="score">' +
@@ -297,6 +298,15 @@
             showTally();
             showPending();
             showKeyboard();
+            showRestart();
+        }
+
+        /* Restart is there once a score is open, and is the button to press at
+           the end, when there is nothing else to do. */
+        function showRestart() {
+            var b = q('[data-sr="restart"]');
+            b.disabled = !score || !steps.length;
+            b.classList.toggle('btn-primary', finished);
         }
 
         /* === The piano ========================================================= */
@@ -575,6 +585,7 @@
             finished = true;
             var total = tally.first + tally.retried + tally.missed;
             say('Finished: ' + tally.first + ' of ' + total + ' right first time' + (tally.missed ? ', ' + tally.missed + ' missed' : ''), tally.missed ? 'warn' : 'positive');
+            showRestart();
             keepSnapshot();
         }
 
@@ -869,6 +880,7 @@
             switch (act.getAttribute('data-sr')) {
                 case 'choose': openChooser(); break;
                 case 'options': showOptions(); break;
+                case 'restart': restart(); root.focus({ preventScroll: true }); break;
                 case 'file': el.file.click(); break;
                 case 'close-chooser': el.chooser.close(); break;
                 case 'close-options': el.options.close(); root.focus({ preventScroll: true }); break;
