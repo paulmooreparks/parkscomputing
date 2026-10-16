@@ -418,3 +418,7 @@ Version 0.44.1 changes `pudl.css` alone: a disabled button of any kind, primary 
 ### D58. PUDL 0.44.0 in the checkout, on beta first
 
 Version 0.44.0 changes fonts only: Inter is split into per-script subsets, so `pudl.css` and the whole `fonts/` directory move together. The checkout's `wwwroot/pudl` now holds 0.44.0, and every other file in the distribution was already identical to 0.43.0. The site preloads no fonts, so nothing else changes. Beta (`Tools/beta-webroot.sh`) serves this copy. Production still serves 0.43.0 from the live tree until the next static deploy copies it there.
+
+### D67. PUDL 0.63.0: menu bar groups look like buttons in both themes, and the site's override is gone
+
+The site moved from 0.62.0 to 0.63.0 on 2026-10-17 by copying `pudl.css` over `wwwroot/pudl/` and the content volume's `pudl/`; nothing else in `dist/` differed. The release takes the site's proposal (`pudl-proposal-menubar-surface.md`): a menu group at rest now defaults to the raised surface of a neutral `.btn`, and in the dark theme a topbar holding a menu bar sets its chip surface the same as the light theme did. The three `--menubar-group-*` hooks the site had set in `pudl-site.css` are deleted. On the test instance a menu group and a button have identical background, border and shadow in the light and dark themes. The 0.62.1 fix, which clips a persistent sidebar divider's grip so a phone's page no longer scrolls sideways, arrives with it. padmajairam.com still has its own 0.52.0 copy.

@@ -491,10 +491,3 @@ button.tag-link:focus-visible { outline: 2px solid var(--focus-ring); outline-of
 .tag-window { max-width: 68ch; margin: 0 auto; }
 .tag-window .card-desc { margin-bottom: 10px; }
 .tag-window .md-row { border-right: 0; }
-
-/* A menu bar group takes the surface of a neutral button, in light and in dark (PUDL's hooks for the group's look). */
-.menubar-menu {
-  --menubar-group-bg: var(--raise-grad);
-  --menubar-group-border: var(--raise-border);
-  --menubar-group-shadow: var(--raise-shadow);
-}

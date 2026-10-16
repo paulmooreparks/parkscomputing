@@ -1,5 +1,7 @@
 # Proposal to PUDL: a menu bar group with the surface of a neutral button
 
+**Shipped in PUDL 0.63.0** (specification 0.24.2, `--menubar-group-bg` now defaults to `--raise-grad`, and a topbar holding a menu bar sets its chip surface the same in dark as in light). What follows is the text as it was sent.
+
 From parkscomputing.com, 2026-10-17, on PUDL 0.62.0.
 
 Each group in the menu bar is drawn on `var(--menubar-group-bg, var(--tb-chip))`, with a border and shadow from the matching `--menubar-group-border` and `--menubar-group-shadow` hooks. In light mode the topbar rule sets `--tb-chip` to `var(--raise-grad)`, so the group has the same surface as a neutral, enabled `.btn`. In dark mode that rule does not apply, `--tb-chip` keeps the topbar's own chip color, and the group is drawn in a different color from a button. Paul asked that the menu bar surface, without its hover and open states, be the same color as a neutral button in both modes, as though the bar were a button with a menu glyph on its left.
