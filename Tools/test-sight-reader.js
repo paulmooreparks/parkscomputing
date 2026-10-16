@@ -532,18 +532,20 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.setInputFiles('.sr-file', fixture);
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(600);
-  const key = semi => '.sr-key[data-semi="' + semi + '"]';
-  const lit = () => page.evaluate(() => [...document.querySelectorAll('.sr-named')].map(k => +k.getAttribute('data-semi')).sort((a, b) => a - b));
+  const key = semi => '.sr-key[data-midi="' + (60 + semi) + '"]';
+  const midiKey = m => '.sr-key[data-midi="' + m + '"]';
+  const visible = m => page.evaluate(sel => { const k = document.querySelector(sel).getBoundingClientRect(), p = document.querySelector('.sr-piano').getBoundingClientRect(); return k.left >= p.left - 1 && k.right <= p.right + 1; }, midiKey(m));
+  const lit = () => page.evaluate(() => [...document.querySelectorAll('.sr-named')].map(k => +k.getAttribute('data-midi') - 60).sort((a, b) => a - b));
   const missedKeys = () => page.evaluate(() => document.querySelectorAll('.sr-missed').length);
-  const label = () => page.evaluate(() => document.querySelector('.sr-key[data-semi="0"] .sr-key-label').textContent);
+  const label = () => page.evaluate(() => document.querySelector('.sr-key[data-midi="60"] .sr-key-label').textContent);
   const board = await page.evaluate(() => ({ white: document.querySelectorAll('.sr-white').length, black: document.querySelectorAll('.sr-black').length, piano: !!document.querySelector('.sr-piano').offsetParent, letters: !!document.querySelector('.sr-letters').offsetParent, blackOff: [...document.querySelectorAll('.sr-black')].every(k => k.disabled) }));
-  log('the piano is the keyboard: 15 white keys and 10 black, with no letter buttons', board.white === 15 && board.black === 10 && board.piano && !board.letters, JSON.stringify(board));
+  log('the piano is the keyboard: all 88 keys, 52 white and 36 black, with no letter buttons', board.white === 52 && board.black === 36 && board.piano && !board.letters, JSON.stringify(board));
   log('the black keys wait for Name sharps and flats', board.blackOff);
-  log('the keyboard shows the register of the notes, the C keys naming their octaves', (await label()) === 'C4', await label());
+  log('the C keys name their octaves, and the music is in view', (await label()) === 'C4' && await visible(60), await label());
   await page.click(key(12));
   i = await info();
   log('a key of the right note in the wrong octave is a wrong try, and says so', i.fb === 'Right note, wrong octave' && i.pos === 'Bar 1 · 1 of 4', i.fb);
-  log('the wrong key flashes', await page.evaluate(() => document.querySelector('.sr-key[data-semi="12"]').classList.contains('sr-keywrong')));
+  log('the wrong key flashes', await page.evaluate(() => document.querySelector('.sr-key[data-midi="72"]').classList.contains('sr-keywrong')));
   await page.click(key(2));
   log('a key of another note is a wrong try too', (await info()).fb === 'Not that one');
   await page.click(key(0));
@@ -603,33 +605,30 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForTimeout(400);
   await page.click('[data-sr="close-options"]');
   i = await info();
-  log('with only the bass clef chosen the keyboard shows the bass register: C3', (await label()) === 'C3' && i.pos === 'Bar 1 · 1 of 1', (await label()) + ' ' + i.pos);
+  log('with only the bass clef chosen the keyboard is centred on the bass register: C3 in view', (await visible(48)) && i.pos === 'Bar 1 · 1 of 1', i.pos);
   await page.click('.sr-top [data-sr="options"]');
   await page.check('[data-clef="Treble"]');
   await page.uncheck('[data-clef="Bass"]');
   await page.click('[data-sr="close-options"]');
   await page.waitForTimeout(400);
-  log('and with only the treble clef, the treble register: C5', (await label()) === 'C5', await label());
+  log('and with only the treble clef it moves to the treble: E5 in view', await visible(76));
   await page.click('.sr-top [data-sr="options"]');
   await page.check('[data-clef="Bass"]');
   await page.click('[data-sr="close-options"]');
   await page.waitForTimeout(400);
-  // E5 and C3 together are more than two octaves apart, so the keyboard has grown to three.
-  const startMidi = (parseInt((await label()).slice(1), 10) + 1) * 12;
-  const keySpan = ((await page.evaluate(() => document.querySelectorAll('.sr-white').length)) - 1) / 7 * 12;
-  const onBoard = m => m >= startMidi && m <= startMidi + keySpan;
-  await page.click(key(onBoard(76) ? 76 - startMidi : 4));
-  await page.click(key(onBoard(48) ? 48 - startMidi : 0));
+  // E5 and C3 together are more than two octaves apart, and both are on the one keyboard.
+  await page.click(midiKey(76));
+  await page.click(midiKey(48));
   i = await info();
-  log('notes more than two octaves apart are both on a wider keyboard', i.pos === 'Bar 2 · 2 of 2', i.pos + ' on ' + (await label()));
+  log('notes more than two octaves apart are both on the keyboard', i.pos === 'Bar 2 · 2 of 2', i.pos);
 
   // A phone.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(BASE + '/page/sight-reader?score=beginner/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(600);
-  const small = await page.evaluate(() => { const p = document.querySelector('.sr-piano').getBoundingClientRect(); return { right: Math.round(p.right), left: Math.round(p.left), height: Math.round(p.height), screen: document.documentElement.clientWidth, page: document.documentElement.scrollWidth }; });
-  log('at phone width the piano fits the screen and is tall enough to press', small.left >= 0 && small.right <= small.screen && small.page <= small.screen + 1 && small.height >= 90, JSON.stringify(small));
+  const small = await page.evaluate(() => { const p = document.querySelector('.sr-piano').getBoundingClientRect(); return { scrolls: document.querySelector('.sr-piano').scrollWidth > document.querySelector('.sr-piano').clientWidth, right: Math.round(p.right), left: Math.round(p.left), height: Math.round(document.querySelector('.sr-board').getBoundingClientRect().height), screen: document.documentElement.clientWidth, page: document.documentElement.scrollWidth }; });
+  log('at phone width the keyboard scrolls inside the screen and is tall enough to press', small.scrolls && small.left >= 0 && small.right <= small.screen && small.page <= small.screen + 1 && small.height >= 90, JSON.stringify(small));
   await page.screenshot({ path: path.join(SHOTS, 'sr-piano-phone.png') });
 
   // The letters, as an option.
@@ -648,11 +647,11 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForTimeout(600);
   const greenNotes = () => page.evaluate(() => [...document.querySelectorAll(".sr-sheet svg g.vf-notehead")].filter(g => g.querySelector("[fill=\"#2e7d32\"], [stroke=\"#2e7d32\"]")).length);
   const lowC = "";
-  await page.click('.sr-key[data-semi="0"]');
+  await page.click(midiKey(48));
   i = await info();
   const green1 = await greenNotes();
   log('with C in two octaves, one key names only one of them', /1 more/.test(i.fb) && green1 === 1, i.fb + " noteheads " + green1);
-  await page.click('.sr-key[data-semi="12"]');
+  await page.click(midiKey(60));
   i = await info();
   log('and the other octave is named by its own key', /^Finished/.test(i.fb) && (await greenNotes()) === 2, i.fb + " noteheads " + (await greenNotes()));
 
@@ -669,15 +668,12 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.setInputFiles('.sr-file', wideFile);
   await page.waitForTimeout(800);
   const wideKeys = await page.evaluate(() => ({ white: document.querySelectorAll('.sr-white').length, first: document.querySelector('.sr-key-label').textContent }));
-  log('a chord from C2 to E5 widens the keyboard to four octaves', wideKeys.white === 29, JSON.stringify(wideKeys));
-  await page.click('.sr-key[data-semi="0"]');
-  await page.click('.sr-key[data-semi="19"]');
-  await page.click('.sr-key[data-semi="40"]');
+  log('a chord from C2 to E5 is on the same keyboard of 88 keys', wideKeys.white === 52, JSON.stringify(wideKeys));
+  await page.click(midiKey(36));
+  await page.click(midiKey(55));
+  await page.click(midiKey(76));
   i = await info();
   log('and the low C, the G and the high E are each pressed in their own octave', /^Finished: 1 of 1/.test(i.fb), i.fb);
-  await page.setInputFiles('.sr-file', octFile);
-  await page.waitForTimeout(800);
-  log('a score opened after that starts on two octaves again', (await page.evaluate(() => document.querySelectorAll('.sr-white').length)) === 15);
 
   // 13d. Bars to practise: start part-way in, and go round again.
   await newTab();

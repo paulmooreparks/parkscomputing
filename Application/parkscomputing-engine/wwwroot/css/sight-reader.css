@@ -131,19 +131,23 @@ body:has(.pc-sight-reader-app) .post-body { flex: 1 1 auto; min-height: 0; displ
 
 /* === The piano ============================================================= */
 
-/* Two octaves and the C above them: white keys in a row, black keys over them
+/* All 88 keys: white keys in a row, black keys over them
    at a piano's places (js/sight-reader.js). Keys are pressable, so they are
    raised, as a piano's are, and a key that has been named is lit in the
    marks' green, one the answer shows in red. */
 .sr-piano, .sr-letters, .sr-accidentals { }
 .sr-piano[hidden], .sr-letters[hidden], .sr-accidentals[hidden] { display: none; }
+/* All 88 keys. The board is as wide as the box when the keys would each be wider than 2.1rem, and wider than the box when they would not, and then the box scrolls sideways. */
 .sr-piano {
-  position: relative; display: flex; flex: 1 1 100%;
-  width: min(100%, 46rem); max-width: 46rem; margin: 0 auto;
-  height: 7.5rem; user-select: none; -webkit-user-select: none;
+  flex: 1 1 100%; min-width: 0; overflow-x: auto; overflow-y: hidden;
+  user-select: none; -webkit-user-select: none; touch-action: pan-x pinch-zoom;
 }
-@media (max-width: 560px) { .sr-piano { height: 6.5rem; } }
-@media (pointer: coarse) { .sr-piano { height: 8rem; } }
+.sr-board {
+  position: relative; display: flex; height: 7.5rem;
+  width: max(100%, calc(52 * 2.1rem));
+}
+@media (max-width: 560px) { .sr-board { height: 6.5rem; } }
+@media (pointer: coarse) { .sr-board { height: 8rem; } }
 
 .sr-key { appearance: none; margin: 0; padding: 0; font: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .sr-white {
