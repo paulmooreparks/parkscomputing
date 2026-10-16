@@ -234,6 +234,12 @@ namespace ParksComputing.Engine {
                 contentTypeProvider.Mappings[".xferlang"] = "text/plain";
             }
 
+            // MusicXML scores, such as Note Reader's samples in /scores
+            // (Architecture/note-reader-design.md), plain and compressed, by
+            // the media types MusicXML registers for them.
+            contentTypeProvider.Mappings[".musicxml"] = "application/vnd.recordare.musicxml+xml";
+            contentTypeProvider.Mappings[".mxl"] = "application/vnd.recordare.musicxml";
+
             app.UseStaticFiles(new StaticFileOptions {
                 ContentTypeProvider = contentTypeProvider,
                 // A font file never changes in place, so a browser keeps it

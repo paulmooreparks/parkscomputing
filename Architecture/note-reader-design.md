@@ -4,7 +4,9 @@ Status: proposal, revised 2026-10-16. Nothing is built. The open questions are a
 
 ## What it is for
 
-Paul is learning pieces on piano and guitar, and wants to keep practising reading them when he is away from both instruments. Apps that drill random notes are plentiful and don't help: what helps is reading the actual piece he is working on, bar by bar, until reading it is fluent. So the applet is built around the reader's own scores. It shows the piece with a cursor under the first note, and the reader types each note's letter, A to G, with octaves ignored for now. A right letter moves the cursor on, skipping rests. A wrong letter marks an error and the cursor stays. After a set number of wrong tries it can show the answer and move on. For an interval or a chord, the reader names every note in it before the cursor moves.
+Paul is learning pieces on piano and guitar, and wants to keep practising reading them when he is away from both instruments. Apps that drill random notes are plentiful and don't help: what helps is reading the actual piece he is working on, bar by bar, until reading it is fluent. So the applet is built around the reader's own scores.
+
+The applet teaches reading, not an instrument (Paul, 2026-10-16): a trumpeter or a viola player should be able to use it as well as a pianist or a guitarist. So it has no instrument modes. It works from what is on the page, the parts and staves of the score and whatever clef each is in, treble, bass, alto or tenor. It shows the piece with a cursor under the first note, and the reader types each note's letter, A to G, with octaves ignored for now. A right letter moves the cursor on, skipping rests. A wrong letter marks an error and the cursor stays. After a set number of wrong tries it can show the answer and move on. For an interval or a chord, the reader names every note in it before the cursor moves.
 
 An earlier draft of this note made generated drills the core. Paul rejected that: drills are what every other app does, and they don't help him. The applet has no drill mode.
 
@@ -36,7 +38,7 @@ A score is the reader's document, not the applet's, so it goes where Files shows
 
 ## Practising a piece
 
-**Choosing the part.** A piano score has a staff for each hand, and practice often means one hand at a time, so the reader chooses right hand, left hand or both. Guitar music is a single staff, often with a tablature staff under it. The tablature gives the answer away, so the applet hides it while quizzing, with a setting to show it.
+**Choosing what to read.** A score may have several parts, and a part several staves, and a reader often wants only one of them: a pianist one hand at a time, a singer the voice of a song, a violist the viola line of a quartet. The applet lists the score's parts and staves as the score names them, with each staff's clef, and the reader ticks the ones to read; all are ticked at first. The applet knows nothing about which instrument a part is for, and needs to know nothing, since every staff is read the same way. A tablature staff, as guitar music often has, is not notation to read and gives the answer away, so it is hidden while quizzing, with a setting to show it.
 
 **Choosing the passage.** Real practice works on a few bars at a time. The reader can start from any measure, by clicking it or naming its number, and can set a passage from one measure to another that loops when it ends, so a hard phrase can be read over and over.
 
@@ -52,6 +54,8 @@ A score is the reader's document, not the applet's, so it goes where Files shows
 
 **What a letter means.** By default the letter is the note's name on the staff, ignoring sharps and flats, so an F in G major is answered F. That keeps the default a test of reading the staff.
 
+**The written note, not the sounding one.** A part for a transposing instrument, such as a trumpet in B flat, sounds a different note from the one written; a written C on a B flat trumpet sounds B flat. The answer is always the note as written, since reading the page is what the applet practises, and a trumpeter reads written notes.
+
 **Accidentals, as a setting.** With "Name sharps and flats" on, the answer is the note's full name as it is played: the key signature counts, so an F in G major is F sharp, and so do accidentals earlier in the bar. The spelling must be the written one, so F sharp is not accepted for G flat. The keys:
 
 - **On a keyboard, a key typed before the letter, for sharp and flat alike** (Paul, 2026-10-16): `#` or `=` for sharp, `-` for flat, so F sharp is `=` then F. Shift with the letter, Paul's first thought for sharps, was dropped so that both accidentals work the same way.
@@ -64,24 +68,38 @@ A prefix shows in the status line, and its button stays pressed, until its lette
 
 **Wrong answers.** A wrong letter flashes the cursor and the status line in the error colour and counts a try against the step and its measure. The setting "Show the answer after" takes a number of wrong tries, or Never. When the limit is reached, the applet marks the missing notes with their names, waits for any key, and moves on.
 
-**Sound.** A right answer can play the note at its written pitch, through the Web Audio API, which ties the written note to the sound Paul knows from his instrument. A setting turns it off.
+**Sound.** A right answer can play the note through the Web Audio API, which ties the written note to its sound. It plays the pitch the instrument would sound, which MusicXML gives in the part's transposition, so a trumpeter hears what their trumpet would play. A setting turns it off.
 
 **Rests** could later take R, which makes the reader notice them rather than skip them.
 
-**Later, octaves.** For a real piece, knowing which C matters, especially on piano. A later version could take the octave from an on-screen keyboard for piano, or a string and fret for guitar, which would also practise finding the note on the instrument.
+**Later, octaves.** For a real piece, knowing which C matters. A later version could ask for the octave too, typed as a number after the letter in scientific pitch notation (C4 is middle C), which works the same for every instrument.
 
 ## As a PUDL applet
 
-The applet is `note-reader` in the registry, in a window and on its own page. Its state string, which a link carries, says which score and which measure. Its settings (scores folder, part, tablature, reveal-after, sound) are kept in `~/.config/note-reader.json` through `pcConfig`, and each score's last position, passages and per-measure tally in `~/.note-reader/`, as above. Its menus are Score (Open, Add a score, Samples), Practice (Start at measure, Set a passage, Practise weak bars, Show answer, Skip) and the applet's Settings.
+The applet is `note-reader` in the registry, in a window and on its own page. Its state string, which a link carries, says which score and which measure. Its settings (scores folder, tablature, reveal-after, sound) are kept in `~/.config/note-reader.json` through `pcConfig`, and each score's last position, passages and per-measure tally in `~/.note-reader/`, as above. Its menus are Score (Open, Add a score, Samples), Practice (Start at measure, Set a passage, Practise weak bars, Show answer, Skip) and the applet's Settings.
 
 ## To find out before building
 
-A short spike with a real piece of Paul's should confirm three things using only documented OSMD calls: that the cursor gives the right notes for a piano score with both hands and for a guitar score with tablature, that marking named notes is quick enough to feel instant on a long score, and that a page renders acceptably at phone width.
+A short spike with a real piece of Paul's should confirm, using only documented OSMD calls, that marking named notes is quick enough to feel instant on a long score, that a page renders acceptably at phone width, that the cursor can be limited to the staves the reader chose, and that a guitar score's tablature staff can be hidden.
+
+Part of this is already known from choosing the samples (2026-10-16). OSMD 1.9.0, loaded from its CDN for the test only, rendered all nineteen samples without an error, and its cursor walked each from start to end, one note at a time in a single line and up to six notes at a step in a song's piano part. A song renders in under a second. A whole string quartet, Beethoven's Op. 18 No. 1 with 6,500 steps, took 23 seconds, so a long score needs care: the samples use a single quartet movement instead.
+
+## The sample scores
+
+The samples are in the live web root under `scores/`, sorted into `beginner`, `intermediate` and `advanced`, where Paul can add, remove and re-sort them. `scores/CREDITS.md` records where each came from. There are nineteen:
+
+- **Beginner:** four single-line tunes typeset for the site (Twinkle, Twinkle; Ode to Joy; Frère Jacques; Au clair de la lune), and three short, plain songs (Beethoven's Marmotte, Schubert's Morgengruß, Brahms's Volkslied).
+- **Intermediate:** six songs by Schubert, Schumann, Strauss and Brahms, including Der Leiermann and Morgen!.
+- **Advanced:** four songs in remote keys with dense accompaniment, including Schumann's Frühlingsnacht in six sharps, and a movement of Mozart's quartet K. 464, whose viola part is in the alto clef.
+
+The songs and the quartet come from OpenScore, whose editions are CC0, through a collection that converted them to compressed MusicXML with MuseScore's own converter (codeberg.org/HerrBenedikt/MusicXML). The levels were set by measuring each song's key signature, accidentals, chords and notes per bar, and ranking all 1,028 single-key songs by that. Two other sources in the same collection were left out. Its Galician folk melodies are labelled BSD-2 there, but their own licence puts the scores under CC BY-NC 4.0, which forbids commercial use. Its Mutopia scores were rebuilt from MIDI, so their rhythms and spellings are guesses, which is no use for learning to read. Project Gutenberg's sheet music is public domain in the USA only, and holds only strings and orchestra.
+
+The site serves `.mxl` and `.musicxml` once `Startup.cs` maps their media types, which is done and ships with the applet.
 
 ## Decided with Paul, 2026-10-16
 
 - **Pieces come from everywhere**: notation programs, MuseScore.com, PDFs and printed books, and pieces Paul writes himself. The help explains each route. MuseScore's own `.mscz` files are not MusicXML, so a piece written in MuseScore is exported as MusicXML (File, Export) before it is added.
-- **Piano and guitar together, piano by default.** Nothing in the quiz needs them apart. Guitar music is written an octave above the pitch it sounds, which matters only once octaves are asked for and for the note the applet plays; MusicXML says so in the part's clef or transposition, and the applet uses that.
+- **No instrument modes.** The applet teaches reading, for any instrument; the reader chooses which of the score's staves to read, and the answer is always the written note.
 - **Accidentals** as above: letters only by default; with the setting on, a key before the letter on a keyboard (`#` or `=` sharp, `-` flat) and ♯ and ♭ buttons on a phone.
 - **A desktop or laptop first, with phone support required**, so the keyboard is the main input and the buttons must still be complete on their own.
 
