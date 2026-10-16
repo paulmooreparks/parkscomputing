@@ -98,7 +98,7 @@ The spike ran on the sample scores, with OpenSheetMusicDisplay loaded from its C
 
 ## The sample scores
 
-The samples are in the live web root under `scores/`, sorted into `beginner`, `intermediate` and `advanced`, where Paul can add, remove and re-sort them. `scores/CREDITS.md` records where each came from. There are nineteen:
+The samples are in the live site's `content/scores/` folder, sorted into `beginner`, `intermediate` and `advanced`, where Paul can add, remove and re-sort them. `CREDITS.md` beside them records where each came from. There are nineteen:
 
 - **Beginner:** four single-line tunes typeset for the site (Twinkle, Twinkle; Ode to Joy; Frère Jacques; Au clair de la lune), and three short, plain songs (Beethoven's Marmotte, Schubert's Morgengruß, Brahms's Volkslied).
 - **Intermediate:** six songs by Schubert, Schumann, Strauss and Brahms, including Der Leiermann and Morgen!.
@@ -106,7 +106,7 @@ The samples are in the live web root under `scores/`, sorted into `beginner`, `i
 
 The songs and the quartet come from OpenScore, whose editions are CC0, through a collection that converted them to compressed MusicXML with MuseScore's own converter (codeberg.org/HerrBenedikt/MusicXML). The levels were set by measuring each song's key signature, accidentals, chords and notes per bar, and ranking all 1,028 single-key songs by that. Two other sources in the same collection were left out. Its Galician folk melodies are labelled BSD-2 there, but their own licence puts the scores under CC BY-NC 4.0, which forbids commercial use. Its Mutopia scores were rebuilt from MIDI, so their rhythms and spellings are guesses, which is no use for learning to read. Project Gutenberg's sheet music is public domain in the USA only, and holds only strings and orchestra.
 
-The site serves `.mxl` and `.musicxml` once `Startup.cs` maps their media types, which is done and ships with the applet.
+**The applet needs nothing from the site's engine** (Paul asked, 2026-10-17). It is a script, a stylesheet, a page and a menu entry, deployed by copying files as Dice is, with no rebuild. The scores are in `content/scores/` because the site already serves any file type under `/content/` as a download, which `.mxl` needs, since the static-file rule elsewhere refuses types it does not know. The applet lists the samples from `content/scores/index.json`, which `Tools/scores-index.js` writes from the folders: run it after adding, removing, renaming or moving a score. A listing endpoint in the engine would make that automatic at the cost of a rebuild; one was written, and taken out again so the applet stays plain site content.
 
 ## Decided with Paul, 2026-10-16
 
