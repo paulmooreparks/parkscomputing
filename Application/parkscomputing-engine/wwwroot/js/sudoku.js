@@ -357,6 +357,68 @@ SOFTWARE.
             return true;
         }
 
+        /* The puzzle's solution, worked out from its clues alone. A puzzle
+           this applet makes has exactly one, since a number is only taken
+           away while the answer stays unique; one built by hand in edit
+           mode may have none or several, and then there is no single
+           answer to hold an entry to. Kept until the clues change. */
+        var solved = { key: null, grid: null };
+        function solution() {
+            var key = '', grid = [];
+            for (var r = 0; r < BOARD_SIZE; r++) {
+                grid.push([]);
+                for (var c = 0; c < BOARD_SIZE; c++) {
+                    var v = boardState[r][c].clue ? boardState[r][c].value : 0;
+                    grid[r].push(v);
+                    key += v;
+                }
+            }
+            if (solved.key === key) { return solved.grid; }
+            var found = null, count = 0;
+            function fits(r, c, n) {
+                for (var x = 0; x < BOARD_SIZE; x++) { if (grid[r][x] === n || grid[x][c] === n) { return false; } }
+                var br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
+                for (var i = 0; i < 3; i++) { for (var j = 0; j < 3; j++) { if (grid[br + i][bc + j] === n) { return false; } } }
+                return true;
+            }
+            /* Stops at a second solution: one is all an answer can be. */
+            function search(at) {
+                if (count > 1) { return; }
+                if (at === BOARD_SIZE * BOARD_SIZE) {
+                    count++;
+                    if (count === 1) { found = grid.map(function (row) { return row.slice(); }); }
+                    return;
+                }
+                var r = Math.floor(at / BOARD_SIZE), c = at % BOARD_SIZE;
+                if (grid[r][c]) { search(at + 1); return; }
+                for (var n = 1; n <= BOARD_SIZE && count <= 1; n++) {
+                    if (fits(r, c, n)) { grid[r][c] = n; search(at + 1); grid[r][c] = 0; }
+                }
+            }
+            /* Clues that already repeat a number have no solution. */
+            var consistent = true;
+            for (var rr = 0; rr < BOARD_SIZE && consistent; rr++) {
+                for (var cc = 0; cc < BOARD_SIZE && consistent; cc++) {
+                    var clue = grid[rr][cc];
+                    if (clue) { grid[rr][cc] = 0; consistent = fits(rr, cc, clue); grid[rr][cc] = clue; }
+                }
+            }
+            if (consistent) { search(0); }
+            solved = { key: key, grid: count === 1 ? found : null };
+            return solved.grid;
+        }
+
+        /* An entry is wrong when it repeats a number in its row, column or
+           box, or when it isn't the number the puzzle's one solution has
+           there. Clues are the puzzle, so only a repeat counts against them. */
+        function isWrong(row, col, value) {
+            if (value === 0) { return false; }
+            if (!isValidMove(row, col, value)) { return true; }
+            if (boardState[row][col].clue) { return false; }
+            var answer = solution();
+            return !!answer && answer[row][col] !== value;
+        }
+
         function canEdit(row, col) { return isEditingMode || !isClue(row, col); }
 
         /* === Rendering ====================================================
@@ -383,7 +445,7 @@ SOFTWARE.
                     var numberElement = cell.querySelector('.main-number');
                     var hintEls = cell.querySelectorAll('.hint');
 
-                    var invalid = !isValidMove(row, col, cellData.value);
+                    var invalid = isWrong(row, col, cellData.value);
                     if (invalid) { isValidBoard = false; }
                     if (cellData.value === 0) { isComplete = false; }
 
@@ -554,9 +616,10 @@ SOFTWARE.
             commit();
         }
 
-        /* A legal placement settles the digit for its row, column and box,
-           so their pencil marks of that digit are erased. It happens inside
-           the same undo step, so one undo brings the marks back. */
+        /* A right placement settles the digit for its row, column and box,
+           so their pencil marks of that digit are erased. A wrong one
+           settles nothing and leaves every mark as it was. It happens
+           inside the same undo step, so one undo brings the marks back. */
         function eraseNeighborNotes(digit, row, col) {
             function drop(r, c) {
                 var hints = boardState[r][c].hints;
@@ -580,7 +643,7 @@ SOFTWARE.
                 if (hintIndex === -1) { hintsArray.push(digit); } else { hintsArray.splice(hintIndex, 1); }
             } else {
                 updateBoard(selectedRow, selectedCol, digit);
-                if (digit !== 0 && isValidMove(selectedRow, selectedCol, digit)) {
+                if (digit !== 0 && !isWrong(selectedRow, selectedCol, digit)) {
                     eraseNeighborNotes(digit, selectedRow, selectedCol);
                 }
             }
