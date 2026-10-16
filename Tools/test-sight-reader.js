@@ -812,6 +812,12 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await options(() => pick('keyboard', 'violin'));
   const vn = await page.evaluate(() => ({ board: !!document.querySelector('.sr-fingerboard').offsetParent, cells: document.querySelectorAll('.sr-fingerboard .sr-cell').length }));
   log('the violin fingerboard has 4 strings of 15 positions', vn.board && vn.cells === 60, JSON.stringify(vn));
+  const shapes = { bass: [4, 16, 40], ukulele: [4, 13, 60], mandolin: [4, 16, 55], viola: [4, 15, 48], cello: [4, 15, 36], doublebass: [4, 15, 40] };
+  for (const [kind, [strings, positions, lowest]] of Object.entries(shapes)) {
+    await options(() => pick('keyboard', kind));
+    const b = await page.evaluate(() => ({ cells: document.querySelectorAll('.sr-fingerboard .sr-cell').length, low: Math.min(...[...document.querySelectorAll('.sr-fingerboard .sr-cell')].map(c => +c.getAttribute('data-midi'))) }));
+    log('the ' + kind + ' fingerboard has ' + strings + ' strings of ' + positions + ' positions, the lowest open string at ' + lowest, b.cells === strings * positions && b.low === lowest, JSON.stringify(b));
+  }
   await page.setInputFiles('.sr-file', wideFile);
   await page.waitForTimeout(800);
   await options(() => pick('keyboard', 'guitar'));

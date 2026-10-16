@@ -53,7 +53,6 @@
     /* The settings are the applet's own, kept in ~/.config/sight-reader.json
        (js/config.js), so they follow the reader wherever ~ does. */
     var SETTINGS = { revealAfter: 3, accidentals: true, sound: true, keyboard: 'piano', labels: 'c', lastScore: null };
-    var KEYBOARDS = ['piano', 'letters', 'guitar', 'violin'];
 
     var SAMPLES = '/content/scores/';
     var LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
@@ -166,9 +165,27 @@
     var BOARDS = {
         guitar: { title: 'Guitar', frets: 15, fretted: true, inlays: [3, 5, 7, 9, 12, 15], numbers: [1, 3, 5, 7, 9, 12, 15], wood: ['#5a3a22', '#3d2514'],
             strings: [[76, 1.0], [71, 1.3], [67, 1.7], [62, 2.4], [57, 3.0], [52, 3.6]] },
+        bass: { title: 'Bass guitar', frets: 15, fretted: true, inlays: [3, 5, 7, 9, 12, 15], numbers: [1, 3, 5, 7, 9, 12, 15], wood: ['#5a3a22', '#3d2514'],
+            strings: [[55, 2.4], [50, 3.0], [45, 3.6], [40, 4.2]] },
+        /* The ukulele's G string is higher than its C, but lies below it on the
+           neck, so the strings are in the order a player holds them. */
+        ukulele: { title: 'Ukulele', frets: 12, fretted: true, inlays: [5, 7, 10, 12], numbers: [1, 3, 5, 7, 10, 12], wood: ['#7a5232', '#5b3a20'],
+            strings: [[69, 1.3], [64, 1.6], [60, 2.1], [67, 1.4]] },
+        /* A mandolin's strings come in pairs; each pair is drawn as one. */
+        mandolin: { title: 'Mandolin', frets: 15, fretted: true, inlays: [3, 5, 7, 10, 12, 15], numbers: [1, 3, 5, 7, 10, 12, 15], wood: ['#4a2f1c', '#2f1d10'],
+            strings: [[76, 1.2], [69, 1.5], [62, 2.1], [55, 2.6]] },
         violin: { title: 'Violin', frets: 14, fretted: false, inlays: [], numbers: [], wood: ['#2a2623', '#14110f'],
-            strings: [[76, 1.0], [69, 1.5], [62, 2.0], [55, 2.6]] }
+            strings: [[76, 1.0], [69, 1.5], [62, 2.0], [55, 2.6]] },
+        viola: { title: 'Viola', frets: 14, fretted: false, inlays: [], numbers: [], wood: ['#2a2623', '#14110f'],
+            strings: [[69, 1.3], [62, 1.8], [55, 2.4], [48, 3.0]] },
+        cello: { title: 'Cello', frets: 14, fretted: false, inlays: [], numbers: [], wood: ['#2a2623', '#14110f'],
+            strings: [[57, 1.8], [50, 2.4], [43, 3.0], [36, 3.6]] },
+        /* The double bass and the bass guitar are written an octave above the
+           sound, like the guitar, so their open strings are the written E2 to G3. */
+        doublebass: { title: 'Double bass', frets: 14, fretted: false, inlays: [], numbers: [], wood: ['#2a2623', '#14110f'],
+            strings: [[55, 2.4], [50, 3.0], [45, 3.6], [40, 4.2]] }
     };
+    var KEYBOARDS = ['piano', 'letters'].concat(Object.keys(BOARDS));
     var NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     function boardRange(kind) {
         var b = BOARDS[kind], opens = b.strings.map(function (x) { return x[0]; });
@@ -179,7 +196,7 @@
        centred on its position, which has only a faint line. Each cell is a
        group holding its pitch in data-midi, a ring that lights, and its name. */
     function fingerboardMarkup(kind) {
-        var inst = BOARDS[kind], W = 1000, M = 64, S = kind === 'guitar' ? 30 : 38, top = 22, n = inst.frets, L = W - M - 10;
+        var inst = BOARDS[kind], W = 1000, M = 64, S = inst.strings.length > 4 ? 30 : 38, top = 22, n = inst.frets, L = W - M - 10;
         var H = top + (inst.strings.length - 1) * S + 40 + (inst.numbers.length ? 18 : 0);
         var x = function (f) { return M + L * (1 - Math.pow(2, -f / 12)) / (1 - Math.pow(2, -n / 12)); };
         var y = function (i) { return top + i * S; };
@@ -232,7 +249,7 @@
                 '<p>Sight Reader shows a score and puts a cursor on the first note. Name that note and the cursor moves on. A wrong answer flashes and the cursor stays where it is; after a few wrong tries the answer is shown, and any key goes on.</p>' +
                 '<ol class="sr-steps">' +
                   '<li><strong>Choose a score</strong> with Scores…, or drop a MusicXML file on the page.</li>' +
-                  '<li><strong>Answer</strong> on the piano, on a guitar or violin fingerboard, or with the letters A to G. Options chooses which.</li>' +
+                  '<li><strong>Answer</strong> on the piano, on a fingerboard (guitar, bass guitar, ukulele, mandolin, violin, viola, cello or double bass), or with the letters A to G. Options chooses which.</li>' +
                   '<li><strong>Choose what to read</strong> with Read…: one clef, or some of the parts of a score.</li>' +
                   '<li><strong>Practise a passage</strong> by giving a first and last bar, and tick Loop to go round again. Restart begins the piece again.</li>' +
                 '</ol>' +
