@@ -104,7 +104,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   const octFile = path.join(os.tmpdir(), 'sight-reader-octaves.musicxml');
   fs.writeFileSync(octFile, OCTAVES);
   /* Scrollbars are left showing, as a reader's browser has them: a headless browser hides them by default, and a scrollbar that takes room from a box is what a layout has to allow for. */
-  const browser = await chromium.launch(Object.assign({ ignoreDefaultArgs: ['--hide-scrollbars'] }, process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}));
+  const browser = await chromium.launch(Object.assign({ ignoreDefaultArgs: ['--hide-scrollbars'], args: process.env.HOST_MAP ? ['--host-resolver-rules=' + process.env.HOST_MAP] : [] }, process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}));
   const ctx = await browser.newContext({ viewport: { width: 1300, height: 900 } });
   const errors = [];
   let page = null;
