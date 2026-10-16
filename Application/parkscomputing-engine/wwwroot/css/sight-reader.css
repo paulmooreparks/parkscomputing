@@ -137,7 +137,7 @@ body:has(.pc-sight-reader-app) .post-body { flex: 1 1 auto; min-height: 0; displ
    marks' green, one the answer shows in red. */
 .sr-piano, .sr-letters, .sr-accidentals { }
 .sr-piano[hidden], .sr-letters[hidden], .sr-accidentals[hidden] { display: none; }
-/* All 88 keys. The board is as wide as the box unless that would make the white keys narrower than 1rem (1.9rem for a touch screen), and then it is wider than the box and the box scrolls sideways. */
+/* All 88 keys. The board is as wide as the box unless that would make the white keys narrower than 1rem, and then it is wider than the box and the box scrolls sideways. On a screen up to 900px wide, or a touch screen, the keys are at least 2.4rem, which is wide enough to touch, and the box scrolls. */
 .sr-piano {
   flex: 1 1 100%; min-width: 0; overflow-x: auto; overflow-y: hidden;
   user-select: none; -webkit-user-select: none; touch-action: pan-x pinch-zoom;
@@ -147,7 +147,8 @@ body:has(.pc-sight-reader-app) .post-body { flex: 1 1 auto; min-height: 0; displ
   width: max(100%, calc(52 * var(--sr-key-min, 1rem)));
 }
 @media (max-width: 560px) { .sr-board { height: 6.5rem; } }
-@media (pointer: coarse) { .sr-board { height: 8rem; --sr-key-min: 1.9rem; } }
+@media (max-width: 900px), (pointer: coarse) { .sr-board { --sr-key-min: 2.4rem; } }
+@media (pointer: coarse) { .sr-board { height: 8rem; } }
 
 .sr-key { appearance: none; margin: 0; padding: 0; font: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .sr-white {
@@ -185,4 +186,5 @@ body:has(.pc-sight-reader-app) .post-body { flex: 1 1 auto; min-height: 0; displ
 .sr-piece-title { font-size: 1rem; font-weight: 600; color: var(--text-muted); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* On its own page the applet is not held to the article column's width: the score and the keyboard take the room there is. */
+body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .site-main { max-width: none; }
 body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .post-content { max-width: none; margin-inline: 0; padding-inline: var(--space-4, 1rem); }

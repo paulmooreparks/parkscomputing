@@ -1,6 +1,6 @@
 
 /* Identity actions use PUDL's documented capability snapshots. */
-pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '15' });
+pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '16' });
 /* The Pin manager, reached from the Pins menu's Manage pins (js/pins.js). */
 pudlApplets.define('pins', { src: '/js/pins-manager.js', css: '/css/pins-manager.css', page: '/pins', ver: '2' });
 /* An article's discussion, under the article in both views and at
@@ -164,7 +164,7 @@ pudlApplets.define('settings', {
     src: '/js/settings.js',
     css: '/css/settings.css',
     page: pcWorkspacePages + 'settings',
-    ver: '15'
+    ver: '16'
 });
 
 /* The scanner shares the engine and layout library with the Barcode Tool. */
@@ -172,7 +172,7 @@ pudlApplets.define('barcode-scanner', {
     src: '/js/barcode-scanner.js',
     css: '/css/barcode-scanner.css',
     page: '/page/barcode-scanner',
-    ver: '15'
+    ver: '16'
 });
 
 pudlApplets.define('dice', {
@@ -188,7 +188,7 @@ pudlApplets.define('sight-reader', {
    src: '/js/sight-reader.js',
    css: '/css/sight-reader.css',
    page: '/page/sight-reader',
-   ver: '15'
+   ver: '16'
 });
 
 pudlApplets.define('theme-studio', {
