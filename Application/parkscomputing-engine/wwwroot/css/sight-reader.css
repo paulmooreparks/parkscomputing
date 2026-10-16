@@ -239,3 +239,11 @@ body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .post-content { max-width:
 /* Help's tabs are PUDL's tab look, switched by the applet, not by pudl-tabs.js, which would put the chosen panel's id in the page's address. */
 .sr-tabs.tabs > .tablist { display: flex; }
 .sr-tabs.tabs > [role="tabpanel"] { border-top: 0; margin-bottom: 0; }
+
+/* Play: the button and its speed together, and the notes sounding lit in blue on whichever instrument is shown. */
+.sr-play { display: inline-flex; align-items: center; gap: var(--space-1); }
+.sr-speed { width: auto; }
+.sr-key.sr-playing { background: #2f6fbf !important; border-color: #1d4f8f !important; }
+.sr-key.sr-playing .sr-key-label { color: #fff; }
+.sr-cell.sr-playing .sr-dot { fill: #2f6fbf; stroke: #9cc3f0; }
+.sr-note.sr-playing { background: #2f6fbf; border-color: #1d4f8f; color: #fff; }

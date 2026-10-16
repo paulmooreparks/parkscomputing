@@ -244,7 +244,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForSelector('.sr-help', { state: 'visible' });
   const tabsAt = () => page.evaluate(() => [...document.querySelectorAll('.sr-help [role="tab"]')].map(t => t.textContent + (t.getAttribute('aria-selected') === 'true' ? '*' : '')).join());
   log('Help opens on Getting started, with Answering and Clefs beside it', (await tabsAt()) === 'Getting started*,Answering,Clefs', await tabsAt());
-  log('Getting started has numbered steps that name the buttons', await page.evaluate(() => document.querySelectorAll('.sr-help .sr-panel:not([hidden]) .sr-steps li').length) === 4);
+  log('Getting started has numbered steps that name the buttons', await page.evaluate(() => document.querySelectorAll('.sr-help .sr-panel:not([hidden]) .sr-steps li').length) === 5);
   await page.click('.sr-help [data-tab="answer"]');
   log('the Answering tab is shown alone', (await tabsAt()) === 'Getting started,Answering*,Clefs' && /fingerboards/i.test(await page.textContent('.sr-help .sr-panel:not([hidden])')));
   await page.keyboard.press('ArrowRight');
@@ -497,6 +497,37 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('the filter keeps the parts that match', shown === 'violin', shown);
   await page.click('[data-sr="close-read"]');
   await page.focus('.pc-sight-reader');
+
+  // 6g. Play: the piece plays from the cursor, lighting its notes, and stops.
+  await page.goto(BASE + '/page/sight-reader?score=simple/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
+  await page.waitForTimeout(500);
+  await options(() => pick('keyboard', 'piano'));
+  await page.selectOption('[data-play-speed]', '1.5');
+  const startPos = (await info()).pos;
+  const tonesBefore = (await page.evaluate(() => window.__tones)).length;
+  await page.click('.sr-top [data-sr="play"]');
+  await page.waitForTimeout(1600);
+  const playingNow = await page.evaluate(() => ({ label: document.querySelector('[data-sr="play"]').textContent, lit: document.querySelectorAll('.sr-piano .sr-playing').length, tones: window.__tones.length }));
+  log('Play sounds the notes in turn, lights them in blue, and the button says Stop', playingNow.label === 'Stop' && playingNow.lit >= 1 && playingNow.tones - tonesBefore >= 3, JSON.stringify(playingNow));
+  await page.click('.sr-top [data-sr="play"]');
+  await page.waitForTimeout(300);
+  const stopped = await page.evaluate(() => ({ label: document.querySelector('[data-sr="play"]').textContent, lit: document.querySelectorAll('.sr-playing').length }));
+  i = await info();
+  log('Stop clears the lights and leaves the quiz where it was', stopped.label === 'Play' && stopped.lit === 0 && i.pos === startPos && i.tally === '', JSON.stringify(stopped) + ' ' + i.pos);
+  await page.click('.sr-top [data-sr="play"]');
+  await page.waitForTimeout(600);
+  await page.focus('.pc-sight-reader');
+  await type('e');
+  i = await info();
+  log('a key pressed while it plays stops it, and is not taken as an answer', (await page.textContent('[data-sr="play"]')) === 'Play' && i.pos === startPos, i.pos);
+  await options(() => pick('keyboard', 'guitar'));
+  await page.click('.sr-top [data-sr="play"]');
+  await page.waitForTimeout(500);
+  log('on a fingerboard every place the note lies is lit', (await page.evaluate(() => document.querySelectorAll('.sr-fingerboard .sr-playing').length)) >= 2);
+  await page.click('.sr-top [data-sr="play"]');
+  await options(() => pick('keyboard', 'letters'));
+  await page.selectOption('[data-play-speed]', '1');
 
   // 7. A reload mid-piece brings the sample back where it was.
   await open('/page/sight-reader?score=simple/Frere Jacques.musicxml');

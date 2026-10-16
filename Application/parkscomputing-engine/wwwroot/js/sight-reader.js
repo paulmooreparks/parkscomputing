@@ -52,7 +52,8 @@
 
     /* The settings are the applet's own, kept in ~/.config/sight-reader.json
        (js/config.js), so they follow the reader wherever ~ does. */
-    var SETTINGS = { revealAfter: 3, accidentals: true, sound: true, keyboard: 'piano', labels: 'c', lastScore: null };
+    var SETTINGS = { revealAfter: 3, accidentals: true, sound: true, keyboard: 'piano', labels: 'c', playSpeed: 1, lastScore: null };
+    var SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
 
     var SAMPLES = '/content/scores/';
     var LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
@@ -251,6 +252,7 @@
                   '<li><strong>Choose a score</strong> with Scores…, or drop a MusicXML file on the page.</li>' +
                   '<li><strong>Answer</strong> on the piano, on a fingerboard (guitar, bass guitar, ukulele, mandolin, violin, viola, cello or double bass), or with the letters A to G. Options chooses which.</li>' +
                   '<li><strong>Choose what to read</strong> with Read…: one clef, or some of the parts of a score.</li>' +
+                  '<li><strong>Listen and watch</strong> with Play: the piece plays at the speed beside it, from where the cursor is, and its notes light on your instrument. A press of any key stops it.</li>' +
                   '<li><strong>Practise a passage</strong> by giving a first and last bar, and tick Loop to go round again. Restart begins the piece again.</li>' +
                 '</ol>' +
                 '<p class="sr-muted">Scores are MusicXML files, compressed (.mxl) or not. Notation programs such as MuseScore export them, and MuseScore.com offers them as downloads. A piece that exists only as a PDF has to be converted first: MuseScore 4 can import a PDF, and Audiveris is a free program that reads one.</p>',
@@ -326,6 +328,10 @@
               '<button type="button" class="btn" data-sr="read" title="Choose the clefs and parts to read" disabled>Read…</button>' +
               '<button type="button" class="btn" data-sr="options">Options…</button>' +
               '<button type="button" class="btn" data-sr="restart" title="Start the piece again from the beginning">Restart</button>' +
+              '<span class="sr-play" role="group" aria-label="Play">' +
+                '<button type="button" class="btn" data-sr="play" title="Play the piece from here, and show its notes on the instrument" disabled>Play</button>' +
+                '<span class="form-select-wrap"><select class="form-select sr-speed" data-play-speed aria-label="Speed" title="How fast Play goes, against the score\'s tempo">' + SPEEDS.map(function (v) { return '<option value="' + v + '">' + Math.round(v * 100) + '%</option>'; }).join('') + '</select></span>' +
+              '</span>' +
               '<span class="sr-range" role="group" aria-label="Bars to practise">' +
               '<span>Bars</span>' +
               '<input type="number" min="1" step="1" class="form-input sr-bar" data-bar="from" placeholder="first" aria-label="First bar to practise" title="Start at this bar. Leave empty to start at the beginning." />' +
@@ -510,6 +516,7 @@
             showKeyboard();
             showRestart();
             syncRead();
+            showPlay();
         }
 
         /* Restart is there once a score is open, and is the button to press at
@@ -640,8 +647,9 @@
             return (p.Octave + OS.Pitch.OctaveXmlDifference + 1) * 12 + SEMITONE[OS.Pitch.getNoteEnumString(p.FundamentalNote)] + p.AccidentalHalfTones;
         }
         function frequencyOf(n) { return 440 * Math.pow(2, (midiOf(n) - 69) / 12); }
-        function play(notes) {
+        function play(notes, seconds) {
             if (!settings.sound || !notes.length) { return; }
+            var ring = seconds ? Math.min(Math.max(seconds * 0.9, 0.12), 1.1) : 1.1;
             try {
                 var Ctx = window.AudioContext || window.webkitAudioContext;
                 if (!Ctx) { return; }
@@ -654,11 +662,11 @@
                     osc.frequency.value = frequencyOf(s.note);
                     gain.gain.setValueAtTime(0.0001, t0);
                     gain.gain.exponentialRampToValueAtTime(level, t0 + 0.01);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.1);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + ring);
                     osc.connect(gain);
                     gain.connect(audio.destination);
                     osc.start(t0);
-                    osc.stop(t0 + 1.15);
+                    osc.stop(t0 + ring + 0.05);
                 });
             } catch (err) { /* A browser with no sound still quizzes. */ }
         }
@@ -742,7 +750,12 @@
                         nat: (oct + 1) * 12 + SEMITONE[OS.Pitch.getNoteEnumString(n.Pitch.FundamentalNote)], state: ''
                     });
                 });
-                if (found.length) { steps.push({ adv: adv, measure: measure.MeasureNumber, notes: found, result: '' }); }
+                if (found.length) {
+                    /* When the step sounds, in whole notes from the start (repeats
+                       played out), and how long its longest note lasts, for Play. */
+                    var at = it.CurrentEnrolledTimestamp.RealValue, len = Math.max.apply(null, found.map(function (x) { return x.note.Length.RealValue; }));
+                    steps.push({ adv: adv, measure: measure.MeasureNumber, notes: found, result: '', at: at, len: len });
+                }
                 it.moveToNext();
                 adv++;
             }
@@ -897,6 +910,7 @@
         /* A letter, with the sharp or flat waiting for it when sharps and flats
            are named: the note is named as it is spelled. */
         function answer(letter) {
+            if (playing) { stopPlay(); return; }
             if (!ready()) { return; }
             if (revealed) { advance(); return; }
             var key = settings.accidentals ? letter + accKey(pendingAlter) : letter;
@@ -921,6 +935,7 @@
            for it any octave will do. A key of the right note in the wrong octave
            says so. */
         function answerPiano(button) {
+            if (playing) { stopPlay(); return; }
             if (!ready()) { return; }
             if (revealed) { advance(); return; }
             var midi = +button.getAttribute('data-midi'), pc = midi % 12;
@@ -953,7 +968,73 @@
         }
         function clearPending() { if (pendingAlter) { pendingAlter = 0; showPending(); } }
 
+        /* === Play ================================================================= */
+
+        /* Play walks the steps in time from where the cursor is, within the bars
+           chosen and round again with Loop, moving the cursor, lighting each
+           step's notes on the instrument in blue, and sounding them when sound
+           is on. It takes the score's opening tempo, scaled by the speed beside
+           the button; a tempo change later in the score is not followed. The
+           quiz is left as it was, and the cursor goes back to it at the end. */
+        var playing = null;
+        function tempo() { var t = osmd && osmd.Sheet && osmd.Sheet.DefaultStartTempoInBpm; return t > 0 ? t : 100; }
+        function speed() { return SPEEDS.indexOf(+settings.playSpeed) >= 0 ? +settings.playSpeed : 1; }
+        function clearPlaying() {
+            [].slice.call(root.querySelectorAll('.sr-playing')).forEach(function (k) { k.classList.remove('sr-playing'); });
+        }
+        function lightPlaying(step) {
+            clearPlaying();
+            step.notes.forEach(function (n) {
+                if (!el.board.hidden) {
+                    boardCells.forEach(function (c) { if (+c.getAttribute('data-midi') === n.midi) { c.classList.add('sr-playing'); } });
+                } else if (!el.piano.hidden) {
+                    keyFor(n.midi).classList.add('sr-playing');
+                } else {
+                    var b = el.letters.querySelector('[data-note="' + n.key.charAt(0) + '"]');
+                    if (b) { b.classList.add('sr-playing'); }
+                }
+            });
+        }
+        function showPlay() {
+            var b = q('[data-sr="play"]');
+            b.disabled = !score || !steps.length;
+            b.textContent = playing ? 'Stop' : 'Play';
+            b.setAttribute('aria-pressed', String(!!playing));
+            q('[data-play-speed]').value = String(speed());
+        }
+        function startPlay() {
+            if (!score || !steps.length || playing) { return; }
+            var s = span();
+            playing = { k: cur >= s.lo && cur <= s.hi && !finished ? cur : s.lo, timer: null };
+            showPlay();
+            playStep();
+        }
+        function playStep() {
+            if (!playing || destroyed) { return; }
+            var s = span(), k = playing.k, step = steps[k], wholeMs = 240000 / (tempo() * speed());
+            var next = k + 1 <= s.hi ? steps[k + 1] : null;
+            var gap = next && next.at > step.at ? next.at - step.at : step.len || 0.25;
+            moveTo(k);
+            lightPlaying(step);
+            play(step.notes, step.len * wholeMs / 1000);
+            playing.timer = setTimeout(function () {
+                if (!playing) { return; }
+                if (next) { playing.k = k + 1; playStep(); }
+                else if (looping) { playing.k = s.lo; playStep(); }
+                else { stopPlay(); }
+            }, Math.max(60, gap * wholeMs));
+        }
+        function stopPlay() {
+            if (!playing) { return; }
+            clearTimeout(playing.timer);
+            playing = null;
+            clearPlaying();
+            if (score && cur >= 0 && cur < steps.length) { moveTo(cur); }
+            showPlay();
+        }
+
         function restart() {
+            stopPlay();
             if (!score || !steps.length) { return; }
             finished = false;
             tally = { first: 0, retried: 0, missed: 0 };
@@ -999,6 +1080,7 @@
            folder, or { name, file } for a file from the reader's device. A
            restored game brings back how far it had got. */
         function openScore(src, again) {
+            stopPlay();
             if (src.rel && !validRel(src.rel)) { say('That is not a score this applet can open.', 'danger'); return Promise.resolve(); }
             var id = ++loadId;
             say('Opening ' + src.name + '…', '');
@@ -1294,6 +1376,7 @@
             switch (act.getAttribute('data-sr')) {
                 case 'choose': openChooser(); break;
                 case 'options': showOptions(); break;
+                case 'play': if (playing) { stopPlay(); } else { startPlay(); } root.focus({ preventScroll: true }); break;
                 case 'read': openRead(); break;
                 case 'close-read': el.read.close(); root.focus({ preventScroll: true }); break;
                 case 'parts-all': allParts(); break;
@@ -1311,6 +1394,7 @@
             var t = e.target;
             if (t.hasAttribute('data-bar') || t.hasAttribute('data-loop')) { onRange(t); return; }
             if (t.hasAttribute('data-part') && el.readBody.contains(t)) { onPartChange(t); return; }
+            if (t.hasAttribute('data-play-speed')) { saveSetting({ playSpeed: SPEEDS.indexOf(+t.value) >= 0 ? +t.value : 1 }); return; }
             if (t.tagName === 'SELECT' && t.getAttribute('data-opt') === 'keyboard' && el.options.contains(t)) {
                 saveSetting({ keyboard: KEYBOARDS.indexOf(t.value) >= 0 ? t.value : 'piano' });
                 showKeyboard();
@@ -1431,6 +1515,7 @@
                     ] },
                     { label: 'Practice', items: [
                         { label: 'Restart', disabled: !open, run: restart },
+                        { label: playing ? 'Stop playing' : 'Play', disabled: !open || !steps.length, run: function () { if (playing) { stopPlay(); } else { startPlay(); } } },
                         { label: 'Show the answer', disabled: !open || finished || revealed || cur < 0, run: function () { if (!revealed && !finished && cur >= 0) { reveal(); root.focus({ preventScroll: true }); } } },
                         '-',
                         { label: 'Options…', run: showOptions }
@@ -1479,6 +1564,7 @@
             },
             menus: menus,
             destroy: function () {
+                stopPlay();
                 destroyed = true;
                 if (pieceTitle) { pieceTitle.remove(); heading.classList.remove('sr-heading'); }
                 document.removeEventListener('keydown', onTab, true);
