@@ -11,7 +11,10 @@
    The reader names a note by its letter, with the keys A to G or the
    buttons under the score, and the cursor moves on once every note of the
    step is named. A wrong letter marks an error and the cursor stays. After
-   a number of wrong tries the answer is shown, and any key goes on. */
+   a number of wrong tries the answer is shown, and any key goes on. With
+   Name sharps and flats on, a note's sharp or flat is named too, by a key
+   or button pressed before its letter. The reader chooses which clefs and
+   parts to read, and a right answer can sound the note. */
 (function () {
     'use strict';
 
@@ -49,15 +52,26 @@
 
     /* The settings are the applet's own, kept in ~/.config/sight-reader.json
        (js/config.js), so they follow the reader wherever ~ does. */
-    var SETTINGS = { revealAfter: 3 };
-    var REVEAL_CHOICES = [[0, 'Never show the answer'], [1, 'After 1 wrong try'], [2, 'After 2 wrong tries'], [3, 'After 3 wrong tries'], [5, 'After 5 wrong tries']];
+    var SETTINGS = { revealAfter: 3, accidentals: false, sound: true };
+    var REVEAL_CHOICES = [[0, 'Never'], [1, 'After 1 wrong try'], [2, 'After 2 wrong tries'], [3, 'After 3 wrong tries'], [5, 'After 5 wrong tries']];
 
     var SAMPLES = '/content/scores/';
     var LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+    var SEMITONE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
     /* The marks drawn on the score: right in green, a missed note in red,
        on the white page the score is always drawn on. */
     var GREEN = '#2e7d32', RED = '#b42318';
     var MARK = { applyToNoteheads: true, applyToStem: true, applyToFlag: true };
+
+    /* A clef by its sign and line, as OpenSheetMusicDisplay documents them
+       (ClefEnum: G 0, F 1, C 2, percussion 3, TAB 4). A clef an octave up or
+       down, as a guitar's treble clef is, is the same clef here. */
+    var CLEF_NAMES = { '01': 'French violin', '02': 'Treble', '21': 'Soprano', '22': 'Mezzo-soprano', '23': 'Alto', '24': 'Tenor', '25': 'Baritone', '13': 'Baritone', '14': 'Bass', '15': 'Subbass' };
+    function clefName(ins) {
+        var type = ins.ClefType, line = ins.Line;
+        return CLEF_NAMES[type + '' + line] || (type === 0 ? 'G clef' : type === 1 ? 'F clef' : 'C clef') + ' on line ' + line;
+    }
+    function isClef(ins) { return ins && ins.ClefType !== undefined && ins.Line !== undefined; }
 
     function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
     /* A path from a link or the snapshot is taken only if it is a relative path to
@@ -66,6 +80,12 @@
         return typeof rel === 'string' && /\.(mxl|musicxml|xml)$/i.test(rel) && rel.split('/').every(function (p) { return p && p !== '.' && p !== '..'; });
     }
     function sampleUrl(file) { return SAMPLES + String(file).split('/').map(encodeURIComponent).join('/'); }
+
+    /* A note's accidental as the key it is answered by, "#" or "bb", and as
+       the reader sees it. */
+    function accKey(alter) { return alter > 0 ? new Array(alter + 1).join('#') : alter < 0 ? new Array(-alter + 1).join('b') : ''; }
+    function accShown(alter) { return alter > 0 ? new Array(alter + 1).join('♯') : alter < 0 ? new Array(-alter + 1).join('♭') : ''; }
+    function nameOf(key) { return key.charAt(0) + accShown(key.length > 1 ? (key.charAt(1) === '#' ? key.length - 1 : 1 - key.length) : 0); }
 
     /* A score's bytes as what OpenSheetMusicDisplay loads: compressed
        MusicXML (a zip, which starts with PK) as a binary string, and plain
@@ -83,20 +103,26 @@
         return new TextDecoder('utf-8').decode(bytes.subarray(start));
     }
 
+    var instances = 0;
+
     function init(root, opts) {
         opts = opts || {};
+        var uid = ++instances;
         var ownUrl = !!opts.ownsUrl;
         var destroyed = false;
-        var OS = null, osmd = null;
+        var OS = null, osmd = null, audio = null;
         var settings = Object.assign({}, SETTINGS), unConfig = null;
 
         /* The score open: where it came from, its steps, and how far the
            reader has got. A step is { adv, measure, notes, result }, where
            adv is how many times the cursor's iterator moves on from the
-           start to reach it, and a note is { note, letter, state }. */
-        var score = null;
+           start to reach it, and a note is { note, key, state }. info says
+           what the score holds to choose from, its clefs and parts with the
+           number of notes in each, and chosen what the reader chose; null
+           for all of them. */
+        var score = null, info = null, chosen = { clefs: null, parts: null };
         var steps = [], cur = -1, curAdv = 0;
-        var named = {}, tries = 0, revealed = false, finished = false;
+        var named = {}, tries = 0, revealed = false, finished = false, pendingAlter = 0;
         var tally = { first: 0, retried: 0, missed: 0 };
         var pending = null, loadId = 0, needsDraw = false, resizeTimer = null, flashTimer = null, narrow = false, lastWidth = 0;
 
@@ -106,6 +132,7 @@
         root.innerHTML =
             '<div class="sr-top">' +
               '<button type="button" class="btn" data-sr="choose">Scores…</button>' +
+              '<button type="button" class="btn" data-sr="options">Options…</button>' +
               '<span class="sr-title" data-role="title"></span>' +
             '</div>' +
             '<div class="sr-score" data-role="score">' +
@@ -117,26 +144,49 @@
             '</div>' +
             '<div class="sr-info">' +
               '<span class="sr-pos" data-role="pos"></span>' +
+              '<span class="sr-pending" data-role="pending" hidden></span>' +
               '<span class="badge sr-feedback" data-role="feedback" role="status" aria-live="polite"></span>' +
               '<span class="sr-tally" data-role="tally"></span>' +
             '</div>' +
             '<div class="sr-keys" role="group" aria-label="Note names">' +
-              LETTERS.map(function (l) { return '<button type="button" class="btn sr-note" data-note="' + l + '" aria-label="' + l + '">' + l + '</button>'; }).join('') +
+              '<div class="sr-letters">' +
+                LETTERS.map(function (l) { return '<button type="button" class="btn sr-note" data-note="' + l + '" aria-label="' + l + '">' + l + '</button>'; }).join('') +
+              '</div>' +
+              '<div class="sr-accidentals" role="group" aria-label="Sharp and flat">' +
+                '<button type="button" class="btn sr-acc" data-acc="1" aria-label="Sharp" aria-pressed="false" title="Sharp: press before the letter (# or =)">♯</button>' +
+                '<button type="button" class="btn sr-acc" data-acc="-1" aria-label="Flat" aria-pressed="false" title="Flat: press before the letter (-)">♭</button>' +
+              '</div>' +
             '</div>' +
             '<input type="file" class="sr-file" accept=".mxl,.musicxml,.xml" hidden />' +
-            '<dialog class="dialog sr-dialog" data-role="chooser" aria-labelledby="sr-choose-title">' +
-              '<h3 class="dialog-title" id="sr-choose-title">Choose a score</h3>' +
+            '<dialog class="dialog sr-dialog" data-role="chooser" aria-labelledby="sr-choose-title-' + uid + '">' +
+              '<h3 class="dialog-title" id="sr-choose-title-' + uid + '">Choose a score</h3>' +
               '<div class="dialog-body" data-role="chooser-body"></div>' +
               '<div class="dialog-actions">' +
                 '<button type="button" class="btn" data-sr="file">From this device…</button>' +
                 '<button type="button" class="btn btn-primary" data-sr="close-chooser">Close</button>' +
               '</div>' +
             '</dialog>' +
-            '<dialog class="dialog sr-dialog" data-role="help" aria-labelledby="sr-help-title">' +
-              '<h3 class="dialog-title" id="sr-help-title">About Sight Reader</h3>' +
+            '<dialog class="dialog sr-dialog" data-role="options" aria-labelledby="sr-opt-title-' + uid + '">' +
+              '<h3 class="dialog-title" id="sr-opt-title-' + uid + '">Options</h3>' +
+              '<div class="dialog-body sr-options">' +
+                '<div class="form-group">' +
+                  '<label class="form-label" for="sr-reveal-' + uid + '">Show the answer</label>' +
+                  '<span class="form-select-wrap"><select class="form-select" id="sr-reveal-' + uid + '" data-opt="revealAfter">' +
+                    REVEAL_CHOICES.map(function (c) { return '<option value="' + c[0] + '">' + c[1] + '</option>'; }).join('') +
+                  '</select></span>' +
+                '</div>' +
+                '<label class="check"><input type="checkbox" data-opt="accidentals" /> Name sharps and flats</label>' +
+                '<label class="check"><input type="checkbox" data-opt="sound" /> Play each note I get right</label>' +
+                '<div data-role="scope"></div>' +
+              '</div>' +
+              '<div class="dialog-actions"><button type="button" class="btn btn-primary" data-sr="close-options">Close</button></div>' +
+            '</dialog>' +
+            '<dialog class="dialog sr-dialog" data-role="help" aria-labelledby="sr-help-title-' + uid + '">' +
+              '<h3 class="dialog-title" id="sr-help-title-' + uid + '">About Sight Reader</h3>' +
               '<div class="dialog-body sr-help">' +
                 '<p>Sight Reader helps you learn to read music from a piece you are working on. A cursor sits on the first note. Type its letter, A to G, or press its button. When you are right the cursor moves to the next note, and for an interval or a chord you name every note in it first. A wrong letter marks an error and the cursor stays where it is. Rests are skipped.</p>' +
-                '<p>The Practice menu sets how many wrong tries it takes before the answer is shown, and Restart starts the piece again. Octaves, sharps and flats are not asked for yet.</p>' +
+                '<p>Options sets how many wrong tries it takes before the answer is shown, whether a right note is played, and which clefs and parts of the score to read. Restart, in the Practice menu, starts the piece again.</p>' +
+                '<p>With Name sharps and flats on, a note is named with its sharp or flat as well, as the key signature and the bar make it: an F in G major is F sharp. Press the sharp (# or =) or flat (-) key, or its button, before the letter, twice for a double. Escape drops it. A natural is just the letter. Octaves are not asked for yet.</p>' +
                 '<p>Scores are MusicXML files, compressed (.mxl) or not. Notation programs such as MuseScore export them, and MuseScore.com offers them as downloads. A piece that exists only as a PDF has to be converted first: MuseScore 4 can import a PDF, and Audiveris is a free program that reads one.</p>' +
               '</div>' +
               '<div class="dialog-actions"><button type="button" class="btn btn-primary" data-sr="close-help">Close</button></div>' +
@@ -145,10 +195,12 @@
         var q = function (sel) { return root.querySelector(sel); };
         var el = {
             title: q('[data-role="title"]'), score: q('[data-role="score"]'), sheet: q('[data-role="sheet"]'),
-            empty: q('[data-role="empty"]'), pos: q('[data-role="pos"]'), feedback: q('[data-role="feedback"]'),
-            tally: q('[data-role="tally"]'), file: q('.sr-file'), chooser: q('[data-role="chooser"]'),
-            chooserBody: q('[data-role="chooser-body"]'), help: q('[data-role="help"]')
+            empty: q('[data-role="empty"]'), pos: q('[data-role="pos"]'), pendingMark: q('[data-role="pending"]'),
+            feedback: q('[data-role="feedback"]'), tally: q('[data-role="tally"]'), file: q('.sr-file'),
+            chooser: q('[data-role="chooser"]'), chooserBody: q('[data-role="chooser-body"]'),
+            options: q('[data-role="options"]'), scope: q('[data-role="scope"]'), help: q('[data-role="help"]')
         };
+        var sharpButton = q('[data-acc="1"]'), flatButton = q('[data-acc="-1"]');
 
         /* === What the reader sees =========================================== */
 
@@ -162,7 +214,8 @@
 
         function showPos() {
             if (!score || !steps.length || cur < 0) { el.pos.textContent = ''; return; }
-            el.pos.textContent = 'Bar ' + steps[Math.min(cur, steps.length - 1)].measure + ' · ' + (Math.min(cur, steps.length - 1) + 1) + ' of ' + steps.length;
+            var k = Math.min(cur, steps.length - 1);
+            el.pos.textContent = 'Bar ' + steps[k].measure + ' · ' + (k + 1) + ' of ' + steps.length;
         }
 
         function showTally() {
@@ -170,11 +223,26 @@
             el.tally.textContent = done ? tally.first + ' right first time' + (tally.retried ? ', ' + tally.retried + ' after a retry' : '') + (tally.missed ? ', ' + tally.missed + ' missed' : '') : '';
         }
 
+        /* A sharp or flat waiting for its letter shows beside the position,
+           and its button stays pressed. The buttons are there to be found,
+           and only work with Name sharps and flats on. */
+        function showPending() {
+            el.pendingMark.hidden = !pendingAlter;
+            el.pendingMark.textContent = accShown(pendingAlter);
+            sharpButton.setAttribute('aria-pressed', String(pendingAlter > 0));
+            flatButton.setAttribute('aria-pressed', String(pendingAlter < 0));
+            var off = settings.accidentals ? '' : '. Turn on Name sharps and flats in Options';
+            sharpButton.disabled = flatButton.disabled = !settings.accidentals;
+            sharpButton.title = 'Sharp: press before the letter (# or =)' + off;
+            flatButton.title = 'Flat: press before the letter (-)' + off;
+        }
+
         function refresh() {
             el.empty.hidden = !!score;
             el.title.textContent = score ? score.name : '';
             showPos();
             showTally();
+            showPending();
         }
 
         /* The cursor flashes red for a wrong letter; the shake is left out
@@ -200,6 +268,39 @@
             }
         }
 
+        /* === Sound ============================================================ */
+
+        /* The note as a short plucked tone, at the pitch it is written at,
+           from the octave, letter and accidental of its pitch. A part for a
+           transposing instrument sounds at its written pitch here. */
+        function frequencyOf(n) {
+            var p = n.Pitch;
+            var midi = (p.Octave + OS.Pitch.OctaveXmlDifference + 1) * 12 + SEMITONE[OS.Pitch.getNoteEnumString(p.FundamentalNote)] + p.AccidentalHalfTones;
+            return 440 * Math.pow(2, (midi - 69) / 12);
+        }
+        function play(notes) {
+            if (!settings.sound || !notes.length) { return; }
+            try {
+                var Ctx = window.AudioContext || window.webkitAudioContext;
+                if (!Ctx) { return; }
+                if (!audio) { audio = new Ctx(); }
+                if (audio.state === 'suspended') { audio.resume(); }
+                var t0 = audio.currentTime, level = 0.22 / Math.sqrt(notes.length);
+                notes.forEach(function (s) {
+                    var osc = audio.createOscillator(), gain = audio.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.value = frequencyOf(s.note);
+                    gain.gain.setValueAtTime(0.0001, t0);
+                    gain.gain.exponentialRampToValueAtTime(level, t0 + 0.01);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.1);
+                    osc.connect(gain);
+                    gain.connect(audio.destination);
+                    osc.start(t0);
+                    osc.stop(t0 + 1.15);
+                });
+            } catch (err) { /* A browser with no sound still quizzes. */ }
+        }
+
         /* === Drawing the score ================================================ */
 
         function draw() {
@@ -215,27 +316,62 @@
             return true;
         }
 
-        /* A note counts as a step's note when it is pitched, new and not a
-           grace note. Which staves, clefs and parts the reader chose will
-           narrow this further. */
-        function counts(n) {
+        /* Whether a note is one the quiz could ask for: pitched, new, not a
+           grace note, and not on a tablature staff, which only repeats the
+           notes of the staff above it. */
+        function readable(n) {
             if (n.isRest() || n.IsGraceNote || !n.Pitch) { return false; }
             if (n.NoteTie && n.NoteTie.StartNote !== n) { return false; }
-            return true;
+            return !n.ParentStaff.isTab;
         }
-        function keyOf(n) { return OS.Pitch.getNoteEnumString(n.Pitch.FundamentalNote); }
+        function keyOf(n) {
+            var letter = OS.Pitch.getNoteEnumString(n.Pitch.FundamentalNote);
+            return settings.accidentals ? letter + accKey(n.Pitch.AccidentalHalfTones) : letter;
+        }
 
         /* Walks the whole score once, noting each step. The iterator moves
-           without drawing, and the cursor goes back to the start after. */
+           without drawing, and the cursor goes back to the start after. The
+           clef in effect on each staff is followed through the score's clef
+           instructions, at the start of each bar and within it, so a hand
+           that moves into another clef counts as that clef while it is
+           there. The first walk also notes what there is to choose from. */
         function build() {
+            var first = !info, instruments = osmd.Sheet.Instruments;
+            if (first) { info = { clefs: {}, parts: instruments.map(function (i, n) { return { name: i.Name || 'Part ' + (n + 1), count: 0 }; }) }; }
             steps = [];
+            /* A bar's lists of instructions, which hold one entry for each staff
+               of the score in order, instrument by instrument: those that open
+               the bar, and those that close it, where a clef change at the
+               barline is filed with the bar before. A clef met on the way
+               stands for its staff until the next. */
+            var staves = [].concat.apply([], instruments.map(function (i) { return i.Staves; }));
+            var clefAt = [], lastMeasure = null;
+            function takeAt(entry, idx) {
+                if (!entry) { return; }
+                (entry.Instructions || []).forEach(function (ins) { if (isClef(ins)) { clefAt[idx] = clefName(ins); } });
+            }
             var cursor = osmd.cursor;
             cursor.reset();
             var it = cursor.Iterator, adv = 0;
             while (!it.EndReached) {
+                var measure = it.CurrentMeasure;
+                if (measure !== lastMeasure) {
+                    if (lastMeasure) { (lastMeasure.LastInstructionsStaffEntries || []).forEach(takeAt); }
+                    (measure.FirstInstructionsStaffEntries || []).forEach(takeAt);
+                    lastMeasure = measure;
+                }
                 var found = [];
-                cursor.NotesUnderCursor().forEach(function (n) { if (counts(n)) { found.push({ note: n, key: keyOf(n), state: '' }); } });
-                if (found.length) { steps.push({ adv: adv, measure: it.CurrentMeasure.MeasureNumber, notes: found, result: '' }); }
+                cursor.NotesUnderCursor().forEach(function (n) {
+                    if (!readable(n)) { return; }
+                    var staff = staves.indexOf(n.ParentStaff);
+                    if (n.ParentStaffEntry) { takeAt(n.ParentStaffEntry, staff); }
+                    var clef = clefAt[staff] || 'Treble', part = instruments.indexOf(n.ParentStaff.ParentInstrument);
+                    if (first) { info.clefs[clef] = (info.clefs[clef] || 0) + 1; if (info.parts[part]) { info.parts[part].count++; } }
+                    if (chosen.clefs && !chosen.clefs[clef]) { return; }
+                    if (chosen.parts && !chosen.parts[part]) { return; }
+                    found.push({ note: n, key: keyOf(n), state: '' });
+                });
+                if (found.length) { steps.push({ adv: adv, measure: measure.MeasureNumber, notes: found, result: '' }); }
                 it.moveToNext();
                 adv++;
             }
@@ -276,25 +412,26 @@
 
         /* === The quiz ======================================================== */
 
-        function begin(k) {
-            cur = k;
-            named = {};
-            tries = 0;
-            revealed = false;
-            moveTo(k);
-            showPos();
-            say(steps[k].notes.length > 1 && distinct(steps[k]).length > 1 ? 'Name every note of the ' + (distinct(steps[k]).length === 2 ? 'interval' : 'chord') : '', '');
-        }
-
         function distinct(step) {
             var seen = {};
             step.notes.forEach(function (s) { seen[s.key] = true; });
             return Object.keys(seen).sort();
         }
 
+        function begin(k) {
+            cur = k;
+            named = {};
+            tries = 0;
+            revealed = false;
+            clearPending();
+            moveTo(k);
+            showPos();
+            var n = distinct(steps[k]).length;
+            say(n > 1 ? 'Name every note of the ' + (n === 2 ? 'interval' : 'chord') : '', '');
+        }
+
         function conclude(result) {
-            var step = steps[cur];
-            step.result = result;
+            steps[cur].result = result;
             if (result === 'first') { tally.first++; } else if (result === 'retried') { tally.retried++; } else { tally.missed++; }
             showTally();
         }
@@ -322,33 +459,55 @@
             paintHere(cur);
             revealed = true;
             conclude('missed');
-            say('The answer is ' + missing.join(', ') + '. Press any key to go on.', 'warn');
+            say('The answer is ' + missing.map(nameOf).join(', ') + '. Press any key to go on.', 'warn');
         }
 
         function answer(letter) {
             if (!score || cur < 0 || finished || !steps.length) { return; }
             if (revealed) { advance(); return; }
-            var step = steps[cur], key = letter;
+            var step = steps[cur], key = settings.accidentals ? letter + accKey(pendingAlter) : letter;
+            clearPending();
             if (distinct(step).indexOf(key) < 0) { wrong(); return; }
             if (named[key]) { return; }
             named[key] = true;
-            step.notes.forEach(function (s) { if (s.key === key) { s.state = 'ok'; } });
+            var hit = step.notes.filter(function (s) { return s.key === key; });
+            hit.forEach(function (s) { s.state = 'ok'; });
             paintHere(cur);
+            play(hit);
             var left = distinct(step).filter(function (k) { return !named[k]; });
             if (left.length) { say('Right. ' + left.length + ' more to name', 'positive'); return; }
             conclude(tries ? 'retried' : 'first');
             advance();
         }
 
+        /* A sharp or flat typed or pressed before its letter. Pressing the
+           other kind takes one back, so a flat pressed by mistake is undone by
+           a sharp. */
+        function bump(d) {
+            if (!settings.accidentals) { say('Turn on Name sharps and flats in Options to answer with them.', 'warn'); return; }
+            pendingAlter = Math.max(-2, Math.min(2, pendingAlter + d));
+            showPending();
+        }
+        function clearPending() { if (pendingAlter) { pendingAlter = 0; showPending(); } }
+
         function restart() {
-            if (!score) { return; }
+            if (!score || !steps.length) { return; }
             finished = false;
             tally = { first: 0, retried: 0, missed: 0 };
             steps.forEach(function (s) { s.result = ''; s.notes.forEach(function (n) { n.state = ''; }); });
             if (draw()) { begin(0); }
-            say('', '');
             refresh();
             keepSnapshot();
+        }
+
+        /* A change to what is read, or to how a note is named, starts the
+           piece again from its steps as they are now. */
+        function rebuild() {
+            if (!score || !osmd) { return; }
+            if (needsDraw && !el.score.clientWidth) { return; }
+            build();
+            if (!steps.length) { cur = -1; say('Nothing in the clefs and parts chosen has notes to read.', 'warn'); refresh(); return; }
+            restart();
         }
 
         /* === Opening a score ==================================================== */
@@ -381,14 +540,19 @@
                 return osmd.load(contentOf(got[1])).then(function () {
                     if (destroyed || id !== loadId) { return; }
                     score = src;
+                    info = null;
+                    chosen = { clefs: null, parts: null };
                     finished = false;
                     tally = { first: 0, retried: 0, missed: 0 };
                     cur = -1;
                     if (!draw()) { pending = again || null; say('', ''); refresh(); return; }
                     build();
-                    if (!steps.length) { say('This score has no notes to read.', 'warn'); refresh(); return; }
+                    if (again && again.cs) { chosen.clefs = setOf(again.cs); build(); }
+                    if (again && again.ps) { chosen.parts = setOf(again.ps); build(); }
+                    if (!steps.length) { say('This score has no notes to read.', 'warn'); refresh(); renderScope(); return; }
                     if (again) { restoreProgress(again); } else { begin(0); }
                     refresh();
+                    renderScope();
                     announce();
                     keepSnapshot();
                     if (ownUrl || root.closest('.win.active')) { root.focus({ preventScroll: true }); }
@@ -399,7 +563,9 @@
             });
         }
 
-        /* === Choosing a score ==================================================== */
+        function setOf(list) { var s = {}; (list || []).forEach(function (k) { s[k] = true; }); return s; }
+
+        /* === Choosing a score, and what to read ================================== */
 
         function openChooser() {
             el.chooserBody.innerHTML = '<p class="sr-muted">Looking for scores…</p>';
@@ -414,6 +580,52 @@
                         }).join('') + '</ul></section>';
                 }).join('') : '<p class="sr-muted">No sample scores were found. Open a file from this device instead.</p>';
             });
+        }
+
+        /* The clefs and parts of the score open, as checkboxes. A score in one
+           clef, which is most single-staff music, has no choice to offer, and
+           neither has one with a single part. */
+        function renderScope() {
+            var html = '';
+            if (info) {
+                var clefs = Object.keys(info.clefs).sort(function (a, b) { return info.clefs[b] - info.clefs[a]; });
+                if (clefs.length > 1) {
+                    html += '<fieldset class="sr-scope"><legend>Clefs to read</legend>' + clefs.map(function (c) {
+                        return '<label class="check"><input type="checkbox" data-clef="' + esc(c) + '"' + (!chosen.clefs || chosen.clefs[c] ? ' checked' : '') + ' /> ' + esc(c) + ' <span class="sr-muted">' + info.clefs[c] + ' notes</span></label>';
+                    }).join('') + '</fieldset>';
+                }
+                var parts = info.parts.map(function (p, n) { return { n: n, p: p }; }).filter(function (x) { return x.p.count; });
+                if (parts.length > 1) {
+                    html += '<fieldset class="sr-scope"><legend>Parts to read</legend>' + parts.map(function (x) {
+                        return '<label class="check"><input type="checkbox" data-part="' + x.n + '"' + (!chosen.parts || chosen.parts[x.n] ? ' checked' : '') + ' /> ' + esc(x.p.name) + ' <span class="sr-muted">' + x.p.count + ' notes</span></label>';
+                    }).join('') + '</fieldset>';
+                }
+            }
+            el.scope.innerHTML = html;
+        }
+
+        function showOptions() {
+            el.options.querySelector('[data-opt="revealAfter"]').value = String(settings.revealAfter);
+            el.options.querySelector('[data-opt="accidentals"]').checked = !!settings.accidentals;
+            el.options.querySelector('[data-opt="sound"]').checked = !!settings.sound;
+            renderScope();
+            if (!el.options.open) { el.options.showModal(); }
+        }
+
+        function saveSetting(changes) {
+            Object.assign(settings, changes);
+            loadConfig().then(function (c) { return c.set('sight-reader', changes); }).catch(function () { });
+        }
+
+        /* A change to a checkbox of clefs or parts: at least one of each stays
+           ticked, and the piece starts again on what is ticked. */
+        function onScopeChange(box) {
+            var group = box.hasAttribute('data-clef') ? 'clefs' : 'parts', attr = group === 'clefs' ? 'data-clef' : 'data-part';
+            var boxes = [].slice.call(el.scope.querySelectorAll('[' + attr + ']'));
+            var ticked = boxes.filter(function (b) { return b.checked; });
+            if (!ticked.length) { box.checked = true; return; }
+            chosen[group] = ticked.length === boxes.length ? null : setOf(ticked.map(function (b) { return b.getAttribute(attr); }));
+            rebuild();
         }
 
         /* === The address and the snapshot ========================================= */
@@ -437,11 +649,16 @@
         }
         function relFrom(s) { var v = askedFor(s); return validRel(v) ? v : null; }
 
-        /* A reload brings back the step the reader was on and how each earlier
-           one went (js/snapshot.js), for a sample, which can be fetched again. */
+        /* A reload brings back the step the reader was on, how each earlier
+           one went and what they chose to read (js/snapshot.js), for a sample,
+           which can be fetched again. */
         var snap = window.pcSnapshot ? window.pcSnapshot.join(root, function () {
             if (!score || !score.rel || !steps.length) { return null; }
-            return { rel: score.rel, name: score.name, k: cur, r: steps.map(function (s) { return s.result ? s.result.charAt(0) : '-'; }).join(''), t: tally };
+            return {
+                rel: score.rel, name: score.name, k: cur,
+                r: steps.map(function (s) { return s.result ? s.result.charAt(0) : '-'; }).join(''), t: tally,
+                cs: chosen.clefs ? Object.keys(chosen.clefs) : null, ps: chosen.parts ? Object.keys(chosen.parts) : null
+            };
         }) : null;
         function keepSnapshot() { if (snap) { snap.changed(); } }
         var CODES = { f: 'first', r: 'retried', m: 'missed' };
@@ -465,16 +682,30 @@
         function onClick(e) {
             var note = e.target.closest('[data-note]');
             if (note && root.contains(note)) { answer(note.getAttribute('data-note')); return; }
+            var acc = e.target.closest('[data-acc]');
+            if (acc && root.contains(acc)) { bump(+acc.getAttribute('data-acc')); return; }
             var open = e.target.closest('[data-sr-open]');
             if (open) { el.chooser.close(); openScore({ name: open.getAttribute('data-sr-name'), rel: open.getAttribute('data-sr-open') }); return; }
             var act = e.target.closest('[data-sr]');
             if (!act) { return; }
             switch (act.getAttribute('data-sr')) {
                 case 'choose': openChooser(); break;
+                case 'options': showOptions(); break;
                 case 'file': el.file.click(); break;
                 case 'close-chooser': el.chooser.close(); break;
+                case 'close-options': el.options.close(); root.focus({ preventScroll: true }); break;
                 case 'close-help': el.help.close(); break;
             }
+        }
+
+        function onChange(e) {
+            var t = e.target;
+            if (!el.options.contains(t)) { return; }
+            if (t.hasAttribute('data-clef') || t.hasAttribute('data-part')) { onScopeChange(t); return; }
+            var opt = t.getAttribute('data-opt');
+            if (opt === 'revealAfter') { saveSetting({ revealAfter: +t.value }); }
+            else if (opt === 'sound') { saveSetting({ sound: t.checked }); }
+            else if (opt === 'accidentals') { saveSetting({ accidentals: t.checked }); clearPending(); showPending(); rebuild(); }
         }
 
         function onKeyDown(e) {
@@ -482,6 +713,9 @@
             var t = e.target;
             if (t.closest && (t.closest('dialog') || t.closest('input, select, textarea, [contenteditable]'))) { return; }
             if (e.key.length === 1 && /[a-gA-G]/.test(e.key)) { e.preventDefault(); answer(e.key.toUpperCase()); return; }
+            if (e.key === '#' || e.key === '=') { e.preventDefault(); bump(1); return; }
+            if (e.key === '-') { e.preventDefault(); bump(-1); return; }
+            if (e.key === 'Escape' && pendingAlter) { e.preventDefault(); clearPending(); return; }
             /* Enter and Space on a button press that button, which answers; on
                the score itself they go on from a shown answer. */
             if (revealed && (e.key === 'Enter' || e.key === ' ') && !(t.closest && t.closest('button'))) { e.preventDefault(); advance(); }
@@ -495,6 +729,7 @@
 
         el.file.addEventListener('change', function () { fromDevice(el.file.files && el.file.files[0]); el.file.value = ''; });
         root.addEventListener('click', onClick);
+        root.addEventListener('change', onChange);
         root.addEventListener('keydown', onKeyDown);
         /* A press on the score puts the keyboard in the applet. */
         root.addEventListener('pointerdown', function (e) { if (!e.target.closest('button, dialog, input')) { root.focus({ preventScroll: true }); } });
@@ -517,7 +752,13 @@
                     var w = el.score.clientWidth;
                     if (!w || (!needsDraw && Math.abs(w - lastWidth) < 24)) { return; }
                     if (!draw()) { return; }
-                    if (!steps.length) { build(); if (steps.length && cur < 0) { if (pending) { restoreProgress(pending); pending = null; } else { begin(0); } } refresh(); return; }
+                    if (!steps.length) {
+                        build();
+                        if (steps.length && cur < 0) { if (pending) { restoreProgress(pending); pending = null; } else { begin(0); } }
+                        refresh();
+                        renderScope();
+                        return;
+                    }
                     repaint();
                 }, 250);
             });
@@ -538,17 +779,11 @@
                     { label: 'Practice', items: [
                         { label: 'Restart', disabled: !open, run: restart },
                         { label: 'Show the answer', disabled: !open || finished || revealed || cur < 0, run: function () { if (!revealed && !finished && cur >= 0) { reveal(); root.focus({ preventScroll: true }); } } },
-                        '-'
-                    ].concat(REVEAL_CHOICES.map(function (c) {
-                        return { label: c[1], radio: 'reveal', checked: settings.revealAfter === c[0], run: function () { setReveal(c[0]); } };
-                    })) }
+                        '-',
+                        { label: 'Options…', run: showOptions }
+                    ] }
                 ]
             };
-        }
-
-        function setReveal(n) {
-            settings.revealAfter = n;
-            loadConfig().then(function (c) { return c.set('sight-reader', { revealAfter: n }); }).catch(function () { });
         }
 
         /* === Start ============================================================== */
@@ -561,7 +796,13 @@
         var boot = loadConfig().then(function (c) {
             return c.load('sight-reader', SETTINGS).then(function (s) {
                 settings = Object.assign({}, SETTINGS, s);
-                unConfig = c.onChange('sight-reader', function (next) { settings = Object.assign({}, SETTINGS, next); });
+                showPending();
+                unConfig = c.onChange('sight-reader', function (next) {
+                    var before = settings.accidentals;
+                    settings = Object.assign({}, SETTINGS, next);
+                    showPending();
+                    if (before !== settings.accidentals) { rebuild(); }
+                });
             });
         }).catch(function () { }).then(function () {
             if (destroyed) { return; }
@@ -586,9 +827,9 @@
                 if (observer) { observer.disconnect(); }
                 if (unConfig) { unConfig(); }
                 if (snap) { snap.leave(); }
-                if (el.chooser.open) { el.chooser.close(); }
-                if (el.help.open) { el.help.close(); }
+                ['chooser', 'options', 'help'].forEach(function (d) { if (el[d].open) { el[d].close(); } });
                 if (osmd) { try { osmd.clear(); } catch (err) { } }
+                if (audio) { try { audio.close(); } catch (err) { } }
             },
             ready: boot
         };

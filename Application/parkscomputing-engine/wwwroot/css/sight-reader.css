@@ -71,3 +71,23 @@
   max-width: none; margin: 0; padding: 0;
 }
 .win-body:has(.pc-sight-reader-fill) .post-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+
+/* === Sharps and flats, options ============================================ */
+
+/* The letters and, beside them, the sharp and flat buttons; on a narrow
+   screen the sharp and flat go on a row of their own under the letters. */
+.sr-keys { flex-wrap: wrap; align-items: center; }
+.sr-letters { display: flex; gap: var(--space-2); flex: 1 1 22rem; justify-content: center; }
+.sr-accidentals { display: flex; gap: var(--space-2); flex: 0 0 auto; margin-inline-start: var(--space-3); }
+.sr-acc { min-width: 3rem; min-height: 2.75rem; font-size: var(--text-xl); font-weight: 700; padding-inline: 0; }
+.sr-acc[aria-pressed="true"] { box-shadow: var(--recess-shadow); }
+@media (pointer: coarse) { .sr-acc { min-height: 3.5rem; } }
+@media (max-width: 560px) { .sr-accidentals { flex: 1 1 100%; justify-content: center; margin-inline-start: 0; } }
+
+/* A sharp or flat waiting for its letter. */
+.sr-pending { font-size: var(--text-xl); font-weight: 700; line-height: 1; min-width: 1.2em; text-align: center; color: var(--accent); }
+.sr-pending[hidden] { display: none; }
+
+.sr-options .check { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.sr-scope { border: 0; padding: 0; margin: var(--space-3) 0 0; }
+.sr-scope legend { padding: 0; margin-bottom: var(--space-1); font-weight: 600; }

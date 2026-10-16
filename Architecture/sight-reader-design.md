@@ -87,7 +87,7 @@ The spike ran on the sample scores, with OpenSheetMusicDisplay loaded from its C
 **Every check passed:**
 
 - **Marking is instant.** Colouring each step's notes and moving the cursor on took a median of 0.3 ms and at most 0.9 ms a step, over all 787 steps and 1,501 notes of Nachtzauber, the longest sample song.
-- **Reading one clef or one part works.** The cursor gives every note starting at a step (`Cursor.NotesUnderCursor`, which also takes an instrument), and each note says which staff it is on (`Note.ParentStaff`). The clef in effect is followed through the score's clef instructions as the cursor walks, at the start of each measure (`SourceMeasure.FirstInstructionsStaffEntries`) and within it (`SourceStaffEntry.Instructions`): in Schumann's Frühlingsnacht it found four clef changes, and 1,414 notes in the treble clef and 100 in the bass, since the left hand spends much of the song up in the treble. A part can be hidden (`Instrument.Visible`), and the rest of the score still reads.
+- **Reading one clef or one part works.** The cursor gives every note starting at a step (`Cursor.NotesUnderCursor`, which also takes an instrument), and each note says which staff it is on (`Note.ParentStaff`). The clef in effect is followed through the score's clef instructions as the cursor walks (`SourceStaffEntry.Instructions`), at the start of each measure (`SourceMeasure.FirstInstructionsStaffEntries`), within it, and at its end (`SourceMeasure.LastInstructionsStaffEntries`). The spike missed the last of these and so under-counted the bass clef in Schumann's Frühlingsnacht at 100 notes; the applet, which follows all three, counts 1,219 in the treble clef and 280 in the bass, which is what reading the score's XML note by note gives too. A part can be hidden (`Instrument.Visible`), and the rest of the score still reads.
 - **Letters and accidentals** come from each note's pitch (`Pitch.FundamentalNote`, `Pitch.AccidentalHalfTones`): Frühlingsnacht's six sharps read as F♯, C♯ and A♯. A tied note's continuation is told apart by its tie (`Note.NoteTie`) and skipped, 14 of them in that song.
 - **The view follows the cursor** (the `followCursor` option): 200 steps into Strauss's Morgen!, the page had scrolled 1,662 pixels and the cursor was in view.
 - **Phone width works.** At 390 pixels wide, Ode to Joy and Schubert's Morgengruß render to the screen's width with no sideways scrolling. A song then shows one bar a line, with the part names taking much of the width, so on a narrow screen the applet should draw the score smaller and leave the part names out.
@@ -95,6 +95,16 @@ The spike ran on the sample scores, with OpenSheetMusicDisplay loaded from its C
 **Still to check:** hiding a guitar score's tablature staff, since no sample has one. That waits for a guitar piece of Paul's.
 
 **A long score needs care.** A whole string quartet, Beethoven's Op. 18 No. 1 with 6,500 steps, took 23 seconds to render in 1.9.0, so the samples use a single quartet movement, which renders in under a second. For a long score of the reader's own, the applet can draw a range of measures at a time (`drawFromMeasureNumber`, `drawUpToMeasureNumber`), which also suits practising a passage.
+
+## What was built (2026-10-17)
+
+The applet is `js/sight-reader.js` and `css/sight-reader.css`, registered in `js/applets.js`, with a page and a menu entry in the live site's content, and `Tools/test-sight-reader.js`, whose 67 browser checks cover everything below. OpenSheetMusicDisplay 2.2.1 is in `js/vendor/osmd-2.2.1`.
+
+**Built:** the quiz, with keys and buttons; the answer shown after a chosen number of wrong tries; sharps and flats named by a key or a button before the letter (`=` or `#` for a sharp, `-` for a flat, ♯ and ♭ buttons beside the letters, which wait for the setting); clefs and parts chosen in an Options dialog, with the clef followed through its changes; a tone for each right letter; samples and files from the device; a reload that brings back the place, the marks and the choices; phone width, and a window.
+
+**Not yet built:** starting at a bar and looping a passage, the weak-bar tally, remembering a score's place between visits, and the reader's own scores in `~/scores` with Add a score. These are the next stage.
+
+**Two things differ from the design above.** Sound plays the pitch as written, where the design said the pitch a transposing instrument would sound. OpenSheetMusicDisplay documents a part's transposition (`Instrument.Transpose`, in half tones) without saying whether it is added to the written pitch or taken from it, and the applet does not guess; a B flat trumpet hears a note a tone higher than its part sounds until that is settled by a test against a score that has a transposition. And `LastInstructionsStaffEntries`, which the clef tracking needs, is a documented accessor whose page has no description, so its meaning, that a clef change at a barline is filed with the bar before it, rests on its name and on the checks above.
 
 ## The sample scores
 
