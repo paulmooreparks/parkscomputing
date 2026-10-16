@@ -234,8 +234,8 @@ namespace ParksComputing.Engine {
                 contentTypeProvider.Mappings[".xferlang"] = "text/plain";
             }
 
-            // MusicXML scores, such as Note Reader's samples in /scores
-            // (Architecture/note-reader-design.md), plain and compressed, by
+            // MusicXML scores, such as Sight Reader's samples in /scores
+            // (Architecture/sight-reader-design.md), plain and compressed, by
             // the media types MusicXML registers for them.
             contentTypeProvider.Mappings[".musicxml"] = "application/vnd.recordare.musicxml+xml";
             contentTypeProvider.Mappings[".mxl"] = "application/vnd.recordare.musicxml";

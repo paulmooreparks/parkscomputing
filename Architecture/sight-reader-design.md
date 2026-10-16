@@ -1,6 +1,6 @@
-# Note Reader: practising the piece you're learning, away from the instrument
+# Sight Reader: practising the piece you're learning, away from the instrument
 
-Status: proposal, revised 2026-10-16. Nothing is built. The open questions are at the end.
+Status: designed, 2026-10-16. Nothing is built yet. The decisions taken with Paul are at the end.
 
 ## What it is for
 
@@ -24,11 +24,11 @@ The scores and what the applet records about them are kept apart (decided with P
 
 ```
 ~/scores/                       the reader's pieces, visible
-~/.note-reader/<score>.json     each score's position, passages and per-measure tally
-~/.config/note-reader.json      settings, including the scores folder
+~/.sight-reader/<score>.json     each score's position, passages and per-measure tally
+~/.config/sight-reader.json      settings, including the scores folder
 ```
 
-A score is the reader's document, not the applet's, so it goes where Files shows it, and where a later applet that also works from scores, such as a player or a page-turner, can find it without reaching into Note Reader's own folder. The record of practice is the applet's housekeeping, never edited by hand, so it goes in a dot-folder as the terminal's `~/.history` does. Paul's first thought was `~/.note-reader/scores`, which keeps everything the applet touches together and can't collide with a folder of the reader's own; the setting "Scores folder" answers that, since the reader can point it anywhere, that folder included. The applet makes the scores folder only when the first piece is added. A record whose score has been renamed or deleted is left behind harmlessly and tidied away by the applet.
+A score is the reader's document, not the applet's, so it goes where Files shows it, and where a later applet that also works from scores, such as a player or a page-turner, can find it without reaching into Sight Reader's own folder. The record of practice is the applet's housekeeping, never edited by hand, so it goes in a dot-folder as the terminal's `~/.history` does. Paul's first thought was `~/.sight-reader/scores`, which keeps everything the applet touches together and can't collide with a folder of the reader's own; the setting "Scores folder" answers that, since the reader can point it anywhere, that folder included. The applet makes the scores folder only when the first piece is added. A record whose score has been renamed or deleted is left behind harmlessly and tidied away by the applet.
 
 **A small sample library** keeps the applet from opening empty for a new visitor: a few pieces under CC0, such as OpenScore's public-domain scores typeset in MusicXML. Each records its source and licence. It is a sample, not a curriculum.
 
@@ -76,7 +76,7 @@ A prefix shows in the status line, and its button stays pressed, until its lette
 
 ## As a PUDL applet
 
-The applet is `note-reader` in the registry, in a window and on its own page. Its state string, which a link carries, says which score and which measure. Its settings (scores folder, tablature, reveal-after, sound) are kept in `~/.config/note-reader.json` through `pcConfig`, and each score's last position, passages and per-measure tally in `~/.note-reader/`, as above. Its menus are Score (Open, Add a score, Samples), Practice (Start at measure, Set a passage, Practise weak bars, Show answer, Skip) and the applet's Settings.
+The applet is `sight-reader` in the registry, in a window and on its own page. Its state string, which a link carries, says which score and which measure. Its settings (scores folder, tablature, reveal-after, sound) are kept in `~/.config/sight-reader.json` through `pcConfig`, and each score's last position, passages and per-measure tally in `~/.sight-reader/`, as above. Its menus are Score (Open, Add a score, Samples), Practice (Start at measure, Set a passage, Practise weak bars, Show answer, Skip) and the applet's Settings.
 
 ## To find out before building
 
@@ -103,6 +103,6 @@ The site serves `.mxl` and `.musicxml` once `Startup.cs` maps their media types,
 - **Accidentals** as above: letters only by default; with the setting on, a key before the letter (`#` or `=` sharp, `-` flat) or the ♯ and ♭ buttons.
 - **Keyboard and buttons on every device.** Paul uses a desktop or laptop most, and a phone must work too; on all of them both inputs are there and can be mixed, so he can type or click on a full-screen PC.
 
-## Open question for Paul
+- **The name is Sight Reader** (Paul, 2026-10-16), `sight-reader` in the registry and in its folders. Note Reader, Sightline, Read Ahead and Staff Work were the other names considered.
 
-The name. Note Reader works. Some others: Sightline (sight-reading along a line of music), Read Ahead, or Staff Work.
+Nothing is left open. The next step is the spike above, with one of Paul's own pieces.
