@@ -118,6 +118,33 @@
        above the left-hand C. The keys are for the pointer; they are out of the
        tab order, and the letters, which are real buttons, are there for anyone
        who navigates by keyboard. */
+    /* The notes of a clef, drawn as a staff: the lines and spaces from the one
+       below the bottom ledger line to the one above the top, each named, and
+       middle C marked. A position is a step up the staff from the bottom line,
+       counting lines and spaces, and the bottom line of each clef is the
+       diatonic note (octave times seven, plus C=0 .. B=6) shown here. */
+    var CLEFS = [
+        { name: 'Treble clef', bottom: 4 * 7 + 2, text: 'The G clef. Its curl circles the second line from the bottom, which is G above middle C. Used for violin, flute, trumpet, voice and the right hand of the piano.' },
+        { name: 'Bass clef', bottom: 2 * 7 + 4, text: 'The F clef. Its two dots lie either side of the second line from the top, which is the F below middle C. Used for cello, bassoon, trombone, tuba and the left hand of the piano.' },
+        { name: 'Alto clef', bottom: 3 * 7 + 3, text: 'A C clef. Its middle points at the middle line, which is middle C. Used for the viola.' },
+        { name: 'Tenor clef', bottom: 3 * 7 + 1, text: 'A C clef. Its middle points at the second line from the top, which is middle C. Used for high passages of the cello, bassoon and trombone.' }
+    ];
+    function clefsMarkup() {
+        var NAMES = 'CDEFGAB', first = -2, last = 10, step = 36, left = 28, base = 74, html = '';
+        CLEFS.forEach(function (c) {
+            var width = left * 2 + (last - first) * step, svg = '<svg class="sr-staff" viewBox="0 0 ' + width + ' 118" role="img" aria-label="' + c.name + ': the notes from the lowest to the highest">';
+            for (var line = 0; line <= 8; line += 2) { svg += '<line x1="6" x2="' + (width - 6) + '" y1="' + (base - line * 5) + '" y2="' + (base - line * 5) + '" class="sr-staff-line"/>'; }
+            for (var p = first; p <= last; p++) {
+                var d = c.bottom + p, letter = NAMES.charAt(d % 7), oct = Math.floor(d / 7), x = left + (p - first) * step, y = base - p * 5, mid = d === 4 * 7;
+                if ((p < 0 || p > 8) && p % 2 === 0) { svg += '<line x1="' + (x - 12) + '" x2="' + (x + 12) + '" y1="' + y + '" y2="' + y + '" class="sr-staff-line"/>'; }
+                svg += '<ellipse cx="' + x + '" cy="' + y + '" rx="7" ry="5" class="sr-staff-note' + (mid ? ' sr-mid' : '') + '"/>';
+                svg += '<text x="' + x + '" y="112" text-anchor="middle" class="sr-staff-name' + (mid ? ' sr-mid' : '') + '">' + letter + oct + '</text>';
+            }
+            html += '<section class="sr-clef"><h4>' + c.name + '</h4><p class="form-help">' + c.text + '</p>' + svg + '</section>';
+        });
+        return '<p class="form-help">Each staff runs up from the lowest note shown to the highest, lines and spaces in turn. The notes are named with their octave, and middle C (C4) is in green.</p>' + html;
+    }
+
     function pianoMarkup() {
         return '<div class="sr-piano" role="group" aria-label="Piano keyboard"><div class="sr-board">' + pianoKeysMarkup() + '</div></div>';
     }
@@ -183,6 +210,7 @@
               '<label class="check" title="Go back to the first bar when the last one is done"><input type="checkbox" data-loop /> Loop</label>' +
               '</span>' +
               '<span class="sr-title" data-role="title"></span>' +
+              '<button type="button" class="btn" data-sr="clefs" title="The notes on the lines and spaces of each clef">Help</button>' +
             '</div>' +
             '<div class="sr-score" data-role="score">' +
               '<div class="sr-sheet" data-role="sheet"></div>' +
@@ -252,6 +280,11 @@
               '</div>' +
               '<div class="dialog-actions"><button type="button" class="btn btn-primary" data-sr="close-options">Close</button></div>' +
             '</dialog>' +
+            '<dialog class="dialog sr-dialog sr-clefs-dialog" data-role="clefs" aria-labelledby="sr-clefs-title-' + uid + '">' +
+              '<h3 class="dialog-title" id="sr-clefs-title-' + uid + '">The notes of each clef</h3>' +
+              '<div class="dialog-body sr-clefs">' + clefsMarkup() + '</div>' +
+              '<div class="dialog-actions"><button type="button" class="btn btn-primary" data-sr="close-clefs">Close</button></div>' +
+            '</dialog>' +
             '<dialog class="dialog sr-dialog" data-role="help" aria-labelledby="sr-help-title-' + uid + '">' +
               '<h3 class="dialog-title" id="sr-help-title-' + uid + '">About Sight Reader</h3>' +
               '<div class="dialog-body sr-help">' +
@@ -270,7 +303,7 @@
             empty: q('[data-role="empty"]'), pos: q('[data-role="pos"]'), pendingMark: q('[data-role="pending"]'),
             feedback: q('[data-role="feedback"]'), tally: q('[data-role="tally"]'), file: q('.sr-file'),
             chooser: q('[data-role="chooser"]'), chooserBody: q('[data-role="chooser-body"]'),
-            options: q('[data-role="options"]'), scope: q('[data-role="scope"]'), help: q('[data-role="help"]'),
+            options: q('[data-role="options"]'), scope: q('[data-role="scope"]'), help: q('[data-role="help"]'), clefs: q('[data-role="clefs"]'),
             piano: q('.sr-piano'), letters: q('.sr-letters'), accidentals: q('.sr-accidentals')
         };
         var pianoKeys = [].slice.call(el.piano.querySelectorAll('.sr-key')), pianoAt = {}, blackKeys = [], keyFlash = null;
@@ -1002,6 +1035,8 @@
                 case 'close-chooser': el.chooser.close(); break;
                 case 'close-options': el.options.close(); root.focus({ preventScroll: true }); break;
                 case 'close-help': el.help.close(); break;
+                case 'clefs': if (!el.clefs.open) { el.clefs.showModal(); } break;
+                case 'close-clefs': el.clefs.close(); root.focus({ preventScroll: true }); break;
             }
         }
 
@@ -1176,7 +1211,7 @@
                 if (observer) { observer.disconnect(); }
                 if (unConfig) { unConfig(); }
                 if (snap) { snap.leave(); }
-                ['chooser', 'options', 'help'].forEach(function (d) { if (el[d].open) { el[d].close(); } });
+                ['chooser', 'options', 'help', 'clefs'].forEach(function (d) { if (el[d].open) { el[d].close(); } });
                 if (osmd) { try { osmd.clear(); } catch (err) { } }
                 if (audio) { try { audio.close(); } catch (err) { } }
             },

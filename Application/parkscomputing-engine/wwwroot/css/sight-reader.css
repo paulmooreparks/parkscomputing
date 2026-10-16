@@ -188,3 +188,15 @@ body:has(.pc-sight-reader-app) .post-body { flex: 1 1 auto; min-height: 0; displ
 /* On its own page the applet is not held to the article column's width: the score and the keyboard take the room there is. */
 body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .site-main { max-width: none; }
 body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .post-content { max-width: none; margin-inline: 0; padding-inline: var(--space-4, 1rem); }
+
+/* The clef reference: a staff for each clef with its notes named. */
+.sr-clefs-dialog { max-width: 44rem; }
+.sr-clefs { max-height: 70vh; overflow-y: auto; }
+.sr-clef { margin-top: var(--space-4, 1rem); }
+.sr-clef h4 { margin: 0 0 var(--space-1, 0.25rem); }
+.sr-staff { width: 100%; height: auto; color: var(--text); }
+.sr-staff-line { stroke: currentColor; stroke-width: 1.2; }
+.sr-staff-note { fill: currentColor; }
+.sr-staff-name { fill: currentColor; font-size: 11px; font-weight: 600; }
+.sr-staff-note.sr-mid { fill: #2e7d32; }
+.sr-staff-name.sr-mid { fill: #2e7d32; font-weight: 800; }

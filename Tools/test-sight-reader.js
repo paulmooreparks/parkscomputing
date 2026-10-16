@@ -229,6 +229,22 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.click('[data-sr="close-options"]');
   await page.focus('.pc-sight-reader');
 
+  // 2c. Help: the notes of each clef.
+  await page.click('.sr-top [data-sr="clefs"]');
+  await page.waitForSelector('.sr-clefs', { state: 'visible' });
+  const clefHelp = await page.evaluate(() => ({
+    staves: document.querySelectorAll('.sr-clefs .sr-staff').length,
+    notes: [...document.querySelectorAll('.sr-clefs .sr-staff')].map(v => v.querySelectorAll('.sr-staff-note').length).join(),
+    middle: [...document.querySelectorAll('.sr-clefs .sr-staff-name.sr-mid')].map(t => t.textContent).join(),
+    names: [...document.querySelectorAll('.sr-clefs h4')].map(h => h.textContent).join(),
+    first: [...document.querySelectorAll('.sr-clefs .sr-staff')].map(v => v.querySelector('.sr-staff-name').textContent).join()
+  }));
+  log('the Help button shows four clefs, each a staff of thirteen notes', clefHelp.staves === 4 && clefHelp.notes === '13,13,13,13' && /Treble.*Bass.*Alto.*Tenor/.test(clefHelp.names), JSON.stringify(clefHelp));
+  log('middle C is marked on each staff, and the lowest notes are right (C4 below the treble staff, E2 under the bass)', clefHelp.middle === 'C4,C4,C4,C4' && clefHelp.first.startsWith('C4,') , clefHelp.first);
+  await page.screenshot({ path: path.join(SHOTS, 'sr-clefs.png') });
+  await page.click('[data-sr="close-clefs"]');
+  await page.focus('.pc-sight-reader');
+
   // 3. Never revealing, set in Options, and kept in the settings.
   await options(() => page.selectOption('[data-opt="revealAfter"]', '0'));
   await type('bbbbbb');
