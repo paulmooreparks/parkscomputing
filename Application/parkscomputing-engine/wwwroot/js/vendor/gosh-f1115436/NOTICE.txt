@@ -1,0 +1,10 @@
+The terminal's POSIX shell (js/terminal-sh.js).
+
+sh.wasm is mvdan.cc/sh v3.14.1's interpreter (https://github.com/mvdan/sh,
+BSD-3-Clause, LICENSE-mvdan-sh), compiled to WebAssembly with Go
+(BSD-3-Clause, LICENSE-go) from GK Companion's tools/shwasm. wasm_exec.js is
+Go's support script for WebAssembly, from the same Go release.
+
+The folder is named for the first eight characters of SOURCE.sha256, the hash
+of the source sh.wasm was built from, so a rebuild goes in a new folder and
+nothing cached under the old name is ever served for it.

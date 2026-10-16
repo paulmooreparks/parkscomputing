@@ -89,8 +89,11 @@ pudlApplets.define('flashcards', {
 /* The terminal loads xterm.js from js/vendor beside itself, and the files
    of extra JavaScript commands listed here, each with the terminal's own
    version, so a change to one of them bumps the terminal's ver. Scripts
-   (files of commands) need no listing: they live in content/bin. */
-window.pcTerminalCommands = ['/js/terminal-text.js'];
+   need no listing: they live in content/bin. terminal-lua.js and
+   terminal-sh.js are the script languages beside the terminal's own, Lua
+   5.4 and a POSIX shell (Architecture/applet-platform-design.md, P1); their
+   workers and WebAssembly load only when a script in that language runs. */
+window.pcTerminalCommands = ['/js/terminal-text.js', '/js/terminal-lua.js', '/js/terminal-sh.js'];
 /* On the edit origin the page names ssh and ssh-key as well, which the
    server sends to a signed-in admin only (A16); elsewhere they don't exist. */
 (function () {
@@ -133,7 +136,7 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: pcWorkspacePages + 'terminal',
-    ver: '37',
+    ver: '38',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
     instances: 4
 });

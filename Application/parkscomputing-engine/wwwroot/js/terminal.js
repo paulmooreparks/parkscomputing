@@ -203,40 +203,84 @@
 
     /* === Words ============================================================ */
 
-    /* Splits a line into pipeline stages of words, honouring single and
-       double quotes and backslash escapes. An unquoted > or >> becomes a
-       redirection token. A word with an unquoted *, ? or [ is a pattern,
-       { glob, word }: glob is the word with its quoted and escaped
-       characters escaped, so only the unquoted ones are wild, and word is
-       what it says, for when nothing matches (expandGlobs). */
-    function parse(line) {
-        var stages = [[]], word = '', pat = '', globbed = false, inWord = false, quote = null;
+    /* A line is a list of pipelines joined by ;, && and ||; a pipeline is
+       stages joined by |; a stage is words, with < file, > file or >> file.
+       Single quotes keep everything; double quotes keep everything but $
+       expansions and backslash escapes; outside quotes, a backslash escapes
+       one character, and # starts a comment. $NAME, ${NAME}, ${NAME:-default},
+       $? and a script's $0 to $9, $@ and $# are expanded from lookup(name).
+       A word with an unquoted *, ? or [ is a pattern, { glob, word }: glob
+       is the word with its quoted, escaped and expanded characters escaped,
+       so only the unquoted ones are wild, and word is what it says, for
+       when nothing matches (expandGlobs). Each pipeline keeps its own text,
+       so its expansions can be made again when it runs, after the commands
+       before it have run. The parser and its rules came back from GK
+       Companion's Terminal, which grew them from this one. */
+    function parse(line, lookup) {
+        lookup = lookup || function () { return ''; };
+        var list = [], stages = [[]], word = '', pat = '', globbed = false, inWord = false, quote = null, op = null, from = 0;
         function lit(ch) { word += ch; pat += /[*?[\]\\]/.test(ch) ? '\\' + ch : ch; }
         function flush() {
             if (inWord) { stages[stages.length - 1].push(globbed ? { glob: pat, word: word } : word); word = ''; pat = ''; globbed = false; inWord = false; }
         }
+        function endPipeline(next, at, width) {
+            flush();
+            var used = stages.filter(function (s) { return s.length; });
+            if (!used.length) {
+                if (!next && op && op !== ';') { return 'a command is missing after ' + op; }
+                if (next) { return 'a command is missing before ' + next; }
+                return null;
+            }
+            if (used.length !== stages.length) { return 'a command is missing around |'; }
+            list.push({ op: op, stages: stages, source: line.slice(from, at) });
+            stages = [[]]; op = next; from = at + (width || 0);
+            return null;
+        }
+        function variable(i) {
+            var rest = line.slice(i + 1), m;
+            if ((m = /^\{([A-Za-z_][A-Za-z0-9_]*|[0-9@#?])(?::-([^}]*))?\}/.exec(rest))) { var v = lookup(m[1]); return { value: v === '' && m[2] != null ? m[2] : v, length: m[0].length, name: m[1] }; }
+            if ((m = /^([A-Za-z_][A-Za-z0-9_]*|[0-9@#?])/.exec(rest))) { return { value: lookup(m[1]), length: m[1].length, name: m[1] }; }
+            return null;
+        }
         for (var i = 0; i < line.length; i++) {
             var ch = line[i];
-            if (quote) {
-                if (ch === quote) { quote = null; } else if (ch === '\\' && quote === '"' && i + 1 < line.length) { lit(line[++i]); } else { lit(ch); }
+            if (quote === "'") { if (ch === quote) { quote = null; } else { lit(ch); } continue; }
+            if (quote === '"') {
+                if (ch === quote) { quote = null; }
+                else if (ch === '\\' && i + 1 < line.length && /["\\$`]/.test(line[i + 1])) { lit(line[++i]); }
+                else if (ch === '$' && variable(i)) { var dv = variable(i); String(dv.value).split('').forEach(lit); i += dv.length; }
+                else { lit(ch); }
                 continue;
             }
             if (ch === '"' || ch === "'") { quote = ch; inWord = true; continue; }
             if (ch === '\\' && i + 1 < line.length) { lit(line[++i]); inWord = true; continue; }
+            if (ch === '$' && variable(i)) {
+                var v = variable(i); i += v.length;
+                /* An unquoted $@ alone is each argument as its own word. */
+                if (v.name === '@' && !inWord && (i + 1 >= line.length || /[\s;|&<>]/.test(line[i + 1]))) { (lookup('@list') || []).forEach(function (arg) { stages[stages.length - 1].push(arg); }); continue; }
+                String(v.value).split('').forEach(lit); inWord = true; continue;
+            }
             if (ch === '*' || ch === '?' || ch === '[') { word += ch; pat += ch; globbed = true; inWord = true; continue; }
+            if (ch === '#' && !inWord) { line = line.slice(0, i); break; }
+            if (ch === '|' && line[i + 1] === '|') { var e1 = endPipeline('||', i, 2); if (e1) { return { error: e1 }; } i++; continue; }
+            if (ch === '&' && line[i + 1] === '&') { var e2 = endPipeline('&&', i, 2); if (e2) { return { error: e2 }; } i++; continue; }
+            if (ch === '&') { return { error: 'running a command in the background (&) is not supported' }; }
+            if (ch === ';') { var e3 = endPipeline(';', i, 1); if (e3) { return { error: e3 }; } continue; }
             if (ch === '|') { flush(); stages.push([]); continue; }
-            if (ch === '>') {
+            if (ch === '>' || ch === '<') {
                 flush();
-                if (line[i + 1] === '>') { i++; stages[stages.length - 1].push({ redirect: '>>' }); }
-                else { stages[stages.length - 1].push({ redirect: '>' }); }
+                var token = ch === '>' && line[i + 1] === '>' ? '>>' : ch;
+                if (token === '>>') { i++; }
+                stages[stages.length - 1].push({ redirect: token });
                 continue;
             }
             if (/\s/.test(ch)) { flush(); continue; }
             word += ch; pat += ch; inWord = true;
         }
         if (quote) { return { error: 'unterminated quote' }; }
-        flush();
-        return { stages: stages };
+        var end = endPipeline(null, line.length, 0);
+        if (end) { return { error: end }; }
+        return { list: list };
     }
 
     function globToRegex(glob) {
@@ -342,35 +386,30 @@
        sitefs.js's job (userBin, isScript, scriptSource, scriptSummary);
        running one is the terminal's. */
 
-    /* The comment block at the top of a script, for man. */
+    /* The comment block at the top of a script, for man: # lines in the
+       terminal's own scripts and in shell, -- lines in Lua. */
     function scriptHelp(src) {
         var out = [];
         var lines = String(src).replace(/\r/g, '').split('\n');
         for (var i = 0; i < lines.length; i++) {
             var t = lines[i].trim();
             if (t.indexOf('#!') === 0) { continue; }
-            if (t[0] !== '#') { if (out.length || t) { break; } continue; }
-            out.push(t.replace(/^#\s?/, ''));
+            var m = /^(#|--)\s?(.*)$/.exec(t);
+            if (!m || /^--\[/.test(t)) { if (out.length || t) { break; } continue; }
+            out.push(m[2]);
         }
         return out.join('\n');
     }
 
-    /* Substitutes $1 to $9, ${1:-default}, $@ (every argument), $# (how
-       many) and $0 (the script's name). Each value is escaped for the
-       parser, so quotes in it stay literal; unquoted, it splits on spaces
-       as in a shell. */
-    function expand(line, name, args) {
-        function q(s) { return String(s).replace(/(["\\'])/g, '\\$1'); }
-        return line.replace(/\$\{([0-9])(?::-([^}]*))?\}|\$([0-9@#])/g, function (m, n1, def, n2) {
-            var k = n1 != null ? n1 : n2;
-            if (k === '@') { return args.map(q).join(' '); }
-            if (k === '#') { return String(args.length); }
-            if (k === '0') { return q(name); }
-            var v = args[+k - 1];
-            if (v == null || v === '') { v = def != null ? def : ''; }
-            return q(v);
-        });
+    /* A script's parameters, for lookup: $0 its name, $1 to $9, $# how
+       many, $@ all of them, and @list them as separate words. */
+    function scriptParams(name, args) {
+        var p = { '0': name, '#': String(args.length), '@': args.join(' '), '@list': args.slice() };
+        args.forEach(function (a, i) { if (i < 9) { p[String(i + 1)] = a; } });
+        return p;
     }
+
+    function message(err) { return String(err && err.message || err).replace(/^Error: /, ''); }
 
     /* A node's name, or the path it was named by, coloured and marked by
        its kind. */
@@ -404,6 +443,62 @@
     var COMMANDS = {};
     function command(name, def) { def.name = name; COMMANDS[name] = def; }
 
+    /* === Interpreters ======================================================
+       The languages a script may be written in besides the terminal's own
+       (Architecture/applet-platform-design.md, P1, from GK Companion's
+       Terminal). Each is a module in a file of its own, listed in
+       window.pcTerminalCommands, that registers itself here, so one can be
+       added, replaced or left out without changing the terminal:
+
+         pcTerminal.registerInterpreter({
+           id, name,             'lua', 'Lua 5.4'
+           command,              a command that runs it, such as 'lua'
+           inline, inlineName,   the flag for code on the line ('-e', or -c
+                                 for sh, whose next word is the script's name)
+           summary, help,        that command's line in help, and its man page
+           matches(path, text),  whether a script is in this language
+           run(source, ctx)      runs a script; resolves to its status, or to
+                                 { status, env, cwd } for source to keep
+         })
+
+       ctx is all a script reaches: { name, dir, args, stdin, cwd, env,
+       write(text), error(text), interrupted(), request(op, args) }, where
+       request is the terminal's host (hostRequest), the same for every
+       language. A script runs in a worker of its own, so one that never
+       ends cannot hold up the page, and Ctrl+C ends the worker. */
+    var INTERPRETERS = [];
+    function registerInterpreter(def) {
+        if (!def || !def.id || typeof def.run !== 'function' || typeof def.matches !== 'function') { return false; }
+        INTERPRETERS = INTERPRETERS.filter(function (d) { return d.id !== def.id; }).concat([def]);
+        if (def.command) {
+            command(def.command, { summary: def.summary || '', help: def.help || def.command, complete: 'file', run: function (args, io) { return interpreterCommand(def, args, io); } });
+        }
+        return true;
+    }
+    function interpreterFor(path, text) {
+        for (var i = 0; i < INTERPRETERS.length; i++) { if (INTERPRETERS[i].matches(path, text)) { return INTERPRETERS[i]; } }
+        return null;
+    }
+    /* An interpreter's command: <command> <file> [arguments...], or
+       <command> -e <code> [arguments...], where the interpreter may give
+       another flag for code, such as sh's -c. */
+    async function interpreterCommand(def, args, io) {
+        var me = def.command, inline = def.inline || '-e';
+        if (!args.length) { io.err(me + ': which script? Or "' + me + ' ' + inline + ' <code>"'); return 1; }
+        if (args[0] === inline) {
+            if (args.length < 2) { io.err(me + ': ' + inline + ' needs some code'); return 1; }
+            /* As with sh -c, the word after the code may be the script's name. */
+            if (def.inlineName) { return io.runWith(def, args[1], args.length > 2 ? args[2] : me, pathOf(io.fs.cwd()), args.slice(3).map(io.tilde)); }
+            return io.runWith(def, args[1], '(command line)', pathOf(io.fs.cwd()), args.slice(2).map(io.tilde));
+        }
+        var n = io.fs.resolve(args[0]);
+        if (!n || n.children) { io.err(me + ': ' + args[0] + ': no such file'); return 127; }
+        var text;
+        try { text = await io.read(args[0]); } catch (err) { io.err(me + ': ' + message(err)); return 126; }
+        var r = realOf(n);
+        return io.runWith(def, text, r.name, r.parent ? pathOf(r.parent) : '/', args.slice(1).map(io.tilde));
+    }
+
     function needNode(io, path, what) {
         var n = io.fs.resolve(path);
         if (!n) { io.err((what || path) + ': no such file or directory'); }
@@ -424,7 +519,7 @@
                 io.out('\n' + paint('bold', sec[0]) + '\n');
                 kids.forEach(function (n) { io.out('  ' + paint('green', n.name.padEnd(11)) + scriptSummary(n.name, scriptSource(n)) + '\n'); });
             });
-            io.out('\n' + wrap('Anything ls marks with * runs by its name, or by its path: the applets, and scripts, which are files of commands. Your home directory, ~, holds files you can edit, and a script you put in ~/bin runs like the site\'s; everything else is read-only. Tab completes, the arrow keys recall earlier commands, "|" pipes one command into another, and "> file" saves a command\'s output in ~. "guide" reads the full guide.', io.cols - 1) + '\n');
+            io.out('\n' + wrap('Anything ls marks with * runs by its name, or by its path: the applets, and scripts. Your home directory, ~, holds files you can edit, and a script you put in ~/bin runs like the site\'s; everything else is read-only. Tab completes, the arrow keys recall earlier commands, "|" pipes one command into another, "> file" saves a command\'s output, "< file" feeds one in, and ;, && and || join commands. export sets variables, which $NAME expands to. A script is a file of these commands, or a POSIX shell script ending in .sh, or Lua 5.4 ending in .lua ("man sh", "man lua"), and ~/.profile runs as a terminal starts. "guide" reads the full guide.', io.cols - 1) + '\n');
         }
     });
 
@@ -497,9 +592,13 @@
 
     command('cd', {
         summary: 'change directory',
-        help: 'cd [path]\n\nMoves into a directory. With no path, or ~, it goes to your home directory; / is the top of the site.',
+        help: 'cd [path]\n\nMoves into a directory. With no path, or ~, it goes to your home directory; / is the top of the site. cd - goes back to the directory you were in before.',
         complete: 'dir',
         run: function (args, io) {
+            if (args[0] === '-') {
+                if (!io.env('OLDPWD')) { io.err('cd: there is no previous directory'); return 1; }
+                args = [io.env('OLDPWD')];
+            }
             var n = io.fs.resolve(args[0] || '~');
             if (!n) { io.err('cd: ' + args[0] + ': no such directory'); return 1; }
             if (!n.children) { io.err('cd: ' + args[0] + ': not a directory'); return 1; }
@@ -673,8 +772,115 @@
 
     command('echo', {
         summary: 'print its arguments',
-        help: 'echo [text...]\n\nPrints its arguments, which is mostly useful in front of a pipe or a redirection: echo hello > ~/greeting',
-        run: function (args, io) { io.out(args.join(' ') + '\n'); }
+        help: 'echo [-n] [text...]\n\nPrints its arguments, which is mostly useful in front of a pipe or a redirection: echo hello > ~/greeting. -n leaves off the line break.',
+        run: function (args, io) { var n = args[0] === '-n'; io.out((n ? args.slice(1) : args).join(' ') + (n ? '' : '\n')); }
+    });
+
+    /* --- Variables, and the commands scripts lean on (from GK Companion's
+       Terminal) ------------------------------------------------------------ */
+    command('env', {
+        summary: 'list the variables',
+        help: 'env\n\nLists the variables: HOME, PWD, OLDPWD, USER, PATH and any you have exported.',
+        run: function (args, io) { io.env().forEach(function (pair) { io.out(pair[0] + '=' + pair[1] + '\n'); }); }
+    });
+    command('export', {
+        summary: 'set a variable',
+        help: 'export NAME=value...\n\nSets variables, which $NAME then expands to in later commands, and which scripts see. They last as long as this terminal, and come back when the page is reloaded. export with no arguments lists them. PATH says where commands are looked for by name: ~/bin and then /site/bin unless you change it.',
+        run: function (args, io) {
+            if (!args.length) { return COMMANDS.env.run([], io); }
+            for (var i = 0; i < args.length; i++) {
+                var m = /^([A-Za-z_][A-Za-z0-9_]*)=([\s\S]*)$/.exec(args[i]);
+                if (!m) { io.err('export: ' + args[i] + ': use NAME=value'); return 1; }
+                if (!io.setEnv(m[1], m[2])) { io.err('export: ' + m[1] + ' cannot be changed'); return 1; }
+            }
+        }
+    });
+    command('unset', {
+        summary: 'remove a variable',
+        help: 'unset NAME...\n\nRemoves variables set with export.',
+        run: function (args, io) { args.forEach(function (n) { io.setEnv(n, null); }); }
+    });
+    command('true', { summary: 'succeed', help: 'true\n\nDoes nothing, successfully.', run: function () { return 0; } });
+    command('false', { summary: 'fail', help: 'false\n\nDoes nothing, and fails.', run: function () { return 1; } });
+    command('date', {
+        summary: 'show the date and time',
+        help: 'date [-I]\n\nShows the local date and time. -I shows it in ISO 8601, with the time zone.',
+        run: function (args, io) {
+            if (args[0] !== '-I') { io.out(new Date().toString() + '\n'); return; }
+            var d = new Date(), off = -d.getTimezoneOffset(), p = function (n) { return String(Math.floor(Math.abs(n))).padStart(2, '0'); };
+            io.out(d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + (off >= 0 ? '+' : '-') + p(off / 60) + ':' + p(off % 60) + '\n');
+        }
+    });
+    command('which', {
+        summary: 'say what runs for a name',
+        help: 'which <name...>\n\nSays whether a name is a built-in command, and where a script or applet of that name is.',
+        complete: 'command',
+        run: function (args, io) {
+            var status = 0;
+            args.forEach(function (n) {
+                if (COMMANDS[n]) { io.out(n + ': built-in command\n'); return; }
+                var p = io.findProgram(n);
+                if (p) { io.out(displayPath(realOf(p)) + '\n'); } else { io.err(n + ': not found'); status = 1; }
+            });
+            return status;
+        }
+    });
+    command('stat', {
+        summary: 'describe a file or directory',
+        help: 'stat <path...>\n\nShows a path\'s kind, size, time and whether it can be changed.',
+        complete: 'path',
+        run: function (args, io) {
+            if (!args.length) { io.err('stat: which path?'); return 1; }
+            var status = 0;
+            args.forEach(function (a) {
+                var e = io.fs.stat(a);
+                if (!e) { io.err('stat: ' + a + ': no such file or directory'); status = 1; return; }
+                io.out('  Path: ' + e.path + '\n  Kind: ' + e.kind + '\n' + (e.directory ? '' : '  Size: ' + (e.size == null ? 'unknown' : fmtSize(e.size)) + '\n') +
+                    (e.modified ? '  Changed: ' + e.modified + '\n' : '') + '  Writable: ' + (e.writable ? 'yes' : 'no') + '\n');
+            });
+            return status;
+        }
+    });
+    command('basename', { summary: 'the last part of a path', help: 'basename <path>\n\nPrints the last part of a path.', run: function (args, io) { if (!args.length) { io.err('basename: which path?'); return 1; } var p = args[0].replace(/\/+$/, '') || '/'; io.out((p === '/' ? '/' : p.slice(p.lastIndexOf('/') + 1)) + '\n'); } });
+    command('dirname', { summary: 'a path without its last part', help: 'dirname <path>\n\nPrints a path without its last part.', run: function (args, io) { if (!args.length) { io.err('dirname: which path?'); return 1; } var p = args[0].replace(/\/+$/, ''), i = p.lastIndexOf('/'); io.out((i < 0 ? '.' : i === 0 ? '/' : p.slice(0, i)) + '\n'); } });
+    command('tee', {
+        summary: 'copy text to a file as it passes',
+        help: 'tee [-a] <file>\n\nWrites what is piped into it to a file, and passes it on.\n\n  -a   add to the end of the file instead of replacing it',
+        complete: 'file',
+        run: async function (args, io) {
+            var append = args[0] === '-a', rest = append ? args.slice(1) : args;
+            if (rest.length !== 1) { io.err('tee: which file?'); return 1; }
+            var text = io.stdin || '';
+            var res = await io.fs.write(rest[0], text, append);
+            if (res && res.error) { io.err('tee: ' + res.error); return 1; }
+            io.out(text);
+        }
+    });
+    command('source', {
+        summary: 'run a script here, keeping what it sets',
+        help: 'source <file> [arguments...]\n. <file> [arguments...]\n\nRuns a script in this terminal rather than on its own, so the variables it exports and the directory it changes to stay after it ends. ~/.profile is sourced when a terminal starts.',
+        complete: 'file',
+        run: function (args, io) {
+            if (!args.length) { io.err('source: which file?'); return 1; }
+            return io.source(args[0], args.slice(1));
+        }
+    });
+    command('.', { summary: 'the same as source', help: '. <file> [arguments...]\n\nThe same as source.', complete: 'file', run: function (args, io) { return COMMANDS.source.run(args, io); } });
+    command('sh', {
+        summary: 'run a script',
+        help: 'sh <file> [arguments...]\n\nRuns a file of terminal commands, one line at a time, stopping at the first that fails. In it, $1 to $9 are its arguments, $@ all of them, $# how many, and $0 its name. Lines starting with # are comments.',
+        complete: 'file',
+        run: function (args, io) {
+            if (!args.length) { io.err('sh: which script?'); return 1; }
+            var n = io.fs.resolve(args[0]);
+            if (!n || n.children) { io.err('sh: ' + args[0] + ': no such file'); return 127; }
+            return io.runScript(realOf(n), args.slice(1));
+        }
+    });
+    command('exit', {
+        summary: 'stop a script, or close this terminal',
+        help: 'exit [status]\n\nIn a script, stops it, with the status given or 0. At the prompt, closes this terminal\'s window.',
+        run: function (args, io) { return io.exit(args.length ? (parseInt(args[0], 10) || 0) : 0); }
     });
 
     /* The guide is an ordinary page, terminal-guide, wherever the site's
@@ -985,27 +1191,37 @@
     alias('nano', 'edit');
 
     /* The PATH: after the commands, a word may name an applet or a script,
-       by its path, in the current directory, or in /site/applets, ~/bin or
-       /site/bin, in that order, so a script of the reader's own comes
-       before the site's of the same name. A path into /bin, such as
-       /bin/ls, names a built-in command. */
-    function runnable(n) { return n && !n.children && (realOf(n).kind === 'app' || realOf(n).kind === 'command' || isScript(n)); }
+       by its path, in the current directory, in /site/applets, or in the
+       directories of PATH, ~/bin and then /site/bin unless it is set, so a
+       script of the reader's own comes before the site's of the same name.
+       In each, the word is tried as it is, then with .sh, then with .lua.
+       A path into /bin, such as /bin/ls, names a built-in command. A file
+       ending in .sh or .lua in the reader's own files is a script wherever
+       it is, so it runs by its path. */
+    var DEFAULT_PATH = '~/bin:/site/bin';
+    function scriptFile(n) { var r = realOf(n); return !r.children && /\.(sh|lua)$/i.test(r.name) && (!!r.home || r.kind === 'script'); }
+    function anyScript(n) { return !!n && (isScript(n) || scriptFile(n)); }
+    function runnable(n) { return n && !n.children && (realOf(n).kind === 'app' || realOf(n).kind === 'command' || anyScript(n)); }
 
-    function findProgram(fs, cwd, word) {
+    function findProgram(fs, cwd, word, pathValue) {
         if (word.indexOf('/') >= 0) { var p = resolve(fs, cwd, word); return runnable(p) ? p : null; }
-        var places = [cwd, resolve(fs, fs, '/site/applets'), userBin(), resolve(fs, fs, '/site/bin')];
+        var places = [cwd, resolve(fs, fs, '/site/applets')].concat(String(pathValue == null ? DEFAULT_PATH : pathValue).split(':').filter(Boolean).map(function (d) { return resolve(fs, cwd, d); }));
         for (var i = 0; i < places.length; i++) {
-            var n = places[i] ? childNamed(places[i], word) : null;
-            if (runnable(n)) { return n; }
+            if (!places[i] || !places[i].children) { continue; }
+            var tries = i < 2 ? [word] : [word, word + '.sh', word + '.lua'];
+            for (var t = 0; t < tries.length; t++) {
+                var n = childNamed(places[i], tries[t]);
+                if (runnable(n)) { return n; }
+            }
         }
         return null;
     }
 
-    function programAt(fs, cwd, word) {
-        var n = findProgram(fs, cwd, word);
+    function programAt(fs, cwd, word, pathValue) {
+        var n = findProgram(fs, cwd, word, pathValue);
         if (!n) { return null; }
         var r = realOf(n);
-        if (isScript(n)) { return { name: word, run: function (args, io) { return io.runScript(r, args); } }; }
+        if (anyScript(n)) { return { name: word, run: function (args, io) { return io.runScript(r, args.map(io.tilde)); } }; }
         return COMMANDS[r.name] || { name: word, run: function (args, io) { io.open(r); } };
     }
 
@@ -1019,11 +1235,16 @@
             command(def.name, Object.assign({ summary: '', help: def.name }, def));
             return true;
         },
+        registerInterpreter: registerInterpreter,
+        interpreters: function () { return INTERPRETERS.map(function (d) { return { id: d.id, name: d.name, command: d.command }; }); },
         paint: paint,
         strip: strip,
         wrap: wrap,
         columns: columns
     };
+    /* Interpreters loaded before the terminal wait in this list. */
+    (window.pcTerminalInterpreters || []).forEach(registerInterpreter);
+    window.pcTerminalInterpreters = [];
 
     var extrasReady = null;
     function loadExtras() {
@@ -1194,8 +1415,11 @@
             words = words.filter(function (w) { return typeof w === 'string'; });
             if (!words.length) {
                 var names = Object.keys(COMMANDS);
-                [resolve(fs, fs, '/site/bin'), userBin()].forEach(function (d) {
-                    (d && d.children ? d.children : []).forEach(function (n) { if (isScript(n) && names.indexOf(n.name) < 0) { names.push(n.name); } });
+                String(envValue('PATH')).split(':').filter(Boolean).map(function (d) { return resolve(fs, cwd, d); }).forEach(function (d) {
+                    (d && d.children ? d.children : []).forEach(function (n) {
+                        var bare = n.name.replace(/\.(sh|lua)$/i, '');
+                        if (anyScript(n) && names.indexOf(bare) < 0) { names.push(bare); }
+                    });
                 });
                 return names.filter(function (k) { return k.indexOf(partial) === 0; }).sort().map(function (k) { return { word: k, done: true }; });
             }
@@ -1218,8 +1442,11 @@
             var m = /(\S*)$/.exec(before);
             var partial = m[1];
             var head = before.slice(0, before.length - partial.length);
-            var parsed = parse(head);
-            var words = (parsed.stages ? parsed.stages[parsed.stages.length - 1] : [])
+            /* The words of the command being typed: the last stage of the
+               last pipeline, after any ;, && or || and |. */
+            var parsed = parse(head.split(/\|\||&&|[|;]/).pop());
+            var lastPipe = parsed.list && parsed.list.length ? parsed.list[parsed.list.length - 1] : null;
+            var words = (lastPipe ? lastPipe.stages[lastPipe.stages.length - 1] : [])
                 .map(function (w) { return w && typeof w === 'object' && w.glob != null ? w.word : w; });
             var list = completions(words, partial);
             if (!list.length) { return; }
@@ -1375,12 +1602,74 @@
             });
         }
 
-        /* ctx is set when a script runs a line: its output goes where the
-           script's own output goes, and it knows how deep the scripts are. */
+        /* === Variables =================================================
+           HOME, PWD, OLDPWD and USER are the terminal's own and cannot be
+           set; $? is the last status; PATH is DEFAULT_PATH until it is set.
+           Anything else is what export set, kept with this terminal's
+           snapshot so a reload keeps it. */
+        var env = {}, lastStatus = 0, oldPwd = '';
+        var FIXED = ['HOME', 'PWD', 'OLDPWD', 'USER'];
+        function has(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
+        function envValue(name) {
+            if (name === 'HOME') { return homeDir() ? pathOf(homeDir()) : '/'; }
+            if (name === 'PWD') { return cwd ? pathOf(cwd) : '/'; }
+            if (name === 'OLDPWD') { return oldPwd; }
+            if (name === 'USER') { return F.user(); }
+            if (name === '?') { return String(lastStatus); }
+            if (name === 'PATH' && !has(env, 'PATH')) { return DEFAULT_PATH; }
+            return has(env, name) ? env[name] : '';
+        }
+        function envList() {
+            var names = Object.keys(env);
+            if (names.indexOf('PATH') < 0) { names.push('PATH'); }
+            return FIXED.map(function (n) { return [n, envValue(n)]; }).concat(names.sort().map(function (n) { return [n, envValue(n)]; }));
+        }
+        function setEnv(name, value) {
+            if (FIXED.indexOf(name) >= 0 || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) { return false; }
+            if (value == null) { delete env[name]; } else { env[name] = String(value).slice(0, 4096); }
+            if (snap) { snap.changed(); }
+            return true;
+        }
+
+        /* A script's exit: the status it stops with, which ends every line
+           and script up to the one that ran it. */
+        function Exit(code) { this.code = code; }
+
+        /* A file or directory as a script sees it. */
+        function entryInfo(n) {
+            var r = realOf(n);
+            return { name: r.name, path: pathOf(r), directory: !!r.children, kind: F.kindOf(n), size: r.children ? 0 : (F.size(r) || 0), modified: r.mtime ? new Date(r.mtime).toISOString() : '', writable: !!r.home };
+        }
+        /* A path joined to a directory and settled lexically, for a file
+           that may not exist yet; ~ is the home directory. */
+        function lexical(base, p) {
+            p = String(p);
+            var homePath = envValue('HOME');
+            if (p === '~' || p.indexOf('~/') === 0) { p = homePath + p.slice(1); }
+            var parts = p[0] === '/' ? [] : pathOf(base).split('/').filter(Boolean);
+            p.split('/').forEach(function (part) { if (part === '..') { parts.pop(); } else if (part && part !== '.') { parts.push(part); } });
+            return '/' + parts.join('/');
+        }
+
+        /* ctx is set when a script runs a line: { out, stdin, depth,
+           interactive, params, cwd, env }. Its output goes where the
+           script's own output goes; cwd and env, when a script in another
+           language runs a command, are that script's directory and
+           variables, which the terminal's own do not change for. */
         function makeIo(stdin, sink, ctx) {
             var interactive = !sink && (ctx ? ctx.interactive : true);
             var depth = ctx ? ctx.depth : 0;
-            return {
+            var here = ctx && ctx.cwd || null, vars = ctx && ctx.env || null;
+            function base() { return here || cwd; }
+            function varValue(name) { return vars && has(vars, name) ? vars[name] : envValue(name); }
+            function varList() {
+                if (!vars) { return envList(); }
+                var seen = {}, out = [];
+                Object.keys(vars).sort().forEach(function (n) { seen[n] = true; out.push([n, vars[n]]); });
+                envList().forEach(function (pair) { if (!seen[pair[0]]) { out.push(pair); } });
+                return out;
+            }
+            var io = {
                 cols: term.cols, rows: term.rows, interactive: interactive,
                 stdin: stdin,
                 /* A long command checks this between steps and stops. */
@@ -1394,21 +1683,53 @@
                     if (sink) { sink.push(strip(s)); } else if (ctx) { ctx.out(s); } else { write(s); }
                 },
                 err: function (s) { write(paint('red', String(s).replace(/\n$/, '')) + '\n'); },
+                env: function (name) { return name ? varValue(name) : varList(); },
+                setEnv: function (name, value) { if (vars && has(vars, name)) { if (value == null) { delete vars[name]; } else { vars[name] = String(value); } return true; } return setEnv(name, value); },
+                scope: { cwd: here, env: vars },
+                /* A script is given ~ and ~/... as the home directory's path,
+                   as a shell gives them; the terminal's own commands take ~
+                   as it is. */
+                tilde: function (a) { a = String(a); var h = envValue('HOME'); return a === '~' ? h : a.indexOf('~/') === 0 ? h + a.slice(1) : a; },
                 /* Reads any file as text, for commands that take files. */
                 read: function (p) {
-                    var n = resolve(fs, cwd, p);
+                    var n = resolve(fs, base(), p);
                     if (!n) { return Promise.reject(new Error(p + ': no such file or directory')); }
                     if (n.children) { return Promise.reject(new Error(p + ': is a directory')); }
                     return textOf(realOf(n));
                 },
-                findScript: function (name) { var n = findProgram(fs, cwd, name); return n && isScript(n) ? n : null; },
-                runScript: function (node, args) { return runScript(node, args, this, depth); },
+                findProgram: function (name) { return findProgram(fs, base(), name, varValue('PATH')); },
+                findScript: function (name) { var n = findProgram(fs, base(), name, varValue('PATH')); return anyScript(n) ? n : null; },
+                runScript: function (node, args) { return runScript(node, args, io, depth); },
+                runWith: function (def, source, name, dir, args) { return runWith(def, source, name, dir, args, io, depth); },
+                source: function (p, args) { return sourceScript(p, args || [], io, depth); },
+                exit: function (code) {
+                    if (ctx) { return new Exit(code || 0); }
+                    var owner = root.closest('[data-win]');
+                    if (!owner || !window.pudlWindows) { io.err('exit: this terminal is a page of its own; close the tab instead'); return 1; }
+                    setTimeout(function () { window.pudlWindows.close(owner.getAttribute('data-win')); });
+                    return 0;
+                },
                 fs: {
-                    resolve: function (p) { return resolve(fs, cwd, p); },
-                    cwd: function () { return cwd; },
-                    chdir: function (n) { cwd = n; announce(); },
-                    write: function (p, content, append) { return writeFile(fs, cwd, p, content, append); },
+                    resolve: function (p) { return resolve(fs, base(), p); },
+                    cwd: function () { return base(); },
+                    path: function (p) { var n = resolve(fs, base(), p); return n ? pathOf(n) : lexical(base(), p); },
+                    stat: function (p) { var n = resolve(fs, base(), p); return n ? entryInfo(n) : null; },
+                    list: function (p) {
+                        var n = resolve(fs, base(), p);
+                        if (!n) { throw new Error(p + ': no such directory'); }
+                        if (!n.children) { throw new Error(p + ': not a directory'); }
+                        return realOf(n).children.map(entryInfo);
+                    },
+                    chdir: function (n) {
+                        if (here) { here = n; io.scope.cwd = n; return; }
+                        if (n !== cwd) { oldPwd = pathOf(cwd); }
+                        cwd = n; announce();
+                    },
+                    write: function (p, content, append) { return writeFile(fs, base(), p, content, append); },
+                    /* write, for a script: throws rather than answering { error }. */
+                    saveText: async function (p, content, append) { var res = await writeFile(fs, base(), p, content, append); if (res && res.error) { throw new Error(res.error); } return true; },
                     save: homeSave,
+                    mkdirp: async function (p, parents) { var e = await F.mkdir(base(), p, parents); if (e) { throw new Error(e); } return true; },
                     mkdir: mkdir,
                     remove: remove,
                     move: move
@@ -1427,46 +1748,64 @@
                 },
                 pager: pager
             };
+            return io;
         }
 
-        /* Runs one line. Resolves to its status: 0 for success, and
-           anything else for a failure, which stops a script. */
-        async function execute(text, ctx) {
-            if (!ctx) { homeSync(); }
-            var fail = function (m) { write(paint('red', m) + '\n'); return 2; };
-            var parsed = parse(text);
-            if (parsed.error) { return fail(parsed.error); }
-            var stages = parsed.stages.filter(function (s) { return s.length; });
-            if (!stages.length) { return 0; }
-            /* A redirection may end only the last stage, and names a file. */
-            var redirect = null;
+        function fail(m) { write(paint('red', m) + '\n'); return 2; }
+
+        /* The PATH a line runs with: a script's own, or the terminal's. */
+        function pathFor(ctx) { return ctx && ctx.env && has(ctx.env, 'PATH') ? ctx.env.PATH : envValue('PATH'); }
+
+        /* Runs one command from its words. */
+        async function runCommand(argv, io, ctx) {
+            var here = ctx && ctx.cwd || cwd;
+            var c = COMMANDS[argv[0]] || programAt(fs, here, argv[0], pathFor(ctx));
+            if (!c) { io.err(argv[0] + ': command not found. Type "help" for the list.'); return 127; }
+            return (await c.run(argv.slice(1), io)) || 0;
+        }
+
+        /* Runs a pipeline: stages joined by |, the first of which may read a
+           file (< file) and the last of which may write one (> or >> file). */
+        async function runPipeline(stages, ctx) {
+            var here = ctx && ctx.cwd || cwd;
+            var stdin = ctx ? ctx.stdin : null, redirectOut = null, redirectIn = null;
             for (var s = 0; s < stages.length; s++) {
-                var at = -1;
-                stages[s].forEach(function (w, j) { if (w && typeof w === 'object' && w.redirect && at < 0) { at = j; } });
-                if (at < 0) { continue; }
-                if (s !== stages.length - 1) { return fail('a redirection (> or >>) can only end the line'); }
-                var target = stages[s][at + 1];
-                // A file name with a wild character in it is taken as written.
-                if (target && typeof target === 'object' && target.glob != null) { target = target.word; }
-                if (typeof target !== 'string' || stages[s].length !== at + 2) { return fail('a redirection needs one file name after it'); }
-                redirect = { mode: stages[s][at].redirect, path: target };
-                stages[s] = stages[s].slice(0, at);
-                if (!stages[s].length) { return fail('nothing to redirect'); }
+                var words = [];
+                for (var j = 0; j < stages[s].length; j++) {
+                    var w = stages[s][j];
+                    if (w && typeof w === 'object' && w.redirect) {
+                        var target = stages[s][j + 1];
+                        // A file name with a wild character in it is taken as written.
+                        if (target && typeof target === 'object' && target.glob != null) { target = target.word; }
+                        if (typeof target !== 'string') { return fail('a redirection needs a file name after it'); }
+                        j++;
+                        if (w.redirect === '<') { if (s !== 0) { return fail('< can only give input to the first command'); } redirectIn = target; }
+                        else { if (s !== stages.length - 1) { return fail('a redirection (> or >>) can only end the line'); } redirectOut = { mode: w.redirect, path: target }; }
+                        continue;
+                    }
+                    words.push(w);
+                }
+                stages[s] = words;
+                if (!words.length) { return fail('nothing to run'); }
+            }
+            if (redirectIn != null) {
+                var inNode = resolve(fs, here, redirectIn);
+                if (!inNode || inNode.children) { return fail(redirectIn + ': no such file'); }
+                try { stdin = await textOf(realOf(inNode)); } catch (err) { return fail(redirectIn + ': ' + message(err)); }
             }
             var cwdPath = pathOf(cwd);
-            var stdin = ctx ? ctx.stdin : null;
             var status = 0;
             for (var i = 0; i < stages.length && !interrupted; i++) {
                 // Patterns are matched as each stage starts, from where it runs.
-                var words = expandGlobs(stages[i], cwd), c = COMMANDS[words[0]] || programAt(fs, cwd, words[0]);
-                if (!c) { write(paint('red', words[0] + ': command not found. Type "help" for the list.') + '\n'); return 127; }
+                var argv = expandGlobs(stages[i], here);
                 var last = i === stages.length - 1;
-                var sink = last && !redirect ? null : [];
-                status = (await c.run(words.slice(1), makeIo(stdin, sink, ctx))) || 0;
+                var sink = last && !redirectOut ? null : [];
+                status = await runCommand(argv, makeIo(stdin, sink, ctx), ctx);
+                if (status instanceof Exit) { return status; }
                 if (sink) { stdin = sink.join(''); }
             }
-            if (redirect && !interrupted) {
-                var res = await writeFile(fs, cwd, redirect.path, stdin || '', redirect.mode === '>>');
+            if (redirectOut && !interrupted) {
+                var res = await writeFile(fs, here, redirectOut.path, stdin || '', redirectOut.mode === '>>');
                 if (res.error) { write(paint('red', res.error) + '\n'); status = 1; }
             }
             /* A command may have removed or moved the current directory. */
@@ -1474,24 +1813,205 @@
             return interrupted ? 130 : status;
         }
 
-        /* Runs a script's lines in order, stopping at the first that fails.
-           Its output goes wherever the script's does, so a script can sit
-           in a pipe, and what is piped into it reaches its first line. */
+        /* Runs one line: pipelines joined by ;, && and ||. Each pipeline's $
+           expansions are made as it starts, after the ones before it have
+           run, so $? and an export earlier on the line are seen. Resolves to
+           the last pipeline's status: 0 for success, and anything else for a
+           failure, which stops a script; or an Exit, from a script's exit. */
+        async function execute(text, ctx) {
+            if (!ctx) { homeSync(); }
+            var params = ctx && ctx.params, vars = ctx && ctx.env;
+            function lookup(name) {
+                if (params && has(params, name)) { return params[name]; }
+                if (name === '@list') { return []; }
+                if (params && /^[0-9#@]$/.test(name)) { return ''; }
+                if (vars && has(vars, name)) { return vars[name]; }
+                return envValue(name);
+            }
+            var parsed = parse(text, lookup);
+            if (parsed.error) { return fail(parsed.error); }
+            var status = 0;
+            for (var i = 0; i < parsed.list.length && !interrupted; i++) {
+                var p = parsed.list[i];
+                if (p.op === '&&' && status !== 0) { continue; }
+                if (p.op === '||' && status === 0) { continue; }
+                var now = parse(p.source, lookup);
+                if (now.error) { return fail(now.error); }
+                if (!now.list.length) { status = 0; continue; }
+                status = await runPipeline(now.list[0].stages, ctx);
+                if (status instanceof Exit) { return status; }
+                lastStatus = status;
+            }
+            return interrupted ? 130 : status;
+        }
+
+        /* Runs a script. One in another language runs with its interpreter;
+           the terminal's own runs its lines in order, stopping at the first
+           that fails. Its output goes wherever the script's does, so a
+           script can sit in a pipe, and what is piped into it reaches its
+           first line. */
         var SCRIPT_DEPTH = 8;
         async function runScript(node, args, io, depth) {
-            if (depth >= SCRIPT_DEPTH) { io.err(node.name + ': scripts call each other too deeply (the limit is ' + SCRIPT_DEPTH + ')'); return 1; }
-            var lines = scriptSource(node).replace(/\r/g, '').split('\n');
+            var r = realOf(node);
+            if (depth >= SCRIPT_DEPTH) { io.err(r.name + ': scripts call each other too deeply (the limit is ' + SCRIPT_DEPTH + ')'); return 1; }
+            var text;
+            try { text = String(await textOf(r)); } catch (err) { io.err(r.name + ': ' + message(err)); return 126; }
+            var interp = interpreterFor(pathOf(r), text);
+            if (interp) { return runWith(interp, text, r.name, r.parent ? pathOf(r.parent) : '/', args, io, depth); }
+            var lines = text.replace(/\r/g, '').split('\n'), params = scriptParams(r.name, args);
             var first = true, status = 0;
             for (var i = 0; i < lines.length && !interrupted; i++) {
                 var t = lines[i].trim();
                 if (!t || t[0] === '#') { continue; }
-                status = await execute(expand(t, node.name, args), {
-                    out: io.out, stdin: first ? io.stdin : null, depth: depth + 1, interactive: io.interactive
+                status = await execute(t, {
+                    out: io.out, stdin: first ? io.stdin : null, depth: depth + 1, interactive: io.interactive,
+                    params: params, cwd: io.scope.cwd, env: io.scope.env
                 });
                 first = false;
+                if (status instanceof Exit) { status = status.code; break; }
                 if (status) { break; }
             }
             return status;
+        }
+
+        /* Runs a script with an interpreter module, giving it the terminal's
+           output, input and host. sourced keeps, in the terminal, what the
+           script exported and the directory it ended in. */
+        async function runWith(def, source, name, dir, args, io, depth, sourced) {
+            try {
+                var result = await def.run(source, {
+                    name: name, dir: dir, args: args, stdin: io.stdin,
+                    cwd: pathOf(io.fs.cwd()), env: io.env(),
+                    write: function (s) { io.out(String(s)); },
+                    error: function (s) { io.err(String(s)); },
+                    interrupted: function () { return interrupted; },
+                    request: function (op, a) { return hostRequest(op, a || [], dir, io, depth); }
+                });
+                var status = result && typeof result === 'object' ? result.status : result;
+                if (sourced && result && typeof result === 'object' && !interrupted) { keepSourced(result, io); }
+                return interrupted ? 130 : (Number(status) || 0);
+            } catch (err) { io.err(name + ': ' + message(err)); return 1; }
+        }
+        function keepSourced(result, io) {
+            if (result.env) {
+                Object.keys(result.env).forEach(function (n) { if (FIXED.indexOf(n) < 0 && envValue(n) !== result.env[n]) { setEnv(n, result.env[n]); } });
+                Object.keys(env).forEach(function (n) { if (!has(result.env, n)) { setEnv(n, null); } });
+            }
+            if (result.cwd) {
+                var d = resolve(fs, fs, result.cwd);
+                if (d && d.children && d !== cwd) { io.fs.chdir(d); }
+            }
+        }
+        /* source <file>: a script in another language runs in the terminal
+           itself, keeping what it sets; the terminal's own scripts always
+           run here. */
+        async function sourceScript(p, args, io, depth) {
+            var n = resolve(fs, io.fs.cwd(), p);
+            if (!n || n.children) { io.err('source: ' + p + ': no such file'); return 1; }
+            var r = realOf(n), text;
+            try { text = String(await textOf(r)); } catch (err) { io.err('source: ' + message(err)); return 126; }
+            var interp = interpreterFor(pathOf(r), text);
+            if (interp) { return runWith(interp, text, r.name, r.parent ? pathOf(r.parent) : '/', args, io, depth, true); }
+            return runScript(r, args, io, depth);
+        }
+
+        /* A Lua module for require: in the script's directory, ~/lib/lua or
+           /site/lib/lua, and last among the ones that come with the
+           terminal (js/terminal-lib/lua). The answer is its path and text,
+           or nothing. */
+        var bundledModules = {};
+        async function findModule(name, dir) {
+            var rel = String(name).replace(/\./g, '/');
+            if (!/^[A-Za-z0-9_\/-]+$/.test(rel)) { return ''; }
+            var places = [dir, '~/lib/lua', '/site/lib/lua'];
+            for (var i = 0; i < places.length; i++) {
+                var tries = [places[i] + '/' + rel + '.lua', places[i] + '/' + rel + '/init.lua'];
+                for (var j = 0; j < tries.length; j++) {
+                    var n = resolve(fs, fs, tries[j]);
+                    if (n && !n.children) { return pathOf(realOf(n)) + '\n' + await textOf(realOf(n)); }
+                }
+            }
+            if (!(rel in bundledModules)) {
+                /* The files end in .lua.txt, a type the server serves; it
+                   serves no file of a type it does not know. */
+                bundledModules[rel] = fetch(beside('terminal-lib/lua/' + rel + '.lua.txt'), { credentials: 'same-origin' })
+                    .then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
+            }
+            var bundled = await bundledModules[rel];
+            return bundled ? '/js/terminal-lib/lua/' + rel + '.lua\n' + bundled : '';
+        }
+
+        /* The host every interpreter's scripts use: files, directories,
+           commands, variables and modules. Each answer is text, true or a
+           number; lists and entries are JSON. Applets' published actions
+           come with the action broker (the design's P2). */
+        async function hostRequest(op, a, dir, io, depth) {
+            function deep() { if (depth + 1 >= SCRIPT_DEPTH) { throw new Error('scripts call each other too deeply (the limit is ' + SCRIPT_DEPTH + ')'); } }
+            switch (op) {
+                case 'read': return await io.read(a[0]);
+                case 'save': await io.fs.saveText(a[0], String(a[1]), a[2] === 'append'); return true;
+                case 'list': return JSON.stringify(io.fs.list(a[0]));
+                case 'stat': { var s = io.fs.stat(a[0]); return s ? JSON.stringify(s) : ''; }
+                case 'mkdir': await io.fs.mkdirp(a[0], !!a[1]); return true;
+                case 'remove': {
+                    var rn = io.fs.resolve(a[0]);
+                    if (!rn) { throw new Error(a[0] + ': no such file or directory'); }
+                    var re = await remove(rn, false, a[0]);
+                    if (re) { throw new Error(re); }
+                    return true;
+                }
+                case 'move': {
+                    var mn = io.fs.resolve(a[0]);
+                    if (!mn) { throw new Error(a[0] + ': no such file or directory'); }
+                    var me = await F.move(io.fs.cwd(), mn, a[1], a[0]);
+                    if (me) { throw new Error(me); }
+                    return true;
+                }
+                case 'cwd': return pathOf(io.fs.cwd());
+                case 'path': return io.fs.path(a[0]);
+                case 'getenv': return io.env(String(a[0]));
+                case 'env': return JSON.stringify(io.env());
+                /* Runs one command from its words, as a shell script does for a
+                   command that is not its own: a[0] the words as JSON, a[1] the
+                   text it reads or null, a[2] true when its output goes where
+                   the script's goes and false when it is wanted back, a[3] the
+                   script's variables as JSON and a[4] its directory. The answer
+                   is JSON: the status, and the output when it was wanted back. */
+                case 'execv': {
+                    deep();
+                    var argv = JSON.parse(String(a[0])), direct = !!a[2], captured = [];
+                    if (!Array.isArray(argv) || !argv.length) { throw new Error('there is no command to run'); }
+                    var at = a[4] ? resolve(fs, fs, String(a[4])) : null;
+                    var sub = {
+                        out: direct ? io.out : function (s) { captured.push(strip(s)); },
+                        stdin: a[1] == null ? null : String(a[1]), depth: depth + 1, interactive: direct && io.interactive, params: {},
+                        cwd: at && at.children ? at : io.scope.cwd, env: a[3] ? JSON.parse(String(a[3])) : io.scope.env
+                    };
+                    var code = await runCommand(argv.map(String), makeIo(sub.stdin, null, sub), sub);
+                    return JSON.stringify({ status: code instanceof Exit ? code.code : code, out: captured.join('') });
+                }
+                case 'exec': {
+                    deep();
+                    var parts = [];
+                    var st = await execute(String(a[0]), { out: function (s) { parts.push(strip(s)); }, stdin: null, depth: depth + 1, interactive: false, params: {} });
+                    return String(st instanceof Exit ? st.code : st) + '\n' + parts.join('');
+                }
+                case 'run': {
+                    deep();
+                    var rs = await execute(String(a[0]), { out: io.out, stdin: null, depth: depth + 1, interactive: io.interactive, params: {} });
+                    return rs instanceof Exit ? rs.code : rs;
+                }
+                case 'module': return findModule(String(a[0]), dir);
+                case 'log': {
+                    var lv = String(a[1] || 'info');
+                    (lv === 'error' ? io.err : function (t) { io.out(paint('dim', t) + '\n'); })('[' + String(a[0] || 'script') + '] ' + String(a[2] || ''));
+                    return '';
+                }
+                case 'applets':
+                case 'invoke':
+                    throw new Error('applets\' actions are not published on this site yet');
+            }
+            throw new Error('this script asked for something the terminal does not offer (' + op + ')');
         }
 
         /* Opens a file in whatever applet opens files, the graphical Editor
@@ -1785,6 +2305,19 @@
            A program running at the time, such as ssh, ended with the page,
            which the screen then says. The folder is the state's, in the
            address. */
+        /* ~/.profile, when there is one, is sourced as a terminal starts, so
+           what it exports and the directory it goes to are this terminal's
+           own. A reload does not run it again: the variables come back with
+           the snapshot. Ctrl+C stops it. */
+        async function sourceProfile() {
+            var p = resolve(fs, fs, '~/.profile');
+            if (!p || p.children) { return; }
+            busy = true; interrupted = false;
+            try { await sourceScript('~/.profile', [], makeIo(null, null, null), 0); }
+            catch (err) { write(paint('red', '.profile: ' + message(err)) + '\n'); }
+            busy = false;
+        }
+
         var serializer = null;
         var snap = window.pcSnapshot ? window.pcSnapshot.join(root, takeSnapshot) : null;
         var SCREEN_MAX = 600000;
@@ -1796,9 +2329,13 @@
                 text = serializer.serialize({ scrollback: 2000, excludeAltBuffer: true, excludeModes: true });
                 if (text.length > SCREEN_MAX) { text = serializer.serialize({ scrollback: 300, excludeAltBuffer: true, excludeModes: true }); }
             } catch (err) { return null; }
-            return { screen: text, line: busy ? '' : line, cursor: busy ? 0 : cursor, busy: busy };
+            return { screen: text, line: busy ? '' : line, cursor: busy ? 0 : cursor, busy: busy, env: env, oldPwd: oldPwd, status: lastStatus };
         }
         function restoreScreen(kept) {
+            /* The variables come back with the screen. */
+            if (kept.env && typeof kept.env === 'object') { Object.keys(kept.env).forEach(function (n) { if (typeof kept.env[n] === 'string') { setEnv(n, kept.env[n]); } }); }
+            if (typeof kept.oldPwd === 'string') { oldPwd = kept.oldPwd; }
+            if (typeof kept.status === 'number') { lastStatus = kept.status; }
             term.write(kept.screen);
             if (kept.busy) {
                 write('\n\nThe page was reloaded, which ended the program that was running here.\n');
@@ -1855,6 +2392,8 @@
             if (kept && typeof kept.screen === 'string') { restoreScreen(kept); }
             else {
                 write(paint('bold', 'parkscomputing.com') + ' in terminal mode. Type ' + paint('green', 'help') + ' for the commands, or ' + paint('green', 'guide') + ' for the full guide; your own files are in ' + paint('blue', '~') + '.\n\n');
+                await sourceProfile();
+                if (destroyed) { return; }
                 term.write(prompt());
             }
             if (prefill) { insert(prefill); }

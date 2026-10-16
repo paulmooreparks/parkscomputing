@@ -64,3 +64,18 @@ Releases are tagged and published as npm packages under one scope, and a site ta
 ## Rules this follows
 
 The design relies on no undocumented behaviour: wasmoon, mvdan.cc/sh, Jint, the MCP C# SDK and the JSON Schema validator are all used through their documented interfaces. The capability list is closed and granted by the host, never by a manifest. Nothing that changes data runs without either a person's action or a token an admin minted for it.
+
+## P1, the Terminal port: what was built (2026-10-17)
+
+The terminal on parkscomputing.com now has GK Companion's scripting, merged into its own code rather than replacing it, so the site's commands, ssh, the snapshot, the settings and the pager stay as they were.
+
+- **The line.** `parse(line, lookup)` is GK's: `;`, `&&`, `||`, `|`, `<`, `>` and `>>`, `$NAME`, `${NAME}`, `${NAME:-default}`, `$?`, a script's `$0` to `$9`, `$@` and `$#`, single and double quotes, and `#` comments. Each pipeline's expansions are made as it starts, so an export or a status earlier on the line is seen.
+- **Variables.** `export`, `unset` and `env`, with `HOME`, `PWD`, `OLDPWD` and `USER` fixed and `PATH` defaulting to `~/bin:/site/bin`. They live with the terminal and come back with its snapshot after a reload. `cd -` goes back.
+- **New commands.** `true`, `false`, `date` (with `-I` for ISO 8601), `which`, `stat`, `basename`, `dirname`, `tee`, `source` and `.`, `exit`, and `echo -n`.
+- **Scripts.** A name is looked up as it is, then with `.sh`, then with `.lua`, in each directory of `PATH`, after the current directory and `/site/applets`. A file ending in `.sh` or `.lua` in the reader's own files is a script wherever it is. `content/bin` on the server now keeps the `.sh` and `.lua` extensions (`Controllers/TerminalController.cs`), so the site's own scripts can be shell or Lua, and their `--` comments give `man` its text.
+- **Interpreters.** `pcTerminal.registerInterpreter` with GK's interface; `js/terminal-lua.js` and `js/terminal-sh.js` register Lua 5.4 (wasmoon 1.16.0, `js/vendor/wasmoon-1.16.0`) and the POSIX shell (mvdan.cc/sh, `js/vendor/gosh-f1115436`, the folder named for the hash of its source so a rebuild never meets a cached copy). Each script runs in a worker of its own and reaches the page only through the host's requests. The shell's 6.5 MB loads the first time a shell script runs.
+- **Lua modules.** `require` looks in the script's directory, `~/lib/lua`, `/site/lib/lua`, and last the modules that come with the terminal (`js/terminal-lib/lua`, json and cli from GK). Those files end in `.lua.txt`, because the server serves no file of a type it does not know.
+- **~/.profile** is sourced when a terminal starts afresh, not after a reload, whose snapshot already holds the variables.
+- **Not yet.** Scripts cannot call applets' actions until P2; the host answers `applets` and `invoke` with that. The account pages' content security policy has no `'wasm-unsafe-eval'`, which WebAssembly needs; no terminal runs on those pages today, and one that did would need it added.
+
+Checks: `Tools/test-terminal-scripting.js` (24, on the test instance and the live site), with the snapshot suites and the applet sizing test unchanged.

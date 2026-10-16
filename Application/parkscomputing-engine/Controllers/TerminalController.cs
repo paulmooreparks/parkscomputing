@@ -62,32 +62,39 @@ public class TerminalController : ControllerBase {
         return tree;
     }
 
-    /// <summary>The site's scripts, from content/bin: plain-text files of
-    /// terminal commands, which can do only what the terminal's commands
-    /// can. A .sh or .txt extension is dropped from the name; names are
-    /// lower case, and a script over 16 KB is left out.</summary>
+    /// <summary>The site's scripts, from content/bin, which can do only what
+    /// the terminal's commands can: files of terminal commands, POSIX shell
+    /// scripts ending in .sh and Lua scripts ending in .lua
+    /// (Architecture/applet-platform-design.md, P1). A .sh or .lua name
+    /// keeps its extension, which tells the terminal the language, and the
+    /// terminal runs it by the name without it; a .txt extension is dropped.
+    /// Names are lower case, and a script over 16 KB is left out.</summary>
     private Entry? Scripts() {
         var dir = Path.Combine(_environment.WebRootPath, "content", "bin");
         if (!Directory.Exists(dir)) { return null; }
         var scripts = new List<Entry>();
         foreach (var path in Directory.EnumerateFiles(dir).OrderBy(p => p, StringComparer.Ordinal).Take(200)) {
             var name = Path.GetFileName(path);
-            if (name.EndsWith(".sh", StringComparison.Ordinal)) { name = name[..^3]; }
-            else if (name.EndsWith(".txt", StringComparison.Ordinal)) { name = name[..^4]; }
-            if (!ScriptName.IsMatch(name) || new FileInfo(path).Length > ScriptMax) { continue; }
+            var bare = name;
+            if (name.EndsWith(".sh", StringComparison.Ordinal)) { bare = name[..^3]; }
+            else if (name.EndsWith(".lua", StringComparison.Ordinal)) { bare = name[..^4]; }
+            else if (name.EndsWith(".txt", StringComparison.Ordinal)) { bare = name = name[..^4]; }
+            if (!ScriptName.IsMatch(bare) || new FileInfo(path).Length > ScriptMax) { continue; }
             var source = System.IO.File.ReadAllText(path);
-            scripts.Add(new Entry(name, "script", name, ScriptSummary(name, source), null,
+            scripts.Add(new Entry(name, "script", bare, ScriptSummary(bare, source), null,
                 System.IO.File.GetLastWriteTimeUtc(path), null, null, source));
         }
         return new Entry("bin", "dir", "Scripts", "The site's scripts, run by name", null, null, null, scripts);
     }
 
-    /// <summary>A script's summary: its first comment line, less a leading
+    /// <summary>A script's summary: its first comment line (# in the
+    /// terminal's own scripts and in shell, -- in Lua), less a leading
     /// "name:".</summary>
     private static string? ScriptSummary(string name, string source) {
-        var first = source.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.StartsWith('#') && !l.StartsWith("#!"));
+        var first = source.Split('\n').Select(l => l.Trim()).FirstOrDefault(l =>
+            (l.StartsWith('#') && !l.StartsWith("#!")) || (l.StartsWith("--", StringComparison.Ordinal) && !l.StartsWith("--[", StringComparison.Ordinal)));
         if (first is null) { return null; }
-        var text = first.TrimStart('#').Trim();
+        var text = first.StartsWith("--", StringComparison.Ordinal) ? first[2..].Trim() : first.TrimStart('#').Trim();
         return text.StartsWith(name + ":", StringComparison.Ordinal) ? text[(name.Length + 1)..].Trim() : text;
     }
 
