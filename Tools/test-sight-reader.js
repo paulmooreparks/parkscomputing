@@ -713,6 +713,55 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   i = await info();
   log('and the low C, the G and the high E are each pressed in their own octave', /^Finished: 1 of 1/.test(i.fb), i.fb);
 
+  // 13c3. Fingerboards: the guitar and the violin.
+  await newTab();
+  await page.setViewportSize({ width: 1300, height: 900 });
+  await page.goto(BASE + '/page/sight-reader', { waitUntil: 'networkidle' });
+  await options(() => page.selectOption('[data-opt="keyboard"]', 'guitar'));
+  await page.setInputFiles('.sr-file', fixture);
+  await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
+  await page.waitForTimeout(600);
+  const cell = (m, k) => page.locator('.sr-fingerboard .sr-cell[data-midi="' + m + '"]').nth(k || 0);
+  const litCells = () => page.evaluate(() => [...document.querySelectorAll('.sr-fingerboard .sr-named')].map(c => +c.getAttribute('data-midi')));
+  const rings = () => page.evaluate(() => document.querySelectorAll('.sr-fingerboard .sr-alt').length);
+  const gb = await page.evaluate(() => ({ board: !!document.querySelector('.sr-fingerboard').offsetParent, piano: !!document.querySelector('.sr-piano').offsetParent, letters: !!document.querySelector('.sr-letters').offsetParent, cells: document.querySelectorAll('.sr-fingerboard .sr-cell').length, strings: document.querySelectorAll('.sr-fingerboard line[stroke-width]').length }));
+  log('the guitar fingerboard shows in place of the piano: 6 strings of 16 positions', gb.board && !gb.piano && !gb.letters && gb.cells === 96, JSON.stringify(gb));
+  const allC4 = await page.locator('.sr-fingerboard .sr-cell[data-midi="60"]').count();
+  log('a pitch lies on more than one string', allC4 >= 2, 'C4 on ' + allC4);
+  await cell(72).click();
+  log('a position of the right note in the wrong octave says so', (await info()).fb === 'Right note, wrong octave');
+  await cell(60, 0).click();
+  i = await info();
+  const lit1 = await litCells();
+  log('a right position is named, and the pitch is lit wherever it lies on the neck', /2 more/.test(i.fb) && lit1.length === allC4 && lit1.every(m => m === 60), i.fb + ' lit ' + lit1.length + ' of ' + allC4);
+  log('the other places the pitch lies are ringed after a right press', (await rings()) === allC4 - 1, 'rings ' + (await rings()));
+  await page.waitForTimeout(2800);
+  log('and the rings go after a moment', (await rings()) === 0);
+  await cell(64, 0).click();
+  await cell(67, 0).click();
+  i = await info();
+  log('the last note of the chord ends it, the neck clears, and the cursor goes on', i.pos === 'Bar 1 · 2 of 4' && (await litCells()).length === 0, i.pos);
+  await options(() => page.uncheck('[data-opt="accidentals"]'));
+  const offCells = await page.evaluate(() => [...document.querySelectorAll('.sr-fingerboard .sr-cell')].filter(c => c.getAttribute('data-black') === '1').every(c => c.classList.contains('sr-off')));
+  log('with sharps and flats not named, the black-key positions are off', offCells);
+  const gbPosBefore = (await info()).pos;
+  await page.locator('.sr-fingerboard .sr-cell[data-black="1"]').first().click({ force: true });
+  log('and pressing one does nothing', (await info()).pos === gbPosBefore);
+  await options(() => page.check('[data-opt="accidentals"]'));
+  await options(() => page.selectOption('[data-opt="keyboard"]', 'violin'));
+  const vn = await page.evaluate(() => ({ board: !!document.querySelector('.sr-fingerboard').offsetParent, cells: document.querySelectorAll('.sr-fingerboard .sr-cell').length }));
+  log('the violin fingerboard has 4 strings of 15 positions', vn.board && vn.cells === 60, JSON.stringify(vn));
+  await page.setInputFiles('.sr-file', wideFile);
+  await page.waitForTimeout(800);
+  await options(() => page.selectOption('[data-opt="keyboard"]', 'guitar'));
+  await cell(55, 0).click();
+  await cell(76, 0).click();
+  i = await info();
+  log('a note below the neck (C2) is named by a C in any octave once the others are in', /1 more/.test(i.fb), i.fb);
+  await cell(60, 0).click();
+  log('and the chord then ends', /^Finished/.test((await info()).fb), (await info()).fb);
+  await options(() => page.selectOption('[data-opt="keyboard"]', 'piano'));
+
   // 13d. Bars to practise: start part-way in, and go round again.
   await newTab();
   await page.setViewportSize({ width: 1300, height: 900 });

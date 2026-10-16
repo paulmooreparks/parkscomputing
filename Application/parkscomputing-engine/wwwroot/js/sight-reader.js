@@ -53,6 +53,7 @@
     /* The settings are the applet's own, kept in ~/.config/sight-reader.json
        (js/config.js), so they follow the reader wherever ~ does. */
     var SETTINGS = { revealAfter: 3, accidentals: true, sound: true, keyboard: 'piano', labels: 'c', lastScore: null };
+    var KEYBOARDS = ['piano', 'letters', 'guitar', 'violin'];
     var REVEAL_CHOICES = [[0, 'Never'], [1, 'After 1 wrong try'], [2, 'After 2 wrong tries'], [3, 'After 3 wrong tries'], [5, 'After 5 wrong tries']];
 
     var SAMPLES = '/content/scores/';
@@ -159,6 +160,61 @@
         return '<p class="form-help">Each staff runs up from the lowest note shown to the highest, lines and spaces in turn. The notes are named with their octave, and middle C (C4) is in green.</p>' + html;
     }
 
+    /* The fingerboards. A string's open pitch is the pitch written on the page,
+       which for the guitar is an octave above the sound, so a reader presses
+       the position that matches the notation. Strings run from the highest, at
+       the top, to the lowest, as in tablature, with the nut at the left. */
+    var BOARDS = {
+        guitar: { title: 'Guitar', frets: 15, fretted: true, inlays: [3, 5, 7, 9, 12, 15], numbers: [1, 3, 5, 7, 9, 12, 15], wood: ['#5a3a22', '#3d2514'],
+            strings: [[76, 1.0], [71, 1.3], [67, 1.7], [62, 2.4], [57, 3.0], [52, 3.6]] },
+        violin: { title: 'Violin', frets: 14, fretted: false, inlays: [], numbers: [], wood: ['#2a2623', '#14110f'],
+            strings: [[76, 1.0], [69, 1.5], [62, 2.0], [55, 2.6]] }
+    };
+    var NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    function boardRange(kind) {
+        var b = BOARDS[kind], opens = b.strings.map(function (x) { return x[0]; });
+        return { lo: Math.min.apply(null, opens), hi: Math.max.apply(null, opens) + b.frets };
+    }
+    /* A viewBox 1000 wide: a column for the open strings, the nut, then a cell
+       for each fret. A guitar's cell lies between two frets, a violin's is
+       centred on its position, which has only a faint line. Each cell is a
+       group holding its pitch in data-midi, a ring that lights, and its name. */
+    function fingerboardMarkup(kind) {
+        var inst = BOARDS[kind], W = 1000, M = 64, S = kind === 'guitar' ? 30 : 38, top = 22, n = inst.frets, L = W - M - 10;
+        var H = top + (inst.strings.length - 1) * S + 40 + (inst.numbers.length ? 18 : 0);
+        var x = function (f) { return M + L * (1 - Math.pow(2, -f / 12)) / (1 - Math.pow(2, -n / 12)); };
+        var y = function (i) { return top + i * S; };
+        var boardTop = y(0) - 14, boardBottom = y(inst.strings.length - 1) + 14, g = '', f, i;
+        g += '<defs><linearGradient id="sr-wood-' + kind + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + inst.wood[0] + '"/><stop offset="1" stop-color="' + inst.wood[1] + '"/></linearGradient>' +
+            '<linearGradient id="sr-metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0f0f0"/><stop offset="1" stop-color="#9aa0a6"/></linearGradient></defs>';
+        g += '<rect x="' + (M - 2) + '" y="' + boardTop + '" width="' + (W - M + 2) + '" height="' + (boardBottom - boardTop) + '" rx="3" fill="url(#sr-wood-' + kind + ')"/>';
+        inst.inlays.forEach(function (fr) {
+            var cx = (x(fr - 1) + x(fr)) / 2, cy = (boardTop + boardBottom) / 2;
+            (fr === 12 ? [cy - S, cy + S] : [cy]).forEach(function (c) { g += '<circle cx="' + cx.toFixed(1) + '" cy="' + c.toFixed(1) + '" r="5" fill="#e8e0cf" opacity="0.8"/>'; });
+        });
+        for (f = 1; f <= n; f++) {
+            g += inst.fretted
+                ? '<rect x="' + (x(f) - 1.5).toFixed(1) + '" y="' + boardTop + '" width="3" height="' + (boardBottom - boardTop) + '" fill="url(#sr-metal)"/>'
+                : '<line x1="' + x(f).toFixed(1) + '" x2="' + x(f).toFixed(1) + '" y1="' + boardTop + '" y2="' + boardBottom + '" stroke="#ffffff" stroke-opacity="0.12" stroke-width="1"/>';
+        }
+        g += '<rect x="' + (M - 6) + '" y="' + (boardTop - 2) + '" width="7" height="' + (boardBottom - boardTop + 4) + '" rx="1" fill="#efe9da"/>';
+        inst.strings.forEach(function (st, k) { g += '<line x1="6" x2="' + (W - 4) + '" y1="' + y(k) + '" y2="' + y(k) + '" stroke="' + (st[1] > 2 ? '#c9a24f' : '#d8dadd') + '" stroke-width="' + st[1] + '"/>'; });
+        inst.strings.forEach(function (st, si) {
+            for (f = 0; f <= n; f++) {
+                var midi = st[0] + f, pc = midi % 12, black = NOTE_NAMES[pc].length > 1, oct = Math.floor(midi / 12) - 1;
+                var left = f === 0 ? 4 : (inst.fretted ? x(f - 1) : (x(f - 1) + x(f)) / 2);
+                var right = f === 0 ? M - 8 : (inst.fretted ? x(f) : (x(f) + (f < n ? x(f + 1) : x(f) + 20)) / 2);
+                var cx = f === 0 ? M / 2 - 2 : (inst.fretted ? (x(f - 1) + x(f)) / 2 : x(f));
+                g += '<g class="sr-cell' + (pc === 0 ? ' sr-c' : '') + (f === 0 ? ' sr-open' : '') + '" data-midi="' + midi + '" data-black="' + (black ? 1 : 0) + '" aria-label="' + NOTE_NAMES[pc] + oct + '">' +
+                    '<rect x="' + left.toFixed(1) + '" y="' + (y(si) - S / 2).toFixed(1) + '" width="' + (right - left).toFixed(1) + '" height="' + S + '" fill="transparent"/>' +
+                    '<circle cx="' + cx.toFixed(1) + '" cy="' + y(si) + '" r="' + (S * 0.36).toFixed(1) + '" class="sr-dot"/>' +
+                    '<text x="' + cx.toFixed(1) + '" y="' + (y(si) + 4) + '" text-anchor="middle" class="sr-lab">' + NOTE_NAMES[pc] + oct + '</text></g>';
+            }
+        });
+        inst.numbers.forEach(function (fr) { g += '<text x="' + ((x(fr - 1) + x(fr)) / 2).toFixed(1) + '" y="' + (boardBottom + 16) + '" text-anchor="middle" class="sr-fret-no">' + fr + '</text>'; });
+        return '<svg class="sr-board-svg" viewBox="0 0 ' + W + ' ' + H + '" role="group" aria-label="' + inst.title + ' fingerboard">' + g + '</svg>';
+    }
+
     function pianoMarkup() {
         return '<div class="sr-piano" role="group" aria-label="Piano keyboard"><div class="sr-board">' + pianoKeysMarkup() + '</div></div>';
     }
@@ -241,6 +297,7 @@
             '</div>' +
             '<div class="sr-keys" role="group" aria-label="Note names">' +
               pianoMarkup() +
+              '<div class="sr-fingerboard" data-role="fingerboard" hidden></div>' +
               '<div class="sr-letters">' +
                 LETTERS.map(function (l) { return '<button type="button" class="btn sr-note" data-note="' + l + '" aria-label="' + l + '">' + l + '</button>'; }).join('') +
               '</div>' +
@@ -264,7 +321,7 @@
                 '<div class="form-group">' +
                   '<label class="form-label" for="sr-kbd-' + uid + '">Keyboard</label>' +
                   '<span class="form-select-wrap"><select class="form-select" id="sr-kbd-' + uid + '" data-opt="keyboard">' +
-                    '<option value="piano">A piano keyboard</option><option value="letters">The letters A to G</option>' +
+                    '<option value="piano">A piano keyboard</option><option value="guitar">A guitar fingerboard</option><option value="violin">A violin fingerboard</option><option value="letters">The letters A to G</option>' +
                   '</select></span>' +
                   '<p class="form-help">On the piano, a note lights in its own octave and stays lit until every note of an interval or chord is in. A key you click has to be the right note in the right octave. Typing a letter picks the octave for you. The black keys name sharps and flats, so they wait for Name sharps and flats. The other choice is the buttons A to G, with ♯ and ♭, where no octave is asked for.</p>' +
                 '</div>' +
@@ -318,9 +375,10 @@
             feedback: q('[data-role="feedback"]'), tally: q('[data-role="tally"]'), file: q('.sr-file'),
             chooser: q('[data-role="chooser"]'), chooserBody: q('[data-role="chooser-body"]'),
             options: q('[data-role="options"]'), scope: q('[data-role="scope"]'), help: q('[data-role="help"]'), clefs: q('[data-role="clefs"]'),
-            piano: q('.sr-piano'), letters: q('.sr-letters'), accidentals: q('.sr-accidentals')
+            piano: q('.sr-piano'), board: q('.sr-fingerboard'), letters: q('.sr-letters'), accidentals: q('.sr-accidentals')
         };
         var pianoKeys = [].slice.call(el.piano.querySelectorAll('.sr-key')), pianoAt = {}, blackKeys = [], keyFlash = null;
+        var boardKind = null, boardCells = [], altTimer = null;
         pianoKeys.forEach(function (k) { pianoAt[k.getAttribute('data-midi')] = k; if (k.classList.contains('sr-black')) { blackKeys.push(k); } });
         var sharpButton = q('[data-acc="1"]'), flatButton = q('[data-acc="-1"]');
 
@@ -427,11 +485,23 @@
         /* === The piano ========================================================= */
 
         /* Which keyboard shows, and whether the black keys work. */
+        function kbdKind() { return KEYBOARDS.indexOf(settings.keyboard) >= 0 ? settings.keyboard : 'piano'; }
         function showKeyboard() {
-            var piano = settings.keyboard !== 'letters';
+            var kind = kbdKind(), piano = kind === 'piano', letters = kind === 'letters', board = !piano && !letters;
             el.piano.hidden = !piano;
-            el.letters.hidden = piano;
-            el.accidentals.hidden = piano;
+            el.letters.hidden = !letters;
+            el.accidentals.hidden = !letters;
+            el.board.hidden = !board;
+            if (board && boardKind !== kind) {
+                el.board.innerHTML = fingerboardMarkup(kind);
+                boardKind = kind;
+                boardCells = [].slice.call(el.board.querySelectorAll('.sr-cell'));
+            }
+            boardCells.forEach(function (c) {
+                var off = c.getAttribute('data-black') === '1' && !settings.accidentals;
+                c.classList.toggle('sr-off', off);
+            });
+            el.board.setAttribute('data-labels', settings.labels === 'all' || settings.labels === 'none' ? settings.labels : 'c');
             blackKeys.forEach(function (k) {
                 k.disabled = !settings.accidentals;
                 if (settings.accidentals) { k.removeAttribute('title'); } else { k.title = 'Turn on Name sharps and flats in Options to use the black keys'; }
@@ -467,11 +537,27 @@
         function showPiano() {
             var step = score && cur >= 0 && cur < steps.length ? steps[cur] : null;
             pianoKeys.forEach(function (k) { k.classList.remove('sr-named', 'sr-missed'); });
+            boardCells.forEach(function (c) { c.classList.remove('sr-named', 'sr-missed'); });
             if (!centered) { centerOnC4(); }
             if (!step) { return; }
             step.notes.forEach(function (s) {
-                if (s.state) { keyFor(target(s)).classList.add(s.state === 'ok' ? 'sr-named' : 'sr-missed'); }
+                if (!s.state) { return; }
+                var cls = s.state === 'ok' ? 'sr-named' : 'sr-missed';
+                /* On a fingerboard a pitch is lit everywhere it lies. */
+                if (!el.board.hidden) {
+                    boardCells.forEach(function (c) { if (+c.getAttribute('data-midi') === target(s)) { c.classList.add(cls); } });
+                } else { keyFor(target(s)).classList.add(cls); }
             });
+        }
+
+        /* After a right press on a fingerboard, the other places the same pitch
+           lies are ringed for a moment, so the reader sees where else it is. */
+        function clearAlt() { clearTimeout(altTimer); boardCells.forEach(function (c) { c.classList.remove('sr-alt'); }); }
+        function showAlt(midi, pressed) {
+            clearAlt();
+            if (el.board.hidden) { return; }
+            boardCells.forEach(function (c) { if (+c.getAttribute('data-midi') === midi && c !== pressed) { c.classList.add('sr-alt'); } });
+            altTimer = setTimeout(clearAlt, 2400);
         }
 
         /* A wrong key flashes red, as the cursor does. */
@@ -801,7 +887,20 @@
             var letter = LETTER_OF_PC[pc], notes = steps[cur].notes;
             var sameNote = function (s) { return settings.accidentals ? s.pc === pc : s.key === letter; };
             var hit = notes.filter(function (s) { return target(s) === midi; });
+            /* A fingerboard has a range. A note outside it cannot be pressed
+               where it is written, so for it any octave will do, the lowest
+               first. */
+            if (!hit.length && !el.board.hidden) {
+                var range = boardRange(boardKind);
+                var far = notes.filter(function (s) { return s.state !== 'ok' && (target(s) < range.lo || target(s) > range.hi) && sameNote(s); });
+                if (far.length) {
+                    var low = Math.min.apply(null, far.map(function (s) { return s.midi; }));
+                    hit = far.filter(function (s) { return s.midi === low; });
+                }
+            }
+            clearAlt();
             attempt(hit, button, notes.some(sameNote) ? 'Right note, wrong octave' : '');
+            if (hit.length) { showAlt(midi, button); }
         }
 
         /* A sharp or flat typed or pressed before its letter. Pressing the
@@ -945,7 +1044,7 @@
 
         function showOptions() {
             el.options.querySelector('[data-opt="labels"]').value = settings.labels === 'all' || settings.labels === 'none' ? settings.labels : 'c';
-            el.options.querySelector('[data-opt="keyboard"]').value = settings.keyboard === 'letters' ? 'letters' : 'piano';
+            el.options.querySelector('[data-opt="keyboard"]').value = kbdKind();
             el.options.querySelector('[data-opt="revealAfter"]').value = String(settings.revealAfter);
             el.options.querySelector('[data-opt="accidentals"]').checked = !!settings.accidentals;
             el.options.querySelector('[data-opt="sound"]').checked = !!settings.sound;
@@ -1034,6 +1133,8 @@
             if (note && root.contains(note)) { answer(note.getAttribute('data-note')); return; }
             var acc = e.target.closest('[data-acc]');
             if (acc && root.contains(acc)) { bump(+acc.getAttribute('data-acc')); return; }
+            var cell = e.target.closest('.sr-cell');
+            if (cell && root.contains(cell)) { if (!cell.classList.contains('sr-off')) { answerPiano(cell); } return; }
             var key = e.target.closest('.sr-key');
             if (key && root.contains(key)) { if (!dragged) { answerPiano(key); } return; }
             var open = e.target.closest('[data-sr-open]');
@@ -1060,7 +1161,7 @@
             if (!el.options.contains(t)) { return; }
             if (t.hasAttribute('data-clef') || t.hasAttribute('data-part')) { onScopeChange(t); return; }
             var opt = t.getAttribute('data-opt');
-            if (opt === 'keyboard') { saveSetting({ keyboard: t.value === 'letters' ? 'letters' : 'piano' }); showKeyboard(); }
+            if (opt === 'keyboard') { saveSetting({ keyboard: KEYBOARDS.indexOf(t.value) >= 0 ? t.value : 'piano' }); showKeyboard(); }
             else if (opt === 'labels') { saveSetting({ labels: t.value === 'all' || t.value === 'none' ? t.value : 'c' }); showKeyboard(); }
             else if (opt === 'revealAfter') { saveSetting({ revealAfter: +t.value }); }
             else if (opt === 'sound') { saveSetting({ sound: t.checked }); }

@@ -201,3 +201,20 @@ body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .post-content { max-width:
 .sr-staff-note.sr-mid { fill: #2e7d32; }
 .sr-staff-name.sr-mid { fill: #2e7d32; font-weight: 800; }
 .sr-clef-glyph path { fill: currentColor; stroke: none; }
+
+/* The guitar and violin fingerboards, drawn by the applet in SVG with the nut at the left, the high string at the top and the low string at the bottom, as in tablature. A pitch that has been named is lit on every string it lies on; after a right press the other places it lies are ringed for a moment. */
+.sr-fingerboard { flex: 1 1 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; user-select: none; -webkit-user-select: none; }
+.sr-fingerboard[hidden] { display: none; }
+.sr-board-svg { display: block; width: 100%; min-width: 46rem; height: auto; }
+.sr-cell { cursor: pointer; }
+.sr-cell .sr-dot { fill: transparent; stroke: transparent; stroke-width: 2.5; }
+.sr-cell:hover .sr-dot { fill: rgba(255, 255, 255, 0.22); }
+.sr-cell.sr-named .sr-dot { fill: #2e7d32; stroke: #1b5e20; }
+.sr-cell.sr-missed .sr-dot { fill: #b42318; stroke: #7a1710; }
+.sr-cell.sr-alt .sr-dot { fill: rgba(46, 125, 50, 0.18); stroke: #4caf50; stroke-dasharray: 4 3; }
+.sr-cell.sr-keywrong .sr-dot { fill: #b42318; stroke: #f4b4ae; }
+.sr-cell .sr-lab { font: 700 11px system-ui, sans-serif; fill: #fff; paint-order: stroke; stroke: rgba(0, 0, 0, 0.75); stroke-width: 3px; pointer-events: none; }
+.sr-fingerboard[data-labels="c"] .sr-cell:not(.sr-c):not(.sr-open) .sr-lab, .sr-fingerboard[data-labels="none"] .sr-lab { display: none; }
+.sr-cell.sr-off { opacity: 0.4; cursor: not-allowed; }
+.sr-fret-no { font: 600 11px system-ui, sans-serif; fill: var(--text-muted, #9aa3ad); }
+@media (prefers-reduced-motion: no-preference) { .sr-cell.sr-keywrong .sr-dot { animation: sr-shake 0.3s linear; } }
