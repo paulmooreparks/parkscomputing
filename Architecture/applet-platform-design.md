@@ -1,6 +1,6 @@
 # Applets as a platform: scripting, published actions, AI and MCP
 
-Status: proposal, 2026-10-17. Nothing here is built. It brings GK Companion's terminal scripting and applet API back to parkscomputing.com, takes them further, and shapes the result so that other sites on the engine (padmajairam.com first) can use it.
+Status: accepted with the decisions below, 2026-10-17; the Terminal port is under way. It brings GK Companion's terminal scripting and applet API back to parkscomputing.com, takes them further, and shapes the result so that other sites on the engine (padmajairam.com first) can use it.
 
 ## What exists, on each side
 
@@ -53,12 +53,13 @@ Releases are tagged and published as npm packages under one scope, and a site ta
 5. Site feature lists, and padmajairam.com with `/mcp` (P6).
 6. The in-site chat applet and the store index, if wanted (P4, P5).
 
-## Decisions for Paul
+## Decisions (Paul, 2026-10-17)
 
-- Whether an in-site AI chat applet is wanted at all, or MCP from Claude Code and Claude desktop is enough (P4).
-- One applets repository with the Terminal inside it, or a separate Terminal repository (P5).
-- Public npm packages, or a private registry such as GitHub Packages (P5).
-- Personal access tokens first and OAuth second for MCP, or OAuth from the start (P3).
+- **No in-site AI chat for now.** MCP only (P4).
+- **Repositories stay open.** Some applets may be bundled together and a large one such as the Terminal may get a repository of its own; the choice is kept in view, not made. For now everything stays in the parkscomputing.com repository, and the work is shaped so that applets can be split out later: each applet's files, manifest and host needs are kept self-contained, and nothing an applet needs from the site is reached except through the host interface (P5).
+- **Public npm packages** when applets are published (P5).
+- **Personal access tokens first, then OAuth** for MCP (P3).
+- Status: P1 (the Terminal port) is started.
 
 ## Rules this follows
 
