@@ -182,6 +182,15 @@ pudlApplets.define('dice', {
    ver: '3'
 });
 
+/* Sight Reader loads OpenSheetMusicDisplay from js/vendor when it opens
+   (Architecture/sight-reader-design.md). */
+pudlApplets.define('sight-reader', {
+   src: '/js/sight-reader.js',
+   css: '/css/sight-reader.css',
+   page: '/page/sight-reader',
+   ver: '1'
+});
+
 pudlApplets.define('theme-studio', {
    src: '/js/theme-studio.js',
    css: '/css/theme-studio.css',
