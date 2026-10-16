@@ -52,7 +52,7 @@
 
     /* The settings are the applet's own, kept in ~/.config/sight-reader.json
        (js/config.js), so they follow the reader wherever ~ does. */
-    var SETTINGS = { revealAfter: 3, accidentals: true, sound: true, keyboard: 'piano', lastScore: null };
+    var SETTINGS = { revealAfter: 3, accidentals: true, sound: true, keyboard: 'piano', labels: 'c', lastScore: null };
     var REVEAL_CHOICES = [[0, 'Never'], [1, 'After 1 wrong try'], [2, 'After 2 wrong tries'], [3, 'After 3 wrong tries'], [5, 'After 5 wrong tries']];
 
     var SAMPLES = '/content/scores/';
@@ -128,7 +128,7 @@
         for (m = PIANO_LOW; m <= PIANO_HIGH; m++) {
             var pc = m % 12, oct = Math.floor(m / 12) - 1;
             if (LETTER_OF_PC[pc]) {
-                html += '<button type="button" class="sr-key sr-white" data-midi="' + m + '" tabindex="-1" aria-label="' + LETTER_OF_PC[pc] + oct + '"><span class="sr-key-label">' + (pc === 0 ? 'C' + oct : '') + '</span></button>';
+                html += '<button type="button" class="sr-key sr-white' + (pc === 0 ? ' sr-c' : '') + '" data-midi="' + m + '" tabindex="-1" aria-label="' + LETTER_OF_PC[pc] + oct + '"><span class="sr-key-label">' + LETTER_OF_PC[pc] + oct + '</span></button>';
                 before++;
             } else {
                 html += '<button type="button" class="sr-key sr-black" data-midi="' + m + '" tabindex="-1" aria-label="' + BLACK_NAMES[pc] + ' ' + oct + '" style="left:' + (before * width - black / 2).toFixed(3) + '%;width:' + black.toFixed(3) + '%"></button>';
@@ -225,6 +225,13 @@
                     '<option value="piano">A piano keyboard</option><option value="letters">The letters A to G</option>' +
                   '</select></span>' +
                   '<p class="form-help">On the piano, a note lights in its own octave and stays lit until every note of an interval or chord is in. A key you click has to be the right note in the right octave. Typing a letter picks the octave for you. The black keys name sharps and flats, so they wait for Name sharps and flats. The other choice is the buttons A to G, with ♯ and ♭, where no octave is asked for.</p>' +
+                '</div>' +
+                '<div class="form-group">' +
+                  '<label class="form-label" for="sr-lab-' + uid + '">Key labels</label>' +
+                  '<span class="form-select-wrap"><select class="form-select" id="sr-lab-' + uid + '" data-opt="labels">' +
+                    '<option value="all">Every key (C4, D4, E4 …)</option><option value="c">Only the C keys (C3, C4, C5 …)</option><option value="none">No labels</option>' +
+                  '</select></span>' +
+                  '<p class="form-help">The piano keyboard always has the keys A0 to C8, and shows middle C (C4) in the middle when it opens. If the box is too narrow for all of them it scrolls sideways, and you can drag it or use a touch to move it.</p>' +
                 '</div>' +
                 '<div class="form-group">' +
                   '<label class="form-label" for="sr-reveal-' + uid + '">Show the answer</label>' +
@@ -382,8 +389,8 @@
                 k.disabled = !settings.accidentals;
                 if (settings.accidentals) { k.removeAttribute('title'); } else { k.title = 'Turn on Name sharps and flats in Options to use the black keys'; }
             });
+            el.piano.setAttribute('data-labels', settings.labels === 'all' || settings.labels === 'none' ? settings.labels : 'c');
             showPiano();
-            if (piano) { centerPiece(); }
         }
 
         /* The pitch a note has on the keyboard shown: its own, with sharps and
@@ -397,21 +404,14 @@
 
         /* The keyboard is all 88 keys. When it is wider than its box it
            scrolls sideways, by the scrollbar, by a touch, or by dragging with
-           the pointer, and it is centred on the octaves the piece uses. It
-           moves again only when the notes of the step are out of sight. */
-        function showRangeOnKeys(lo, hi, onlyIfHidden) {
+           the pointer. It opens centred on middle C and is moved by the reader. */
+        var centered = false;
+        function centerOnC4() {
             if (el.piano.hidden || !el.piano.clientWidth) { return; }
-            var a = keyFor(lo), b = keyFor(hi);
-            var left = a.offsetLeft, right = b.offsetLeft + b.offsetWidth, view = el.piano.clientWidth, at = el.piano.scrollLeft;
-            if (onlyIfHidden && left >= at && right <= at + view) { return; }
-            el.piano.scrollLeft = Math.max(0, Math.round((left + right) / 2 - view / 2));
-        }
-        function centerPiece() {
-            if (!steps.length) { return; }
-            var lo = Infinity, hi = -Infinity;
-            steps.forEach(function (st) { st.notes.forEach(function (n) { var t = target(n); if (t < lo) { lo = t; } if (t > hi) { hi = t; } }); });
-            showRangeOnKeys(lo, hi, false);
-            showPiano();
+            centered = true;
+            if (el.piano.scrollWidth <= el.piano.clientWidth) { return; }
+            var c = keyFor(60);
+            el.piano.scrollLeft = Math.max(0, Math.round(c.offsetLeft + c.offsetWidth / 2 - el.piano.clientWidth / 2));
         }
 
         /* The notes of the step that are named, or shown by the answer, are lit
@@ -420,12 +420,11 @@
         function showPiano() {
             var step = score && cur >= 0 && cur < steps.length ? steps[cur] : null;
             pianoKeys.forEach(function (k) { k.classList.remove('sr-named', 'sr-missed'); });
+            if (!centered) { centerOnC4(); }
             if (!step) { return; }
             step.notes.forEach(function (s) {
                 if (s.state) { keyFor(target(s)).classList.add(s.state === 'ok' ? 'sr-named' : 'sr-missed'); }
             });
-            var ts = step.notes.map(target);
-            showRangeOnKeys(Math.min.apply(null, ts), Math.max.apply(null, ts), true);
         }
 
         /* A wrong key flashes red, as the cursor does. */
@@ -774,7 +773,7 @@
             tally = { first: 0, retried: 0, missed: 0 };
             steps.forEach(function (s) { s.result = ''; s.notes.forEach(function (n) { n.state = ''; }); });
             pass = 1;
-            if (draw()) { begin(span().lo); centerPiece(); }
+            if (draw()) { begin(span().lo); }
             refresh();
             keepSnapshot();
         }
@@ -898,6 +897,7 @@
         }
 
         function showOptions() {
+            el.options.querySelector('[data-opt="labels"]').value = settings.labels === 'all' || settings.labels === 'none' ? settings.labels : 'c';
             el.options.querySelector('[data-opt="keyboard"]').value = settings.keyboard === 'letters' ? 'letters' : 'piano';
             el.options.querySelector('[data-opt="revealAfter"]').value = String(settings.revealAfter);
             el.options.querySelector('[data-opt="accidentals"]').checked = !!settings.accidentals;
@@ -1012,6 +1012,7 @@
             if (t.hasAttribute('data-clef') || t.hasAttribute('data-part')) { onScopeChange(t); return; }
             var opt = t.getAttribute('data-opt');
             if (opt === 'keyboard') { saveSetting({ keyboard: t.value === 'letters' ? 'letters' : 'piano' }); showKeyboard(); }
+            else if (opt === 'labels') { saveSetting({ labels: t.value === 'all' || t.value === 'none' ? t.value : 'c' }); showKeyboard(); }
             else if (opt === 'revealAfter') { saveSetting({ revealAfter: +t.value }); }
             else if (opt === 'sound') { saveSetting({ sound: t.checked }); }
             else if (opt === 'accidentals') { saveSetting({ accidentals: t.checked }); clearPending(); showPending(); showKeyboard(); rebuild(); }

@@ -137,17 +137,17 @@ body:has(.pc-sight-reader-app) .post-body { flex: 1 1 auto; min-height: 0; displ
    marks' green, one the answer shows in red. */
 .sr-piano, .sr-letters, .sr-accidentals { }
 .sr-piano[hidden], .sr-letters[hidden], .sr-accidentals[hidden] { display: none; }
-/* All 88 keys. The board is as wide as the box when the keys would each be wider than 2.1rem, and wider than the box when they would not, and then the box scrolls sideways. */
+/* All 88 keys. The board is as wide as the box unless that would make the white keys narrower than 1rem (1.9rem for a touch screen), and then it is wider than the box and the box scrolls sideways. */
 .sr-piano {
   flex: 1 1 100%; min-width: 0; overflow-x: auto; overflow-y: hidden;
   user-select: none; -webkit-user-select: none; touch-action: pan-x pinch-zoom;
 }
 .sr-board {
   position: relative; display: flex; height: 7.5rem;
-  width: max(100%, calc(52 * 2.1rem));
+  width: max(100%, calc(52 * var(--sr-key-min, 1rem)));
 }
 @media (max-width: 560px) { .sr-board { height: 6.5rem; } }
-@media (pointer: coarse) { .sr-board { height: 8rem; } }
+@media (pointer: coarse) { .sr-board { height: 8rem; --sr-key-min: 1.9rem; } }
 
 .sr-key { appearance: none; margin: 0; padding: 0; font: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .sr-white {
@@ -166,7 +166,8 @@ body:has(.pc-sight-reader-app) .post-body { flex: 1 1 auto; min-height: 0; displ
 }
 .sr-black:hover:not(:disabled):not(.sr-named):not(.sr-missed) { background: #343a42; }
 .sr-black:disabled { background: #3c4148; border-color: #2a2d32; box-shadow: none; cursor: not-allowed; opacity: 0.6; }
-.sr-key-label { font-size: var(--text-xs); font-weight: 600; color: #555; pointer-events: none; }
+.sr-piano[data-labels="c"] .sr-white:not(.sr-c) .sr-key-label, .sr-piano[data-labels="none"] .sr-key-label { display: none; }
+.sr-key-label { font-size: 0.62rem; font-weight: 600; color: #555; pointer-events: none; }
 
 .sr-white.sr-named, .sr-black.sr-named { background: #2e7d32; border-color: #1b5e20; color: #fff; }
 .sr-white.sr-missed, .sr-black.sr-missed { background: #b42318; border-color: #7a1710; color: #fff; }
@@ -182,3 +183,6 @@ body:has(.pc-sight-reader-app) .post-body { flex: 1 1 auto; min-height: 0; displ
 /* On its own page the title of the piece sits on the line of the page's heading, at the right, smaller than the heading. */
 .sr-heading { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4); }
 .sr-piece-title { font-size: 1rem; font-weight: 600; color: var(--text-muted); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* On its own page the applet is not held to the article column's width: the score and the keyboard take the room there is. */
+body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .post-content { max-width: none; margin-inline: 0; padding-inline: var(--space-4, 1rem); }

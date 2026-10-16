@@ -638,6 +638,27 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('the letters can be shown instead, with the sharp and flat buttons', !swapped.piano && swapped.letters && swapped.acc, JSON.stringify(swapped));
   await options(() => page.selectOption('[data-opt="keyboard"]', 'piano'));
 
+  // Key labels, and the keyboard opening on middle C.
+  await page.setViewportSize({ width: 1300, height: 900 });
+  const labelShown = mid => page.isVisible(midiKey(mid) + ' .sr-key-label');
+  await options(() => page.selectOption('[data-opt="labels"]', 'c'));
+  log('labels on the C keys only: C4 is labelled, D4 is not', (await labelShown(60)) && !(await labelShown(62)));
+  await options(() => page.selectOption('[data-opt="labels"]', 'all'));
+  log('labels on every key: D4 is labelled too', (await labelShown(62)) && (await page.textContent(midiKey(62) + ' .sr-key-label')) === 'D4');
+  await options(() => page.selectOption('[data-opt="labels"]', 'none'));
+  log('no labels: C4 is not labelled', !(await labelShown(60)));
+  await options(() => page.selectOption('[data-opt="labels"]', 'c'));
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.goto(BASE + '/page/sight-reader?score=beginner/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
+  await page.waitForTimeout(600);
+  const narrowKeys = await page.evaluate(() => { const p = document.querySelector('.sr-piano'), c = document.querySelector('.sr-key[data-midi="60"]').getBoundingClientRect(), r = p.getBoundingClientRect(); return { scrolls: p.scrollWidth > p.clientWidth, middle: Math.abs((c.left + c.right) / 2 - (r.left + r.right) / 2) < 12 }; });
+  log('where the keyboard does not fit it scrolls, opening on middle C', narrowKeys.scrolls && narrowKeys.middle, JSON.stringify(narrowKeys));
+  await page.setViewportSize({ width: 1300, height: 900 });
+  await page.goto(BASE + '/page/sight-reader?score=beginner/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
+  log('where it fits it does not scroll', await page.evaluate(() => { const p = document.querySelector('.sr-piano'); return p.scrollWidth <= p.clientWidth + 1; }));
+
   // 13c. An octave doubled in a chord: a piano key names only the note it is on.
   await newTab();
   await page.setViewportSize({ width: 1300, height: 900 });
