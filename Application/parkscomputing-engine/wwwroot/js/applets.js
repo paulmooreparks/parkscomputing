@@ -188,7 +188,7 @@ pudlApplets.define('sight-reader', {
    src: '/js/sight-reader.js',
    css: '/css/sight-reader.css',
    page: '/page/sight-reader',
-   ver: '25'
+   ver: '26'
 });
 
 pudlApplets.define('theme-studio', {

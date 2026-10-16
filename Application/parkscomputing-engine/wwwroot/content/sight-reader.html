@@ -13,6 +13,9 @@
          menu makes Sight Reader a standalone web app opening on the bare form,
          which resumes the last score. -->
     <link rel="manifest" href="/sight-reader.webmanifest" />
+    <!-- The music library is the largest file the applet loads; asking for it
+         from the head starts it with the page, not after the applet script. -->
+    <link rel="preload" href="/js/vendor/osmd-2.2.1/osmd.js" as="script" />
 </head>
 
 <body>

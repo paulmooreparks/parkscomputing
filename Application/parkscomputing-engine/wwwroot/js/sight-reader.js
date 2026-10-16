@@ -1078,15 +1078,24 @@
         /* src is { name, rel } for a sample, which is its path in the samples
            folder, or { name, file } for a file from the reader's device. A
            restored game brings back how far it had got. */
+        /* A sample's bytes. The score the page opens on is asked for at once,
+           while the settings load, and kept here until it is opened. */
+        var prefetched = {};
+        function fetchScore(rel, name) {
+            return fetch(sampleUrl(rel), { credentials: 'same-origin' }).then(function (r) {
+                if (!r.ok) { throw new Error((name || rel) + ' could not be fetched (' + r.status + ')'); }
+                return r.arrayBuffer();
+            });
+        }
+
         function openScore(src, again) {
             stopPlay();
             if (src.rel && !validRel(src.rel)) { say('That is not a score this applet can open.', 'danger'); return Promise.resolve(); }
             var id = ++loadId;
             say('Opening ' + src.name + '…', '');
-            return Promise.all([loadOsmd(), src.file ? src.file.arrayBuffer() : fetch(sampleUrl(src.rel), { credentials: 'same-origin' }).then(function (r) {
-                if (!r.ok) { throw new Error(src.name + ' could not be fetched (' + r.status + ')'); }
-                return r.arrayBuffer();
-            })]).then(function (got) {
+            var bytes = src.file ? src.file.arrayBuffer() : (prefetched[src.rel] || fetchScore(src.rel, src.name));
+            delete prefetched[src.rel];
+            return Promise.all([loadOsmd(), bytes]).then(function (got) {
                 if (destroyed || id !== loadId) { return; }
                 OS = got[0];
                 if (osmd) { osmd.clear(); }
@@ -1531,6 +1540,17 @@
         var startAsked = askedFor(opts.state) || (ownUrl ? askedFor(location.search) : null);
         var startRel = validRel(startAsked) ? startAsked : null;
         var kept = snap && snap.kept && validRel(snap.kept.rel) ? snap.kept : null;
+        /* The music library and the score the page opens on are fetched at
+           once, beside the settings, rather than after them, since they are
+           the slow part of opening; the score is read once the settings are in,
+           because how notes are named depends on them. */
+        var autoRel = startRel || (kept ? kept.rel : null);
+        loadOsmd().catch(function () { });
+        if (autoRel) {
+            prefetched[autoRel] = fetchScore(autoRel);
+            prefetched[autoRel].catch(function () { });
+            say('Opening ' + autoRel.replace(/^.*\//, '').replace(/\.[^.]*$/, '') + '…', '');
+        }
         var boot = loadConfig().then(function (c) {
             return c.load('sight-reader', SETTINGS).then(function (s) {
                 settings = Object.assign({}, SETTINGS, s);
@@ -1548,6 +1568,9 @@
             });
         }).catch(function () { }).then(function () {
             if (destroyed) { return; }
+            /* A score the reader chose while the page was starting stands: the
+               one the address or the snapshot named is not opened over it. */
+            if (loadId > 0) { return; }
             /* An address that names the score the snapshot kept is a reload,
                and the reader carries on where they were. */
             if (startAsked && !startRel) { say('That is not a score this applet can open.', 'danger'); return; }

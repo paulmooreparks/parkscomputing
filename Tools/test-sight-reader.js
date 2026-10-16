@@ -531,6 +531,19 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await options(() => pick('keyboard', 'letters'));
   await page.selectOption('[data-play-speed]', '1');
 
+  // 6h. A score chosen while the page is still starting stands.
+  await newTab();
+  await page.route('**/js/config.js*', async route => { await new Promise(r => setTimeout(r, 2500)); await route.continue(); });
+  await page.goto(BASE + '/page/sight-reader?score=simple/Ode to Joy.musicxml', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.sr-file', { state: 'attached', timeout: 30000 });
+  const early = await page.evaluate(() => document.querySelector('[data-role="feedback"]').textContent);
+  log('while the page starts it says which score it is opening', /^Opening Ode to Joy/.test(early), early);
+  await page.setInputFiles('.sr-file', fixture);
+  await page.waitForTimeout(5000);
+  i = await info();
+  log('a score chosen during the start is not replaced by the one in the address', i.title === 'sight-reader-fixture', i.title);
+  await page.unroute('**/js/config.js*');
+
   // 7. A reload mid-piece brings the sample back where it was.
   await open('/page/sight-reader?score=simple/Frere Jacques.musicxml');
   await type('cdec');
