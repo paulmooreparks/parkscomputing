@@ -155,6 +155,8 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
     red: document.querySelectorAll('.sr-sheet svg [fill="#b42318"], .sr-sheet svg [stroke="#b42318"]').length
   }));
   const cursorLeft = () => page.evaluate(() => { const c = document.querySelector('.sr-sheet img'); return c ? Math.round(c.getBoundingClientRect().left + window.scrollX) : null; });
+  /* A real song from Tools/test-scores, opened from a file as a reader's own score is. */
+  const openSong = async name => { await page.goto(BASE + '/page/sight-reader', { waitUntil: 'networkidle' }); await page.setInputFiles('.sr-file', path.join(__dirname, 'test-scores', name)); await page.waitForSelector('.sr-sheet svg', { timeout: 30000 }); await page.waitForTimeout(500); };
   const open = async url => { await page.goto(BASE + url, { waitUntil: 'networkidle' }); await page.waitForSelector('.sr-sheet svg', { timeout: 30000 }); await page.waitForTimeout(500); };
   const type = async s => { for (const ch of s) { await page.keyboard.press(ch); } };
   /* A command in the applet's own menus, which sit in the menu bar. */
@@ -414,7 +416,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('the treble-clef left hand note is read with the right hand: the piece ends', /^Finished: 2 of 2/.test((await info()).fb), (await info()).fb);
 
   // 6d2. A real song, where a hand moves between clefs many times.
-  await open('/page/sight-reader?score=advanced/Schumann - Fruhlingsnacht.mxl');
+  await openSong('Schumann - Fruhlingsnacht.mxl');
   await page.click('.sr-top [data-sr="options"]');
   const songClefs = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-clef]')].map(b => [b.getAttribute('data-clef'), +/(\d+) notes/.exec(b.parentElement.textContent)[1]])));
   /* The counts are what reading the score's XML note by note gives, with each
@@ -454,7 +456,8 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.click('.sr-top [data-sr="choose"]');
   await page.waitForSelector('.sr-pick');
   const groups = await page.evaluate(() => [...document.querySelectorAll('.sr-group-name')].map(h => h.textContent));
-  log('the chooser lists the samples by level, easiest first', groups.join() === 'beginner,intermediate,advanced', groups.join());
+  const levels = ['beginner', 'intermediate', 'advanced'], at = groups.map(g => levels.indexOf(g));
+  log('the chooser lists the samples by level, easiest first', groups.length > 0 && at.every((n, k) => n >= 0 && (k === 0 || n > at[k - 1])), groups.join());
   await page.click('.sr-pick[data-sr-name="Twinkle Twinkle Little Star"]');
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(500);
@@ -462,7 +465,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('choosing one opens it, and the address carries it', i.title === 'Twinkle Twinkle Little Star' && /score=beginner\/Twinkle/.test(decodeURIComponent(page.url())), page.url());
 
   // 9. A real song with a voice and a two-staff piano part.
-  await open('/page/sight-reader?score=beginner/Schubert - Morgengruss.mxl');
+  await openSong('Schubert - Morgengruss.mxl');
   i = await info();
   log('a song with voice and piano opens and has steps to read', /^Bar \d+ · 1 of \d{3}$/.test(i.pos), i.pos);
 
@@ -489,7 +492,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   const sideways = () => page.evaluate(() => { const b = document.querySelector('.sr-score'); return { scroll: b.scrollWidth, client: b.clientWidth, vertical: b.scrollHeight > b.clientHeight }; });
   for (const width of [1000, 1300, 1700]) {
     await page.setViewportSize({ width, height: 900 });
-    await open('/page/sight-reader?score=intermediate/Brahms - Am Sonntag Morgen.mxl');
+    await openSong('Brahms - Am Sonntag Morgen.mxl');
     await page.waitForTimeout(600);
     const sw = await sideways();
     log('no horizontal scrollbar at ' + width + 'px, with the vertical one showing', sw.vertical && sw.scroll <= sw.client + 1, JSON.stringify(sw));
@@ -505,7 +508,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
 
   // 12. Phone width.
   await page.setViewportSize({ width: 390, height: 844 });
-  await open('/page/sight-reader?score=beginner/Schubert - Morgengruss.mxl');
+  await openSong('Schubert - Morgengruss.mxl');
   const phone = await page.evaluate(() => {
     const keys = document.querySelector('.sr-keys').getBoundingClientRect(), acc = document.querySelector('.sr-accidentals').getBoundingClientRect();
     return { page: document.documentElement.scrollWidth, screen: document.documentElement.clientWidth, keysRight: Math.round(keys.right), accRight: Math.round(acc.right), accBelowLetters: acc.top >= document.querySelector('.sr-letters').getBoundingClientRect().bottom - 1,
@@ -532,9 +535,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
     return { pos: w.querySelector('[data-role="pos"]').textContent, keysInside: k.bottom <= b.bottom + 1 };
   });
   log('in a window it fills the window, and the keys work there', win.pos === 'Bar 1 · 2 of 62' && win.keysInside, JSON.stringify(win));
-  await page.click('.win[data-win="sight-reader"] [data-sr="choose"]');
-  await page.waitForSelector('.sr-pick');
-  await page.click('.sr-pick[data-sr-name="Brahms - Am Sonntag Morgen"]');
+  await page.setInputFiles('.win[data-win="sight-reader"] .sr-file', path.join(__dirname, 'test-scores', 'Brahms - Am Sonntag Morgen.mxl'));
   await page.waitForTimeout(1500);
   const inWin = await page.evaluate(() => { const b = document.querySelector('.win[data-win="sight-reader"] .sr-score'); return { scroll: b.scrollWidth, client: b.clientWidth }; });
   log('and a window shows no horizontal scrollbar either', inWin.scroll <= inWin.client + 1, JSON.stringify(inWin));

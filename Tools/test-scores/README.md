@@ -1,0 +1,3 @@
+# Scores for the Sight Reader tests
+
+These three real songs are OpenScore Lieder editions, released under Creative Commons Zero (CC0 1.0), taken from the sample set when the songs with a voice part were removed from the site on 2026-10-17. `Tools/test-sight-reader.js` opens them from this folder, because it needs a real song with a voice and a piano, with a hand that moves between clefs, to check how such scores are read. Their sources are in the OpenScore Lieder repository (https://github.com/OpenScore/Lieder): Schumann, Frühlingsnacht (lc4987677); Schubert, Morgengruß (lc5025982); Brahms, Am Sonntag Morgen (lc5700433).
