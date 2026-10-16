@@ -174,9 +174,16 @@
                   '<span class="form-select-wrap"><select class="form-select" id="sr-reveal-' + uid + '" data-opt="revealAfter">' +
                     REVEAL_CHOICES.map(function (c) { return '<option value="' + c[0] + '">' + c[1] + '</option>'; }).join('') +
                   '</select></span>' +
+                  '<p class="form-help">How many wrong tries it takes before the answer is shown. When it is shown, any key goes on to the next note.</p>' +
                 '</div>' +
-                '<label class="check"><input type="checkbox" data-opt="accidentals" /> Name sharps and flats</label>' +
-                '<label class="check"><input type="checkbox" data-opt="sound" /> Play each note I get right</label>' +
+                '<div class="sr-option">' +
+                  '<label class="check"><input type="checkbox" data-opt="accidentals" /> Name sharps and flats</label>' +
+                  '<p class="form-help">Off, you name only the letter, so an F in G major is F. On, you name the note as the music has it, so that F is F sharp. Press the sharp key (= or #), the flat key (-), or the ♯ or ♭ button, and then the letter. Changing this starts the piece again.</p>' +
+                '</div>' +
+                '<div class="sr-option">' +
+                  '<label class="check"><input type="checkbox" data-opt="sound" /> Play each note I get right</label>' +
+                  '<p class="form-help">Each right letter plays its note, at the pitch it is written at.</p>' +
+                '</div>' +
                 '<div data-role="scope"></div>' +
               '</div>' +
               '<div class="dialog-actions"><button type="button" class="btn btn-primary" data-sr="close-options">Close</button></div>' +
@@ -311,6 +318,11 @@
             osmd.setOptions({ drawPartNames: !narrow });
             osmd.Zoom = narrow ? 0.8 : 1;
             osmd.render();
+            /* A browser that does not keep room for the scrollbar (the box's CSS
+               asks it to) shows it only now, the score being tall, and has
+               taken its width from a drawing already made: once more, at the
+               width that is left. */
+            if (el.score.scrollWidth > el.score.clientWidth + 1) { lastWidth = el.score.clientWidth; osmd.render(); }
             osmd.cursor.show();
             curAdv = -1;
             return true;
@@ -590,13 +602,13 @@
             if (info) {
                 var clefs = Object.keys(info.clefs).sort(function (a, b) { return info.clefs[b] - info.clefs[a]; });
                 if (clefs.length > 1) {
-                    html += '<fieldset class="sr-scope"><legend>Clefs to read</legend>' + clefs.map(function (c) {
+                    html += '<fieldset class="sr-scope"><legend>Clefs to read</legend><p class="form-help">Only notes in the clefs ticked are asked for. A hand that moves into another clef counts as that clef while it is there. Changing this starts the piece again.</p>' + clefs.map(function (c) {
                         return '<label class="check"><input type="checkbox" data-clef="' + esc(c) + '"' + (!chosen.clefs || chosen.clefs[c] ? ' checked' : '') + ' /> ' + esc(c) + ' <span class="sr-muted">' + info.clefs[c] + ' notes</span></label>';
                     }).join('') + '</fieldset>';
                 }
                 var parts = info.parts.map(function (p, n) { return { n: n, p: p }; }).filter(function (x) { return x.p.count; });
                 if (parts.length > 1) {
-                    html += '<fieldset class="sr-scope"><legend>Parts to read</legend>' + parts.map(function (x) {
+                    html += '<fieldset class="sr-scope"><legend>Parts to read</legend><p class="form-help">Only the parts ticked are asked for, so a singer can read the voice alone. Changing this starts the piece again.</p>' + parts.map(function (x) {
                         return '<label class="check"><input type="checkbox" data-part="' + x.n + '"' + (!chosen.parts || chosen.parts[x.n] ? ' checked' : '') + ' /> ' + esc(x.p.name) + ' <span class="sr-muted">' + x.p.count + ' notes</span></label>';
                     }).join('') + '</fieldset>';
                 }

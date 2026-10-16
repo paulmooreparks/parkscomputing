@@ -24,6 +24,11 @@
 /* The score scrolls in its own box, and the cursor is kept in view there. */
 .sr-score {
   position: relative; flex: 1 1 auto; min-height: 0; overflow: auto;
+  /* The score is drawn at the box's width, and a tall score then makes the
+     box add a vertical scrollbar, which would take room from a drawing already
+     made and leave it too wide. Keeping that room back means the width the
+     score is drawn at is the width it has. */
+  scrollbar-gutter: stable;
   background: #fff; color: #000;
   border: 1px solid var(--border); border-radius: var(--radius);
 }
@@ -95,3 +100,11 @@
 .sr-options .check { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
 .sr-scope { border: 0; padding: 0; margin: var(--space-3) 0 0; }
 .sr-scope legend { padding: 0; margin-bottom: var(--space-1); font-weight: 600; }
+
+/* What each option does, under it, in the muted help text; for a tick box,
+   lined up with its words. */
+.sr-options .form-group .form-help { margin-top: 2px; }
+.sr-option { margin-bottom: var(--space-3); }
+.sr-option .check { margin-bottom: 2px; }
+.sr-option .form-help { margin-inline-start: 1.7rem; }
+.sr-scope .form-help { margin-bottom: var(--space-2); }

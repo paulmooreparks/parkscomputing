@@ -89,7 +89,8 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   fs.writeFileSync(accFile, ACCIDENTALS);
   fs.writeFileSync(pianoFile, PIANO);
   fs.writeFileSync(partsFile, PARTS);
-  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  /* Scrollbars are left showing, as a reader's browser has them: a headless browser hides them by default, and a scrollbar that takes room from a box is what a layout has to allow for. */
+  const browser = await chromium.launch(Object.assign({ ignoreDefaultArgs: ['--hide-scrollbars'] }, process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}));
   const ctx = await browser.newContext({ viewport: { width: 1300, height: 900 } });
   const errors = [];
   let page = null;
@@ -186,6 +187,15 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.keyboard.press('Space');
   i = await info();
   log('any key goes on, and the step counts as missed', i.pos !== posBefore && /1 missed/.test(i.tally), i.pos + ' / ' + i.tally);
+
+  // 2b. Each option says what it does.
+  await page.click('.sr-top [data-sr="options"]');
+  const helps = await page.evaluate(() => [...document.querySelectorAll('.sr-options .form-help')].map(p => p.textContent));
+  log('every option has a line saying what it does', helps.length >= 3 && helps.some(h => /F sharp/.test(h)) && helps.some(h => /wrong tries/.test(h)), helps.length + ' lines');
+  const hover = await page.evaluate(() => document.querySelector('[data-acc="1"]').title);
+  log('the sharp button says how to turn it on', /Turn on Name sharps and flats in Options/.test(hover), hover);
+  await page.click('[data-sr="close-options"]');
+  await page.focus('.pc-sight-reader');
 
   // 3. Never revealing, set in Options, and kept in the settings.
   await options(() => page.selectOption('[data-opt="revealAfter"]', '0'));
@@ -412,6 +422,26 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await type('f');
   log('and the quiz carries on', (await info()).pos !== wide.pos);
 
+  // 11b. A tall score's vertical scrollbar takes room from the box, and the
+  //      drawing must not then be too wide for it: no horizontal scrollbar,
+  //      at any width, however the box got its size.
+  const sideways = () => page.evaluate(() => { const b = document.querySelector('.sr-score'); return { scroll: b.scrollWidth, client: b.clientWidth, vertical: b.scrollHeight > b.clientHeight }; });
+  for (const width of [1000, 1300, 1700]) {
+    await page.setViewportSize({ width, height: 900 });
+    await open('/page/sight-reader?score=intermediate/Brahms - Am Sonntag Morgen.mxl');
+    await page.waitForTimeout(600);
+    const sw = await sideways();
+    log('no horizontal scrollbar at ' + width + 'px, with the vertical one showing', sw.vertical && sw.scroll <= sw.client + 1, JSON.stringify(sw));
+  }
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await page.waitForTimeout(1200);
+  let sw2 = await sideways();
+  log('nor after the page is made narrower', sw2.scroll <= sw2.client + 1, JSON.stringify(sw2));
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.waitForTimeout(1200);
+  sw2 = await sideways();
+  log('nor after it is made wider again', sw2.scroll <= sw2.client + 1, JSON.stringify(sw2));
+
   // 12. Phone width.
   await page.setViewportSize({ width: 390, height: 844 });
   await open('/page/sight-reader?score=beginner/Schubert - Morgengruss.mxl');
@@ -441,6 +471,12 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
     return { pos: w.querySelector('[data-role="pos"]').textContent, keysInside: k.bottom <= b.bottom + 1 };
   });
   log('in a window it fills the window, and the keys work there', win.pos === 'Bar 1 · 2 of 62' && win.keysInside, JSON.stringify(win));
+  await page.click('.win[data-win="sight-reader"] [data-sr="choose"]');
+  await page.waitForSelector('.sr-pick');
+  await page.click('.sr-pick[data-sr-name="Brahms - Am Sonntag Morgen"]');
+  await page.waitForTimeout(1500);
+  const inWin = await page.evaluate(() => { const b = document.querySelector('.win[data-win="sight-reader"] .sr-score'); return { scroll: b.scrollWidth, client: b.clientWidth }; });
+  log('and a window shows no horizontal scrollbar either', inWin.scroll <= inWin.client + 1, JSON.stringify(inWin));
   await page.screenshot({ path: path.join(SHOTS, 'sr-window.png') });
 
   log('no page errors', errors.length === 0, errors.join(' | '));
