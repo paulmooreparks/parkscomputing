@@ -175,8 +175,8 @@
               '<input type="number" min="1" step="1" class="form-input sr-bar" data-bar="from" placeholder="first" aria-label="First bar to practise" title="Start at this bar. Leave empty to start at the beginning." />' +
               '<span>to</span>' +
               '<input type="number" min="1" step="1" class="form-input sr-bar" data-bar="to" placeholder="last" aria-label="Last bar to practise" title="Stop after this bar. Leave empty to go to the end." />' +
-              '<label class="check" title="Go back to the first bar when the last one is done"><input type="checkbox" data-loop /> Loop</label>' +
               '<button type="button" class="btn" data-sr="clear-bars" title="Practise the whole piece again" disabled>Clear</button>' +
+              '<label class="check" title="Go back to the first bar when the last one is done"><input type="checkbox" data-loop /> Loop</label>' +
               '</span>' +
               '<span class="sr-title" data-role="title"></span>' +
             '</div>' +

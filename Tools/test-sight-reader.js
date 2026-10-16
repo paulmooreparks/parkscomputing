@@ -659,7 +659,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.keyboard.press('Control+A');
   await page.keyboard.type('3');
   await page.keyboard.press('Tab');
-  log('and on to Loop', await page.evaluate(() => document.activeElement.hasAttribute('data-loop')));
+  log('and on to Clear, then Loop', await page.evaluate(() => document.activeElement.getAttribute('data-sr')) === 'clear-bars' && (await page.keyboard.press('Tab'), await page.evaluate(() => document.activeElement.hasAttribute('data-loop'))));
   await page.focus('.pc-sight-reader');
   await type('gfedccd');
   await type('e');
