@@ -54,12 +54,13 @@ A score is the reader's document, not the applet's, so it goes where Files shows
 
 **Accidentals, as a setting.** With "Name sharps and flats" on, the answer is the note's full name as it is played: the key signature counts, so an F in G major is F sharp, and so do accidentals earlier in the bar. The spelling must be the written one, so F sharp is not accepted for G flat. The keys:
 
-- **Sharp: Shift with the letter**, Paul's suggestion, one keystroke.
-- **Flat: `-` and then the letter.** Paul suggested Ctrl with the letter, but the browser keeps Ctrl with a letter for itself (Ctrl+F finds, Ctrl+D bookmarks, Ctrl+A selects all, and some cannot be taken back), and Alt with a letter opens the browser's menus on Windows. Ctrl+Shift with the letter, Paul's second thought, is no better: on the letters A to G it is tab search, the bookmarks bar, the developer tools' element picker, bookmarking every tab, a browser panel and find-previous, and which of those a page may take back differs between browsers and is documented by none of them, so the design would rest on undocumented behaviour. A key typed before the letter avoids all of it. `b` cannot be the flat key, since B is a note.
-- **Either, before the letter:** `#` or `=` for sharp and `-` for flat, so the sharp has a prefix key too. A prefix typed twice is a double sharp or double flat; Escape drops a prefix typed by mistake.
+- **On a keyboard, a key typed before the letter, for sharp and flat alike** (Paul, 2026-10-16): `#` or `=` for sharp, `-` for flat, so F sharp is `=` then F. Shift with the letter, Paul's first thought for sharps, was dropped so that both accidentals work the same way.
+- **On a phone or tablet, a ♯ and a ♭ button** beside the letter buttons, pressed before the letter in the same way.
+- **Why not a modifier for flats.** Paul suggested Ctrl with the letter, but the browser keeps Ctrl with a letter for itself (Ctrl+F finds, Ctrl+D bookmarks, Ctrl+A selects all, and some cannot be taken back), and Alt with a letter opens the browser's menus on Windows. Ctrl+Shift with the letter, Paul's second thought, is no better: on the letters A to G it is tab search, the bookmarks bar, the developer tools' element picker, bookmarking every tab, a browser panel and find-previous, and which of those a page may take back differs between browsers and is documented by none of them, so the design would rest on undocumented behaviour. A key typed before the letter avoids all of it. `b` cannot be the flat key, since B is a note.
+- **Doubles and mistakes.** A prefix typed twice is a double sharp or double flat, and Escape drops a prefix typed by mistake.
 - **A natural is the letter alone.** The reader has to know the note is natural, which is the point of the setting.
 
-A prefix shows in the status line until its letter comes. On a phone, ♯ and ♭ buttons beside the letters work as the prefix keys do. A note answered with the right letter and the wrong accidental is a wrong try, and the revealed answer shows the accidental.
+A prefix shows in the status line, and its button stays pressed, until its letter comes. A note answered with the right letter and the wrong accidental is a wrong try, and the revealed answer shows the accidental.
 
 **Wrong answers.** A wrong letter flashes the cursor and the status line in the error colour and counts a try against the step and its measure. The setting "Show the answer after" takes a number of wrong tries, or Never. When the limit is reached, the applet marks the missing notes with their names, waits for any key, and moves on.
 
@@ -81,7 +82,7 @@ A short spike with a real piece of Paul's should confirm three things using only
 
 - **Pieces come from everywhere**: notation programs, MuseScore.com, PDFs and printed books, and pieces Paul writes himself. The help explains each route. MuseScore's own `.mscz` files are not MusicXML, so a piece written in MuseScore is exported as MusicXML (File, Export) before it is added.
 - **Piano and guitar together, piano by default.** Nothing in the quiz needs them apart. Guitar music is written an octave above the pitch it sounds, which matters only once octaves are asked for and for the note the applet plays; MusicXML says so in the part's clef or transposition, and the applet uses that.
-- **Accidentals** as above: letters only by default, Shift or `#` for sharp and `-` for flat with the setting on.
+- **Accidentals** as above: letters only by default; with the setting on, a key before the letter on a keyboard (`#` or `=` sharp, `-` flat) and ♯ and ♭ buttons on a phone.
 - **A desktop or laptop first, with phone support required**, so the keyboard is the main input and the buttons must still be complete on their own.
 
 ## Open question for Paul
