@@ -174,6 +174,11 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
     await page.waitForTimeout(400);
     await page.focus('.pc-sight-reader');
   };
+  /* The controls of Options and Read: a segmented control's choice, a switch, a clef toggle, a part box. */
+  const pick = (opt, val) => page.click('[data-opt="' + opt + '"][data-value="' + val + '"]');
+  const setSwitch = async (opt, on) => { const sel = '[data-opt="' + opt + '"]'; if (((await page.getAttribute(sel, 'aria-checked')) === 'true') !== on) { await page.click(sel); } };
+  const setClef = async (name, on) => { const sel = '[data-clef="' + name + '"]'; if (((await page.getAttribute(sel, 'aria-pressed')) === 'true') !== on) { await page.click(sel); } };
+  const setPart = async (n, on) => { const sel = '[data-part="' + n + '"]'; if ((await page.isChecked(sel)) !== on) { await page.click(sel); } };
   const pending = () => page.evaluate(() => { const p = document.querySelector('[data-role="pending"]'); return p.hidden ? '' : p.textContent; });
 
   // 1. A single-line tune from the samples.
@@ -219,47 +224,57 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   i = await info();
   log('any key goes on, and the step counts as missed', i.pos !== posBefore && /1 missed/.test(i.tally), i.pos + ' / ' + i.tally);
 
-  // 2b. Each option says what it does.
+  // 2b. Options: two cards of segmented controls and switches.
   await page.click('.sr-top [data-sr="options"]');
-  const helps = await page.evaluate(() => [...document.querySelectorAll('.sr-options .form-help')].map(p => p.textContent));
-  log('every option has a line saying what it does', helps.length >= 3 && helps.some(h => /F sharp/.test(h)) && helps.some(h => /wrong tries/.test(h)), helps.length + ' lines');
-  log('Name sharps and flats is on by default', await page.isChecked('[data-opt="accidentals"]'));
-  await page.uncheck('[data-opt="accidentals"]');
+  const opt2 = await page.evaluate(() => ({ cards: document.querySelectorAll('.sr-options .card').length, segs: document.querySelectorAll('.sr-options .seg').length, switches: document.querySelectorAll('.sr-options .switch').length, helps: document.querySelectorAll('.sr-options .form-help').length, selects: document.querySelectorAll('.sr-options select').length, counts: /\d+ notes/.test(document.querySelector('.sr-options').textContent) }));
+  log('Options is two cards of segmented controls and switches, with no selects, paragraphs or counts', opt2.cards === 2 && opt2.segs === 3 && opt2.switches === 2 && opt2.helps === 0 && opt2.selects === 0 && !opt2.counts, JSON.stringify(opt2));
+  log('Name sharps and flats is on by default', (await page.getAttribute('[data-opt="accidentals"]', 'aria-checked')) === 'true');
+  await setSwitch('accidentals', false);
   await page.waitForTimeout(400);
   const hover = await page.evaluate(() => document.querySelector('[data-acc="1"]').title);
   log('with the setting off the sharp button says how to turn it on', /Turn on Name sharps and flats in Options/.test(hover), hover);
+  await pick('revealAfter', '5');
+  log('a segment shows which choice is made', (await page.getAttribute('[data-opt="revealAfter"][data-value="5"]', 'aria-pressed')) === 'true' && (await page.getAttribute('[data-opt="revealAfter"][data-value="3"]', 'aria-pressed')) === 'false');
+  await pick('revealAfter', '3');
   await page.click('[data-sr="close-options"]');
   await page.focus('.pc-sight-reader');
 
-  // 2c. Help: the notes of each clef.
-  await page.click('.sr-top [data-sr="clefs"]');
-  await page.waitForSelector('.sr-clefs', { state: 'visible' });
+  // 2c. Help: how to use it, in tabs, with the clefs as one.
+  await page.click('.sr-top [data-sr="help"]');
+  await page.waitForSelector('.sr-help', { state: 'visible' });
+  const tabsAt = () => page.evaluate(() => [...document.querySelectorAll('.sr-help [role="tab"]')].map(t => t.textContent + (t.getAttribute('aria-selected') === 'true' ? '*' : '')).join());
+  log('Help opens on Getting started, with Answering and Clefs beside it', (await tabsAt()) === 'Getting started*,Answering,Clefs', await tabsAt());
+  log('Getting started has numbered steps that name the buttons', await page.evaluate(() => document.querySelectorAll('.sr-help .sr-panel:not([hidden]) .sr-steps li').length) === 4);
+  await page.click('.sr-help [data-tab="answer"]');
+  log('the Answering tab is shown alone', (await tabsAt()) === 'Getting started,Answering*,Clefs' && /fingerboards/i.test(await page.textContent('.sr-help .sr-panel:not([hidden])')));
+  await page.keyboard.press('ArrowRight');
+  log('the arrow keys move between tabs', (await tabsAt()) === 'Getting started,Answering,Clefs*', await tabsAt());
   const clefHelp = await page.evaluate(() => ({
-    staves: document.querySelectorAll('.sr-clefs .sr-staff').length,
-    notes: [...document.querySelectorAll('.sr-clefs .sr-staff')].map(v => v.querySelectorAll('.sr-staff-note').length).join(),
-    middle: [...document.querySelectorAll('.sr-clefs .sr-staff-name.sr-mid')].map(t => t.textContent).join(),
-    names: [...document.querySelectorAll('.sr-clefs h4')].map(h => h.textContent).join(),
-    first: [...document.querySelectorAll('.sr-clefs .sr-staff')].map(v => v.querySelector('.sr-staff-name').textContent).join()
+    staves: document.querySelectorAll('.sr-help .sr-staff').length,
+    notes: [...document.querySelectorAll('.sr-help .sr-staff')].map(v => v.querySelectorAll('.sr-staff-note').length).join(),
+    middle: [...document.querySelectorAll('.sr-help .sr-staff-name.sr-mid')].map(t => t.textContent).join(),
+    names: [...document.querySelectorAll('.sr-help .sr-clef h4')].map(h => h.textContent).join(),
+    first: [...document.querySelectorAll('.sr-help .sr-staff')].map(v => v.querySelector('.sr-staff-name').textContent).join()
   }));
-  log('the Help button shows four clefs, each a staff of thirteen notes', clefHelp.staves === 4 && clefHelp.notes === '13,13,13,13' && /Treble.*Bass.*Alto.*Tenor/.test(clefHelp.names), JSON.stringify(clefHelp));
-  log('middle C is marked on each staff, and the lowest notes are right (C4 below the treble staff, E2 under the bass)', clefHelp.middle === 'C4,C4,C4,C4' && clefHelp.first.startsWith('C4,') , clefHelp.first);
+  log('the Clefs tab shows four clefs, each a staff of thirteen notes', clefHelp.staves === 4 && clefHelp.notes === '13,13,13,13' && /Treble.*Bass.*Alto.*Tenor/.test(clefHelp.names), JSON.stringify(clefHelp));
+  log('middle C is marked on each staff, and the lowest notes are right', clefHelp.middle === 'C4,C4,C4,C4' && clefHelp.first.startsWith('C4,'), clefHelp.first);
   await page.screenshot({ path: path.join(SHOTS, 'sr-clefs.png') });
-  await page.click('[data-sr="close-clefs"]');
+  await page.click('[data-sr="close-help"]');
   await page.focus('.pc-sight-reader');
 
   // 3. Never revealing, set in Options, and kept in the settings.
-  await options(() => page.selectOption('[data-opt="revealAfter"]', '0'));
+  await options(() => pick('revealAfter', '0'));
   await type('bbbbbb');
   i = await info();
   log('with the answer set to never, wrong tries only mark errors', i.fb === 'Not that one', i.fb);
   const saved = await page.evaluate(() => window.pcConfig.get('sight-reader').revealAfter);
   log('the setting is kept in ~/.config/sight-reader.json', saved === 0, saved);
-  await options(() => page.selectOption('[data-opt="revealAfter"]', '3'));
+  await options(() => pick('revealAfter', '3'));
 
   // 4. The buttons do what the keys do. (The piano is the default keyboard,
   //    so the checks that use the letter buttons ask for them, and the choice
   //    is kept for the rest of this browser's checks.)
-  await options(() => page.selectOption('[data-opt="keyboard"]', 'letters'));
+  await options(() => pick('keyboard', 'letters'));
   const before = (await info()).pos;
   const letters = await page.evaluate(() => [...document.querySelectorAll('[data-note]')].map(b => b.getAttribute('data-note')).join(''));
   log('there are buttons A to G', letters === 'ABCDEFG', letters);
@@ -327,10 +342,10 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   // 6b. Sound can be turned off.
   await page.keyboard.press('Space');
   const heard = (await page.evaluate(() => window.__tones)).length;
-  await options(() => page.uncheck('[data-opt="sound"]'));
+  await options(() => setSwitch('sound', false));
   await type('f');
   log('with the sound turned off a right letter plays nothing', (await page.evaluate(() => window.__tones)).length === heard, 'tones ' + heard);
-  await options(() => page.check('[data-opt="sound"]'));
+  await options(() => setSwitch('sound', true));
 
   // 6c. Sharps and flats: buttons that wait for the setting, then a key or a
   //     button before the letter.
@@ -338,7 +353,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForTimeout(800);
   i = await info();
   log('a score with a key signature and accidentals has four steps', i.pos === 'Bar 1 · 1 of 4', i.pos);
-  await options(() => page.uncheck('[data-opt="accidentals"]'));
+  await options(() => setSwitch('accidentals', false));
   const accState = await page.evaluate(() => ({ sharp: document.querySelector('[data-acc="1"]').disabled, flat: document.querySelector('[data-acc="-1"]').disabled, shown: !!document.querySelector('.sr-accidentals').offsetParent }));
   log('the sharp and flat buttons are there, and wait for the setting', accState.shown && accState.sharp && accState.flat, JSON.stringify(accState));
   await type('=');
@@ -347,7 +362,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await type('fbbc');
   i = await info();
   log('with letters only, the letters alone are right (F, B, B, C)', /^Finished: 4 of 4 right first time/.test(i.fb), i.fb);
-  await options(() => page.check('[data-opt="accidentals"]'));
+  await options(() => setSwitch('accidentals', true));
   i = await info();
   log('turning Name sharps and flats on starts the piece again', i.pos === 'Bar 1 · 1 of 4' && i.tally === '', JSON.stringify(i));
   const accOn = await page.evaluate(() => !document.querySelector('[data-acc="1"]').disabled && !document.querySelector('[data-acc="-1"]').disabled);
@@ -380,22 +395,23 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.focus('.pc-sight-reader');
   const shownAnswer = await (async () => { await type('bb'); return (await info()).fb; })();
   log('the answer shows its accidental', /^The answer is B♭/.test(shownAnswer), shownAnswer);
-  await options(() => page.uncheck('[data-opt="accidentals"]'));
+  await options(() => setSwitch('accidentals', false));
 
   // 6d. Choosing what to read: clefs, following a clef change.
   await page.setInputFiles('.sr-file', pianoFile);
   await page.waitForTimeout(800);
   i = await info();
   log('a piano score with both clefs has two steps', i.pos === 'Bar 1 · 1 of 2', i.pos);
-  await page.click('.sr-top [data-sr="options"]');
-  const clefs = await page.evaluate(() => [...document.querySelectorAll('[data-clef]')].map(b => b.getAttribute('data-clef') + (b.checked ? '+' : '-')).join());
-  log('Options offers the clefs the score uses', clefs === 'Treble+,Bass+', clefs);
-  await page.uncheck('[data-clef="Treble"]');
+  await page.click('.sr-top [data-sr="read"]');
+  await page.waitForSelector('.sr-read', { state: 'visible' });
+  const clefs = await page.evaluate(() => [...document.querySelectorAll('[data-clef]')].map(b => b.getAttribute('data-clef') + (b.getAttribute('aria-pressed') === 'true' ? '+' : '-')).join());
+  log('Read offers the clefs the score uses', clefs === 'Treble+,Bass+', clefs);
+  await setClef('Treble', false);
   await page.waitForTimeout(500);
   await page.click('[data-clef="Bass"]');
-  const guard = await page.evaluate(() => document.querySelector('[data-clef="Bass"]').checked);
-  log('the last clef stays ticked', guard);
-  await page.click('[data-sr="close-options"]');
+  const guard = await page.evaluate(() => document.querySelector('[data-clef="Bass"]').getAttribute('aria-pressed') === 'true');
+  log('the last clef stays on', guard);
+  await page.click('[data-sr="close-read"]');
   await page.focus('.pc-sight-reader');
   i = await info();
   log('with only bass chosen the quiz reads just the bass notes: one step', i.pos === 'Bar 1 · 1 of 1', i.pos);
@@ -403,10 +419,11 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('a treble note is not asked for', (await info()).fb === 'Not that one');
   await type('c');
   log('the bass note ends it', /^Finished: \d of 1/.test((await info()).fb), (await info()).fb);
-  await page.click('.sr-top [data-sr="options"]');
-  await page.check('[data-clef="Treble"]');
-  await page.uncheck('[data-clef="Bass"]');
-  await page.click('[data-sr="close-options"]');
+  await page.click('.sr-top [data-sr="read"]');
+  await page.waitForSelector('.sr-read', { state: 'visible' });
+  await setClef('Treble', true);
+  await setClef('Bass', false);
+  await page.click('[data-sr="close-read"]');
   await page.focus('.pc-sight-reader');
   i = await info();
   log('with only treble chosen, the left hand in the treble clef counts: two steps', i.pos === 'Bar 1 · 1 of 2', i.pos);
@@ -417,29 +434,69 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
 
   // 6d2. A real song, where a hand moves between clefs many times.
   await openSong('Schumann - Fruhlingsnacht.mxl');
-  await page.click('.sr-top [data-sr="options"]');
-  const songClefs = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-clef]')].map(b => [b.getAttribute('data-clef'), +/(\d+) notes/.exec(b.parentElement.textContent)[1]])));
+  await page.click('.sr-top [data-sr="read"]');
+  await page.waitForSelector('.sr-read', { state: 'visible' });
+  const songClefs = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-clef]')].map(b => [b.getAttribute('data-clef'), +b.getAttribute('data-notes')])));
   /* The counts are what reading the score's XML note by note gives, with each
      staff's clef followed through its changes, rests, grace notes and tied
      continuations left out: 1,219 in the treble clef and 280 in the bass. */
   log('a song lists its clefs with how many notes are in each, following the changes', songClefs.Treble === 1219 && songClefs.Bass === 280, JSON.stringify(songClefs));
-  await page.click('[data-sr="close-options"]');
+  await page.click('[data-sr="close-read"]');
 
   // 6e. Choosing what to read: parts.
   await page.setInputFiles('.sr-file', partsFile);
   await page.waitForTimeout(800);
   i = await info();
   log('a score with a voice and a piano has one step asking for two notes', i.pos === 'Bar 1 · 1 of 1' && /interval/.test(i.fb), JSON.stringify(i));
-  await page.click('.sr-top [data-sr="options"]');
-  const parts = await page.evaluate(() => [...document.querySelectorAll('[data-part]')].map(b => b.parentElement.textContent.trim().replace(/\s+/g, ' ')).join());
-  log('Options offers the parts, with their note counts', /Voice 1 notes,Piano 1 notes/.test(parts), parts);
-  await page.uncheck('[data-part="0"]');
-  await page.click('[data-sr="close-options"]');
+  await page.click('.sr-top [data-sr="read"]');
+  await page.waitForSelector('.sr-read', { state: 'visible' });
+  const parts = await page.evaluate(() => [...document.querySelectorAll('[data-part]')].map(b => b.parentElement.textContent.trim().replace(/\s+/g, ' ') + ' ' + b.getAttribute('data-notes')).join());
+  log('Read offers the parts', /Voice 1,Piano 1/.test(parts), parts);
+  await setPart(0, false);
+  await page.click('[data-sr="close-read"]');
   await page.focus('.pc-sight-reader');
   await type('d');
   log('with the voice not chosen, its note is not asked for', (await info()).fb === 'Not that one');
   await type('a');
   log('the piano note ends it', /^Finished: \d of 1/.test((await info()).fb), (await info()).fb);
+
+  // 6f. Read: the button, the line under the toolbar, Only and All, and the filter.
+  await page.setInputFiles('.sr-file', partsFile);
+  await page.waitForTimeout(800);
+  const readState = () => page.evaluate(() => ({ disabled: document.querySelector('.sr-top [data-sr="read"]').disabled, title: document.querySelector('.sr-top [data-sr="read"]').title, line: document.querySelector('[data-role="reading"]').hidden ? '' : document.querySelector('[data-role="reading-text"]').textContent }));
+  let rs = await readState();
+  log('Read is there for a score with more than one part, and says nothing while all of it is read', !rs.disabled && rs.line === '', JSON.stringify(rs));
+  await page.click('.sr-top [data-sr="read"]');
+  await page.waitForSelector('.sr-read', { state: 'visible' });
+  log('the parts list has no filter box when it is short', (await page.locator('[data-part-filter]').count()) === 0);
+  await page.click('[data-only="1"]');
+  rs = await readState();
+  log('Only reads one part alone, and the line and the button say so', /^Reading 1 of 2 parts\.$/.test(rs.line) && /now 1 of 2 parts/.test(rs.title), JSON.stringify(rs));
+  log('the dialog says so too', /reading 1 of 2 parts/.test(await page.textContent('[data-role="read-summary"]')));
+  await page.click('[data-sr="parts-all"]');
+  rs = await readState();
+  log('All reads every part again, and the line goes', rs.line === '', JSON.stringify(rs));
+  await page.click('[data-sr="close-read"]');
+  await page.focus('.pc-sight-reader');
+  await page.goto(BASE + '/page/sight-reader?score=simple/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
+  rs = await readState();
+  log('a tune with one clef and one part has nothing to choose, and Read is off', rs.disabled, JSON.stringify(rs));
+  const names = ['Flute', 'Oboe', 'Clarinet', 'Bassoon', 'Horn', 'Trumpet', 'Violin', 'Viola', 'Cello', 'Bass'];
+  const many = path.join(os.tmpdir(), 'sight-reader-many.musicxml');
+  fs.writeFileSync(many, '<?xml version="1.0" encoding="UTF-8"?><score-partwise version="4.0"><work><work-title>Many</work-title></work><part-list>' +
+    names.map((n, k) => '<score-part id="P' + k + '"><part-name>' + n + '</part-name></score-part>').join('') + '</part-list>' +
+    names.map((n, k) => '<part id="P' + k + '"><measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>whole</type></note></measure></part>').join('') + '</score-partwise>');
+  await page.setInputFiles('.sr-file', many);
+  await page.waitForTimeout(900);
+  await page.click('.sr-top [data-sr="read"]');
+  await page.waitForSelector('.sr-read', { state: 'visible' });
+  log('with more than eight parts a filter box appears', (await page.locator('[data-part-filter]').count()) === 1);
+  await page.fill('[data-part-filter]', 'violin');
+  const shown = await page.evaluate(() => [...document.querySelectorAll('.sr-part-row')].filter(r => !r.hidden).map(r => r.getAttribute('data-name')).join());
+  log('the filter keeps the parts that match', shown === 'violin', shown);
+  await page.click('[data-sr="close-read"]');
+  await page.focus('.pc-sight-reader');
 
   // 7. A reload mid-piece brings the sample back where it was.
   await open('/page/sight-reader?score=simple/Frere Jacques.musicxml');
@@ -545,7 +602,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await newTab();
   await page.setViewportSize({ width: 1300, height: 900 });
   await page.goto(BASE + '/page/sight-reader', { waitUntil: 'networkidle' });
-  await options(async () => { await page.selectOption('[data-opt="keyboard"]', 'piano'); await page.uncheck('[data-opt="accidentals"]'); });
+  await options(async () => { await pick('keyboard', 'piano'); await setSwitch('accidentals', false); });
   await page.setInputFiles('.sr-file', fixture);
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(600);
@@ -589,7 +646,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.setInputFiles('.sr-file', accFile);
   await page.waitForTimeout(800);
   await page.click('.sr-top [data-sr="options"]');
-  await page.check('[data-opt="accidentals"]');
+  await setSwitch('accidentals', true);
   await page.click('[data-sr="close-options"]');
   await page.focus('.pc-sight-reader');
   log('with sharps and flats on, the black keys work', await page.evaluate(() => [...document.querySelectorAll('.sr-black')].every(k => !k.disabled)));
@@ -606,7 +663,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   i = await info();
   log('and the D key is right for a C double sharp, which is the same pitch', /^Finished/.test(i.fb), i.fb);
   await page.click('.sr-top [data-sr="options"]');
-  await page.uncheck('[data-opt="accidentals"]');
+  await setSwitch('accidentals', false);
   await page.click('[data-sr="close-options"]');
   await page.focus('.pc-sight-reader');
   await page.click(key(17));
@@ -617,21 +674,24 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   // The keyboard follows the register of the notes.
   await page.setInputFiles('.sr-file', pianoFile);
   await page.waitForTimeout(800);
-  await page.click('.sr-top [data-sr="options"]');
+  await page.click('.sr-top [data-sr="read"]');
+  await page.waitForSelector('.sr-read', { state: 'visible' });
   await page.click('[data-clef="Treble"]');
   await page.waitForTimeout(400);
-  await page.click('[data-sr="close-options"]');
+  await page.click('[data-sr="close-read"]');
   i = await info();
   log('with only the bass clef chosen the keyboard is centred on the bass register: C3 in view', (await visible(48)) && i.pos === 'Bar 1 · 1 of 1', i.pos);
-  await page.click('.sr-top [data-sr="options"]');
-  await page.check('[data-clef="Treble"]');
-  await page.uncheck('[data-clef="Bass"]');
-  await page.click('[data-sr="close-options"]');
+  await page.click('.sr-top [data-sr="read"]');
+  await page.waitForSelector('.sr-read', { state: 'visible' });
+  await setClef('Treble', true);
+  await setClef('Bass', false);
+  await page.click('[data-sr="close-read"]');
   await page.waitForTimeout(400);
   log('and with only the treble clef it moves to the treble: E5 in view', await visible(76));
-  await page.click('.sr-top [data-sr="options"]');
-  await page.check('[data-clef="Bass"]');
-  await page.click('[data-sr="close-options"]');
+  await page.click('.sr-top [data-sr="read"]');
+  await page.waitForSelector('.sr-read', { state: 'visible' });
+  await setClef('Bass', true);
+  await page.click('[data-sr="close-read"]');
   await page.waitForTimeout(400);
   // E5 and C3 together are more than two octaves apart, and both are on the one keyboard.
   await page.click(midiKey(76));
@@ -650,21 +710,21 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
 
   // The letters, as an option.
   await page.setViewportSize({ width: 1300, height: 900 });
-  await options(() => page.selectOption('[data-opt="keyboard"]', 'letters'));
+  await options(() => pick('keyboard', 'letters'));
   const swapped = await page.evaluate(() => ({ piano: !!document.querySelector('.sr-piano').offsetParent, letters: !!document.querySelector('.sr-letters').offsetParent, acc: !!document.querySelector('.sr-accidentals').offsetParent }));
   log('the letters can be shown instead, with the sharp and flat buttons', !swapped.piano && swapped.letters && swapped.acc, JSON.stringify(swapped));
-  await options(() => page.selectOption('[data-opt="keyboard"]', 'piano'));
+  await options(() => pick('keyboard', 'piano'));
 
   // Key labels, and the keyboard opening on middle C.
   await page.setViewportSize({ width: 1300, height: 900 });
   const labelShown = mid => page.isVisible(midiKey(mid) + ' .sr-key-label');
-  await options(() => page.selectOption('[data-opt="labels"]', 'c'));
+  await options(() => pick('labels', 'c'));
   log('labels on the C keys only: C4 is labelled, D4 is not', (await labelShown(60)) && !(await labelShown(62)));
-  await options(() => page.selectOption('[data-opt="labels"]', 'all'));
+  await options(() => pick('labels', 'all'));
   log('labels on every key: D4 is labelled too', (await labelShown(62)) && (await page.textContent(midiKey(62) + ' .sr-key-label')) === 'D4');
-  await options(() => page.selectOption('[data-opt="labels"]', 'none'));
+  await options(() => pick('labels', 'none'));
   log('no labels: C4 is not labelled', !(await labelShown(60)));
-  await options(() => page.selectOption('[data-opt="labels"]', 'c'));
+  await options(() => pick('labels', 'c'));
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto(BASE + '/page/sight-reader?score=simple/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
@@ -717,7 +777,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await newTab();
   await page.setViewportSize({ width: 1300, height: 900 });
   await page.goto(BASE + '/page/sight-reader', { waitUntil: 'networkidle' });
-  await options(() => page.selectOption('[data-opt="keyboard"]', 'guitar'));
+  await options(() => pick('keyboard', 'guitar'));
   await page.setInputFiles('.sr-file', fixture);
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(600);
@@ -742,32 +802,32 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await cell(67, 0).click();
   i = await info();
   log('the last note of the chord ends it, the neck clears, and the cursor goes on', i.pos === 'Bar 1 · 2 of 4' && (await litCells()).length === 0, i.pos);
-  await options(() => page.uncheck('[data-opt="accidentals"]'));
+  await options(() => setSwitch('accidentals', false));
   const offCells = await page.evaluate(() => [...document.querySelectorAll('.sr-fingerboard .sr-cell')].filter(c => c.getAttribute('data-black') === '1').every(c => c.classList.contains('sr-off')));
   log('with sharps and flats not named, the black-key positions are off', offCells);
   const gbPosBefore = (await info()).pos;
   await page.locator('.sr-fingerboard .sr-cell[data-black="1"]').first().click({ force: true });
   log('and pressing one does nothing', (await info()).pos === gbPosBefore);
-  await options(() => page.check('[data-opt="accidentals"]'));
-  await options(() => page.selectOption('[data-opt="keyboard"]', 'violin'));
+  await options(() => setSwitch('accidentals', true));
+  await options(() => pick('keyboard', 'violin'));
   const vn = await page.evaluate(() => ({ board: !!document.querySelector('.sr-fingerboard').offsetParent, cells: document.querySelectorAll('.sr-fingerboard .sr-cell').length }));
   log('the violin fingerboard has 4 strings of 15 positions', vn.board && vn.cells === 60, JSON.stringify(vn));
   await page.setInputFiles('.sr-file', wideFile);
   await page.waitForTimeout(800);
-  await options(() => page.selectOption('[data-opt="keyboard"]', 'guitar'));
+  await options(() => pick('keyboard', 'guitar'));
   await cell(55, 0).click();
   await cell(76, 0).click();
   i = await info();
   log('a note below the neck (C2) is named by a C in any octave once the others are in', /1 more/.test(i.fb), i.fb);
   await cell(60, 0).click();
   log('and the chord then ends', /^Finished/.test((await info()).fb), (await info()).fb);
-  await options(() => page.selectOption('[data-opt="keyboard"]', 'piano'));
+  await options(() => pick('keyboard', 'piano'));
 
   // 13d. Bars to practise: start part-way in, and go round again.
   await newTab();
   await page.setViewportSize({ width: 1300, height: 900 });
   await open('/page/sight-reader?score=simple/Ode to Joy.musicxml');
-  await options(() => page.selectOption('[data-opt="keyboard"]', 'letters'));
+  await options(() => pick('keyboard', 'letters'));
   await page.fill('[data-bar="from"]', '2');
   await page.fill('[data-bar="to"]', '3');
   await page.press('[data-bar="to"]', 'Enter');

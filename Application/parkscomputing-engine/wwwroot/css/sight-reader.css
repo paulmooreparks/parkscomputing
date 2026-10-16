@@ -99,17 +99,35 @@
 .sr-pending { font-size: var(--text-xl); font-weight: 700; line-height: 1; min-width: 1.2em; text-align: center; color: var(--accent); }
 .sr-pending[hidden] { display: none; }
 
-.sr-options .check { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
-.sr-scope { border: 0; padding: 0; margin: var(--space-3) 0 0; }
-.sr-scope legend { padding: 0; margin-bottom: var(--space-1); font-weight: 600; }
+/* Options is the PUDL settings panel: cards of segmented controls and switches. */
+.sr-field-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin-top: var(--space-3); }
+.sr-field-row > span { font-weight: 600; }
+.sr-options .switch { margin-top: var(--space-3); }
+.sr-options .sr-field-row + .switch { margin-top: var(--space-4); }
 
-/* What each option does, under it, in the muted help text; for a tick box,
-   lined up with its words. */
-.sr-options .form-group .form-help { margin-top: 2px; }
-.sr-option { margin-bottom: var(--space-3); }
-.sr-option .check { margin-bottom: 2px; }
-.sr-option .form-help { margin-inline-start: 1.7rem; }
-.sr-scope .form-help { margin-bottom: var(--space-2); }
+/* What is being read, when it is less than the whole piece. */
+.sr-reading { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
+.sr-reading[hidden] { display: none; }
+
+/* Read: the clefs as toggles, and the parts in a list that scrolls and filters. */
+.sr-read-dialog { max-width: 36rem; }
+.sr-read-summary { margin: 0 0 var(--space-3); }
+.sr-read-h { margin: 0 0 var(--space-1); font-size: var(--text-md); }
+.sr-read section + section { margin-top: var(--space-4); }
+.sr-read-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-2); }
+.sr-read-row .sr-read-h { margin: 0; }
+.sr-part-filter { width: 100%; margin-bottom: var(--space-2); }
+.sr-parts { max-height: 16rem; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-1) var(--space-3); }
+.sr-part-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin: 4px 0; }
+.sr-part-row[hidden] { display: none; }
+
+/* Help, in tabs. */
+.sr-help-dialog { max-width: 44rem; }
+.sr-tabs .sr-panel { max-height: 60vh; overflow-y: auto; padding: var(--space-3); }
+.sr-steps { margin: 0 0 var(--space-3); padding-left: 1.2rem; }
+.sr-steps li { margin: 4px 0; }
+.sr-help h4 { margin: var(--space-3) 0 2px; }
+.sr-help h4:first-child { margin-top: 0; }
 
 /* === The installed app ==================================================== */
 
@@ -190,8 +208,6 @@ body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .site-main { max-width: no
 body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .post-content { max-width: none; margin-inline: 0; padding-inline: var(--space-4, 1rem); }
 
 /* The clef reference: a staff for each clef with its notes named. */
-.sr-clefs-dialog { max-width: 44rem; }
-.sr-clefs { max-height: 70vh; overflow-y: auto; }
 .sr-clef { margin-top: var(--space-4, 1rem); }
 .sr-clef h4 { margin: 0 0 var(--space-1, 0.25rem); }
 .sr-staff { width: 100%; height: auto; color: var(--text); }
@@ -219,3 +235,7 @@ body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .post-content { max-width:
 .sr-cell.sr-off { opacity: 0.4; cursor: not-allowed; }
 .sr-fret-no { font: 600 11px system-ui, sans-serif; fill: var(--text-muted, #9aa3ad); }
 @media (prefers-reduced-motion: no-preference) { .sr-cell.sr-keywrong .sr-dot { animation: sr-shake 0.3s linear; } }
+
+/* Help's tabs are PUDL's tab look, switched by the applet, not by pudl-tabs.js, which would put the chosen panel's id in the page's address. */
+.sr-tabs.tabs > .tablist { display: flex; }
+.sr-tabs.tabs > [role="tabpanel"] { border-top: 0; margin-bottom: 0; }
