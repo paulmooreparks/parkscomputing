@@ -52,7 +52,7 @@
 
     /* The settings are the applet's own, kept in ~/.config/sight-reader.json
        (js/config.js), so they follow the reader wherever ~ does. */
-    var SETTINGS = { revealAfter: 3, accidentals: false, sound: true, keyboard: 'piano', lastScore: null };
+    var SETTINGS = { revealAfter: 3, accidentals: true, sound: true, keyboard: 'piano', lastScore: null };
     var REVEAL_CHOICES = [[0, 'Never'], [1, 'After 1 wrong try'], [2, 'After 2 wrong tries'], [3, 'After 3 wrong tries'], [5, 'After 5 wrong tries']];
 
     var SAMPLES = '/content/scores/';
@@ -150,7 +150,10 @@
            for all of them. */
         var score = null, info = null, chosen = { clefs: null, parts: null };
         var steps = [], cur = -1, curAdv = 0;
-        var named = {}, tries = 0, revealed = false, finished = false, pendingAlter = 0;
+        var tries = 0, revealed = false, finished = false, pendingAlter = 0;
+        /* The bars being practised, as bar numbers (null is the start or the
+           end of the piece), whether to go round again, and which time round. */
+        var barFrom = null, barTo = null, looping = false, pass = 1;
         var tally = { first: 0, retried: 0, missed: 0 };
         var pending = null, loadId = 0, needsDraw = false, resizeTimer = null, flashTimer = null, narrow = false, lastWidth = 0;
 
@@ -167,6 +170,14 @@
               '<button type="button" class="btn" data-sr="choose">Scores…</button>' +
               '<button type="button" class="btn" data-sr="options">Options…</button>' +
               '<button type="button" class="btn" data-sr="restart" title="Start the piece again from the beginning">Restart</button>' +
+              '<span class="sr-range" role="group" aria-label="Bars to practise">' +
+              '<span>Bars</span>' +
+              '<input type="number" min="1" step="1" class="form-input sr-bar" data-bar="from" placeholder="first" aria-label="First bar to practise" title="Start at this bar. Leave empty to start at the beginning." />' +
+              '<span>to</span>' +
+              '<input type="number" min="1" step="1" class="form-input sr-bar" data-bar="to" placeholder="last" aria-label="Last bar to practise" title="Stop after this bar. Leave empty to go to the end." />' +
+              '<label class="check" title="Go back to the first bar when the last one is done"><input type="checkbox" data-loop /> Loop</label>' +
+              '<button type="button" class="btn" data-sr="clear-bars" title="Practise the whole piece again" disabled>Clear</button>' +
+              '</span>' +
               '<span class="sr-title" data-role="title"></span>' +
             '</div>' +
             '<div class="sr-score" data-role="score">' +
@@ -266,10 +277,57 @@
             el.feedback.hidden = !text;
         }
 
+        /* The title of the piece goes on the line of the page's own heading,
+           at the right and in a smaller type, when the applet is on its own
+           page and that heading is there. Anywhere else, in a window or in
+           the installed app, it stays on the toolbar. */
+        var heading = null, pieceTitle = null;
+        if (ownUrl && !isApp) {
+            var heads = [].slice.call(document.querySelectorAll('h1')).filter(function (h) { return h.compareDocumentPosition(root) & Node.DOCUMENT_POSITION_FOLLOWING; });
+            heading = heads.length ? heads[heads.length - 1] : null;
+        }
+        function showTitle() {
+            var name = score ? score.name : '';
+            if (heading) {
+                if (!pieceTitle) {
+                    pieceTitle = document.createElement('span');
+                    pieceTitle.className = 'sr-piece-title';
+                    heading.classList.add('sr-heading');
+                    heading.appendChild(pieceTitle);
+                }
+                pieceTitle.textContent = name;
+                el.title.textContent = '';
+                return;
+            }
+            el.title.textContent = name;
+        }
+
+        /* The first and last step of the bars being practised. */
+        function span() {
+            var lo = 0, hi = steps.length - 1, i;
+            if (barFrom !== null) {
+                lo = steps.length - 1;
+                for (i = 0; i < steps.length; i++) { if (steps[i].measure >= barFrom) { lo = i; break; } }
+            }
+            if (barTo !== null) {
+                hi = lo;
+                for (i = steps.length - 1; i >= lo; i--) { if (steps[i].measure <= barTo) { hi = i; break; } }
+            }
+            return { lo: lo, hi: Math.max(lo, hi) };
+        }
+
         function showPos() {
             if (!score || !steps.length || cur < 0) { el.pos.textContent = ''; return; }
-            var k = Math.min(cur, steps.length - 1);
-            el.pos.textContent = 'Bar ' + steps[k].measure + ' · ' + (k + 1) + ' of ' + steps.length;
+            var k = Math.min(cur, steps.length - 1), s = span();
+            el.pos.textContent = 'Bar ' + steps[k].measure + ' · ' + (k - s.lo + 1) + ' of ' + (s.hi - s.lo + 1) + (looping && pass > 1 ? ' · round ' + pass : '');
+        }
+
+        function showRange() {
+            var from = q('[data-bar="from"]'), to = q('[data-bar="to"]');
+            from.value = barFrom === null ? '' : String(barFrom);
+            to.value = barTo === null ? '' : String(barTo);
+            q('[data-loop]').checked = looping;
+            q('[data-sr="clear-bars"]').disabled = barFrom === null && barTo === null;
         }
 
         function showTally() {
@@ -293,7 +351,7 @@
 
         function refresh() {
             el.empty.hidden = !!score;
-            el.title.textContent = score ? score.name : '';
+            showTitle();
             showPos();
             showTally();
             showPending();
@@ -533,12 +591,35 @@
             if (show !== false) { cursor.update(); keepInView(); }
         }
 
+        /* Colours one note. The library colours every notehead of a chord at
+           once, so for a chord the noteheads are matched to the notes by height
+           on the page, lowest note to lowest head, and only the one head is
+           coloured. When the heads cannot be matched to the notes, the whole
+           chord takes the colour. */
+        function markNote(g, note, color) {
+            var ve = note.ParentVoiceEntry, chord = ve ? ve.Notes.filter(function (n) { return n.Pitch && !n.isRest(); }) : [];
+            var heads = chord.length > 1 && typeof g.getNoteheadSVGs === 'function' ? g.getNoteheadSVGs() : [];
+            var head = null;
+            if (heads.length === chord.length && chord.length > 1) {
+                var tops = heads.map(function (h) { return { h: h, y: h.getBoundingClientRect().top }; });
+                if (tops.some(function (t) { return t.y !== tops[0].y; })) {
+                    chord = chord.slice().sort(function (a, b) { return midiOf(a) - midiOf(b); });
+                    tops.sort(function (a, b) { return b.y - a.y; });
+                    head = tops[chord.indexOf(note)] ? tops[chord.indexOf(note)].h : null;
+                }
+            }
+            if (!head) { g.setColor(color, MARK); return; }
+            [].slice.call(head.querySelectorAll('path, text')).forEach(function (p) {
+                p.setAttribute(p.getAttribute('fill') === 'none' ? 'stroke' : 'fill', color);
+            });
+        }
+
         /* Colours the notes of the step the cursor is on that have a state. */
         function paintHere(k) {
             var graphical = osmd.cursor.GNotesUnderCursor();
             steps[k].notes.forEach(function (s) {
                 if (!s.state) { return; }
-                graphical.forEach(function (g) { if (g.sourceNote === s.note) { g.setColor(s.state === 'ok' ? GREEN : RED, MARK); } });
+                graphical.forEach(function (g) { if (g.sourceNote === s.note) { markNote(g, s.note, s.state === 'ok' ? GREEN : RED); } });
             });
         }
 
@@ -563,7 +644,6 @@
 
         function begin(k) {
             cur = k;
-            named = {};
             tries = 0;
             revealed = false;
             clearPending();
@@ -581,7 +661,19 @@
         }
 
         function advance() {
-            if (cur + 1 < steps.length) { begin(cur + 1); keepSnapshot(); return; }
+            var s = span();
+            if (cur + 1 <= s.hi) { begin(cur + 1); keepSnapshot(); return; }
+            if (looping) {
+                var done = tally.first + tally.retried + tally.missed, right = tally.first;
+                pass++;
+                tally = { first: 0, retried: 0, missed: 0 };
+                steps.forEach(function (st) { st.result = ''; st.notes.forEach(function (n) { n.state = ''; }); });
+                if (draw()) { begin(s.lo); }
+                refresh();
+                say('Round ' + (pass - 1) + ': ' + right + ' of ' + done + ' right first time. Round ' + pass + ' begins.', right === done ? 'positive' : 'warn');
+                keepSnapshot();
+                return;
+            }
             finished = true;
             var total = tally.first + tally.retried + tally.missed;
             say('Finished: ' + tally.first + ' of ' + total + ' right first time' + (tally.missed ? ', ' + tally.missed + ' missed' : ''), tally.missed ? 'warn' : 'positive');
@@ -599,8 +691,9 @@
         /* Shows the answer: the notes still unnamed turn red and the status
            says what they are. Any key goes on from here. */
         function reveal() {
-            var step = steps[cur], missing = distinct(step).filter(function (k) { return !named[k]; });
-            step.notes.forEach(function (s) { if (!named[s.key]) { s.state = 'missed'; } });
+            var step = steps[cur], open = step.notes.filter(function (s) { return s.state !== 'ok'; }), seen = {};
+            var missing = open.filter(function (s) { return seen[s.key] ? false : (seen[s.key] = true); }).map(function (s) { return s.key; }).sort();
+            open.forEach(function (s) { s.state = 'missed'; });
             paintHere(cur);
             revealed = true;
             showPiano();
@@ -619,19 +712,14 @@
             clearPending();
             var step = steps[cur];
             if (!hit.length) { if (keyButton) { flashKey(keyButton); } wrong(why); return; }
-            var keys = {};
-            hit.forEach(function (s) { keys[s.key] = true; });
-            var fresh = Object.keys(keys).filter(function (k) { return !named[k]; });
-            if (!fresh.length) { return; }
-            var got = [];
-            fresh.forEach(function (k) {
-                named[k] = true;
-                step.notes.forEach(function (s) { if (s.key === k) { s.state = 'ok'; got.push(s); } });
-            });
+            var got = hit.filter(function (s) { return s.state !== 'ok'; });
+            if (!got.length) { return; }
+            got.forEach(function (s) { s.state = 'ok'; });
             paintHere(cur);
             play(got);
-            var left = distinct(step).filter(function (k) { return !named[k]; });
-            if (left.length) { showPiano(); say('Right. ' + left.length + ' more to name', 'positive'); return; }
+            var left = step.notes.filter(function (s) { return s.state !== 'ok'; }), pitches = {};
+            left.forEach(function (s) { pitches[s.key + s.midi] = true; });
+            if (left.length) { showPiano(); say('Right. ' + Object.keys(pitches).length + ' more to name', 'positive'); return; }
             conclude(tries ? 'retried' : 'first');
             advance();
         }
@@ -678,9 +766,23 @@
             finished = false;
             tally = { first: 0, retried: 0, missed: 0 };
             steps.forEach(function (s) { s.result = ''; s.notes.forEach(function (n) { n.state = ''; }); });
-            if (draw()) { begin(0); }
+            pass = 1;
+            if (draw()) { begin(span().lo); }
             refresh();
             keepSnapshot();
+        }
+
+        /* A change to the first or last bar, or to the loop: the practice
+           starts again at the first bar chosen. A first bar past the last is
+           taken to mean the two the other way round. */
+        function onRange(box) {
+            if (box.hasAttribute('data-loop')) { looping = box.checked; showPos(); keepSnapshot(); return; }
+            var which = box.getAttribute('data-bar'), n = parseInt(box.value, 10);
+            var value = n > 0 ? n : null;
+            if (which === 'from') { barFrom = value; } else { barTo = value; }
+            if (barFrom !== null && barTo !== null && barFrom > barTo) { var t = barFrom; barFrom = barTo; barTo = t; }
+            showRange();
+            restart();
         }
 
         /* A change to what is read, or to how a note is named, starts the
@@ -725,6 +827,7 @@
                     score = src;
                     info = null;
                     chosen = { clefs: null, parts: null };
+                    barFrom = null; barTo = null; pass = 1; showRange();
                     finished = false;
                     tally = { first: 0, retried: 0, missed: 0 };
                     cur = -1;
@@ -844,13 +947,19 @@
             return {
                 rel: score.rel, name: score.name, k: cur,
                 r: steps.map(function (s) { return s.result ? s.result.charAt(0) : '-'; }).join(''), t: tally,
-                cs: chosen.clefs ? Object.keys(chosen.clefs) : null, ps: chosen.parts ? Object.keys(chosen.parts) : null
+                cs: chosen.clefs ? Object.keys(chosen.clefs) : null, ps: chosen.parts ? Object.keys(chosen.parts) : null,
+                bf: barFrom, bt: barTo, lp: looping, ps2: pass
             };
         }) : null;
         function keepSnapshot() { if (snap) { snap.changed(); } }
         var CODES = { f: 'first', r: 'retried', m: 'missed' };
         function restoreProgress(kept) {
             var codes = String(kept.r || '');
+            barFrom = +kept.bf > 0 ? +kept.bf : null;
+            barTo = +kept.bt > 0 ? +kept.bt : null;
+            looping = !!kept.lp;
+            pass = +kept.ps2 > 1 ? +kept.ps2 : 1;
+            showRange();
             for (var i = 0; i < steps.length && i < codes.length; i++) {
                 var result = CODES[codes.charAt(i)];
                 if (!result) { continue; }
@@ -881,6 +990,7 @@
                 case 'choose': openChooser(); break;
                 case 'options': showOptions(); break;
                 case 'restart': restart(); root.focus({ preventScroll: true }); break;
+                case 'clear-bars': barFrom = null; barTo = null; showRange(); restart(); root.focus({ preventScroll: true }); break;
                 case 'file': el.file.click(); break;
                 case 'close-chooser': el.chooser.close(); break;
                 case 'close-options': el.options.close(); root.focus({ preventScroll: true }); break;
@@ -890,6 +1000,7 @@
 
         function onChange(e) {
             var t = e.target;
+            if (t.hasAttribute('data-bar') || t.hasAttribute('data-loop')) { onRange(t); return; }
             if (!el.options.contains(t)) { return; }
             if (t.hasAttribute('data-clef') || t.hasAttribute('data-part')) { onScopeChange(t); return; }
             var opt = t.getAttribute('data-opt');
@@ -902,6 +1013,9 @@
         function onKeyDown(e) {
             if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) { return; }
             var t = e.target;
+            /* Enter in a bar box applies it and returns to the music; Tab just
+               moves on, so the first bar and the last are neighbours. */
+            if (e.key === 'Enter' && t.hasAttribute && t.hasAttribute('data-bar')) { e.preventDefault(); root.focus({ preventScroll: true }); return; }
             if (t.closest && (t.closest('dialog') || t.closest('input, select, textarea, [contenteditable]'))) { return; }
             if (e.key.length === 1 && /[a-gA-G]/.test(e.key)) { e.preventDefault(); answer(e.key.toUpperCase()); return; }
             if (e.key === '#' || e.key === '=') { e.preventDefault(); bump(1); return; }
@@ -1022,6 +1136,7 @@
             menus: menus,
             destroy: function () {
                 destroyed = true;
+                if (pieceTitle) { pieceTitle.remove(); heading.classList.remove('sr-heading'); }
                 document.removeEventListener('keydown', onTab, true);
                 clearTimeout(resizeTimer);
                 clearTimeout(flashTimer);

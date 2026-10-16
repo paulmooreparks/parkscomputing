@@ -172,7 +172,7 @@ pudlApplets.define('barcode-scanner', {
     src: '/js/barcode-scanner.js',
     css: '/css/barcode-scanner.css',
     page: '/page/barcode-scanner',
-    ver: '9'
+    ver: '10'
 });
 
 pudlApplets.define('dice', {
@@ -188,7 +188,7 @@ pudlApplets.define('sight-reader', {
    src: '/js/sight-reader.js',
    css: '/css/sight-reader.css',
    page: '/page/sight-reader',
-   ver: '8'
+   ver: '10'
 });
 
 pudlApplets.define('theme-studio', {

@@ -69,6 +69,18 @@ const PIANO = `<?xml version="1.0" encoding="UTF-8"?>
 </part></score-partwise>
 `;
 
+/* A C in two octaves together. */
+const OCTAVES = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0"><work><work-title>Octaves</work-title></work>
+<part-list><score-part id="P1"><part-name>Test</part-name></score-part></part-list>
+<part id="P1">
+<measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
+<note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><type>whole</type></note>
+<note><chord/><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>whole</type></note>
+</measure>
+</part></score-partwise>
+`;
+
 /* A voice on D and a piano on A, sounding together. */
 const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0"><work><work-title>Parts</work-title></work>
@@ -89,6 +101,8 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   fs.writeFileSync(accFile, ACCIDENTALS);
   fs.writeFileSync(pianoFile, PIANO);
   fs.writeFileSync(partsFile, PARTS);
+  const octFile = path.join(os.tmpdir(), 'sight-reader-octaves.musicxml');
+  fs.writeFileSync(octFile, OCTAVES);
   /* Scrollbars are left showing, as a reader's browser has them: a headless browser hides them by default, and a scrollbar that takes room from a box is what a layout has to allow for. */
   const browser = await chromium.launch(Object.assign({ ignoreDefaultArgs: ['--hide-scrollbars'] }, process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}));
   const ctx = await browser.newContext({ viewport: { width: 1300, height: 900 } });
@@ -121,7 +135,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
     pos: document.querySelector('[data-role="pos"]').textContent,
     fb: document.querySelector('[data-role="feedback"]').textContent,
     tally: document.querySelector('[data-role="tally"]').textContent,
-    title: document.querySelector('[data-role="title"]').textContent,
+    title: (document.querySelector('.sr-piece-title') || document.querySelector('[data-role="title"]')).textContent,
     green: document.querySelectorAll('.sr-sheet svg [fill="#2e7d32"], .sr-sheet svg [stroke="#2e7d32"]').length,
     red: document.querySelectorAll('.sr-sheet svg [fill="#b42318"], .sr-sheet svg [stroke="#b42318"]').length
   }));
@@ -192,8 +206,11 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.click('.sr-top [data-sr="options"]');
   const helps = await page.evaluate(() => [...document.querySelectorAll('.sr-options .form-help')].map(p => p.textContent));
   log('every option has a line saying what it does', helps.length >= 3 && helps.some(h => /F sharp/.test(h)) && helps.some(h => /wrong tries/.test(h)), helps.length + ' lines');
+  log('Name sharps and flats is on by default', await page.isChecked('[data-opt="accidentals"]'));
+  await page.uncheck('[data-opt="accidentals"]');
+  await page.waitForTimeout(400);
   const hover = await page.evaluate(() => document.querySelector('[data-acc="1"]').title);
-  log('the sharp button says how to turn it on', /Turn on Name sharps and flats in Options/.test(hover), hover);
+  log('with the setting off the sharp button says how to turn it on', /Turn on Name sharps and flats in Options/.test(hover), hover);
   await page.click('[data-sr="close-options"]');
   await page.focus('.pc-sight-reader');
 
@@ -288,6 +305,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForTimeout(800);
   i = await info();
   log('a score with a key signature and accidentals has four steps', i.pos === 'Bar 1 · 1 of 4', i.pos);
+  await options(() => page.uncheck('[data-opt="accidentals"]'));
   const accState = await page.evaluate(() => ({ sharp: document.querySelector('[data-acc="1"]').disabled, flat: document.querySelector('[data-acc="-1"]').disabled, shown: !!document.querySelector('.sr-accidentals').offsetParent }));
   log('the sharp and flat buttons are there, and wait for the setting', accState.shown && accState.sharp && accState.flat, JSON.stringify(accState));
   await type('=');
@@ -495,7 +513,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await newTab();
   await page.setViewportSize({ width: 1300, height: 900 });
   await page.goto(BASE + '/page/sight-reader', { waitUntil: 'networkidle' });
-  await options(() => page.selectOption('[data-opt="keyboard"]', 'piano'));
+  await options(async () => { await page.selectOption('[data-opt="keyboard"]', 'piano'); await page.uncheck('[data-opt="accidentals"]'); });
   await page.setInputFiles('.sr-file', fixture);
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(600);
@@ -604,6 +622,67 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   const swapped = await page.evaluate(() => ({ piano: !!document.querySelector('.sr-piano').offsetParent, letters: !!document.querySelector('.sr-letters').offsetParent, acc: !!document.querySelector('.sr-accidentals').offsetParent }));
   log('the letters can be shown instead, with the sharp and flat buttons', !swapped.piano && swapped.letters && swapped.acc, JSON.stringify(swapped));
   await options(() => page.selectOption('[data-opt="keyboard"]', 'piano'));
+
+  // 13c. An octave doubled in a chord: a piano key names only the note it is on.
+  await newTab();
+  await page.setViewportSize({ width: 1300, height: 900 });
+  await page.goto(BASE + '/page/sight-reader', { waitUntil: 'networkidle' });
+  await page.setInputFiles('.sr-file', octFile);
+  await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
+  await page.waitForTimeout(600);
+  const greenNotes = () => page.evaluate(() => [...document.querySelectorAll(".sr-sheet svg g.vf-notehead")].filter(g => g.querySelector("[fill=\"#2e7d32\"], [stroke=\"#2e7d32\"]")).length);
+  const lowC = "";
+  await page.click('.sr-key[data-semi="0"]');
+  i = await info();
+  const green1 = await greenNotes();
+  log('with C in two octaves, one key names only one of them', /1 more/.test(i.fb) && green1 === 1, i.fb + " noteheads " + green1);
+  await page.click('.sr-key[data-semi="12"]');
+  i = await info();
+  log('and the other octave is named by its own key', /^Finished/.test(i.fb) && (await greenNotes()) === 2, i.fb + " noteheads " + (await greenNotes()));
+
+  // 13d. Bars to practise: start part-way in, and go round again.
+  await newTab();
+  await page.setViewportSize({ width: 1300, height: 900 });
+  await open('/page/sight-reader?score=beginner/Ode to Joy.musicxml');
+  await options(() => page.selectOption('[data-opt="keyboard"]', 'letters'));
+  await page.fill('[data-bar="from"]', '2');
+  await page.fill('[data-bar="to"]', '3');
+  await page.press('[data-bar="to"]', 'Enter');
+  await page.waitForTimeout(600);
+  i = await info();
+  log('a first and last bar start the practice at the first bar, counting only those', i.pos === 'Bar 2 · 1 of 8', i.pos);
+  await page.focus('[data-bar="from"]');
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('2');
+  await page.keyboard.press('Tab');
+  log('Tab from the first bar goes to the last bar', await page.evaluate(() => document.activeElement.getAttribute('data-bar')) === 'to');
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('3');
+  await page.keyboard.press('Tab');
+  log('and on to Loop', await page.evaluate(() => document.activeElement.hasAttribute('data-loop')));
+  await page.focus('.pc-sight-reader');
+  await type('gfedccd');
+  await type('e');
+  i = await info();
+  log('after the last bar the practice ends', /^Finished: 8 of 8/.test(i.fb) && i.pos.startsWith('Bar 3'), i.fb + ' / ' + i.pos);
+  await page.check('[data-loop]');
+  await menu('Practice', 'Restart');
+  await page.focus('.pc-sight-reader');
+  await type('gfedccde');
+  await page.waitForTimeout(600);
+  i = await info();
+  log('with Loop on it goes back to the first bar and starts another round', i.pos === 'Bar 2 · 1 of 8 · round 2' && /Round 1: 8 of 8/.test(i.fb), i.pos + ' / ' + i.fb);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
+  await page.waitForTimeout(600);
+  const back = await page.evaluate(() => ({ from: document.querySelector('[data-bar="from"]').value, to: document.querySelector('[data-bar="to"]').value, loop: document.querySelector('[data-loop]').checked }));
+  log('the bars and the loop come back after a reload', back.from === '2' && back.to === '3' && back.loop, JSON.stringify(back));
+  log('Clear is there to use while bars are set', !(await page.isDisabled('[data-sr="clear-bars"]')));
+  await page.click('[data-sr="clear-bars"]');
+  await page.waitForTimeout(500);
+  const emptied = await page.evaluate(() => document.querySelector('[data-bar="from"]').value + document.querySelector('[data-bar="to"]').value);
+  log('Clear empties both bars and is then disabled', emptied === '' && await page.isDisabled('[data-sr="clear-bars"]'), emptied);
+  log('clearing practises the whole piece again', (await info()).pos.startsWith('Bar 1 · 1 of 62'), (await info()).pos);
 
   // 14. Installable: a manifest of its own, which the browser accepts, and
   //     the bare form it launches on.

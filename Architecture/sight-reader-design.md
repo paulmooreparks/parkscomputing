@@ -130,3 +130,11 @@ The songs and the quartet come from OpenScore, whose editions are CC0, through a
 - **The name is Sight Reader** (Paul, 2026-10-16), `sight-reader` in the registry and in its folders. Note Reader, Sightline, Read Ahead and Staff Work were the other names considered.
 
 Nothing is left open. The next step is the spike above, with one of Paul's own pieces.
+
+## Bars to practise, and a default change (2026-10-17, Paul)
+
+Name sharps and flats is now on by default, because typing with the keyboard felt wrong when the black keys and the sharp and flat buttons were disabled. A reader whose settings file already holds the old value keeps it.
+
+The toolbar has a first bar and a last bar, a Loop box and a Clear button. Practice starts at the first bar and ends after the last, and with Loop on it goes round again, reporting each round. The bars, the loop and the round survive a reload with the rest of the snapshot. On the applet's own page the title of the piece sits on the line of the page heading, at the right and smaller; in a window or the installed app it stays on the toolbar.
+
+A step now records each of its notes as named or not, instead of naming whole letters, so a piano key names only the note it is on. The library colours every notehead of a chord together, so a chord's heads are matched to its notes by height on the page and only one head is coloured; if they cannot be matched, the whole chord takes the colour.
