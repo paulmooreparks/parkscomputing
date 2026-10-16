@@ -358,8 +358,12 @@
               '<h3 class="dialog-title" id="sr-opt-title-' + uid + '">Options</h3>' +
               '<div class="settings-panel sr-options">' +
                 '<section class="card">' +
-                  '<h4 class="card-title">Answer on</h4><p class="card-desc">Where you press the notes.</p>' +
-                  segMarkup('keyboard', 'Where to answer', [['piano', 'Piano'], ['guitar', 'Guitar'], ['violin', 'Violin'], ['letters', 'Letters', 'The buttons A to G, which ask for no octave']]) +
+                  '<h4 class="card-title">Instrument</h4><p class="card-desc">The keyboard or fingerboard you name the notes on.</p>' +
+                  '<span class="form-select-wrap"><select class="form-select" data-opt="keyboard" aria-label="Instrument">' +
+                    '<optgroup label="Keyboard"><option value="piano">Piano</option></optgroup>' +
+                    '<optgroup label="Fingerboard">' + Object.keys(BOARDS).map(function (k) { return '<option value="' + k + '">' + BOARDS[k].title + '</option>'; }).join('') + '</optgroup>' +
+                    '<optgroup label="No instrument"><option value="letters">The letters A to G</option></optgroup>' +
+                  '</select></span>' +
                   '<div class="sr-field-row"><span>Names on the keys</span>' + segMarkup('labels', 'Names on the keys', [['all', 'Every key'], ['c', 'C only'], ['none', 'None']], true) + '</div>' +
                 '</section>' +
                 '<section class="card">' +
@@ -1054,6 +1058,7 @@
         function syncOptions() {
             [].slice.call(el.options.querySelectorAll('[data-opt]')).forEach(function (b) {
                 var opt = b.getAttribute('data-opt');
+                if (b.tagName === 'SELECT') { b.value = opt === 'keyboard' ? kbdKind() : String(settings[opt]); return; }
                 if (b.getAttribute('role') === 'switch') { b.setAttribute('aria-checked', String(!!settings[opt])); return; }
                 var now = opt === 'keyboard' ? kbdKind() : opt === 'labels' ? labelsKind() : String(settings[opt]);
                 b.setAttribute('aria-pressed', String(now === b.getAttribute('data-value')));
@@ -1260,7 +1265,7 @@
             var open = e.target.closest('[data-sr-open]');
             if (open) { el.chooser.close(); openScore({ name: open.getAttribute('data-sr-name'), rel: open.getAttribute('data-sr-open') }); return; }
             var pref = e.target.closest('[data-opt]');
-            if (pref && el.options.contains(pref)) { if (!pref.disabled) { setPref(pref); } return; }
+            if (pref && el.options.contains(pref) && pref.tagName !== 'SELECT') { if (!pref.disabled) { setPref(pref); } return; }
             var clef = e.target.closest('[data-clef]');
             if (clef && el.readBody.contains(clef)) { toggleClef(clef); return; }
             var only = e.target.closest('[data-only]');
@@ -1288,7 +1293,12 @@
         function onChange(e) {
             var t = e.target;
             if (t.hasAttribute('data-bar') || t.hasAttribute('data-loop')) { onRange(t); return; }
-            if (t.hasAttribute('data-part') && el.readBody.contains(t)) { onPartChange(t); }
+            if (t.hasAttribute('data-part') && el.readBody.contains(t)) { onPartChange(t); return; }
+            if (t.tagName === 'SELECT' && t.getAttribute('data-opt') === 'keyboard' && el.options.contains(t)) {
+                saveSetting({ keyboard: KEYBOARDS.indexOf(t.value) >= 0 ? t.value : 'piano' });
+                showKeyboard();
+                syncOptions();
+            }
         }
 
         function onInput(e) { if (e.target.hasAttribute('data-part-filter')) { filterParts(e.target); } }

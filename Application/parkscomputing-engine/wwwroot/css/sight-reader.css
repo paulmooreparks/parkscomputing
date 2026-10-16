@@ -100,7 +100,7 @@
 .sr-pending[hidden] { display: none; }
 
 /* Options is the PUDL settings panel: cards of segmented controls and switches. */
-.sr-field-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin-top: var(--space-3); }
+.sr-field-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin-top: var(--space-3); }
 .sr-field-row > span { font-weight: 600; }
 .sr-options .switch { margin-top: var(--space-3); }
 .sr-options .sr-field-row + .switch { margin-top: var(--space-4); }

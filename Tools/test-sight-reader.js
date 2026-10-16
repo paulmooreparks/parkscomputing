@@ -175,7 +175,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
     await page.focus('.pc-sight-reader');
   };
   /* The controls of Options and Read: a segmented control's choice, a switch, a clef toggle, a part box. */
-  const pick = (opt, val) => page.click('[data-opt="' + opt + '"][data-value="' + val + '"]');
+  const pick = async (opt, val) => { const sel = '[data-opt="' + opt + '"]'; if ((await page.locator(sel).first().evaluate(e => e.tagName)) === 'SELECT') { return page.selectOption(sel, val); } return page.click(sel + '[data-value="' + val + '"]'); };
   const setSwitch = async (opt, on) => { const sel = '[data-opt="' + opt + '"]'; if (((await page.getAttribute(sel, 'aria-checked')) === 'true') !== on) { await page.click(sel); } };
   const setClef = async (name, on) => { const sel = '[data-clef="' + name + '"]'; if (((await page.getAttribute(sel, 'aria-pressed')) === 'true') !== on) { await page.click(sel); } };
   const setPart = async (n, on) => { const sel = '[data-part="' + n + '"]'; if ((await page.isChecked(sel)) !== on) { await page.click(sel); } };
@@ -227,7 +227,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   // 2b. Options: two cards of segmented controls and switches.
   await page.click('.sr-top [data-sr="options"]');
   const opt2 = await page.evaluate(() => ({ cards: document.querySelectorAll('.sr-options .card').length, segs: document.querySelectorAll('.sr-options .seg').length, switches: document.querySelectorAll('.sr-options .switch').length, helps: document.querySelectorAll('.sr-options .form-help').length, selects: document.querySelectorAll('.sr-options select').length, counts: /\d+ notes/.test(document.querySelector('.sr-options').textContent) }));
-  log('Options is two cards of segmented controls and switches, with no selects, paragraphs or counts', opt2.cards === 2 && opt2.segs === 3 && opt2.switches === 2 && opt2.helps === 0 && opt2.selects === 0 && !opt2.counts, JSON.stringify(opt2));
+  log('Options is two cards: the instrument as a select, the rest segmented controls and switches, with no paragraphs or counts', opt2.cards === 2 && opt2.segs === 2 && opt2.switches === 2 && opt2.helps === 0 && opt2.selects === 1 && !opt2.counts, JSON.stringify(opt2));
   log('Name sharps and flats is on by default', (await page.getAttribute('[data-opt="accidentals"]', 'aria-checked')) === 'true');
   await setSwitch('accidentals', false);
   await page.waitForTimeout(400);
