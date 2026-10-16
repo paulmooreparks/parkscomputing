@@ -46,7 +46,7 @@ A score is the reader's document, not the applet's, so it goes where Files shows
 
 **Finding the weak bars.** The applet counts the wrong tries in each measure across sessions, and can shade the measures where the reader stumbles most. Practise weak bars then runs the cursor through just those, which is the part of practice that a random drill can never give.
 
-**A desktop or laptop first, and a phone as well.** The keyboard is the main input, the keys A to G with the accidental keys below. The layout must still work at phone width, with a row of large A to G buttons and the ♯ and ♭ buttons under the score, PUDL's raised buttons, and the score following the cursor as it moves.
+**Every input on every device** (Paul, 2026-10-16). The keyboard and the on-screen buttons both work everywhere, side by side: a row of A to G buttons with ♯ and ♭ beside them, PUDL's raised buttons, sits under the score on a full-screen PC as well as on a phone, and the keys A to G and the accidental keys work wherever there is a keyboard. They can be mixed within one answer, so a ♭ clicked and then B typed is B flat. The buttons are always shown, never only on touch screens, and are sized for a finger at phone width and for a pointer at desktop width. The score follows the cursor as it moves, whatever the window's size.
 
 ## The quiz itself
 
@@ -59,7 +59,7 @@ A score is the reader's document, not the applet's, so it goes where Files shows
 **Accidentals, as a setting.** With "Name sharps and flats" on, the answer is the note's full name as it is played: the key signature counts, so an F in G major is F sharp, and so do accidentals earlier in the bar. The spelling must be the written one, so F sharp is not accepted for G flat. The keys:
 
 - **On a keyboard, a key typed before the letter, for sharp and flat alike** (Paul, 2026-10-16): `#` or `=` for sharp, `-` for flat, so F sharp is `=` then F. Shift with the letter, Paul's first thought for sharps, was dropped so that both accidentals work the same way.
-- **On a phone or tablet, a ♯ and a ♭ button** beside the letter buttons, pressed before the letter in the same way.
+- **On screen, a ♯ and a ♭ button** beside the letter buttons, on every device, pressed before the letter in the same way.
 - **Why not a modifier for flats.** Paul suggested Ctrl with the letter, but the browser keeps Ctrl with a letter for itself (Ctrl+F finds, Ctrl+D bookmarks, Ctrl+A selects all, and some cannot be taken back), and Alt with a letter opens the browser's menus on Windows. Ctrl+Shift with the letter, Paul's second thought, is no better: on the letters A to G it is tab search, the bookmarks bar, the developer tools' element picker, bookmarking every tab, a browser panel and find-previous, and which of those a page may take back differs between browsers and is documented by none of them, so the design would rest on undocumented behaviour. A key typed before the letter avoids all of it. `b` cannot be the flat key, since B is a note.
 - **Doubles and mistakes.** A prefix typed twice is a double sharp or double flat, and Escape drops a prefix typed by mistake.
 - **A natural is the letter alone.** The reader has to know the note is natural, which is the point of the setting.
@@ -100,8 +100,8 @@ The site serves `.mxl` and `.musicxml` once `Startup.cs` maps their media types,
 
 - **Pieces come from everywhere**: notation programs, MuseScore.com, PDFs and printed books, and pieces Paul writes himself. The help explains each route. MuseScore's own `.mscz` files are not MusicXML, so a piece written in MuseScore is exported as MusicXML (File, Export) before it is added.
 - **No instrument modes.** The applet teaches reading, for any instrument; the reader chooses which of the score's staves to read, and the answer is always the written note.
-- **Accidentals** as above: letters only by default; with the setting on, a key before the letter on a keyboard (`#` or `=` sharp, `-` flat) and ♯ and ♭ buttons on a phone.
-- **A desktop or laptop first, with phone support required**, so the keyboard is the main input and the buttons must still be complete on their own.
+- **Accidentals** as above: letters only by default; with the setting on, a key before the letter (`#` or `=` sharp, `-` flat) or the ♯ and ♭ buttons.
+- **Keyboard and buttons on every device.** Paul uses a desktop or laptop most, and a phone must work too; on all of them both inputs are there and can be mixed, so he can type or click on a full-screen PC.
 
 ## Open question for Paul
 
