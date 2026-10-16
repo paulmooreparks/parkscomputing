@@ -13,7 +13,7 @@
 const fs = require('fs'), path = require('path');
 
 const root = path.resolve(process.argv[2] || 'C:/Users/paul/OneDrive/Documents/parkscomputing.com/wwwroot/content/scores');
-const LEVELS = ['beginner', 'intermediate', 'advanced'];
+const LEVELS = ['simple', 'beginner', 'intermediate', 'advanced'];
 const EXTENSIONS = ['.mxl', '.musicxml', '.xml'];
 
 const groups = new Map();

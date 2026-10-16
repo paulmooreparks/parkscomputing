@@ -177,7 +177,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   const pending = () => page.evaluate(() => { const p = document.querySelector('[data-role="pending"]'); return p.hidden ? '' : p.textContent; });
 
   // 1. A single-line tune from the samples.
-  await open('/page/sight-reader?score=beginner/Ode to Joy.musicxml');
+  await open('/page/sight-reader?score=simple/Ode to Joy.musicxml');
   let i = await info();
   log('a sample opens from the address, titled and at its first step', i.title === 'Ode to Joy' && i.pos === 'Bar 1 · 1 of 62', JSON.stringify(i));
   const x0 = await cursorLeft();
@@ -442,7 +442,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('the piano note ends it', /^Finished: \d of 1/.test((await info()).fb), (await info()).fb);
 
   // 7. A reload mid-piece brings the sample back where it was.
-  await open('/page/sight-reader?score=beginner/Frere Jacques.musicxml');
+  await open('/page/sight-reader?score=simple/Frere Jacques.musicxml');
   await type('cdec');
   const mid = await info();
   await page.reload({ waitUntil: 'networkidle' });
@@ -456,13 +456,13 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.click('.sr-top [data-sr="choose"]');
   await page.waitForSelector('.sr-pick');
   const groups = await page.evaluate(() => [...document.querySelectorAll('.sr-group-name')].map(h => h.textContent));
-  const levels = ['beginner', 'intermediate', 'advanced'], at = groups.map(g => levels.indexOf(g));
+  const levels = ['simple', 'beginner', 'intermediate', 'advanced'], at = groups.map(g => levels.indexOf(g));
   log('the chooser lists the samples by level, easiest first', groups.length > 0 && at.every((n, k) => n >= 0 && (k === 0 || n > at[k - 1])), groups.join());
   await page.click('.sr-pick[data-sr-name="Twinkle Twinkle Little Star"]');
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(500);
   i = await info();
-  log('choosing one opens it, and the address carries it', i.title === 'Twinkle Twinkle Little Star' && /score=beginner\/Twinkle/.test(decodeURIComponent(page.url())), page.url());
+  log('choosing one opens it, and the address carries it', i.title === 'Twinkle Twinkle Little Star' && /score=simple\/Twinkle/.test(decodeURIComponent(page.url())), page.url());
 
   // 9. A real song with a voice and a two-staff piano part.
   await openSong('Schubert - Morgengruss.mxl');
@@ -476,7 +476,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('a score path that climbs out of the folder is refused, and says so', (await page.isVisible('.sr-empty')) && /not a score/.test((await info()).fb), (await info()).fb);
 
   // 11. Resizing draws the score again and keeps the marks and the place.
-  await open('/page/sight-reader?score=beginner/Ode to Joy.musicxml');
+  await open('/page/sight-reader?score=simple/Ode to Joy.musicxml');
   await type('eefgg');
   const wide = await info();
   await page.setViewportSize({ width: 800, height: 900 });
@@ -641,7 +641,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
 
   // A phone.
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(BASE + '/page/sight-reader?score=beginner/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/page/sight-reader?score=simple/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(600);
   const small = await page.evaluate(() => { const p = document.querySelector('.sr-piano').getBoundingClientRect(); return { scrolls: document.querySelector('.sr-piano').scrollWidth > document.querySelector('.sr-piano').clientWidth, right: Math.round(p.right), left: Math.round(p.left), height: Math.round(document.querySelector('.sr-board').getBoundingClientRect().height), screen: document.documentElement.clientWidth, page: document.documentElement.scrollWidth }; });
@@ -666,13 +666,13 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('no labels: C4 is not labelled', !(await labelShown(60)));
   await options(() => page.selectOption('[data-opt="labels"]', 'c'));
   await page.setViewportSize({ width: 700, height: 900 });
-  await page.goto(BASE + '/page/sight-reader?score=beginner/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/page/sight-reader?score=simple/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(600);
   const narrowKeys = await page.evaluate(() => { const p = document.querySelector('.sr-piano'), c = document.querySelector('.sr-key[data-midi="60"]').getBoundingClientRect(), r = p.getBoundingClientRect(); return { scrolls: p.scrollWidth > p.clientWidth, middle: Math.abs((c.left + c.right) / 2 - (r.left + r.right) / 2) < 12 }; });
   log('where the keyboard does not fit it scrolls, opening on middle C', narrowKeys.scrolls && narrowKeys.middle, JSON.stringify(narrowKeys));
   await page.setViewportSize({ width: 1300, height: 900 });
-  await page.goto(BASE + '/page/sight-reader?score=beginner/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/page/sight-reader?score=simple/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   log('where it fits it does not scroll', await page.evaluate(() => { const p = document.querySelector('.sr-piano'); return p.scrollWidth <= p.clientWidth + 1; }));
 
@@ -716,7 +716,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   // 13d. Bars to practise: start part-way in, and go round again.
   await newTab();
   await page.setViewportSize({ width: 1300, height: 900 });
-  await open('/page/sight-reader?score=beginner/Ode to Joy.musicxml');
+  await open('/page/sight-reader?score=simple/Ode to Joy.musicxml');
   await options(() => page.selectOption('[data-opt="keyboard"]', 'letters'));
   await page.fill('[data-bar="from"]', '2');
   await page.fill('[data-bar="to"]', '3');
