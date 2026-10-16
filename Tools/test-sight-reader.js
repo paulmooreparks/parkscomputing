@@ -206,7 +206,10 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('the setting is kept in ~/.config/sight-reader.json', saved === 0, saved);
   await options(() => page.selectOption('[data-opt="revealAfter"]', '3'));
 
-  // 4. The buttons do what the keys do.
+  // 4. The buttons do what the keys do. (The piano is the default keyboard,
+  //    so the checks that use the letter buttons ask for them, and the choice
+  //    is kept for the rest of this browser's checks.)
+  await options(() => page.selectOption('[data-opt="keyboard"]', 'letters'));
   const before = (await info()).pos;
   const letters = await page.evaluate(() => [...document.querySelectorAll('[data-note]')].map(b => b.getAttribute('data-note')).join(''));
   log('there are buttons A to G', letters === 'ABCDEFG', letters);
@@ -478,6 +481,120 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   const inWin = await page.evaluate(() => { const b = document.querySelector('.win[data-win="sight-reader"] .sr-score'); return { scroll: b.scrollWidth, client: b.clientWidth }; });
   log('and a window shows no horizontal scrollbar either', inWin.scroll <= inWin.client + 1, JSON.stringify(inWin));
   await page.screenshot({ path: path.join(SHOTS, 'sr-window.png') });
+
+  // 13b. The piano keyboard.
+  await newTab();
+  await page.setViewportSize({ width: 1300, height: 900 });
+  await page.goto(BASE + '/page/sight-reader', { waitUntil: 'networkidle' });
+  await options(() => page.selectOption('[data-opt="keyboard"]', 'piano'));
+  await page.setInputFiles('.sr-file', fixture);
+  await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
+  await page.waitForTimeout(600);
+  const key = semi => '.sr-key[data-semi="' + semi + '"]';
+  const lit = () => page.evaluate(() => [...document.querySelectorAll('.sr-named')].map(k => +k.getAttribute('data-semi')).sort((a, b) => a - b));
+  const missedKeys = () => page.evaluate(() => document.querySelectorAll('.sr-missed').length);
+  const label = () => page.evaluate(() => document.querySelector('.sr-key[data-semi="0"] .sr-key-label').textContent);
+  const board = await page.evaluate(() => ({ white: document.querySelectorAll('.sr-white').length, black: document.querySelectorAll('.sr-black').length, piano: !!document.querySelector('.sr-piano').offsetParent, letters: !!document.querySelector('.sr-letters').offsetParent, blackOff: [...document.querySelectorAll('.sr-black')].every(k => k.disabled) }));
+  log('the piano is the keyboard: 15 white keys and 10 black, with no letter buttons', board.white === 15 && board.black === 10 && board.piano && !board.letters, JSON.stringify(board));
+  log('the black keys wait for Name sharps and flats', board.blackOff);
+  log('the keyboard shows the register of the notes, the C keys naming their octaves', (await label()) === 'C4', await label());
+  await page.click(key(12));
+  i = await info();
+  log('a key of the right note in the wrong octave is a wrong try, and says so', i.fb === 'Right note, wrong octave' && i.pos === 'Bar 1 · 1 of 4', i.fb);
+  log('the wrong key flashes', await page.evaluate(() => document.querySelector('.sr-key[data-semi="12"]').classList.contains('sr-keywrong')));
+  await page.click(key(2));
+  log('a key of another note is a wrong try too', (await info()).fb === 'Not that one');
+  await page.click(key(0));
+  log('the right key lights, in its octave', JSON.stringify(await lit()) === '[0]' && /2 more/.test((await info()).fb), JSON.stringify(await lit()));
+  await page.click(key(4));
+  log('and stays lit while the rest of the chord goes in', JSON.stringify(await lit()) === '[0,4]', JSON.stringify(await lit()));
+  await page.click(key(7));
+  i = await info();
+  log('the last note ends the chord, the keys clear, and the cursor goes on', i.pos === 'Bar 1 · 2 of 4' && (await lit()).length === 0, i.pos + ' ' + JSON.stringify(await lit()));
+  log('each key plays the note, at its pitch', JSON.stringify(await page.evaluate(() => window.__tones)) === JSON.stringify([261.63, 329.63, 392]), JSON.stringify(await page.evaluate(() => window.__tones)));
+  await menu('Practice', 'Restart');
+  await page.focus('.pc-sight-reader');
+  await type('c');
+  log('a typed letter has no octave, and lights the note in its own', JSON.stringify(await lit()) === '[0]', JSON.stringify(await lit()));
+  await type('g');
+  log('typed notes stay lit with the clicked ones', JSON.stringify(await lit()) === '[0,7]', JSON.stringify(await lit()));
+  await page.click(key(4));
+  log('and a clicked note completes what was typed', (await info()).pos === 'Bar 1 · 2 of 4');
+  await type('bbb');
+  i = await info();
+  log('after three wrong tries the answer is lit on the keys in red', /^The answer is/.test(i.fb) && (await missedKeys()) >= 1, i.fb + ' / red keys ' + (await missedKeys()));
+
+  // The piano with sharps and flats named: black keys, and enharmonic spellings.
+  await page.setInputFiles('.sr-file', accFile);
+  await page.waitForTimeout(800);
+  await page.click('.sr-top [data-sr="options"]');
+  await page.check('[data-opt="accidentals"]');
+  await page.click('[data-sr="close-options"]');
+  await page.focus('.pc-sight-reader');
+  log('with sharps and flats on, the black keys work', await page.evaluate(() => [...document.querySelectorAll('.sr-black')].every(k => !k.disabled)));
+  await page.click(key(5));
+  log('F is not F sharp: the white key is a wrong try', (await info()).pos === 'Bar 1 · 1 of 4');
+  await page.click(key(18));
+  log('the F sharp key in the wrong octave is a wrong try', (await info()).fb === 'Right note, wrong octave');
+  await page.click(key(6));
+  log('the F sharp key is right', (await info()).pos === 'Bar 1 · 2 of 4');
+  await page.click(key(10));
+  log('the one black key is B flat as well as A sharp, so it is right for the B flat', (await info()).pos === 'Bar 1 · 3 of 4');
+  await page.click(key(11));
+  await page.click(key(2 + 12));
+  i = await info();
+  log('and the D key is right for a C double sharp, which is the same pitch', /^Finished/.test(i.fb), i.fb);
+  await page.click('.sr-top [data-sr="options"]');
+  await page.uncheck('[data-opt="accidentals"]');
+  await page.click('[data-sr="close-options"]');
+  await page.focus('.pc-sight-reader');
+  await page.click(key(17));
+  log('with them off, the white F in the wrong octave is a wrong try', (await info()).fb === 'Right note, wrong octave');
+  await page.click(key(5));
+  log('F, in the right octave, is right for an F sharp', (await info()).pos === 'Bar 1 · 2 of 4');
+
+  // The keyboard follows the register of the notes.
+  await page.setInputFiles('.sr-file', pianoFile);
+  await page.waitForTimeout(800);
+  await page.click('.sr-top [data-sr="options"]');
+  await page.click('[data-clef="Treble"]');
+  await page.waitForTimeout(400);
+  await page.click('[data-sr="close-options"]');
+  i = await info();
+  log('with only the bass clef chosen the keyboard shows the bass register: C3', (await label()) === 'C3' && i.pos === 'Bar 1 · 1 of 1', (await label()) + ' ' + i.pos);
+  await page.click('.sr-top [data-sr="options"]');
+  await page.check('[data-clef="Treble"]');
+  await page.uncheck('[data-clef="Bass"]');
+  await page.click('[data-sr="close-options"]');
+  await page.waitForTimeout(400);
+  log('and with only the treble clef, the treble register: C5', (await label()) === 'C5', await label());
+  await page.click('.sr-top [data-sr="options"]');
+  await page.check('[data-clef="Bass"]');
+  await page.click('[data-sr="close-options"]');
+  await page.waitForTimeout(400);
+  // E5 and C3 together are more than two octaves apart: one of them is not on the keyboard.
+  const startMidi = (parseInt((await label()).slice(1), 10) + 1) * 12;
+  const onBoard = m => m >= startMidi && m <= startMidi + 24;
+  await page.click(key(onBoard(76) ? 76 - startMidi : 4));
+  await page.click(key(onBoard(48) ? 48 - startMidi : 0));
+  i = await info();
+  log('notes too far apart for the keyboard: the one that is not on it counts in any octave', i.pos === 'Bar 2 · 2 of 2', i.pos + ' on ' + (await label()));
+
+  // A phone.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(BASE + '/page/sight-reader?score=beginner/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
+  await page.waitForTimeout(600);
+  const small = await page.evaluate(() => { const p = document.querySelector('.sr-piano').getBoundingClientRect(); return { right: Math.round(p.right), left: Math.round(p.left), height: Math.round(p.height), screen: document.documentElement.clientWidth, page: document.documentElement.scrollWidth }; });
+  log('at phone width the piano fits the screen and is tall enough to press', small.left >= 0 && small.right <= small.screen && small.page <= small.screen + 1 && small.height >= 90, JSON.stringify(small));
+  await page.screenshot({ path: path.join(SHOTS, 'sr-piano-phone.png') });
+
+  // The letters, as an option.
+  await page.setViewportSize({ width: 1300, height: 900 });
+  await options(() => page.selectOption('[data-opt="keyboard"]', 'letters'));
+  const swapped = await page.evaluate(() => ({ piano: !!document.querySelector('.sr-piano').offsetParent, letters: !!document.querySelector('.sr-letters').offsetParent, acc: !!document.querySelector('.sr-accidentals').offsetParent }));
+  log('the letters can be shown instead, with the sharp and flat buttons', !swapped.piano && swapped.letters && swapped.acc, JSON.stringify(swapped));
+  await options(() => page.selectOption('[data-opt="keyboard"]', 'piano'));
 
   // 14. Installable: a manifest of its own, which the browser accepts, and
   //     the bare form it launches on.

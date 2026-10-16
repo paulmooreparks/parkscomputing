@@ -52,12 +52,20 @@
 
     /* The settings are the applet's own, kept in ~/.config/sight-reader.json
        (js/config.js), so they follow the reader wherever ~ does. */
-    var SETTINGS = { revealAfter: 3, accidentals: false, sound: true, lastScore: null };
+    var SETTINGS = { revealAfter: 3, accidentals: false, sound: true, keyboard: 'piano', lastScore: null };
     var REVEAL_CHOICES = [[0, 'Never'], [1, 'After 1 wrong try'], [2, 'After 2 wrong tries'], [3, 'After 3 wrong tries'], [5, 'After 5 wrong tries']];
 
     var SAMPLES = '/content/scores/';
     var LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
     var SEMITONE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+    var LETTER_OF_PC = { 0: 'C', 2: 'D', 4: 'E', 5: 'F', 7: 'G', 9: 'A', 11: 'B' };
+    /* The piano on the screen is two octaves and the C above them, 15 white keys. A
+       black key stands to the right of the white key at these places in an
+       octave, with the pitch it has. */
+    var PIANO_WHITES = 15, PIANO_SPAN = 24;
+    var BLACK_RIGHT_OF = { 0: 1, 1: 3, 3: 6, 4: 8, 5: 10 };
+    var WHITE_PC = [0, 2, 4, 5, 7, 9, 11];
+    var BLACK_NAMES = { 1: 'C sharp or D flat', 3: 'D sharp or E flat', 6: 'F sharp or G flat', 8: 'G sharp or A flat', 10: 'A sharp or B flat' };
     /* The marks drawn on the score: right in green, a missed note in red,
        on the white page the score is always drawn on. */
     var GREEN = '#2e7d32', RED = '#b42318';
@@ -104,6 +112,26 @@
     }
 
     var instances = 0;
+
+    /* The piano's keys: white keys in a row, and the black keys over them, at
+       the places a piano has them. Each key says how many semitones it is
+       above the left-hand C. The keys are for the pointer; they are out of the
+       tab order, and the letters, which are real buttons, are there for anyone
+       who navigates by keyboard. */
+    function pianoMarkup() {
+        var width = 100 / PIANO_WHITES, black = width * 0.62, html = '<div class="sr-piano" role="group" aria-label="Piano keyboard">';
+        for (var i = 0; i < PIANO_WHITES; i++) {
+            var pc = WHITE_PC[i % 7], semi = Math.floor(i / 7) * 12 + pc;
+            html += '<button type="button" class="sr-key sr-white" data-semi="' + semi + '" tabindex="-1" aria-label="' + LETTER_OF_PC[pc] + '"><span class="sr-key-label"></span></button>';
+        }
+        for (var w = 0; w < PIANO_WHITES - 1; w++) {
+            var inOctave = w % 7;
+            if (BLACK_RIGHT_OF[inOctave] === undefined) { continue; }
+            var bpc = BLACK_RIGHT_OF[inOctave];
+            html += '<button type="button" class="sr-key sr-black" data-semi="' + (Math.floor(w / 7) * 12 + bpc) + '" tabindex="-1" aria-label="' + BLACK_NAMES[bpc] + '" style="left:' + ((w + 1) * width - black / 2).toFixed(3) + '%;width:' + black.toFixed(3) + '%"></button>';
+        }
+        return html + '</div>';
+    }
 
     function init(root, opts) {
         opts = opts || {};
@@ -154,6 +182,7 @@
               '<span class="sr-tally" data-role="tally"></span>' +
             '</div>' +
             '<div class="sr-keys" role="group" aria-label="Note names">' +
+              pianoMarkup() +
               '<div class="sr-letters">' +
                 LETTERS.map(function (l) { return '<button type="button" class="btn sr-note" data-note="' + l + '" aria-label="' + l + '">' + l + '</button>'; }).join('') +
               '</div>' +
@@ -174,6 +203,13 @@
             '<dialog class="dialog sr-dialog" data-role="options" aria-labelledby="sr-opt-title-' + uid + '">' +
               '<h3 class="dialog-title" id="sr-opt-title-' + uid + '">Options</h3>' +
               '<div class="dialog-body sr-options">' +
+                '<div class="form-group">' +
+                  '<label class="form-label" for="sr-kbd-' + uid + '">Keyboard</label>' +
+                  '<span class="form-select-wrap"><select class="form-select" id="sr-kbd-' + uid + '" data-opt="keyboard">' +
+                    '<option value="piano">A piano keyboard</option><option value="letters">The letters A to G</option>' +
+                  '</select></span>' +
+                  '<p class="form-help">On the piano, a note lights in its own octave and stays lit until every note of an interval or chord is in. A key you click has to be the right note in the right octave. Typing a letter picks the octave for you. The black keys name sharps and flats, so they wait for Name sharps and flats. The other choice is the buttons A to G, with ♯ and ♭, where no octave is asked for.</p>' +
+                '</div>' +
                 '<div class="form-group">' +
                   '<label class="form-label" for="sr-reveal-' + uid + '">Show the answer</label>' +
                   '<span class="form-select-wrap"><select class="form-select" id="sr-reveal-' + uid + '" data-opt="revealAfter">' +
@@ -196,7 +232,8 @@
             '<dialog class="dialog sr-dialog" data-role="help" aria-labelledby="sr-help-title-' + uid + '">' +
               '<h3 class="dialog-title" id="sr-help-title-' + uid + '">About Sight Reader</h3>' +
               '<div class="dialog-body sr-help">' +
-                '<p>Sight Reader helps you learn to read music from a piece you are working on. A cursor sits on the first note. Type its letter, A to G, or press its button. When you are right the cursor moves to the next note, and for an interval or a chord you name every note in it first. A wrong letter marks an error and the cursor stays where it is. Rests are skipped.</p>' +
+                '<p>Sight Reader helps you learn to read music from a piece you are working on. A cursor sits on the first note. Type its letter, A to G, or press its key on the piano. When you are right the cursor moves to the next note, and for an interval or a chord you name every note in it first. A wrong letter marks an error and the cursor stays where it is. Rests are skipped.</p>' +
+                '<p>On the piano a note lights in its own octave, where it stays until every note of an interval or chord is in. A key you click has to be the right note in the right octave, and typing a letter picks the octave for you. Options can show just the buttons A to G instead, which ask for no octave.</p>' +
                 '<p>Options sets how many wrong tries it takes before the answer is shown, whether a right note is played, and which clefs and parts of the score to read. Restart, in the Practice menu, starts the piece again.</p>' +
                 '<p>With Name sharps and flats on, a note is named with its sharp or flat as well, as the key signature and the bar make it: an F in G major is F sharp. Press the sharp (# or =) or flat (-) key, or its button, before the letter, twice for a double. Escape drops it. A natural is just the letter. Octaves are not asked for yet.</p>' +
                 '<p>Scores are MusicXML files, compressed (.mxl) or not. Notation programs such as MuseScore export them, and MuseScore.com offers them as downloads. A piece that exists only as a PDF has to be converted first: MuseScore 4 can import a PDF, and Audiveris is a free program that reads one.</p>' +
@@ -210,8 +247,12 @@
             empty: q('[data-role="empty"]'), pos: q('[data-role="pos"]'), pendingMark: q('[data-role="pending"]'),
             feedback: q('[data-role="feedback"]'), tally: q('[data-role="tally"]'), file: q('.sr-file'),
             chooser: q('[data-role="chooser"]'), chooserBody: q('[data-role="chooser-body"]'),
-            options: q('[data-role="options"]'), scope: q('[data-role="scope"]'), help: q('[data-role="help"]')
+            options: q('[data-role="options"]'), scope: q('[data-role="scope"]'), help: q('[data-role="help"]'),
+            piano: q('.sr-piano'), letters: q('.sr-letters'), accidentals: q('.sr-accidentals')
         };
+        var pianoKeys = [].slice.call(el.piano.querySelectorAll('.sr-key')), pianoAt = {}, blackKeys = [];
+        pianoKeys.forEach(function (k) { pianoAt[k.getAttribute('data-semi')] = k; if (k.classList.contains('sr-black')) { blackKeys.push(k); } });
+        var pianoStart = 60, keyFlash = null;
         var sharpButton = q('[data-acc="1"]'), flatButton = q('[data-acc="-1"]');
 
         /* === What the reader sees =========================================== */
@@ -255,6 +296,77 @@
             showPos();
             showTally();
             showPending();
+            showKeyboard();
+        }
+
+        /* === The piano ========================================================= */
+
+        /* Which keyboard shows, and whether the black keys work. */
+        function showKeyboard() {
+            var piano = settings.keyboard !== 'letters';
+            el.piano.hidden = !piano;
+            el.letters.hidden = piano;
+            el.accidentals.hidden = piano;
+            blackKeys.forEach(function (k) {
+                k.disabled = !settings.accidentals;
+                if (settings.accidentals) { k.removeAttribute('title'); } else { k.title = 'Turn on Name sharps and flats in Options to use the black keys'; }
+            });
+            showPiano();
+        }
+
+        /* The pitch a note has on the keyboard shown: its own, with sharps and
+           flats named, and with them off the white key of its letter, since the
+           black keys do not work then and the reader presses the letter. */
+        function target(s) { return settings.accidentals ? s.midi : s.nat; }
+        function onKeyboard(s, start) { var t = target(s); return t >= start && t <= start + PIANO_SPAN; }
+
+        /* The key for a note, in the two octaves on the screen: a note outside
+           them is shown in the nearest octave that is. */
+        function keyFor(midi) {
+            var m = midi;
+            while (m < pianoStart) { m += 12; }
+            while (m > pianoStart + PIANO_SPAN) { m -= 12; }
+            return pianoAt[m - pianoStart];
+        }
+
+        /* The keyboard follows the notes: it moves only when it would then show
+           more of the step's notes than it does, to the octave that shows the
+           most, so it does not jump about between near notes. The C keys say
+           which octave they are in, and the notes of the step that are named, or
+           shown by the answer, are lit in their own octave and stay lit until the
+           step is done, whether they were typed or clicked. */
+        function showPiano() {
+            var step = score && cur >= 0 && cur < steps.length ? steps[cur] : null;
+            if (step) {
+                var shown = function (start) { return step.notes.filter(function (s) { return onKeyboard(s, start); }).length; };
+                var best = pianoStart, most = shown(pianoStart);
+                step.notes.forEach(function (s) {
+                    /* The C at the foot of the note's octave, or the octave below it, so
+                       the note can sit in either of the two octaves shown. */
+                    [Math.floor(target(s) / 12) * 12, Math.floor(target(s) / 12) * 12 - 12].forEach(function (start) {
+                        var n = start >= 0 ? shown(start) : 0;
+                        if (n > most) { best = start; most = n; }
+                    });
+                });
+                pianoStart = best;
+            }
+            pianoKeys.forEach(function (k) {
+                k.classList.remove('sr-named', 'sr-missed');
+                var semi = +k.getAttribute('data-semi');
+                if (semi % 12 === 0) { k.querySelector('.sr-key-label').textContent = 'C' + (Math.floor((pianoStart + semi) / 12) - 1); }
+            });
+            if (step) {
+                step.notes.forEach(function (s) {
+                    if (s.state) { keyFor(target(s)).classList.add(s.state === 'ok' ? 'sr-named' : 'sr-missed'); }
+                });
+            }
+        }
+
+        /* A wrong key flashes red, as the cursor does. */
+        function flashKey(button) {
+            button.classList.add('sr-keywrong');
+            clearTimeout(keyFlash);
+            keyFlash = setTimeout(function () { button.classList.remove('sr-keywrong'); }, 420);
         }
 
         /* The cursor flashes red for a wrong letter; the shake is left out
@@ -285,11 +397,11 @@
         /* The note as a short plucked tone, at the pitch it is written at,
            from the octave, letter and accidental of its pitch. A part for a
            transposing instrument sounds at its written pitch here. */
-        function frequencyOf(n) {
+        function midiOf(n) {
             var p = n.Pitch;
-            var midi = (p.Octave + OS.Pitch.OctaveXmlDifference + 1) * 12 + SEMITONE[OS.Pitch.getNoteEnumString(p.FundamentalNote)] + p.AccidentalHalfTones;
-            return 440 * Math.pow(2, (midi - 69) / 12);
+            return (p.Octave + OS.Pitch.OctaveXmlDifference + 1) * 12 + SEMITONE[OS.Pitch.getNoteEnumString(p.FundamentalNote)] + p.AccidentalHalfTones;
         }
+        function frequencyOf(n) { return 440 * Math.pow(2, (midiOf(n) - 69) / 12); }
         function play(notes) {
             if (!settings.sound || !notes.length) { return; }
             try {
@@ -386,7 +498,11 @@
                     if (first) { info.clefs[clef] = (info.clefs[clef] || 0) + 1; if (info.parts[part]) { info.parts[part].count++; } }
                     if (chosen.clefs && !chosen.clefs[clef]) { return; }
                     if (chosen.parts && !chosen.parts[part]) { return; }
-                    found.push({ note: n, key: keyOf(n), state: '' });
+                    var midi = midiOf(n), oct = n.Pitch.Octave + OS.Pitch.OctaveXmlDifference;
+                    found.push({
+                        note: n, key: keyOf(n), midi: midi, pc: ((midi % 12) + 12) % 12, oct: oct,
+                        nat: (oct + 1) * 12 + SEMITONE[OS.Pitch.getNoteEnumString(n.Pitch.FundamentalNote)], state: ''
+                    });
                 });
                 if (found.length) { steps.push({ adv: adv, measure: measure.MeasureNumber, notes: found, result: '' }); }
                 it.moveToNext();
@@ -443,6 +559,7 @@
             clearPending();
             moveTo(k);
             showPos();
+            showPiano();
             var n = distinct(steps[k]).length;
             say(n > 1 ? 'Name every note of the ' + (n === 2 ? 'interval' : 'chord') : '', '');
         }
@@ -461,11 +578,11 @@
             keepSnapshot();
         }
 
-        function wrong() {
+        function wrong(why) {
             tries++;
             flash();
             if (settings.revealAfter > 0 && tries >= settings.revealAfter) { reveal(); return; }
-            say('Not that one', 'danger');
+            say(why || 'Not that one', 'danger');
         }
 
         /* Shows the answer: the notes still unnamed turn red and the status
@@ -475,26 +592,64 @@
             step.notes.forEach(function (s) { if (!named[s.key]) { s.state = 'missed'; } });
             paintHere(cur);
             revealed = true;
+            showPiano();
             conclude('missed');
             say('The answer is ' + missing.map(nameOf).join(', ') + '. Press any key to go on.', 'warn');
         }
 
-        function answer(letter) {
-            if (!score || cur < 0 || finished || !steps.length) { return; }
-            if (revealed) { advance(); return; }
-            var step = steps[cur], key = settings.accidentals ? letter + accKey(pendingAlter) : letter;
+        function ready() { return !!score && cur >= 0 && !finished && !!steps.length; }
+
+        /* The reader names some notes of the step: hit is the notes of the step
+           that what they pressed names, none if it names none. A note already
+           named costs nothing; a note not in the step is a wrong try; the
+           cursor goes on once every note of the step is named. keyButton is the
+           piano key pressed, which flashes if it is wrong. */
+        function attempt(hit, keyButton, why) {
             clearPending();
-            if (distinct(step).indexOf(key) < 0) { wrong(); return; }
-            if (named[key]) { return; }
-            named[key] = true;
-            var hit = step.notes.filter(function (s) { return s.key === key; });
-            hit.forEach(function (s) { s.state = 'ok'; });
+            var step = steps[cur];
+            if (!hit.length) { if (keyButton) { flashKey(keyButton); } wrong(why); return; }
+            var keys = {};
+            hit.forEach(function (s) { keys[s.key] = true; });
+            var fresh = Object.keys(keys).filter(function (k) { return !named[k]; });
+            if (!fresh.length) { return; }
+            var got = [];
+            fresh.forEach(function (k) {
+                named[k] = true;
+                step.notes.forEach(function (s) { if (s.key === k) { s.state = 'ok'; got.push(s); } });
+            });
             paintHere(cur);
-            play(hit);
+            play(got);
             var left = distinct(step).filter(function (k) { return !named[k]; });
-            if (left.length) { say('Right. ' + left.length + ' more to name', 'positive'); return; }
+            if (left.length) { showPiano(); say('Right. ' + left.length + ' more to name', 'positive'); return; }
             conclude(tries ? 'retried' : 'first');
             advance();
+        }
+
+        /* A letter, with the sharp or flat waiting for it when sharps and flats
+           are named: the note is named as it is spelled. */
+        function answer(letter) {
+            if (!ready()) { return; }
+            if (revealed) { advance(); return; }
+            var key = settings.accidentals ? letter + accKey(pendingAlter) : letter;
+            attempt(steps[cur].notes.filter(function (s) { return s.key === key; }));
+        }
+
+        /* A key of the piano is the note and the octave, so it is right only if
+           it is the key the note is on. A letter typed has no octave, and the
+           note lights in its own. With sharps and flats on, a black key is a
+           pitch, so right for either spelling of it, F sharp or G flat; with them
+           off, only the white keys work, and name the letter. A note too far from
+           the others to be on the keyboard cannot be pressed in its octave, so
+           for it any octave will do. A key of the right note in the wrong octave
+           says so. */
+        function answerPiano(button) {
+            if (!ready()) { return; }
+            if (revealed) { advance(); return; }
+            var semi = +button.getAttribute('data-semi'), midi = pianoStart + semi, pc = semi % 12;
+            var letter = LETTER_OF_PC[pc], notes = steps[cur].notes;
+            var sameNote = function (s) { return settings.accidentals ? s.pc === pc : s.key === letter; };
+            var hit = notes.filter(function (s) { return onKeyboard(s, pianoStart) ? target(s) === midi : sameNote(s); });
+            attempt(hit, button, notes.some(sameNote) ? 'Right note, wrong octave' : '');
         }
 
         /* A sharp or flat typed or pressed before its letter. Pressing the
@@ -622,6 +777,7 @@
         }
 
         function showOptions() {
+            el.options.querySelector('[data-opt="keyboard"]').value = settings.keyboard === 'letters' ? 'letters' : 'piano';
             el.options.querySelector('[data-opt="revealAfter"]').value = String(settings.revealAfter);
             el.options.querySelector('[data-opt="accidentals"]').checked = !!settings.accidentals;
             el.options.querySelector('[data-opt="sound"]').checked = !!settings.sound;
@@ -704,6 +860,8 @@
             if (note && root.contains(note)) { answer(note.getAttribute('data-note')); return; }
             var acc = e.target.closest('[data-acc]');
             if (acc && root.contains(acc)) { bump(+acc.getAttribute('data-acc')); return; }
+            var key = e.target.closest('.sr-key');
+            if (key && root.contains(key)) { answerPiano(key); return; }
             var open = e.target.closest('[data-sr-open]');
             if (open) { el.chooser.close(); openScore({ name: open.getAttribute('data-sr-name'), rel: open.getAttribute('data-sr-open') }); return; }
             var act = e.target.closest('[data-sr]');
@@ -723,9 +881,10 @@
             if (!el.options.contains(t)) { return; }
             if (t.hasAttribute('data-clef') || t.hasAttribute('data-part')) { onScopeChange(t); return; }
             var opt = t.getAttribute('data-opt');
-            if (opt === 'revealAfter') { saveSetting({ revealAfter: +t.value }); }
+            if (opt === 'keyboard') { saveSetting({ keyboard: t.value === 'letters' ? 'letters' : 'piano' }); showKeyboard(); }
+            else if (opt === 'revealAfter') { saveSetting({ revealAfter: +t.value }); }
             else if (opt === 'sound') { saveSetting({ sound: t.checked }); }
-            else if (opt === 'accidentals') { saveSetting({ accidentals: t.checked }); clearPending(); showPending(); rebuild(); }
+            else if (opt === 'accidentals') { saveSetting({ accidentals: t.checked }); clearPending(); showPending(); showKeyboard(); rebuild(); }
         }
 
         function onKeyDown(e) {
@@ -823,10 +982,12 @@
             return c.load('sight-reader', SETTINGS).then(function (s) {
                 settings = Object.assign({}, SETTINGS, s);
                 showPending();
+                showKeyboard();
                 unConfig = c.onChange('sight-reader', function (next) {
                     var before = settings.accidentals;
                     settings = Object.assign({}, SETTINGS, next);
                     showPending();
+                    showKeyboard();
                     if (before !== settings.accidentals) { rebuild(); }
                 });
             });
