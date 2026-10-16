@@ -81,6 +81,19 @@ const OCTAVES = `<?xml version="1.0" encoding="UTF-8"?>
 </part></score-partwise>
 `;
 
+/* A chord from C2 to E5, which two octaves of keyboard cannot show. */
+const WIDE = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0"><work><work-title>Wide</work-title></work>
+<part-list><score-part id="P1"><part-name>Test</part-name></score-part></part-list>
+<part id="P1">
+<measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
+<note><pitch><step>C</step><octave>2</octave></pitch><duration>4</duration><type>whole</type></note>
+<note><chord/><pitch><step>G</step><octave>3</octave></pitch><duration>4</duration><type>whole</type></note>
+<note><chord/><pitch><step>E</step><octave>5</octave></pitch><duration>4</duration><type>whole</type></note>
+</measure>
+</part></score-partwise>
+`;
+
 /* A voice on D and a piano on A, sounding together. */
 const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0"><work><work-title>Parts</work-title></work>
@@ -103,6 +116,8 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   fs.writeFileSync(partsFile, PARTS);
   const octFile = path.join(os.tmpdir(), 'sight-reader-octaves.musicxml');
   fs.writeFileSync(octFile, OCTAVES);
+  const wideFile = path.join(os.tmpdir(), 'sight-reader-wide.musicxml');
+  fs.writeFileSync(wideFile, WIDE);
   /* Scrollbars are left showing, as a reader's browser has them: a headless browser hides them by default, and a scrollbar that takes room from a box is what a layout has to allow for. */
   const browser = await chromium.launch(Object.assign({ ignoreDefaultArgs: ['--hide-scrollbars'], args: process.env.HOST_MAP ? ['--host-resolver-rules=' + process.env.HOST_MAP] : [] }, process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}));
   const ctx = await browser.newContext({ viewport: { width: 1300, height: 900 } });
@@ -599,13 +614,14 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.check('[data-clef="Bass"]');
   await page.click('[data-sr="close-options"]');
   await page.waitForTimeout(400);
-  // E5 and C3 together are more than two octaves apart: one of them is not on the keyboard.
+  // E5 and C3 together are more than two octaves apart, so the keyboard has grown to three.
   const startMidi = (parseInt((await label()).slice(1), 10) + 1) * 12;
-  const onBoard = m => m >= startMidi && m <= startMidi + 24;
+  const keySpan = ((await page.evaluate(() => document.querySelectorAll('.sr-white').length)) - 1) / 7 * 12;
+  const onBoard = m => m >= startMidi && m <= startMidi + keySpan;
   await page.click(key(onBoard(76) ? 76 - startMidi : 4));
   await page.click(key(onBoard(48) ? 48 - startMidi : 0));
   i = await info();
-  log('notes too far apart for the keyboard: the one that is not on it counts in any octave', i.pos === 'Bar 2 · 2 of 2', i.pos + ' on ' + (await label()));
+  log('notes more than two octaves apart are both on a wider keyboard', i.pos === 'Bar 2 · 2 of 2', i.pos + ' on ' + (await label()));
 
   // A phone.
   await page.setViewportSize({ width: 390, height: 844 });
@@ -648,6 +664,20 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await type('c');
   i = await info();
   log('the same letter again names the other octave', /^Finished/.test(i.fb) && (await greenNotes()) === 2, i.fb);
+
+  // 13c2. A chord wider than two octaves: the keyboard grows, and every note can be pressed.
+  await page.setInputFiles('.sr-file', wideFile);
+  await page.waitForTimeout(800);
+  const wideKeys = await page.evaluate(() => ({ white: document.querySelectorAll('.sr-white').length, first: document.querySelector('.sr-key-label').textContent }));
+  log('a chord from C2 to E5 widens the keyboard to four octaves', wideKeys.white === 29, JSON.stringify(wideKeys));
+  await page.click('.sr-key[data-semi="0"]');
+  await page.click('.sr-key[data-semi="19"]');
+  await page.click('.sr-key[data-semi="40"]');
+  i = await info();
+  log('and the low C, the G and the high E are each pressed in their own octave', /^Finished: 1 of 1/.test(i.fb), i.fb);
+  await page.setInputFiles('.sr-file', octFile);
+  await page.waitForTimeout(800);
+  log('a score opened after that starts on two octaves again', (await page.evaluate(() => document.querySelectorAll('.sr-white').length)) === 15);
 
   // 13d. Bars to practise: start part-way in, and go round again.
   await newTab();

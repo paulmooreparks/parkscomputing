@@ -491,3 +491,6 @@ button.tag-link:focus-visible { outline: 2px solid var(--focus-ring); outline-of
 .tag-window { max-width: 68ch; margin: 0 auto; }
 .tag-window .card-desc { margin-bottom: 10px; }
 .tag-window .md-row { border-right: 0; }
+
+/* PUDL draws the menu bar's titles and glyph in a dimmed text colour that brightens on hover and when open. Here they use the same text colour as a button, in light and dark, and it does not change. */
+.menubar-title, .menubar-glyph { color: var(--text); }

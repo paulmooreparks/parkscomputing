@@ -62,7 +62,7 @@
     /* The piano on the screen is two octaves and the C above them, 15 white keys. A
        black key stands to the right of the white key at these places in an
        octave, with the pitch it has. */
-    var PIANO_WHITES = 15, PIANO_SPAN = 24;
+    var PIANO_MAX_OCTAVES = 4;
     var BLACK_RIGHT_OF = { 0: 1, 1: 3, 3: 6, 4: 8, 5: 10 };
     var WHITE_PC = [0, 2, 4, 5, 7, 9, 11];
     var BLACK_NAMES = { 1: 'C sharp or D flat', 3: 'D sharp or E flat', 6: 'F sharp or G flat', 8: 'G sharp or A flat', 10: 'A sharp or B flat' };
@@ -119,18 +119,21 @@
        tab order, and the letters, which are real buttons, are there for anyone
        who navigates by keyboard. */
     function pianoMarkup() {
-        var width = 100 / PIANO_WHITES, black = width * 0.62, html = '<div class="sr-piano" role="group" aria-label="Piano keyboard">';
-        for (var i = 0; i < PIANO_WHITES; i++) {
+        return '<div class="sr-piano" role="group" aria-label="Piano keyboard">' + pianoKeysMarkup(2) + '</div>';
+    }
+    function pianoKeysMarkup(octaves) {
+        var whites = octaves * 7 + 1, width = 100 / whites, black = width * 0.62, html = '';
+        for (var i = 0; i < whites; i++) {
             var pc = WHITE_PC[i % 7], semi = Math.floor(i / 7) * 12 + pc;
             html += '<button type="button" class="sr-key sr-white" data-semi="' + semi + '" tabindex="-1" aria-label="' + LETTER_OF_PC[pc] + '"><span class="sr-key-label"></span></button>';
         }
-        for (var w = 0; w < PIANO_WHITES - 1; w++) {
+        for (var w = 0; w < whites - 1; w++) {
             var inOctave = w % 7;
             if (BLACK_RIGHT_OF[inOctave] === undefined) { continue; }
             var bpc = BLACK_RIGHT_OF[inOctave];
             html += '<button type="button" class="sr-key sr-black" data-semi="' + (Math.floor(w / 7) * 12 + bpc) + '" tabindex="-1" aria-label="' + BLACK_NAMES[bpc] + '" style="left:' + ((w + 1) * width - black / 2).toFixed(3) + '%;width:' + black.toFixed(3) + '%"></button>';
         }
-        return html + '</div>';
+        return html;
     }
 
     function init(root, opts) {
@@ -262,8 +265,22 @@
             options: q('[data-role="options"]'), scope: q('[data-role="scope"]'), help: q('[data-role="help"]'),
             piano: q('.sr-piano'), letters: q('.sr-letters'), accidentals: q('.sr-accidentals')
         };
-        var pianoKeys = [].slice.call(el.piano.querySelectorAll('.sr-key')), pianoAt = {}, blackKeys = [];
-        pianoKeys.forEach(function (k) { pianoAt[k.getAttribute('data-semi')] = k; if (k.classList.contains('sr-black')) { blackKeys.push(k); } });
+        /* The keyboard has two octaves, and more when a step has notes further
+           apart than that, up to four. It does not shrink again until another
+           score is opened, so the keys do not change size from note to note. */
+        var pianoOctaves = 2, pianoKeys = [], pianoAt = {}, blackKeys = [];
+        function setPianoOctaves(n) {
+            pianoOctaves = n;
+            el.piano.innerHTML = pianoKeysMarkup(n);
+            pianoKeys = [].slice.call(el.piano.querySelectorAll('.sr-key'));
+            pianoAt = {}; blackKeys = [];
+            pianoKeys.forEach(function (k) { pianoAt[k.getAttribute('data-semi')] = k; if (k.classList.contains('sr-black')) { blackKeys.push(k); } });
+            blackKeys.forEach(function (k) {
+                k.disabled = !settings.accidentals;
+                if (!settings.accidentals) { k.title = 'Turn on Name sharps and flats in Options to use the black keys'; }
+            });
+        }
+        setPianoOctaves(2);
         var pianoStart = 60, keyFlash = null;
         var sharpButton = q('[data-acc="1"]'), flatButton = q('[data-acc="-1"]');
 
@@ -386,14 +403,14 @@
            flats named, and with them off the white key of its letter, since the
            black keys do not work then and the reader presses the letter. */
         function target(s) { return settings.accidentals ? s.midi : s.nat; }
-        function onKeyboard(s, start) { var t = target(s); return t >= start && t <= start + PIANO_SPAN; }
+        function onKeyboard(s, start, octaves) { var t = target(s); return t >= start && t <= start + 12 * (octaves || pianoOctaves); }
 
         /* The key for a note, in the two octaves on the screen: a note outside
            them is shown in the nearest octave that is. */
         function keyFor(midi) {
             var m = midi;
             while (m < pianoStart) { m += 12; }
-            while (m > pianoStart + PIANO_SPAN) { m -= 12; }
+            while (m > pianoStart + 12 * pianoOctaves) { m -= 12; }
             return pianoAt[m - pianoStart];
         }
 
@@ -406,17 +423,27 @@
         function showPiano() {
             var step = score && cur >= 0 && cur < steps.length ? steps[cur] : null;
             if (step) {
-                var shown = function (start) { return step.notes.filter(function (s) { return onKeyboard(s, start); }).length; };
-                var best = pianoStart, most = shown(pianoStart);
-                step.notes.forEach(function (s) {
-                    /* The C at the foot of the note's octave, or the octave below it, so
-                       the note can sit in either of the two octaves shown. */
-                    [Math.floor(target(s) / 12) * 12, Math.floor(target(s) / 12) * 12 - 12].forEach(function (start) {
-                        var n = start >= 0 ? shown(start) : 0;
-                        if (n > most) { best = start; most = n; }
+                /* The window that shows the most of the step's notes, in the
+                   octaves there are now; if no window shows them all, a wider
+                   keyboard is tried, up to the widest. */
+                var place = function (octaves) {
+                    var shown = function (start) { return step.notes.filter(function (s) { return onKeyboard(s, start, octaves); }).length; };
+                    var best = pianoStart, most = shown(pianoStart);
+                    step.notes.forEach(function (s) {
+                        /* The C at the foot of the note's octave, or the octave below it. */
+                        [Math.floor(target(s) / 12) * 12, Math.floor(target(s) / 12) * 12 - 12].forEach(function (start) {
+                            var n = start >= 0 ? shown(start) : 0;
+                            if (n > most) { best = start; most = n; }
+                        });
                     });
-                });
-                pianoStart = best;
+                    return { start: best, all: most === step.notes.length };
+                };
+                var placed = place(pianoOctaves);
+                for (var wider = pianoOctaves + 1; !placed.all && wider <= PIANO_MAX_OCTAVES; wider++) {
+                    var tryWider = place(wider);
+                    if (tryWider.all || wider === PIANO_MAX_OCTAVES) { setPianoOctaves(wider); placed = tryWider; }
+                }
+                pianoStart = placed.start;
             }
             pianoKeys.forEach(function (k) {
                 k.classList.remove('sr-named', 'sr-missed');
@@ -786,6 +813,7 @@
             tally = { first: 0, retried: 0, missed: 0 };
             steps.forEach(function (s) { s.result = ''; s.notes.forEach(function (n) { n.state = ''; }); });
             pass = 1;
+            if (pianoOctaves !== 2) { setPianoOctaves(2); }
             if (draw()) { begin(span().lo); }
             refresh();
             keepSnapshot();
@@ -846,6 +874,7 @@
                     score = src;
                     info = null;
                     chosen = { clefs: null, parts: null };
+                    if (pianoOctaves !== 2) { setPianoOctaves(2); }
                     barFrom = null; barTo = null; pass = 1; showRange();
                     finished = false;
                     tally = { first: 0, retried: 0, missed: 0 };
