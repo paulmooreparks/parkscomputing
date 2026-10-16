@@ -550,13 +550,15 @@
             });
         }
 
-        /* After a right press on a fingerboard, the other places the same pitch
-           lies are ringed for a moment, so the reader sees where else it is. */
-        function clearAlt() { clearTimeout(altTimer); boardCells.forEach(function (c) { c.classList.remove('sr-alt'); }); }
+        /* After a right press on a fingerboard, the place pressed stays lit, and
+           the other places the same pitch lies are ringed, for a moment, so the
+           reader sees where else it is. */
+        function clearAlt() { clearTimeout(altTimer); boardCells.forEach(function (c) { c.classList.remove('sr-alt', 'sr-hit'); }); }
         function showAlt(midi, pressed) {
             clearAlt();
             if (el.board.hidden) { return; }
             boardCells.forEach(function (c) { if (+c.getAttribute('data-midi') === midi && c !== pressed) { c.classList.add('sr-alt'); } });
+            pressed.classList.add('sr-hit');
             altTimer = setTimeout(clearAlt, 2400);
         }
 

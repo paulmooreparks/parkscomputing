@@ -211,6 +211,7 @@ body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .post-content { max-width:
 .sr-cell:hover .sr-dot { fill: rgba(255, 255, 255, 0.22); }
 .sr-cell.sr-named .sr-dot { fill: #2e7d32; stroke: #1b5e20; }
 .sr-cell.sr-missed .sr-dot { fill: #b42318; stroke: #7a1710; }
+.sr-cell.sr-hit .sr-dot { fill: #2e7d32; stroke: #1b5e20; }
 .sr-cell.sr-alt .sr-dot { fill: rgba(46, 125, 50, 0.18); stroke: #4caf50; stroke-dasharray: 4 3; }
 .sr-cell.sr-keywrong .sr-dot { fill: #b42318; stroke: #f4b4ae; }
 .sr-cell .sr-lab { font: 700 11px system-ui, sans-serif; fill: #fff; paint-order: stroke; stroke: rgba(0, 0, 0, 0.75); stroke-width: 3px; pointer-events: none; }

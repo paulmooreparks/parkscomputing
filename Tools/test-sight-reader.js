@@ -735,8 +735,9 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   const lit1 = await litCells();
   log('a right position is named, and the pitch is lit wherever it lies on the neck', /2 more/.test(i.fb) && lit1.length === allC4 && lit1.every(m => m === 60), i.fb + ' lit ' + lit1.length + ' of ' + allC4);
   log('the other places the pitch lies are ringed after a right press', (await rings()) === allC4 - 1, 'rings ' + (await rings()));
+  log('and the place pressed stays lit, as the others show', (await page.evaluate(() => document.querySelectorAll('.sr-fingerboard .sr-hit').length)) === 1);
   await page.waitForTimeout(2800);
-  log('and the rings go after a moment', (await rings()) === 0);
+  log('and the rings and the lit place go after a moment', (await rings()) === 0 && (await page.evaluate(() => document.querySelectorAll('.sr-fingerboard .sr-hit').length)) === 0);
   await cell(64, 0).click();
   await cell(67, 0).click();
   i = await info();
