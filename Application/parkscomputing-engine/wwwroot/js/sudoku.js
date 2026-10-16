@@ -357,23 +357,51 @@ SOFTWARE.
             return true;
         }
 
-        /* The puzzle's solution, worked out from its clues alone. A puzzle
+        /* The puzzle's solution, the guide every entry is held to. A puzzle
            this applet makes has exactly one, since a number is only taken
-           away while the answer stays unique; one built by hand in edit
-           mode may have none or several, and then there is no single
-           answer to hold an entry to. Kept until the clues change. */
+           away while the answer stays unique, and it is the full grid the
+           puzzle was made from, so a new game is never solved. The saved
+           game carries it, so a reload or a restored window has it too.
+           Only a puzzle that arrives without one, from a shared link, or
+           whose clues change in edit mode, is solved, once. One built by
+           hand may have none or several solutions, and then there is no
+           single answer to hold an entry to. */
         var solved = { key: null, grid: null };
-        function solution() {
-            var key = '', grid = [];
+        function clueKey() {
+            var key = '';
+            for (var r = 0; r < BOARD_SIZE; r++) {
+                for (var c = 0; c < BOARD_SIZE; c++) { key += boardState[r][c].clue ? boardState[r][c].value : 0; }
+            }
+            return key;
+        }
+        /* The solution as 81 digits, for the saved game, while it belongs
+           to the clues on the board. */
+        function solutionString() {
+            return solved.grid && solved.key === clueKey() ? solved.grid.map(function (row) { return row.join(''); }).join('') : null;
+        }
+        /* A solution from a saved game, taken only if it is whole and keeps
+           every clue on the board. */
+        function adoptSolution(s) {
+            if (typeof s !== 'string' || !/^[1-9]{81}$/.test(s)) { return; }
+            var key = clueKey(), grid = [];
             for (var r = 0; r < BOARD_SIZE; r++) {
                 grid.push([]);
                 for (var c = 0; c < BOARD_SIZE; c++) {
-                    var v = boardState[r][c].clue ? boardState[r][c].value : 0;
+                    var v = +s.charAt(r * BOARD_SIZE + c), clue = +key.charAt(r * BOARD_SIZE + c);
+                    if (clue && clue !== v) { return; }
                     grid[r].push(v);
-                    key += v;
                 }
             }
+            solved = { key: key, grid: grid };
+        }
+        function solution() {
+            var key = clueKey();
             if (solved.key === key) { return solved.grid; }
+            var grid = [];
+            for (var r = 0; r < BOARD_SIZE; r++) {
+                grid.push([]);
+                for (var c = 0; c < BOARD_SIZE; c++) { grid[r].push(+key.charAt(r * BOARD_SIZE + c)); }
+            }
             var found = null, count = 0;
             function fits(r, c, n) {
                 for (var x = 0; x < BOARD_SIZE; x++) { if (grid[r][x] === n || grid[x][c] === n) { return false; } }
@@ -534,7 +562,10 @@ SOFTWARE.
            history, so a host's continuity round-trips it all. setState
            also accepts the portable forms a link can carry. */
         function continuityState() {
-            return JSON.stringify({ d: difficultyDropdown.value, i: undoIndex, s: undoStack });
+            var state = { d: difficultyDropdown.value, i: undoIndex, s: undoStack };
+            var answer = solutionString();
+            if (answer) { state.a = answer; }
+            return JSON.stringify(state);
         }
 
         function applyCompactState(s) {
@@ -607,11 +638,15 @@ SOFTWARE.
         /* === Actions ====================================================== */
 
         function generateNewBoard(difficulty) {
+            var full;
             do {
                 clearGameBoard();
                 fillBoard();
+                /* The filled grid is the answer the puzzle is cut from. */
+                full = boardState.map(function (row) { return row.map(function (cell) { return cell.value; }); });
                 removeNumbers(difficulty);
             } while (!checkUnique());
+            solved = { key: clueKey(), grid: full };
 
             commit();
         }
@@ -826,6 +861,11 @@ SOFTWARE.
         var params = ownUrl ? new URLSearchParams(window.location.search) : new URLSearchParams('');
         var restoredStack = null;
         var restoredIndex = -1;
+        /* The solution comes back with the saved game, or on the game's own
+           page, whose game is in the address and where the answer must not
+           be, from this browser tab's snapshot (js/snapshot.js). */
+        var snap = window.pcSnapshot ? window.pcSnapshot.join(root, function () { var a = solutionString(); return a ? { a: a } : null; }) : null;
+        var keptAnswer = snap && snap.kept ? snap.kept.a : null;
         /* The state the host kept (opts.state, 0.21.0) supplies the game
            unless the address itself names one: the full continuity JSON
            with its undo history, or the older "difficulty|board" form. */
@@ -838,6 +878,7 @@ SOFTWARE.
                         restoredIndex = Math.min(Math.max(kept.i | 0, 0), kept.s.length - 1);
                         params.set('difficulty', kept.d || 'medium');
                         params.set('board', kept.s[restoredIndex]);
+                        if (kept.a) { keptAnswer = kept.a; }
                     }
                 } catch (err) { }
             } else if (opts.state.indexOf('|') > 0) {
@@ -848,6 +889,7 @@ SOFTWARE.
         difficultyDropdown.value = params.get('difficulty') || 'medium';
 
         if (setBoardStateFromParams(params)) {
+            adoptSolution(keptAnswer);
             undoStack = restoredStack || [boardStateString()];
             undoIndex = restoredIndex >= 0 ? restoredIndex : undoStack.length - 1;
             render();
@@ -875,6 +917,7 @@ SOFTWARE.
                         undoIndex = Math.min(Math.max(kept.i | 0, 0), kept.s.length - 1);
                         difficultyDropdown.value = kept.d || 'medium';
                         applyBoardString(undoStack[undoIndex]);
+                        adoptSolution(kept.a);
                         render();
                         if (opts.changed) { opts.changed(continuityState()); }
                     }
@@ -901,6 +944,7 @@ SOFTWARE.
             state: continuityState,
             setState: applyAnyState,
             destroy: function () {
+                if (snap) { snap.leave(); }
                 if (helpDialog.open) { helpDialog.close(); }
                 if (onPopState) { window.removeEventListener('popstate', onPopState); }
                 root.removeEventListener('keydown', onKeyDown);
