@@ -508,8 +508,16 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   const tonesBefore = (await page.evaluate(() => window.__tones)).length;
   await page.click('.sr-top [data-sr="play"]');
   await page.waitForTimeout(1600);
+  await page.waitForSelector('.sr-piano .sr-playing', { timeout: 3000 }).catch(() => {});
   const playingNow = await page.evaluate(() => ({ playOff: document.querySelector('[data-sr="play"]').disabled, stopOn: !document.querySelector('[data-sr="stop"]').disabled, lit: document.querySelectorAll('.sr-piano .sr-playing').length, tones: window.__tones.length }));
   log('Play sounds the notes in turn and lights them in blue, and only Stop can be pressed', playingNow.playOff && playingNow.stopOn && playingNow.lit >= 1 && playingNow.tones - tonesBefore >= 3, JSON.stringify(playingNow));
+  /* Ode to Joy opens E E: the second E lights again after going out, so the
+     lights are watched for a moment with the key's state sampled often. */
+  await page.click('.sr-top [data-sr="stop"]');
+  await page.click('.sr-top [data-sr="play"]');
+  const blink = await page.evaluate(() => new Promise(done => { const seen = []; const t0 = performance.now(); const tick = () => { seen.push(document.querySelectorAll('.sr-piano .sr-playing').length); if (performance.now() - t0 < 900) { requestAnimationFrame(tick); } else { done(seen); } }; tick(); }));
+  const offs = blink.reduce((n, v, k) => n + (k && blink[k - 1] > 0 && v === 0 ? 1 : 0), 0);
+  log('a note played again goes out and comes back on, so the repeat shows', offs >= 1 && blink.some(v => v > 0), 'went out ' + offs + ' times');
   await page.click('.sr-top [data-sr="stop"]');
   await page.waitForTimeout(300);
   const stopped = await page.evaluate(() => ({ playOn: !document.querySelector('[data-sr="play"]').disabled, stopOff: document.querySelector('[data-sr="stop"]').disabled, lit: document.querySelectorAll('.sr-playing').length }));

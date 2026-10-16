@@ -1013,19 +1013,26 @@
             var s = span(), k = playing.k, step = steps[k], wholeMs = 240000 / (tempo() * speed());
             var next = k + 1 <= s.hi ? steps[k + 1] : null;
             var gap = next && next.at > step.at ? next.at - step.at : step.len || 0.25;
+            var ms = Math.max(60, gap * wholeMs);
             moveTo(k);
             lightPlaying(step);
             play(step.notes, step.len * wholeMs / 1000);
+            /* The lights go out a moment before the next step, as a key is let
+               go, so a note played again flashes off and on rather than
+               staying lit. */
+            clearTimeout(playing.dark);
+            playing.dark = setTimeout(clearPlaying, ms - Math.min(90, ms * 0.25));
             playing.timer = setTimeout(function () {
                 if (!playing) { return; }
                 if (next) { playing.k = k + 1; playStep(); }
                 else if (looping) { playing.k = s.lo; playStep(); }
                 else { stopPlay(); }
-            }, Math.max(60, gap * wholeMs));
+            }, ms);
         }
         function stopPlay() {
             if (!playing) { return; }
             clearTimeout(playing.timer);
+            clearTimeout(playing.dark);
             playing = null;
             clearPlaying();
             if (score && cur >= 0 && cur < steps.length) { moveTo(cur); }
