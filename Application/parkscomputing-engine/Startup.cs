@@ -237,12 +237,19 @@ namespace ParksComputing.Engine {
             app.UseStaticFiles(new StaticFileOptions {
                 ContentTypeProvider = contentTypeProvider,
                 // A font file never changes in place, so a browser keeps it
-                // for a year; a picture for a day. Stylesheets and scripts
-                // ask each time (by ETag), because an edit to one must show
-                // at once; a stamped address (?v=) still saves the download.
+                // for a year. So does a file at a stamped address (?v=, from
+                // asp-append-version's hash or an applet's version in
+                // js/applets.js), since a change to the file changes the
+                // address, and a file under js/vendor, whose folder names
+                // the library's version. A picture is kept for a day.
+                // Other stylesheets and scripts ask each time (by ETag),
+                // because an edit to one must show at once.
                 OnPrepareResponse = c => {
                     var ext = System.IO.Path.GetExtension(c.File.Name).ToLowerInvariant();
-                    if (ext is ".woff2" or ".woff") {
+                    var request = c.Context.Request;
+                    bool stamped = request.Query.ContainsKey("v");
+                    bool vendored = request.Path.StartsWithSegments("/js/vendor", StringComparison.OrdinalIgnoreCase);
+                    if (ext is ".woff2" or ".woff" || stamped || vendored) {
                         c.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
                     } else if (ext is ".webp" or ".png" or ".jpg" or ".jpeg" or ".gif" or ".svg" or ".ico" or ".avif") {
                         c.Context.Response.Headers.CacheControl = "public, max-age=86400";
