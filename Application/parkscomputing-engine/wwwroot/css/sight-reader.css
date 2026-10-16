@@ -242,6 +242,15 @@ body:has(.pc-sight-reader:not(.pc-sight-reader-fill)) .post-content { max-width:
 
 /* Play: the button and its speed together, and the notes sounding lit in blue on whichever instrument is shown. */
 .sr-play { display: inline-flex; align-items: center; gap: var(--space-1); }
+/* Play and Stop are glyph buttons the size of the toolbar's other buttons. PUDL has no media glyphs (its stop is a stop sign), so these two are the applet's own, drawn on PUDL's 16-unit grid. */
+.pc-sight-reader {
+  --sr-glyph-play: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 2.6v10.8L13 8z' stroke='black' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --sr-glyph-stop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='3.5' y='3.5' width='9' height='9' rx='1'/%3E%3C/svg%3E");
+}
+.sr-glyph-btn { padding-inline: 11px; }
+/* A zero-width space gives the button the line of text the others have, so it is as tall as they are. */
+.sr-glyph-btn::after { content: '\200b'; }
+.sr-glyph-btn .glyph { --glyph-size: 1.15em; }
 .sr-speed { width: auto; }
 .sr-key.sr-playing { background: #2f6fbf !important; border-color: #1d4f8f !important; }
 .sr-key.sr-playing .sr-key-label { color: #fff; }

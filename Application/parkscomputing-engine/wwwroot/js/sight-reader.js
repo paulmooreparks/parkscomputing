@@ -328,10 +328,6 @@
               '<button type="button" class="btn" data-sr="read" title="Choose the clefs and parts to read" disabled>Read…</button>' +
               '<button type="button" class="btn" data-sr="options">Options…</button>' +
               '<button type="button" class="btn" data-sr="restart" title="Start the piece again from the beginning">Restart</button>' +
-              '<span class="sr-play" role="group" aria-label="Play">' +
-                '<button type="button" class="btn" data-sr="play" title="Play the piece from here, and show its notes on the instrument" disabled>Play</button>' +
-                '<span class="form-select-wrap"><select class="form-select sr-speed" data-play-speed aria-label="Speed" title="How fast Play goes, against the score\'s tempo">' + SPEEDS.map(function (v) { return '<option value="' + v + '">' + Math.round(v * 100) + '%</option>'; }).join('') + '</select></span>' +
-              '</span>' +
               '<span class="sr-range" role="group" aria-label="Bars to practise">' +
               '<span>Bars</span>' +
               '<input type="number" min="1" step="1" class="form-input sr-bar" data-bar="from" placeholder="first" aria-label="First bar to practise" title="Start at this bar. Leave empty to start at the beginning." />' +
@@ -341,6 +337,11 @@
               '<label class="check" title="Go back to the first bar when the last one is done"><input type="checkbox" data-loop /> Loop</label>' +
               '</span>' +
               '<span class="sr-title" data-role="title"></span>' +
+              '<span class="sr-play" role="group" aria-label="Play">' +
+                '<button type="button" class="btn sr-glyph-btn" data-sr="play" aria-label="Play" title="Play from the cursor, and show the notes on the instrument" disabled><span class="glyph" style="--glyph: var(--sr-glyph-play)" aria-hidden="true"></span></button>' +
+                '<button type="button" class="btn sr-glyph-btn" data-sr="stop" aria-label="Stop" title="Stop playing" disabled><span class="glyph" style="--glyph: var(--sr-glyph-stop)" aria-hidden="true"></span></button>' +
+                '<span class="form-select-wrap"><select class="form-select sr-speed" data-play-speed aria-label="Speed" title="How fast Play goes, against the score\'s tempo">' + SPEEDS.map(function (v) { return '<option value="' + v + '">' + Math.round(v * 100) + '%</option>'; }).join('') + '</select></span>' +
+              '</span>' +
               '<button type="button" class="btn" data-sr="help" title="How to use Sight Reader">Help</button>' +
             '</div>' +
             '<p class="sr-reading" data-role="reading" hidden><span data-role="reading-text"></span> <button type="button" class="link" data-sr="read">change</button></p>' +
@@ -996,10 +997,8 @@
             });
         }
         function showPlay() {
-            var b = q('[data-sr="play"]');
-            b.disabled = !score || !steps.length;
-            b.textContent = playing ? 'Stop' : 'Play';
-            b.setAttribute('aria-pressed', String(!!playing));
+            q('[data-sr="play"]').disabled = !score || !steps.length || !!playing;
+            q('[data-sr="stop"]').disabled = !playing;
             q('[data-play-speed]').value = String(speed());
         }
         function startPlay() {
@@ -1376,7 +1375,8 @@
             switch (act.getAttribute('data-sr')) {
                 case 'choose': openChooser(); break;
                 case 'options': showOptions(); break;
-                case 'play': if (playing) { stopPlay(); } else { startPlay(); } root.focus({ preventScroll: true }); break;
+                case 'play': startPlay(); root.focus({ preventScroll: true }); break;
+                case 'stop': stopPlay(); root.focus({ preventScroll: true }); break;
                 case 'read': openRead(); break;
                 case 'close-read': el.read.close(); root.focus({ preventScroll: true }); break;
                 case 'parts-all': allParts(); break;
