@@ -43,8 +43,9 @@ public static class McpSetup {
         "within the capabilities the token was given. Paths: ~ is the super-user's home folder on the server, never served to the public; " +
         "/wwwroot is the site's files, where pages are Markdown or HTML in /wwwroot/content and /wwwroot/sitenav.xfer lists the pages and menus; " +
         "/etc is the server's settings. site_pages gives each page's source file. Writing in /wwwroot changes the live site at once, and " +
-        "every write keeps the version it replaces for 30 days. Draft in ~ when unsure. The applet tools list what the site's applets publish; " +
-        "running applet actions over MCP is not available yet.";
+        "every write keeps the version it replaces for 30 days. Draft in ~ when unsure. The applet tools list what the site's applets publish " +
+        "and run their pure actions (such as rolling dice, solving a sudoku or drawing a barcode) on the server; actions that need a window " +
+        "or a person need the super-user's open desktop, which is not available yet.";
 
     public static bool Enabled(IConfiguration configuration) =>
         configuration.GetSection("Accounts").Get<AccountOptions>() is { Enabled: true, StaffEnabled: true };
@@ -52,6 +53,8 @@ public static class McpSetup {
     public static void AddSiteMcp(this IServiceCollection services) {
         services.AddHttpContextAccessor();
         services.AddScoped<McpCaller>();
+        services.AddSingleton<AppletRunner>();
+        services.AddSingleton<McpInvocations>();
         services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, AccessTokenAuthentication>(AccessTokenAuthentication.SchemeName, null);
         services.AddAuthorization(o => {
             o.AddPolicy(Policy, p => p.AddAuthenticationSchemes(AccessTokenAuthentication.SchemeName).RequireAuthenticatedUser());

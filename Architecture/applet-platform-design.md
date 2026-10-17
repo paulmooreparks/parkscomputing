@@ -59,7 +59,7 @@ Releases are tagged and published as npm packages under one scope, and a site ta
 - **Repositories stay open.** Some applets may be bundled together and a large one such as the Terminal may get a repository of its own; the choice is kept in view, not made. For now everything stays in the parkscomputing.com repository, and the work is shaped so that applets can be split out later: each applet's files, manifest and host needs are kept self-contained, and nothing an applet needs from the site is reached except through the host interface (P5).
 - **Public npm packages** when applets are published (P5).
 - **Personal access tokens first, then OAuth** for MCP (P3).
-- Status: P1 (the Terminal port), P2 (published actions) and the first build of P3 (tokens, `/mcp`, the site tools) are live. Jint for pure applet actions is next, then the desktop queue, then OAuth.
+- Status: P1 (the Terminal port), P2 (published actions) and P3's tokens, `/mcp`, site tools and pure actions on the server are live. The queue to the admin's desktop is next, then OAuth.
 
 ## Decisions on P3 (Paul, 2026-10-17)
 
@@ -143,6 +143,20 @@ Checks: `Tools/test-applet-actions.js` (33, on the test instance and the live si
 **Connecting.** `claude mcp add --transport http parkscomputing https://parkscomputing.com/mcp --header "Authorization: Bearer <secret>"`; the Account card shows that line with the secret filled in.
 
 Checks: `Tools/test-mcp.js` (27 on the test instance, 23 on the live site, where the token has no `site.publish` so nothing reaches the public site). The live run's tokens were revoked straight after.
+
+## P3, pure actions on the server (2026-10-17)
+
+`applet_invoke` now runs an action on the server when it is pure and needs no capability beyond `artifact.create`: today that is Dice's roll, Sudoku's solve, and the Barcode Tool's generate and interpret. Any other action says it needs the admin's open desktop, which is the next step. `applet_discover` marks each action with `runsOverMcp`.
+
+**One set of rules.** The checks that were inside the page's broker moved to `js/applet-actions-core.js`, which touches nothing of its host's: manifests, schemas, the artifact and question rules. The page's broker and the server's runner both run that file, so an action is checked the same way wherever it runs. Each host brings what only it can give: the page hashes artifacts with the browser's crypto, and the server with .NET.
+
+**The runner** (`Mcp/AppletRunner.cs`) runs each invocation in a fresh Jint 4.16.4 engine, from the same files the page uses: the manifest, the action's module, the core and the schema library. The engine gets only four functions from .NET (`Mcp/AppletRunner.js` documents them), no access to .NET types, a 10-second limit, 256 MB of memory, 50 million statements and a recursion limit. A module may load scripts beside it under `wwwroot/js` and nothing else; an `import` is refused. A probe provider placed on the test instance and removed afterwards confirmed each limit: an endless loop, an endless allocation, a search for `require`, `System` and `fetch`, a load of `appsettings.json` and an `import` were all stopped, and the server went on serving.
+
+**The validator** is the page's own, @cfworker/json-schema 4.1.1, run in Jint, as Paul chose over a .NET validator: JsonSchema.Net is now under a paid licence, and Corvus compiles C# at runtime. cfworker uses the web's `URL` class, which Jint lacks, so the runner provides the part of it the library calls (the constructor with a base, `href`, and `hash` read and set), backed by .NET's `System.Uri`. Manifests may only refer within themselves, so it only ever resolves `#…` against an absolute base. The barcode's output schema, which uses `$ref`, proves it in the checks.
+
+**Records** are kept in memory, the latest 500, each with the token that made it, so a token sees only its own. A pure action has finished by the time `applet_invoke` answers, so nothing waits on a record a restart would lose. An `id` of the caller's own makes a retry safe, as in the page.
+
+Checks: `Tools/test-mcp.js` now has 35, on the test instance and on the live site.
 
 ## Files, Open and Save as from GK Companion (2026-10-17)
 

@@ -45,19 +45,18 @@
     'use strict';
     if (window.pcActions) { return; }
 
-    var CAPABILITIES = ['artifact.create', 'attention.request', 'notification.post', 'files.read', 'files.write', 'window.open'];
-    var REPLAYS = ['pure', 'human', 'once'];
+    /* The rules every host shares (manifests, schemas, results) are in
+       js/applet-actions-core.js, which the server's runner for MCP also
+       runs; this file is the page's side: loading, windows, services,
+       records and the person's dialog. */
     var PROVIDER_ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
-    var ACTION_ID = /^[a-z][a-z0-9-]*@[1-9][0-9]*$/;
-    var OUTPUT_KEY = /^[A-Za-z][A-Za-z0-9_]*$/;
-    var FIELD_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
     var RECORD_ID = /^[A-Za-z0-9_-]{1,128}$/;
-    var SEMVER = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-((?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
-    var MAX_JSON = 1 << 20, MAX_ARTIFACT = 4 << 20, MAX_ARTIFACTS = 32, KEEP = 200;
+    var KEEP = 200;
     var RUN_MS = 60000, ANSWER_MS = 10 * 60000;
 
     var here = document.currentScript ? document.currentScript.src : location.href;
     function beside(rel, base) { return new URL(rel, base || here).href; }
+    var C = null;   // window.pcActionsCore, once validatorLib() has loaded it
 
     /* === Loading ======================================================== */
 
@@ -75,13 +74,19 @@
         return scripts[src];
     }
 
+    /* The shared rules, stamped as this file is, then the schema library. */
     var schemaLib = null;
     function validatorLib() {
         if (!schemaLib) {
-            schemaLib = import(beside('vendor/cfworker-json-schema-4.1.1/index.js')).catch(function (err) {
-                schemaLib = null;
-                throw new Error('the schema validator could not be loaded (' + err.message + ')');
-            });
+            schemaLib = (window.pcActionsCore ? Promise.resolve() : loadScript(beside('applet-actions-core.js' + new URL(here).search)))
+                .then(function () {
+                    C = window.pcActionsCore;
+                    return import(beside('vendor/cfworker-json-schema-4.1.1/index.js'));
+                })
+                .catch(function (err) {
+                    schemaLib = null;
+                    throw new Error('the schema validator could not be loaded (' + err.message + ')');
+                });
         }
         return schemaLib;
     }
@@ -97,54 +102,9 @@
         return fsReady;
     }
 
-    /* === Schemas ======================================================== */
-
-    /* Every $ref stays inside its schema; nothing is fetched. */
-    function closed(schema, where) {
-        if (Array.isArray(schema)) { schema.forEach(function (s) { closed(s, where); }); return; }
-        if (!schema || typeof schema !== 'object') { return; }
-        Object.keys(schema).forEach(function (k) {
-            var v = schema[k];
-            if ((k === '$ref' || k === '$dynamicRef' || k === '$recursiveRef') && (typeof v !== 'string' || v.charAt(0) !== '#')) {
-                throw new Error(where + ' refers outside itself (' + k + ': ' + v + ')');
-            }
-            if (k !== 'enum' && k !== 'const' && k !== 'default' && k !== 'examples') { closed(v, where); }
-        });
-    }
-
-    function compile(lib, schema, where) {
-        if (schema === true || schema === false) { return new lib.Validator(schema, '2020-12', false); }
-        if (!schema || typeof schema !== 'object' || Array.isArray(schema)) { throw new Error(where + ' is not a schema'); }
-        closed(schema, where);
-        var v = new lib.Validator(schema, '2020-12', false);
-        /* A reference that does not resolve throws on first use, so it is
-           used once here, where a broken manifest is found. */
-        try { v.validate(null); } catch (err) { throw new Error(where + ': ' + err.message); }
-        return v;
-    }
-
-    var WRAPPERS = ['properties', 'patternProperties', 'items', 'prefixItems', 'allOf', '$ref', '$dynamicRef', 'false', 'if', 'then', 'else', 'dependentSchemas', 'unevaluatedProperties', 'unevaluatedItems', 'contains'];
-    function located(at) {
-        var p = String(at || '#').replace(/^#\/?/, '');
-        return p ? p.split('/').map(function (s) { return s.replace(/~1/g, '/').replace(/~0/g, '~'); }).join('.') : '';
-    }
-    function check(validator, value, what) {
-        var r = validator.validate(value);
-        if (r.valid) { return; }
-        var errs = r.errors || [];
-        var e = errs.filter(function (x) { return WRAPPERS.indexOf(x.keyword) < 0; })[0] || errs[0] || { error: 'it does not match its schema' };
-        var at = located(e.instanceLocation);
-        throw new Error('invalid ' + what + (at ? ' at ' + at : '') + ': ' + String(e.error).replace(/\.$/, ''));
-    }
-
-    /* JSON, round-tripped, so nothing but JSON reaches a handler or a caller. */
-    function asJSON(value, what) {
-        var text;
-        try { text = JSON.stringify(value); } catch (err) { throw new Error(what + ' is not JSON: ' + err.message); }
-        if (text === undefined) { throw new Error(what + ' is not JSON'); }
-        if (text.length > MAX_JSON) { throw new Error(what + ' is larger than 1 MB'); }
-        return JSON.parse(text);
-    }
+    /* The shared rules, by the names this file used before they moved. */
+    function check(validator, value, what) { return C.check(validator, value, what); }
+    function asJSON(value, what) { return C.asJSON(value, what); }
 
     /* === The catalog ====================================================
        window.pcAppletActions, which js/applets.js fills from define(), lists
@@ -181,10 +141,11 @@
         loaded.forEach(function (l) {
             if (l.error) { state.problems.push(l.error); return; }
             try {
-                var entries = checkManifest(lib, l.manifest, l.source, ids);
+                var source = l.source;
+                var entries = C.checkManifest(lib, l.manifest, ids, function (verb) { return !!(source.handles && source.handles[verb]); });
                 ids[l.manifest.id] = true;
-                entries.forEach(function (e) { state.actions[e.action.ref] = e; });
-                state.manifests.push(publicManifest(l.manifest));
+                entries.forEach(function (e) { e.source = source; state.actions[e.action.ref] = e; });
+                state.manifests.push(C.publicManifest(l.manifest));
             } catch (err) {
                 state.problems.push((l.manifest && l.manifest.id || l.source.applet || l.source.manifest) + ': ' + err.message);
             }
@@ -192,46 +153,6 @@
         return state;
     }
 
-    function checkManifest(lib, m, source, ids) {
-        if (!m || typeof m !== 'object') { throw new Error('the manifest is not an object'); }
-        if (!PROVIDER_ID.test(m.id || '') || ids[m.id]) { throw new Error('invalid or duplicate provider id'); }
-        if (m.apiVersion !== 1) { throw new Error('apiVersion must be 1'); }
-        if (!SEMVER.test(m.version || '')) { throw new Error('version is not a semantic version'); }
-        if (typeof m.title !== 'string' || !m.title) { throw new Error('the manifest has no title'); }
-        if (!Array.isArray(m.actions) || !m.actions.length) { throw new Error('the manifest has no actions'); }
-        if (m.module != null && typeof m.module !== 'string') { throw new Error('module must be a path'); }
-        var seen = {};
-        return m.actions.map(function (a) {
-            var local = a && typeof a.ref === 'string' && a.ref.indexOf(m.id + '/') === 0 ? a.ref.slice(m.id.length + 1) : null;
-            if (!local || !ACTION_ID.test(local) || seen[a.ref]) { throw new Error('invalid or duplicate action ' + (a && a.ref)); }
-            seen[a.ref] = true;
-            if (typeof a.title !== 'string' || !a.title || typeof a.description !== 'string' || !a.description) { throw new Error(a.ref + ' needs a title and a description'); }
-            if (REPLAYS.indexOf(a.replay) < 0) { throw new Error(a.ref + ' has no valid replay policy'); }
-            if (!Array.isArray(a.capabilities)) { throw new Error(a.ref + ' lists no capabilities'); }
-            a.capabilities.forEach(function (c) { if (CAPABILITIES.indexOf(c) < 0) { throw new Error(a.ref + ' asks for an unsupported capability, ' + c); } });
-            if (a.inputSchema && a.inputSchema.type !== 'object') { throw new Error(a.ref + ': an action\'s input is an object'); }
-            var input = compile(lib, a.inputSchema, a.ref + ' input schema');
-            var output = compile(lib, a.outputSchema, a.ref + ' output schema');
-            if (a.handles != null) {
-                var verb = source.handles && source.handles[a.handles];
-                if (!verb) { throw new Error(a.ref + ' handles ' + a.handles + ', which the applet does not declare'); }
-                if (a.capabilities.indexOf('window.open') < 0) { throw new Error(a.ref + ' opens a window without window.open'); }
-            } else if (!m.module) {
-                throw new Error(a.ref + ' has no module to run it');
-            }
-            return { action: a, local: local, provider: m, source: source, input: input, output: output };
-        });
-    }
-
-    var PUBLIC_ACTION = ['ref', 'title', 'description', 'inputSchema', 'outputSchema', 'capabilities', 'replay'];
-    function publicAction(a) {
-        var out = {};
-        PUBLIC_ACTION.forEach(function (k) { out[k] = a[k]; });
-        return JSON.parse(JSON.stringify(out));
-    }
-    function publicManifest(m) {
-        return { id: m.id, version: m.version, title: m.title, description: m.description || '', apiVersion: 1, actions: m.actions.map(publicAction) };
-    }
 
     function provide(id, handlers) {
         if (!PROVIDER_ID.test(id || '') || !handlers || typeof handlers !== 'object') { throw new Error('pcActions.provide needs a provider id and its handlers'); }
@@ -420,45 +341,17 @@
         return Array.prototype.map.call(new Uint8Array(d), function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join('');
     }
 
-    /* The handler's result, as the output the schema sees: artifacts become
-       descriptors under their keys, and a question leaves response empty
-       until it is answered. */
-    async function accept(rec, e, result) {
-        if (!result || typeof result !== 'object') { throw new Error('the action gave no result'); }
-        var output = asJSON(result.output == null ? {} : result.output, 'the action\'s output');
-        if (!output || typeof output !== 'object' || Array.isArray(output)) { throw new Error('the action\'s output must be an object'); }
-        var caps = e.action.capabilities, arts = result.artifacts || [];
-        if (arts.length && caps.indexOf('artifact.create') < 0) { throw new Error('the action made artifacts it did not declare'); }
-        if (arts.length > MAX_ARTIFACTS) { throw new Error('the action made too many artifacts'); }
-        for (var i = 0; i < arts.length; i++) {
-            var a = arts[i];
-            if (!a || !OUTPUT_KEY.test(a.key || '') || Object.prototype.hasOwnProperty.call(output, a.key)) { throw new Error('the action made an artifact with an invalid key'); }
-            var bytes = typeof a.data === 'string' ? new TextEncoder().encode(a.data) : a.data instanceof ArrayBuffer ? new Uint8Array(a.data) : a.data instanceof Uint8Array ? a.data : null;
-            if (!bytes) { throw new Error('artifact ' + a.key + ' has no data'); }
-            if (bytes.length > MAX_ARTIFACT) { throw new Error('artifact ' + a.key + ' is larger than 4 MB'); }
-            var d = { id: rec.id + '.' + a.key, invocationId: rec.id, name: String(a.name || a.key), mime: String(a.mime || 'application/octet-stream'), size: bytes.length };
-            var hash = await sha256(bytes);
-            if (hash) { d.sha256 = hash; }
-            rec.artifacts.push({ descriptor: d, data: typeof a.data === 'string' ? a.data : bytes });
-            output[a.key] = d;
-        }
-        if (result.request) {
-            if (caps.indexOf('attention.request') < 0 || e.action.replay !== 'human') { throw new Error('the action asked a question it did not declare'); }
-            if (Object.prototype.hasOwnProperty.call(output, 'response')) { throw new Error('an action cannot answer its own question'); }
-            output.response = null;
-        }
-        return output;
+    /* An artifact's data as the page measures it: text as UTF-8, and a hash
+       where the browser offers one. */
+    async function describe(data) {
+        var bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data instanceof ArrayBuffer ? new Uint8Array(data) : data instanceof Uint8Array ? data : null;
+        if (!bytes) { return null; }
+        return { size: bytes.length, sha256: await sha256(bytes), keep: typeof data === 'string' ? data : bytes };
     }
 
-    function checkRequest(q) {
-        q = asJSON(q, 'the question');
-        if (!q || typeof q.title !== 'string' || !q.title) { throw new Error('the question has no title'); }
-        (q.fields || []).forEach(function (f) {
-            if (!f || !FIELD_NAME.test(f.name || '') || ['text', 'boolean', 'choice'].indexOf(f.type) < 0) { throw new Error('the question has an invalid field'); }
-            if (f.type === 'choice' && !(Array.isArray(f.choices) && f.choices.length)) { throw new Error('field ' + f.name + ' has no choices'); }
-        });
-        return { title: q.title, body: String(q.body || ''), fields: q.fields || [] };
-    }
+    /* The handler's result as the output its schema sees (the shared rules). */
+    function accept(rec, e, result) { return C.accept(rec, e, result, describe); }
+    function checkRequest(q) { return C.checkRequest(q); }
 
     function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
@@ -571,7 +464,7 @@
         var cat = await load();
         var e = cat.actions[ref];
         if (!e) { throw new Error('there is no action ' + ref + (cat.problems.length ? ' (some applets\' actions could not be loaded; "applets" lists why)' : '')); }
-        var grant = opts.grant || CAPABILITIES;
+        var grant = opts.grant || C.CAPABILITIES;
         var missing = e.action.capabilities.filter(function (c) { return grant.indexOf(c) < 0; });
         if (missing.length) { throw new Error(ref + ' needs ' + missing.join(', ') + ', which this caller was not granted'); }
         input = asJSON(input == null ? {} : input, 'the input');
@@ -644,14 +537,14 @@
 
     window.pcActions = Object.freeze({
         apiVersion: 1,
-        capabilities: CAPABILITIES.slice(),
+        capabilities: function () { return validatorLib().then(function () { return C.CAPABILITIES.slice(); }); },
         catalog: function () { return load().then(function (s) { return JSON.parse(JSON.stringify(s.manifests)); }); },
         problems: function () { return load().then(function (s) { return s.problems.slice(); }); },
         describe: function (ref) {
             return load().then(function (s) {
                 var e = s.actions[ref];
                 if (!e) { throw new Error('there is no action ' + ref); }
-                return publicAction(e.action);
+                return C.publicAction(e.action);
             });
         },
         invoke: invoke,

@@ -28,6 +28,8 @@ public sealed class McpCaller {
 
     public string TokenName => Principal.FindFirstValue(AccessTokenAuthentication.TokenNameClaim) ?? "";
 
+    public string TokenId => Principal.FindFirstValue(AccessTokenAuthentication.TokenClaim) ?? "";
+
     /// <summary>How the audit log names the writer: the account, then the token.</summary>
     public string Who => (Principal.FindFirstValue(ClaimTypes.Name) ?? "") + " (token " + TokenName + ")";
 

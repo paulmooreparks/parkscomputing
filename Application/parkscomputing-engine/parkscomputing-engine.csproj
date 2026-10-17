@@ -34,6 +34,7 @@
 			<PackageReference Include="BuildBundlerMinifier" Version="3.2.449" />
 			<PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
 			<PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
+			<PackageReference Include="Jint" Version="4.16.4" />
 			<PackageReference Include="LibSassBuilder" Version="3.0.0" />
 			<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="10.0.2" />
 			<PackageReference Include="ParksComputing.Xfer.Lang" Version="0.15.25-prerelease" />
@@ -75,6 +76,8 @@
 	     behaviour they describe (Identity/PolicyDocuments.cs). -->
 	<ItemGroup>
 		<None Update="Legal\*.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+		<!-- The server's host for applet actions, run in Jint (Mcp/AppletRunner.cs). -->
+		<EmbeddedResource Include="Mcp\AppletRunner.js" />
 	</ItemGroup>
 
 	 <!-- Removed SmartSamComments project references temporarily -->

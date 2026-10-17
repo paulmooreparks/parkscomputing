@@ -6,8 +6,8 @@
      PC_MCP_URL=http://localhost:8102/mcp PC_MCP_TOKEN_ALL=pcmcp_… PC_MCP_TOKEN_READ=pcmcp_… \
        PC_MCP_HISTORY=<the instance's history folder> node Tools/test-mcp.js
 
-   PC_MCP_TOKEN_ALL has files.read, files.write, site.publish, comments.moderate
-   and logs.read; PC_MCP_TOKEN_READ only files.read (admin token … on the
+   PC_MCP_TOKEN_ALL has files.read, files.write, site.publish, comments.moderate,
+   logs.read and artifact.create; PC_MCP_TOKEN_READ only files.read (admin token … on the
    server makes them). PC_MCP_REVOKE, when set, is a command that revokes the
    read-only token, for the last check. Requests connect to PC_MCP_CONNECT
    (127.0.0.1 unless given) and carry the address's own host name, so
@@ -146,8 +146,40 @@ async function init(token) {
   c = await call(READ, 'applet_discover');
   const providers = c.json && c.json.providers || [];
   log('applet_discover lists the applets\' actions in GK\'s shape', providers.some(p => p.id === 'parks.dice') && !/"module"|"handles"/.test(c.text), c.text.slice(0, 200));
-  c = await call(READ, 'applet_invoke', { action: 'parks.dice/roll@1', input: { dice: 2 } });
-  log('applet_invoke says applet actions aren\'t available over MCP yet', c.error && /isn't available over MCP yet/.test(c.text), c.text);
+  const actionOf = ref => providers.flatMap(p => p.actions).find(a => a.ref === ref) || {};
+  log('applet_discover says which actions run over MCP', actionOf('parks.dice/roll@1').runsOverMcp === true && actionOf('parks.editor/open@1').runsOverMcp === false, JSON.stringify([actionOf('parks.dice/roll@1').runsOverMcp, actionOf('parks.editor/open@1').runsOverMcp]));
+
+  // Pure actions run on the server (Mcp/AppletRunner.cs), from the page's own modules.
+  c = await call(READ, 'applet_invoke', { action: 'parks.dice/roll@1', input: { dice: 3, sides: 6 } });
+  const roll = c.json;
+  log('dice roll on the server', !c.error && roll && roll.status === 'done' && roll.output.values.length === 3 && roll.output.values.every(v => v >= 1 && v <= 6) && roll.output.total === roll.output.values.reduce((a, b) => a + b, 0), c.text.slice(0, 300));
+  c = await call(READ, 'applet_invoke', { action: 'parks.dice/roll@1', input: { dice: 0 } });
+  log('input the schema refuses is refused, saying where', c.error && /invalid input to parks\.dice\/roll@1 at dice/.test(c.text), c.text);
+  c = await call(READ, 'applet_invoke', { action: 'parks.sudoku/solve@1', input: { puzzle: '530070000600195000098000060800060003400803001700020006060000280000419005000080079' } });
+  log('a sudoku is solved on the server', !c.error && c.json && c.json.output.solutions === 'one' && c.json.output.solution === '534678912672195348198342567859761423426853791713924856961537284287419635345286179', c.text.slice(0, 300));
+  c = await call(READ, 'applet_invoke', { action: 'parks.barcode/generate@1', input: { symbology: 'ean13', data: '400638133393' } });
+  log('an action needing artifact.create is refused to a token without it', c.error && /needs artifact\.create, which this token was not given/.test(c.text), c.text);
+  c = await call(ALL, 'applet_invoke', { action: 'parks.barcode/generate@1', input: { symbology: 'ean13', data: '400638133393' } });
+  const code = c.json;
+  log('a barcode is drawn on the server, its output checked against a schema with a $ref', !c.error && code && code.status === 'done' && code.output.data === '4006381333931' && /^[0-9a-f]{64}$/.test(code.output.image.sha256 || ''), c.text.slice(0, 300));
+  if (code && code.output) {
+    c = await call(ALL, 'applet_artifact', { id: code.output.image.id });
+    log('applet_artifact gives the barcode\'s SVG', !c.error && c.json && /^<svg/.test(c.json.text) && c.json.mime === 'image/svg+xml', c.text.slice(0, 200));
+    c = await call(READ, 'applet_artifact', { id: code.output.image.id });
+    log('another token can\'t fetch it', c.error && /no artifact/.test(c.text), c.text);
+  }
+  c = await call(READ, 'applet_status', { id: roll && roll.id });
+  log('applet_status gives the token\'s own record', !c.error && c.json && c.json.id === roll.id && c.json.status === 'done', c.text.slice(0, 200));
+  c = await call(ALL, 'applet_status', { id: roll && roll.id });
+  log('and not another token\'s', c.error && /no invocation/.test(c.text), c.text);
+  const once = 'test-' + RUN;
+  const first = (await call(READ, 'applet_invoke', { action: 'parks.dice/roll@1', input: { dice: 5 }, id: once })).json;
+  const again = (await call(READ, 'applet_invoke', { action: 'parks.dice/roll@1', input: { dice: 5 }, id: once })).json;
+  log('the same id gives the first record instead of running again', first && again && JSON.stringify(first.output) === JSON.stringify(again.output) && first.id === once, JSON.stringify([first && first.output, again && again.output]));
+  c = await call(READ, 'applet_invoke', { action: 'parks.dice/roll@1', input: { dice: 4 }, id: once });
+  log('an id reused for a different call is refused', c.error && /was a different call/.test(c.text), c.text);
+  c = await call(READ, 'applet_invoke', { action: 'parks.editor/open@1', input: { path: '~/x.md' } });
+  log('an action that needs the desktop says so', c.error && /needs your open desktop/.test(c.text), c.text);
   c = await call(READ, 'applet_invoke', { action: 'parks.dice/roll@9' });
   log('applet_invoke refuses an action that doesn\'t exist', c.error && /There is no action/.test(c.text), c.text);
 

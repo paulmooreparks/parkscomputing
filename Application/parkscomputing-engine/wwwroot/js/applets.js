@@ -22,7 +22,7 @@ window.pcAppletActions = [];
    command, a script, and later the desktop's MCP queue. Raise its v on every
    change. The page's own actions, a notice and a question for the person at
    it, belong to no applet. */
-window.pcActionsSrc = '/js/applet-actions.js?v=2';
+window.pcActionsSrc = '/js/applet-actions.js?v=3';
 window.pcAppletActions.push({ applet: null, manifest: '/js/actions/page.json?v=1', handles: null, page: null });
 
 /* Identity actions use PUDL's documented capability snapshots. */
