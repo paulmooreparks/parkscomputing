@@ -1254,8 +1254,10 @@
         function renderRead() {
             var c = readChoices(), html = '';
             if (c.clefs.length > 1) {
-                html += '<section><h4 class="sr-read-h">Clefs</h4><div class="seg" role="group" aria-label="Clefs to read">' + c.clefs.map(function (n) {
-                    return '<button type="button" data-clef="' + esc(n) + '" data-notes="' + info.clefs[n] + '" aria-pressed="true">' + esc(n) + '</button>';
+                /* Several clefs may be read at once, so each is a checkbox in
+                   a list, as the parts are; only the ticked clefs are shown. */
+                html += '<section><h4 class="sr-read-h">Clefs</h4><div class="sr-parts" role="group" aria-label="Clefs to read">' + c.clefs.map(function (n) {
+                    return '<div class="sr-part-row"><label class="check"><input type="checkbox" data-clef="' + esc(n) + '" data-notes="' + info.clefs[n] + '" checked /> ' + esc(n) + '</label></div>';
                 }).join('') + '</div><p class="sr-muted">A hand that moves into another clef counts as that clef while it is there.</p></section>';
             }
             if (c.readable > 1) {
@@ -1276,7 +1278,7 @@
         function syncRead() {
             var c = readChoices(), text = readingText();
             [].slice.call(el.readBody.querySelectorAll('[data-clef]')).forEach(function (b) {
-                b.setAttribute('aria-pressed', String(!chosen.clefs || !!chosen.clefs[b.getAttribute('data-clef')]));
+                b.checked = !chosen.clefs || !!chosen.clefs[b.getAttribute('data-clef')];
             });
             [].slice.call(el.readBody.querySelectorAll('[data-part]')).forEach(function (b) {
                 if (!b.disabled) { b.checked = !chosen.parts || !!chosen.parts[b.getAttribute('data-part')]; }
@@ -1293,13 +1295,13 @@
             if (!el.read.open) { el.read.showModal(); }
         }
 
-        /* A clef toggled: at least one stays on, and the piece starts again. */
-        function toggleClef(b) {
-            var name = b.getAttribute('data-clef'), all = Object.keys(info.clefs);
-            var now = chosen.clefs ? Object.keys(chosen.clefs) : all.slice();
-            now = now.indexOf(name) >= 0 ? now.filter(function (n) { return n !== name; }) : now.concat(name);
-            if (!now.length) { return; }
-            chosen.clefs = now.length === all.length ? null : setOf(now);
+        /* A clef ticked or unticked: at least one stays ticked, and the piece
+           starts again on the ticked clefs. */
+        function onClefChange(box) {
+            var boxes = [].slice.call(el.readBody.querySelectorAll('[data-clef]'));
+            var ticked = boxes.filter(function (b) { return b.checked; });
+            if (!ticked.length) { box.checked = true; return; }
+            chosen.clefs = ticked.length === boxes.length ? null : setOf(ticked.map(function (b) { return b.getAttribute('data-clef'); }));
             syncRead();
             rebuild();
         }
@@ -1408,8 +1410,6 @@
             if (open) { el.chooser.close(); openScore({ name: open.getAttribute('data-sr-name'), rel: open.getAttribute('data-sr-open') }); return; }
             var pref = e.target.closest('[data-opt]');
             if (pref && el.options.contains(pref) && pref.tagName !== 'SELECT') { if (!pref.disabled) { setPref(pref); } return; }
-            var clef = e.target.closest('[data-clef]');
-            if (clef && el.readBody.contains(clef)) { toggleClef(clef); return; }
             var only = e.target.closest('[data-only]');
             if (only && el.readBody.contains(only)) { onlyPart(only.getAttribute('data-only')); return; }
             var tab = e.target.closest('[role="tab"]');
@@ -1438,6 +1438,7 @@
             var t = e.target;
             if (t.hasAttribute('data-bar') || t.hasAttribute('data-loop')) { onRange(t); return; }
             if (t.hasAttribute('data-part') && el.readBody.contains(t)) { onPartChange(t); return; }
+            if (t.hasAttribute('data-clef') && el.readBody.contains(t)) { onClefChange(t); return; }
             if (t.hasAttribute('data-play-speed')) { saveSetting({ playSpeed: SPEEDS.indexOf(+t.value) >= 0 ? +t.value : 1 }); return; }
             if (t.tagName === 'SELECT' && t.getAttribute('data-opt') === 'keyboard' && el.options.contains(t)) {
                 saveSetting({ keyboard: KEYBOARDS.indexOf(t.value) >= 0 ? t.value : 'piano' });

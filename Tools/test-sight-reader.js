@@ -174,10 +174,10 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
     await page.waitForTimeout(400);
     await page.focus('.pc-sight-reader');
   };
-  /* The controls of Options and Read: a segmented control's choice, a switch, a clef toggle, a part box. */
+  /* The controls of Options and Read: a segmented control's choice, a switch, a clef box, a part box. */
   const pick = async (opt, val) => { const sel = '[data-opt="' + opt + '"]'; if ((await page.locator(sel).first().evaluate(e => e.tagName)) === 'SELECT') { return page.selectOption(sel, val); } return page.click(sel + '[data-value="' + val + '"]'); };
   const setSwitch = async (opt, on) => { const sel = '[data-opt="' + opt + '"]'; if (((await page.getAttribute(sel, 'aria-checked')) === 'true') !== on) { await page.click(sel); } };
-  const setClef = async (name, on) => { const sel = '[data-clef="' + name + '"]'; if (((await page.getAttribute(sel, 'aria-pressed')) === 'true') !== on) { await page.click(sel); } };
+  const setClef = async (name, on) => { const sel = '[data-clef="' + name + '"]'; if ((await page.isChecked(sel)) !== on) { await page.click(sel); } };
   const setPart = async (n, on) => { const sel = '[data-part="' + n + '"]'; if ((await page.isChecked(sel)) !== on) { await page.click(sel); } };
   const pending = () => page.evaluate(() => { const p = document.querySelector('[data-role="pending"]'); return p.hidden ? '' : p.textContent; });
 
@@ -404,12 +404,13 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('a piano score with both clefs has two steps', i.pos === 'Bar 1 · 1 of 2', i.pos);
   await page.click('.sr-top [data-sr="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
-  const clefs = await page.evaluate(() => [...document.querySelectorAll('[data-clef]')].map(b => b.getAttribute('data-clef') + (b.getAttribute('aria-pressed') === 'true' ? '+' : '-')).join());
+  const clefs = await page.evaluate(() => [...document.querySelectorAll('[data-clef]')].map(b => b.getAttribute('data-clef') + (b.checked ? '+' : '-')).join());
   log('Read offers the clefs the score uses', clefs === 'Treble+,Bass+', clefs);
+  await page.screenshot({ path: path.join(SHOTS, 'sr-read.png') });
   await setClef('Treble', false);
   await page.waitForTimeout(500);
   await page.click('[data-clef="Bass"]');
-  const guard = await page.evaluate(() => document.querySelector('[data-clef="Bass"]').getAttribute('aria-pressed') === 'true');
+  const guard = await page.evaluate(() => document.querySelector('[data-clef="Bass"]').checked);
   log('the last clef stays on', guard);
   await page.click('[data-sr="close-read"]');
   await page.focus('.pc-sight-reader');
