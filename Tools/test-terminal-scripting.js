@@ -87,6 +87,9 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
   log('a .lua script runs by its name', (await run('square 7', 30000)) === '49');
   log('the terminal\'s own script still runs', (await run('greet you')) === 'hi you');
   log('man reads a Lua script\'s comment', /squares a number/.test(await run('man square')));
+  const helpText = (await run('help | grep square')) + '\n' + (await run('help | grep twice'));
+  log('help gives a Lua script\'s summary', /square\.lua\s+squares a number/.test(helpText), helpText.split('\n').filter(l => /square|twice/.test(l)).join(' | '));
+  log('help gives a shell script\'s summary without its name', /twice\.sh\s+says its argument twice/.test(helpText), helpText.split('\n').filter(l => /twice/.test(l)).join(' | '));
   log('which finds a script with its extension', /~\/bin\/square\.lua/.test(await run('which square')));
 
   // source and ~/.profile.

@@ -71,3 +71,12 @@
 .account-step-mark { color: var(--text-muted); }
 .account-steps > li[data-done="true"] .account-step-mark { color: var(--positive); }
 .account-step-state { order: 9; margin-left: auto; font-size: var(--text-sm); font-weight: normal; color: var(--text-muted); }
+
+/* Access tokens (the Access tokens card): each capability's checkbox with
+   its name and what it allows under it, and a new token's secret and
+   command, which wrap rather than widen the card. */
+.account fieldset.form-group { border: 0; padding: 0; margin: 0 0 var(--space-3); }
+.account .account-token-cap { align-items: flex-start; gap: var(--space-2); }
+.account .account-token-cap input { margin-top: 3px; }
+.account-token-secret { overflow-wrap: anywhere; user-select: all; }
+.account-token-command { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }

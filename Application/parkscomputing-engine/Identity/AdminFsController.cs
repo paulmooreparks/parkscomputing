@@ -52,20 +52,7 @@ public sealed class AdminFsController : ControllerBase {
         return me is not null && await _sessions.MaySignInAsync(me) ? (me, ServerFiles.HomeNameOf(me)) : (null, "");
     }
 
-    private sealed record Target(string Root, string RootKey, string RootDir, string Rel, string Full);
-
-    private Target? Locate(string? root, string? rel, string home) {
-        var dir = root is null ? null : _files.RootDir(root, home);
-        if (dir is null) {
-            return null;
-        }
-        var full = ServerFiles.Resolve(dir, rel);
-        if (full is null) {
-            return null;
-        }
-        var key = root == ServerFiles.Home ? "home/" + home : root == ServerFiles.Etc ? ServerFiles.Etc : ServerFiles.WebRoot;
-        return new Target(root!, key, dir, ServerFiles.Rel(dir, full) == "." ? "" : ServerFiles.Rel(dir, full), full);
-    }
+    private ServerFiles.Target? Locate(string? root, string? rel, string home) => _files.Locate(root, rel, home);
 
     private string Who(IdentityUser me) => me.Email ?? me.UserName ?? me.Id;
 
@@ -112,27 +99,13 @@ public sealed class AdminFsController : ControllerBase {
             return StatusCode(StatusCodes.Status403Forbidden, NeedsConfirm);
         }
         if (Request.ContentLength > _options.MaxFileBytes) {
-            return StatusCode(StatusCodes.Status413PayloadTooLarge, new { ok = false, error = "Files are limited to " + (_options.MaxFileBytes / (1024 * 1024)) + " MB." });
+            return StatusCode(StatusCodes.Status413PayloadTooLarge, new { ok = false, error = _files.TooLarge });
         }
-
-        // Written beside the file first and moved into place, so a reader
-        // never sees half a file.
-        var temp = Path.Combine(Path.GetDirectoryName(t.Full)!, "." + Path.GetFileName(t.Full) + ".saving-" + Guid.NewGuid().ToString("n"));
-        long written;
-        await using (var fs = System.IO.File.Create(temp)) {
-            await Request.Body.CopyToAsync(fs);
-            written = fs.Length;
-        }
-        if (written > _options.MaxFileBytes) {
-            System.IO.File.Delete(temp);
-            return StatusCode(StatusCodes.Status413PayloadTooLarge, new { ok = false, error = "Files are limited to " + (_options.MaxFileBytes / (1024 * 1024)) + " MB." });
-        }
-        bool existed = System.IO.File.Exists(t.Full);
-        _files.KeepPrevious(t.RootKey, t.Rel, t.Full);
-        System.IO.File.Move(temp, t.Full, overwrite: true);
-        await _files.AuditAsync(Who(me!), AdminOptions.ClientIp(HttpContext), existed ? "write" : "create", t.RootKey, t.Rel, full: t.Full);
-        if (t.Root == ServerFiles.WebRoot) {
-            _files.AssetsChanged();
+        var refused = await _files.ReplaceAsync(t, s => Request.Body.CopyToAsync(s), Who(me!), AdminOptions.ClientIp(HttpContext));
+        if (refused is not null) {
+            return refused == _files.TooLarge
+                ? StatusCode(StatusCodes.Status413PayloadTooLarge, new { ok = false, error = refused })
+                : Conflict(new { ok = false, error = refused });
         }
         var info = new FileInfo(t.Full);
         return Ok(new { ok = true, entry = new ServerFiles.Entry(t.Rel, false, info.Length, new DateTimeOffset(info.LastWriteTimeUtc).ToUnixTimeMilliseconds()) });

@@ -122,6 +122,11 @@ namespace ParksComputing.Engine {
             }
 
             ConfigureIdentity(services, configuredConn);
+            // /mcp, for the super-user's access tokens (Mcp/McpSetup.cs), on a
+            // site with accounts and staff.
+            if (ParksComputing.Engine.Mcp.McpSetup.Enabled(Configuration)) {
+                ParksComputing.Engine.Mcp.McpSetup.AddSiteMcp(services);
+            }
 
             // The built-in partitioned limiter is the site's only rate limit.
             // Readers are told apart by Cloudflare's CF-Connecting-IP, since every
@@ -303,6 +308,9 @@ namespace ParksComputing.Engine {
             app.UseEndpoints(endpoints => {
                 endpoints.MapRazorPages();
                 endpoints.MapControllers();
+                if (ParksComputing.Engine.Mcp.McpSetup.Enabled(Configuration)) {
+                    ParksComputing.Engine.Mcp.McpSetup.MapSiteMcp(endpoints);
+                }
                 // endpoints.MapGet(@"/{year:range(1900:2100)}/{month:range(1-12)}/{name:regex([\w\-]+$)}", WordPressHandler);
                 // endpoints.MapGet(@"/{year:int}/{month:int}/{slug:regex(^[a-z0-9_-]+$)}", WordPressHandler);
                 // endpoints.MapGet(@"/{year:int}/{month:int}/{**slug}", WordPressHandler);

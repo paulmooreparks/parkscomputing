@@ -33,6 +33,7 @@
 	 <ItemGroup>
 			<PackageReference Include="BuildBundlerMinifier" Version="3.2.449" />
 			<PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
+			<PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
 			<PackageReference Include="LibSassBuilder" Version="3.0.0" />
 			<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="10.0.2" />
 			<PackageReference Include="ParksComputing.Xfer.Lang" Version="0.15.25-prerelease" />

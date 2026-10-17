@@ -140,6 +140,7 @@ public partial class Startup {
         services.AddSingleton<SessionPolicy>();
         services.AddSingleton<AdminMenu>();
         services.AddSingleton<ServerFiles>();
+        services.AddSingleton<AccessTokens>();
         services.AddHostedService<HistoryPruner>();
         services.AddMemoryCache();
         services.AddSingleton<PreviewDrafts>();

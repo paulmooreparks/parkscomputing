@@ -52,6 +52,8 @@ public sealed class SiteIdentityDbContext : IdentityDbContext<IdentityUser, Iden
 
     internal DbSet<SiteAiVisit> AiVisits => Set<SiteAiVisit>();
 
+    internal DbSet<SiteAccessToken> AccessTokens => Set<SiteAccessToken>();
+
     protected override void OnModelCreating(ModelBuilder builder) {
         base.OnModelCreating(builder);
         builder.Entity<IdentityUser>().HasIndex(u => u.NormalizedEmail).IsUnique();
@@ -66,6 +68,7 @@ public sealed class SiteIdentityDbContext : IdentityDbContext<IdentityUser, Iden
         CommentRecords.Configure(builder);
         SiteModeratorNotice.Configure(builder);
         SiteAiVisit.Configure(builder);
+        SiteAccessToken.Configure(builder);
     }
 
     private void CheckImmutableRecords() {

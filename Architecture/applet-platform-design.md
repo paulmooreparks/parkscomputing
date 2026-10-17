@@ -59,7 +59,12 @@ Releases are tagged and published as npm packages under one scope, and a site ta
 - **Repositories stay open.** Some applets may be bundled together and a large one such as the Terminal may get a repository of its own; the choice is kept in view, not made. For now everything stays in the parkscomputing.com repository, and the work is shaped so that applets can be split out later: each applet's files, manifest and host needs are kept self-contained, and nothing an applet needs from the site is reached except through the host interface (P5).
 - **Public npm packages** when applets are published (P5).
 - **Personal access tokens first, then OAuth** for MCP (P3).
-- Status: P1 (the Terminal port) and P2 (published actions) are built and live; P3 (tokens and `/mcp`) is next.
+- Status: P1 (the Terminal port), P2 (published actions) and the first build of P3 (tokens, `/mcp`, the site tools) are live. Jint for pure applet actions is next, then the desktop queue, then OAuth.
+
+## Decisions on P3 (Paul, 2026-10-17)
+
+- **Publishing is a capability of the token.** A token may write to the content folder only if it was minted with the capability that allows it, and those writes take effect at once, as an admin's own edits on the edit origin do. A token minted without it can still draft in the admin's home folder. There is no separate draft-and-publish step on the server.
+- **The first build is tokens, the site tools and the five applet tools.** Jint for pure applet actions and the queue to the admin's desktop come after it. Until then `applet_invoke` refuses an applet action with a plain "not available over MCP yet", while `applet_discover` already lists every action so a client can see what is coming.
 
 ## Rules this follows
 
@@ -119,6 +124,25 @@ Before a handler runs, the broker checks that the action exists, that the caller
 **Two things found on the way.** The site never loaded PUDL's toasts, so the broker loads `pudl/pudl-toast.js` the first time a notice is posted. And the Terminal's line editor redrew only the row the cursor was on, so in a narrow window a typed line that wrapped was printed again on a new row at every key; it now goes back up over the wrapped rows before it redraws, and keeps working after the window is resized.
 
 Checks: `Tools/test-applet-actions.js` (33, on the test instance and the live site: the Terminal command, Lua and the shell, grants, replay, output validation, a question answered and declined, a notice, and window actions in both views), with the Terminal's suites unchanged.
+
+## P3, the first build: what was built (2026-10-17)
+
+**Tokens.** `Identity/AccessTokens.cs` keeps personal access tokens in `SiteAccessTokens` (migration `AccessTokens`): the account, a name, the secret's first characters, its SHA-256, the capabilities, creation, expiry (7, 30, 90 or 365 days), last use and revocation. The secret (`pcmcp_` and 32 random bytes) is shown once. A token works only while its account may use the server's tools, so a super-user who stops being one takes every token with them. The super-user makes and revokes tokens in the Access tokens card of Account; making one asks for a passkey tap first, and the account is emailed that it was made. The operator can do the same on the server with `admin token <email> <name> <capabilities> [days]`, `admin tokens <email>` and `admin token-revoke <email> <id>`.
+
+**The capabilities** a token can be given are a closed list (`TokenCapabilities`): `files.read`, `files.write` (~ only), `site.publish` (/wwwroot, live at once), `comments.moderate` and `logs.read` for the server's tools, and the broker's four applet capabilities for when applet actions run over MCP.
+
+**The endpoint.** `Mcp/McpSetup.cs` maps `/mcp` with the official C# SDK 2.2.0 on a site with accounts and staff, and nowhere else. Only the token scheme (`Identity/AccessTokenAuthentication.cs`) counts there, so a browser's cookie session can't reach it. The SDK runs in its hybrid session mode: clients of the 2026-07-28 revision are served per request, and clients still using the initialize handshake, most of them today, get a session. Each capability is a policy, and each tool carries the policy it needs, so a token's tool list holds only what it may call. A token has 300 calls a minute, and every call is logged with the tool and the token's name.
+
+**The tools.**
+- `site_files_list`, `site_file_read` and `site_file_write` work on ~, /wwwroot and /etc as the admin mount shows them. Writing keeps the replaced version in the history and goes in the audit log as "the account (token name)", through the same `ServerFiles.ReplaceAsync` the admin mount's controller now uses. Neither /etc nor js/, css/ and pudl/ can be written over MCP, since on the desktop they need a passkey tap that a token can't give.
+- `site_pages` gives the site's sections and pages with each page's source file.
+- `comments_queue` and `comment_decide` are the moderation queue.
+- `server_log` is the Server log applet's view.
+- The five applet tools read the manifests in `wwwroot/js/actions`. `applet_invoke` says applet actions aren't available over MCP yet, as decided.
+
+**Connecting.** `claude mcp add --transport http parkscomputing https://parkscomputing.com/mcp --header "Authorization: Bearer <secret>"`; the Account card shows that line with the secret filled in.
+
+Checks: `Tools/test-mcp.js` (27 on the test instance, 23 on the live site, where the token has no `site.publish` so nothing reaches the public site). The live run's tokens were revoked straight after.
 
 ## Files, Open and Save as from GK Companion (2026-10-17)
 

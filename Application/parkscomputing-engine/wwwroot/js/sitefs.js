@@ -838,14 +838,21 @@
 
     function scriptSource(n) { var r = realOf(n); return r.home ? readHome(r) : (r.source || ''); }
 
-    /* The summary is the first comment line, less a leading "name:". */
+    /* The summary is the first comment line, # in the terminal's own scripts
+       and the shell's, -- in Lua's, less a leading "name:", where the name
+       may be given with or without its .sh or .lua, as the server's
+       (Controllers/TerminalController.cs, ScriptSummary) reads it. */
     function scriptSummary(name, src) {
+        var bare = String(name).replace(/\.(sh|lua)$/i, '');
         var lines = String(src).replace(/\r/g, '').split('\n');
         for (var i = 0; i < lines.length; i++) {
             var t = lines[i].trim();
-            if (t.indexOf('#!') === 0 || t[0] !== '#') { continue; }
-            t = t.replace(/^#+\s*/, '');
-            return t.indexOf(name + ':') === 0 ? t.slice(name.length + 1).trim() : t;
+            if (t.indexOf('#!') === 0) { continue; }
+            var m = /^(?:#+|--+)\s*(.*)$/.exec(t);
+            if (!m || /^\[\[/.test(m[1])) { continue; }
+            t = m[1];
+            if (t.indexOf(name + ':') === 0) { return t.slice(name.length + 1).trim(); }
+            return t.indexOf(bare + ':') === 0 ? t.slice(bare.length + 1).trim() : t;
         }
         return '';
     }

@@ -99,8 +99,53 @@ public static class AdminCommand {
                 }
                 return 0;
             }
+            // A personal access token for /mcp (Identity/AccessTokens.cs),
+            // made on the server as enroll's link is, for an operator without
+            // a browser at hand and for tests:
+            //   admin token <email> <name> <capability,capability…> [days]
+            // The account must be the super-user; the secret is printed once.
+            case "token" when !string.IsNullOrEmpty(email) && args.Length >= 5: {
+                var user = await users.FindByEmailAsync(email);
+                if (user is null || !await sp.GetRequiredService<AdminSessions>().MaySignInAsync(user)) {
+                    Console.Error.WriteLine($"{email} can't use the server's tools, so it can't have a token.");
+                    return 1;
+                }
+                int days = args.Length > 5 && int.TryParse(args[5], out var td) ? td : 30;
+                try {
+                    var (secret, token) = await sp.GetRequiredService<AccessTokens>().CreateAsync(user.Id, args[3], days, args[4].Split(','));
+                    Console.WriteLine($"Token \"{token.Name}\" for {email}, until {token.ExpiresUtc:yyyy-MM-dd HH:mm} UTC, with {string.Join(", ", token.Capabilities)}:");
+                    Console.WriteLine(secret);
+                    return 0;
+                } catch (ArgumentException ex) {
+                    Console.Error.WriteLine(ex.Message);
+                    return 1;
+                }
+            }
+            case "tokens" when !string.IsNullOrEmpty(email): {
+                var user = await users.FindByEmailAsync(email);
+                if (user is null) {
+                    Console.Error.WriteLine($"There is no account {email}.");
+                    return 1;
+                }
+                var now = DateTime.UtcNow;
+                foreach (var t in await sp.GetRequiredService<AccessTokens>().ListAsync(user.Id)) {
+                    var state = t.RevokedUtc is not null ? "revoked" : t.ExpiresUtc <= now ? "expired" : "active until " + t.ExpiresUtc.ToString("yyyy-MM-dd");
+                    Console.WriteLine($"{t.Id}  {t.Prefix}…  {t.Name}  {state}  {string.Join(",", t.Capabilities)}  last used {(t.LastUsedUtc is { } u ? u.ToString("yyyy-MM-dd HH:mm") : "never")}");
+                }
+                return 0;
+            }
+            case "token-revoke" when !string.IsNullOrEmpty(email) && args.Length >= 4: {
+                var user = await users.FindByEmailAsync(email);
+                if (user is null || !await sp.GetRequiredService<AccessTokens>().RevokeAsync(user.Id, args[3])) {
+                    Console.Error.WriteLine("No active token by that id.");
+                    return 1;
+                }
+                Console.WriteLine("Revoked.");
+                return 0;
+            }
             default:
-                Console.Error.WriteLine("Usage: admin enroll <email> | admin list | admin revoke <email> | admin ai-visits [days]");
+                Console.Error.WriteLine("Usage: admin enroll <email> | admin list | admin revoke <email> | admin ai-visits [days] | " +
+                    "admin token <email> <name> <capabilities> [days] | admin tokens <email> | admin token-revoke <email> <id>");
                 return 2;
         }
     }

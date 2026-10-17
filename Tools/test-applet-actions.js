@@ -97,7 +97,8 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
   log('files read gives it back', v && v.text === 'written-by-an-action' && v.path === '~/act.txt', JSON.stringify(v));
   out = await run('applets run parks.files/write@1 path=/site/x.txt text=no');
   log('files write outside ~ fails', /applets: parks\.files\/write@1 failed/.test(out), out);
-  v = json(await run('applets run parks.files/list@1 path=/site/bin'));
+  // A folder's listing can be longer than the screen, so it is read from the broker itself.
+  v = await page.evaluate(() => window.pcActions.run('parks.files/list@1', { path: '/site/bin' })).catch(e => null);
   log('files list gives a folder\'s entries', v && v.entries.length > 0 && v.entries.every(e => e.path.indexOf('/site/bin/') === 0), JSON.stringify(v).slice(0, 200));
 
   // Lua and the shell.

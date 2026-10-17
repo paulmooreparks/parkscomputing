@@ -476,7 +476,7 @@
                     q.fields.map(function (f, i) {
                         var fid = id + '-' + i, label = esc(f.label || f.name);
                         if (f.type === 'boolean') {
-                            return '<div class="form-group"><label class="form-check"><input type="checkbox" class="form-check-input" name="' + esc(f.name) + '" /> ' + label + '</label></div>';
+                            return '<div class="form-group"><label class="check"><input type="checkbox" name="' + esc(f.name) + '" /> ' + label + '</label></div>';
                         }
                         if (f.type === 'choice') {
                             return '<div class="form-group"><label class="form-label" for="' + fid + '">' + label + '</label>' +

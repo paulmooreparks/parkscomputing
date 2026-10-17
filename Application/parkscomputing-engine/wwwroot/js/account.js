@@ -48,7 +48,8 @@
         Avatar: 'Your new picture is saved. It shows beside your comments and at the top of every page.',
         RemoveAvatar: 'Your picture is removed.',
         Notices: 'Saved.',
-        Revoke: 'That browser is signed out.'
+        Revoke: 'That browser is signed out.',
+        RevokeToken: 'The token is revoked. Anything using it is refused from now on.'
     };
 
     function say(root, cardId, text) {
@@ -63,6 +64,13 @@
             if (!root.querySelector('[data-account-panel]')) { load(root); }
 
             async function onClick(e) {
+                var copy = e.target.closest('[data-account-copy]');
+                if (copy && root.contains(copy)) {
+                    var card = copy.closest('.card');
+                    try { await navigator.clipboard.writeText(copy.getAttribute('data-account-copy')); if (card) { say(root, card.id, 'The secret is copied.'); } }
+                    catch (err) { if (card) { say(root, card.id, 'The secret could not be copied. Select it and copy it yourself.'); } }
+                    return;
+                }
                 var choose = e.target.closest('[data-account-choose]');
                 if (choose && root.contains(choose)) {
                     var input = choose.form && choose.form.querySelector('input[type="file"]');
@@ -93,6 +101,16 @@
                     if (cardId) { say(root, cardId, 'Saving your picture…'); }
                     try { body.set('Picture', await square(file), 'picture.webp'); }
                     catch (err) { /* A picture the browser can't read goes as it is, for the server to judge. */ }
+                }
+                /* A form that changes something only a fresh passkey tap may
+                   change (making an access token) asks for the tap first. */
+                if (form.hasAttribute('data-account-confirm') && window.pcAccounts) {
+                    if (cardId) { say(root, cardId, 'Confirm it\'s you with your passkey…'); }
+                    try { await window.pcAccounts.ceremony('confirm'); }
+                    catch (err) {
+                        if (cardId) { say(root, cardId, err && (err.name === 'NotAllowedError' || err.name === 'AbortError') ? 'The passkey request was cancelled, so nothing was made.' : (err && err.message) || 'That did not work. Try again.'); }
+                        return;
+                    }
                 }
                 form.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
                 try {

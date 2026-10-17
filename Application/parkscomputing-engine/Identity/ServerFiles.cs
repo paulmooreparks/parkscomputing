@@ -148,6 +148,67 @@ public sealed class ServerFiles {
 
     public static string Rel(string rootDir, string full) => Path.GetRelativePath(rootDir, full).Replace(Path.DirectorySeparatorChar, '/');
 
+    /// <summary>A path inside one of the roots: the root's name ("wwwroot",
+    /// "home" or "etc"), its key in the history ("wwwroot", "home/{name}" or
+    /// "etc"), its directory, the path within it ("" for the root itself),
+    /// and the full path.</summary>
+    public sealed record Target(string Root, string RootKey, string RootDir, string Rel, string Full);
+
+    /// <summary>Where a path under a root is, for this admin's home name, or
+    /// null when the root is unknown or the path would leave it.</summary>
+    public Target? Locate(string? root, string? rel, string homeName) {
+        var dir = root is null ? null : RootDir(root, homeName);
+        if (dir is null) {
+            return null;
+        }
+        var full = Resolve(dir, rel);
+        if (full is null) {
+            return null;
+        }
+        var key = root == Home ? "home/" + homeName : root == Etc ? Etc : WebRoot;
+        var inside = Rel(dir, full);
+        return new Target(root!, key, dir, inside == "." ? "" : inside, full);
+    }
+
+    /// <summary>
+    /// Writes a file, keeping the version it replaces and noting the change in
+    /// the audit log. write fills the stream; the bytes go beside the file
+    /// first and are moved into place, so a reader never sees half a file.
+    /// Answers null when written, or why not: more than MaxFileBytes, a
+    /// directory in the way, or no directory to hold it. The caller has
+    /// already decided the writer may write there.
+    /// </summary>
+    public async Task<string?> ReplaceAsync(Target t, Func<Stream, Task> write, string who, string ip) {
+        if (t.Rel == "" || Directory.Exists(t.Full)) {
+            return t.Rel + " is a directory.";
+        }
+        var dir = Path.GetDirectoryName(t.Full)!;
+        if (!Directory.Exists(dir)) {
+            return "There is no directory to hold " + t.Rel + ".";
+        }
+        var temp = Path.Combine(dir, "." + Path.GetFileName(t.Full) + ".saving-" + Guid.NewGuid().ToString("n"));
+        long written;
+        await using (var fs = File.Create(temp)) {
+            await write(fs);
+            written = fs.Length;
+        }
+        if (written > _options.MaxFileBytes) {
+            File.Delete(temp);
+            return TooLarge;
+        }
+        bool existed = File.Exists(t.Full);
+        KeepPrevious(t.RootKey, t.Rel, t.Full);
+        File.Move(temp, t.Full, overwrite: true);
+        await AuditAsync(who, ip, existed ? "write" : "create", t.RootKey, t.Rel, full: t.Full);
+        if (t.Root == WebRoot) {
+            AssetsChanged();
+        }
+        return null;
+    }
+
+    /// <summary>What a write too large is told.</summary>
+    public string TooLarge => "Files are limited to " + (_options.MaxFileBytes / (1024 * 1024)) + " MB.";
+
     /// <summary>Whether a change here needs a recent passkey tap: anything in js/, css/ or pudl/ of the web root, and anything in /etc.</summary>
     public static bool IsProtected(string root, string rel) =>
         root == Etc ||

@@ -106,6 +106,84 @@ else
         <p class="form-error" data-passkey-status role="alert" hidden></p>
     </section>
 
+    @if (Model.TokensOffered)
+    {
+        var mcpUrl = (string.IsNullOrEmpty(AccountConfig.Value.Origin) ? Context.Request.Scheme + "://" + Context.Request.Host : AccountConfig.Value.Origin.TrimEnd('/')) + ParksComputing.Engine.Mcp.McpSetup.Path;
+        var nowUtc = DateTime.UtcNow;
+        @* Personal access tokens for the site's MCP endpoint (Identity/AccessTokens.cs,
+           Architecture/applet-platform-design.md, P3). Making one needs a fresh
+           passkey tap; with script the form asks for it first. *@
+        <section class="card" id="tokens" aria-labelledby="account-tokens">
+            <h2 class="card-title" id="account-tokens">Access tokens</h2>
+            <p class="card-desc">An AI client such as Claude Code can work on the site through <code>@mcpUrl</code> with a token made here. A token acts as you, with only the capabilities you give it, until it expires or you revoke it. Its secret is shown once, when it is made.</p>
+            @if (Model.NewToken is { } made)
+            {
+                <div class="notice positive" role="status">
+                    <div class="notice-content">
+                        <p class="notice-title">The token "@made.Token.Name" is made</p>
+                        <p class="notice-body">Copy its secret now. It won't be shown again; if it's lost, revoke the token and make another.</p>
+                        <p><code class="account-token-secret">@made.Secret</code></p>
+                        <p class="notice-body">To use it from Claude Code:</p>
+                        <pre class="account-token-command"><code>claude mcp add --transport http parkscomputing @mcpUrl --header "Authorization: Bearer @made.Secret"</code></pre>
+                        <div class="notice-actions"><button class="btn account-js-only" type="button" data-account-copy="@made.Secret">Copy the secret</button></div>
+                    </div>
+                </div>
+            }
+            @if (Model.Tokens.Count == 0)
+            {
+                <p>You have no access tokens.</p>
+            }
+            else
+            {
+                <ul class="account-list">
+                    @foreach (var t in Model.Tokens)
+                    {
+                        var state = t.RevokedUtc is not null ? "Revoked" : t.ExpiresUtc <= nowUtc ? "Expired" : "Until " + t.ExpiresUtc.ToString("yyyy-MM-dd");
+                        <li>
+                            <span>@t.Name <span class="form-help mono">@(t.Prefix)…</span><br />
+                                <span class="form-help">@state · @string.Join(", ", t.Capabilities) · @(t.LastUsedUtc is { } used ? "last used " + used.ToString("yyyy-MM-dd HH:mm") + " UTC" : "never used")</span></span>
+                            @if (t.Active(nowUtc))
+                            {
+                                <form method="post" asp-antiforgery="true" action="/account?handler=RevokeToken"><input type="hidden" name="tokenId" value="@t.Id" /><button class="btn btn-sm btn-danger" type="submit">Revoke</button></form>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+            <form method="post" asp-antiforgery="true" action="/account?handler=CreateToken" data-account-confirm>
+                @if (Model.TokenError is not null)
+                {
+                    <p class="form-error" role="alert">@Model.TokenError</p>
+                }
+                <div class="form-group">
+                    <label class="form-label" for="token-name">Name</label>
+                    <input class="form-input" id="token-name" name="TokenName" value="@Model.TokenName" maxlength="80" required placeholder="For example, Claude Code on the laptop" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="token-days">Lasts for</label>
+                    <span class="form-select-wrap"><select class="form-select" id="token-days" name="TokenDays">
+                        @foreach (var days in ParksComputing.Engine.Identity.AccessTokens.LifetimeDays)
+                        {
+                            <option value="@days" selected="@(days == Model.TokenDays)">@(days == 365 ? "A year" : days + " days")</option>
+                        }
+                    </select></span>
+                </div>
+                <fieldset class="form-group">
+                    <legend class="form-label">What it may do</legend>
+                    @foreach (var (name, description) in ParksComputing.Engine.Identity.TokenCapabilities.All)
+                    {
+                        <label class="check account-token-cap">
+                            <input type="checkbox" name="TokenCaps" value="@name" checked="@(Model.TokenCaps?.Contains(name) == true)" />
+                            <span><span class="mono">@name</span><br /><span class="form-help">@description</span></span>
+                        </label>
+                    }
+                </fieldset>
+                <div class="settings-actions"><button class="btn" type="submit">Make a token…</button></div>
+            </form>
+            <p class="settings-status" data-account-status role="status"></p>
+        </section>
+    }
+
     @if (CommentConfig.Value.Enabled && Model.Moderates)
     {
         <section class="card" id="moderation" aria-labelledby="account-moderation">

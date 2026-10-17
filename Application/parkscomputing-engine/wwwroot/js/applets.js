@@ -22,11 +22,11 @@ window.pcAppletActions = [];
    command, a script, and later the desktop's MCP queue. Raise its v on every
    change. The page's own actions, a notice and a question for the person at
    it, belong to no applet. */
-window.pcActionsSrc = '/js/applet-actions.js?v=1';
+window.pcActionsSrc = '/js/applet-actions.js?v=2';
 window.pcAppletActions.push({ applet: null, manifest: '/js/actions/page.json?v=1', handles: null, page: null });
 
 /* Identity actions use PUDL's documented capability snapshots. */
-pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '19' });
+pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '20' });
 /* The Pin manager, reached from the Pins menu's Manage pins (js/pins.js). */
 pudlApplets.define('pins', { src: '/js/pins-manager.js', css: '/css/pins-manager.css', page: '/pins', ver: '2' });
 /* An article's discussion, under the article in both views and at
@@ -132,7 +132,7 @@ window.pcTerminalCommands = ['/js/terminal-text.js', '/js/terminal-lua.js', '/js
 /* The site filesystem the terminal, the file manager and the editor share
    (js/sitefs.js). Every applet loads it from this one address, so a page
    holds one copy; raise its v on every change to the file. */
-window.pcSiteFsSrc = '/js/sitefs.js?v=7';
+window.pcSiteFsSrc = '/js/sitefs.js?v=8';
 
 /* The file browser Files, the editor and the barcode tool share (js/filebrowser.js), with its
    stylesheet; like the site filesystem, one copy a page, and a raised v on

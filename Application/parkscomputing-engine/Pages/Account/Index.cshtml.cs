@@ -22,9 +22,56 @@ namespace ParksComputing.Engine.Pages.Account;
 public sealed class IndexModel : PageModel {
     private readonly SiteIdentityDbContext _db; private readonly UserManager<IdentityUser> _users; private readonly StaffBootstrap _bootstrap; private readonly AccountAvatars _avatars;
     private readonly Discussions _discussions; private readonly AccountLifecycle _lifecycle; private readonly ModerationNotices _notices;
+    private readonly AccessTokens _tokens; private readonly AdminSessions _sessions; private readonly bool _mcp;
     public IndexModel(SiteIdentityDbContext db, UserManager<IdentityUser> users, StaffBootstrap bootstrap, AccountAvatars avatars,
-        Discussions discussions, AccountLifecycle lifecycle, ModerationNotices notices) {
+        Discussions discussions, AccountLifecycle lifecycle, ModerationNotices notices, AccessTokens tokens, AdminSessions sessions,
+        Microsoft.Extensions.Configuration.IConfiguration configuration) {
         _db = db; _users = users; _bootstrap = bootstrap; _avatars = avatars; _discussions = discussions; _lifecycle = lifecycle; _notices = notices;
+        _tokens = tokens; _sessions = sessions; _mcp = ParksComputing.Engine.Mcp.McpSetup.Enabled(configuration);
+    }
+
+    /* === Access tokens for /mcp (Identity/AccessTokens.cs) =============== */
+
+    /// <summary>Whether this account may have access tokens: the site has
+    /// /mcp, and the account may use the server's tools.</summary>
+    public bool TokensOffered { get; private set; }
+    public IReadOnlyList<AccessTokenInfo> Tokens { get; private set; } = Array.Empty<AccessTokenInfo>();
+    /// <summary>A token just made, whose secret is shown this once.</summary>
+    public (string Secret, AccessTokenInfo Token)? NewToken { get; private set; }
+    public string? TokenError { get; private set; }
+    /* Every form on the page posts to this model, so the token form's fields
+       are optional here, and its handler clears what the profile's fields
+       would say about a post that never carried them. */
+    [BindProperty] public string? TokenName { get; set; }
+    [BindProperty] public int TokenDays { get; set; } = 30;
+    [BindProperty] public List<string>? TokenCaps { get; set; }
+
+    /// <summary>Makes a token, after a passkey tap within the confirmation
+    /// window, and emails the account that it was made.</summary>
+    public async Task<IActionResult> OnPostCreateTokenAsync() {
+        ModelState.Clear();
+        if (User.Identity?.IsAuthenticated != true) { return Challenge(); }
+        var user = await _users.GetUserAsync(User);
+        if (user is null) { return Challenge(); }
+        if (!_mcp || !await _sessions.MaySignInAsync(user)) { return NotFound(); }
+        if (!await _sessions.RecentlyConfirmedAsync(User)) {
+            TokenError = "Confirm it's you with a passkey first, then make the token again.";
+        } else {
+            try {
+                NewToken = await _tokens.CreateAsync(user.Id, TokenName ?? "", TokenDays, TokenCaps ?? new());
+                await _sessions.NotifyAsync(user, "An access token was made for parkscomputing.com",
+                    $"An access token named \"{NewToken.Value.Token.Name}\" was made for {user.Email}, lasting until {NewToken.Value.Token.ExpiresUtc:yyyy-MM-dd} UTC, " +
+                    $"with {string.Join(", ", NewToken.Value.Token.Capabilities)}. It works with the site's /mcp endpoint. Revoke it in Your account if you didn't make it.", HttpContext);
+                TokenName = null; TokenCaps = null;
+            } catch (ArgumentException ex) { TokenError = ex.Message; }
+        }
+        await LoadAsync(true); return Page();
+    }
+
+    public async Task<IActionResult> OnPostRevokeTokenAsync(string tokenId) {
+        if (User.Identity?.IsAuthenticated != true) { return Challenge(); }
+        await _tokens.RevokeAsync(_users.GetUserId(User)!, tokenId ?? "");
+        return Redirect("/account#tokens");
     }
     /// <summary>The reader's own comments, newest first, with where each stands.</summary>
     public IReadOnlyList<MyComment> Comments { get; private set; } = Array.Empty<MyComment>();
@@ -62,6 +109,8 @@ public sealed class IndexModel : PageModel {
         Comments = await _discussions.MineAsync(user.Id);
         Moderates = roles.Any(r => r is "Moderator" or "Admin" or "SuperAdmin");
         if (Moderates) { NoticeInterval = await _notices.IntervalAsync(user.Id); }
+        TokensOffered = _mcp && await _sessions.MaySignInAsync(user);
+        if (TokensOffered) { Tokens = await _tokens.ListAsync(user.Id); }
     }
 
     /// <summary>How often, in minutes, a moderator is emailed about what is
@@ -127,6 +176,8 @@ public sealed class IndexModel : PageModel {
     /// <summary>Emails a link that confirms deleting the account; nothing is
     /// deleted until it is followed (Pages/Account/Delete.cshtml).</summary>
     public async Task<IActionResult> OnPostRequestDeletionAsync() {
+        // The profile's fields aren't in this form, so what they'd say is cleared.
+        ModelState.Clear();
         if (User.Identity?.IsAuthenticated != true) { return Challenge(); }
         var userId = _users.GetUserId(User)!;
         DeletionRefusal = await _lifecycle.DeletionRefusalAsync(userId);
