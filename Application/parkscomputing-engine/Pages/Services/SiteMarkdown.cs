@@ -75,6 +75,26 @@ public sealed class SiteMarkdown {
         return writer.ToString();
     }
 
+    /// <summary>The document rendered once, as the page renders it, and the
+    /// HTML of each of its top-level blocks within that, in order. The
+    /// editor shows a block it can't edit as rich text by this HTML, so a
+    /// heading's id, a contents list or a link to a reference defined
+    /// elsewhere is what it is on the page.</summary>
+    public IReadOnlyList<string> RenderBlocks(MarkdownDocument doc, ShortcodeContext ctx) {
+        using var writer = new StringWriter();
+        var renderer = new SiteHtmlRenderer(writer, ctx);
+        Pipeline.Setup(renderer);
+        var parts = new List<string>();
+        foreach (var block in doc) {
+            writer.Flush();
+            int start = writer.GetStringBuilder().Length;
+            renderer.Write(block);
+            writer.Flush();
+            parts.Add(writer.GetStringBuilder().ToString(start, writer.GetStringBuilder().Length - start));
+        }
+        return parts;
+    }
+
     /// <summary>A line of Markdown as HTML without its paragraph, for a
     /// title or caption.</summary>
     public string InlineHtml(string markdown, ShortcodeContext ctx) {

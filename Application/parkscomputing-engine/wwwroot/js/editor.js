@@ -187,9 +187,35 @@
               /* On the edit origin: a site page's source, a file's place on
                  the public site, and a preview of unsaved text. */
               '<button type="button" class="btn btn-sm" data-action="source" hidden>Edit the source</button>' +
-              '<button type="button" class="btn btn-sm" data-action="preview" hidden>Preview</button>' +
+              /* How an article is shown (Architecture/wysiwyg-editor-design.md):
+                 its text, the page itself to edit, both side by side, or the
+                 text beside the page to read. Visual and Split are for a
+                 Markdown article; an HTML article has Text and Preview. */
+              '<div class="seg ed-views" role="group" aria-label="View" data-role="views" hidden>' +
+                '<button type="button" data-view="text" aria-pressed="true">Text</button>' +
+                '<button type="button" data-view="visual" aria-pressed="false">Visual</button>' +
+                '<button type="button" data-view="split" aria-pressed="false">Split</button>' +
+                '<button type="button" data-view="preview" aria-pressed="false">Preview</button>' +
+              '</div>' +
               '<a class="ed-view" data-role="view" target="_blank" rel="noopener" hidden>View on the site</a>' +
               '<span class="ed-readonly" data-role="readonly" hidden><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Read-only</span>' +
+            '</div>' +
+            /* The visual view's formatting (js/editor-visual.js). */
+            '<div class="ed-format" role="toolbar" aria-label="Formatting" data-role="format" hidden>' +
+              '<button type="button" class="icon-btn" data-fmt="bold" aria-label="Bold" title="Bold (Ctrl+B)"><span class="glyph" style="--glyph: var(--glyph-bold)" aria-hidden="true"></span></button>' +
+              '<button type="button" class="icon-btn" data-fmt="italic" aria-label="Italic" title="Italic (Ctrl+I)"><span class="glyph" style="--glyph: var(--glyph-italic)" aria-hidden="true"></span></button>' +
+              '<button type="button" class="icon-btn" data-fmt="strike" aria-label="Strike through" title="Strike through"><span class="glyph" style="--glyph: var(--glyph-strike)" aria-hidden="true"></span></button>' +
+              '<button type="button" class="icon-btn" data-fmt="code" aria-label="Code" title="Code (Ctrl+`)"><span class="glyph" style="--glyph: var(--glyph-code)" aria-hidden="true"></span></button>' +
+              '<button type="button" class="icon-btn" data-fmt="link" aria-label="Link" title="Link (Ctrl+K)"><span class="glyph" style="--glyph: var(--glyph-link)" aria-hidden="true"></span></button>' +
+              '<span class="ed-sep"></span>' +
+              '<button type="button" class="icon-btn" data-fmt="paragraph" aria-label="Paragraph" title="Paragraph (Ctrl+Alt+0)"><span class="glyph" style="--glyph: var(--glyph-paragraph)" aria-hidden="true"></span></button>' +
+              '<button type="button" class="btn btn-sm" data-fmt="h2" title="Heading (Ctrl+Alt+2)">H2</button>' +
+              '<button type="button" class="btn btn-sm" data-fmt="h3" title="Subheading (Ctrl+Alt+3)">H3</button>' +
+              '<button type="button" class="icon-btn" data-fmt="bullets" aria-label="Bulleted list" title="Bulleted list"><span class="glyph" style="--glyph: var(--glyph-list)" aria-hidden="true"></span></button>' +
+              '<button type="button" class="icon-btn" data-fmt="numbers" aria-label="Numbered list" title="Numbered list"><span class="glyph" style="--glyph: var(--glyph-list-numbered)" aria-hidden="true"></span></button>' +
+              '<span class="ed-sep"></span>' +
+              '<label class="visually-hidden" for="ed-insert-' + n + '">Insert a shortcode</label>' +
+              '<span class="form-select-wrap ed-insert"><select class="form-select" id="ed-insert-' + n + '" data-role="insert"><option value="">Insert…</option></select></span>' +
             '</div>' +
             '<div class="tablist doc-tabs ed-tabs" role="tablist" aria-label="Open files" data-role="tabs"></div>' +
             /* PUDL's splitter divides the Explorer from the work. */
@@ -230,7 +256,8 @@
             dialog: q('[data-role="dialog"]'), dlgForm: q('[data-role="dialog-form"]'), dlgTitle: q('[data-role="dialog-title"]'),
             dlgText: q('[data-role="dialog-text"]'), dlgInput: q('[data-role="dialog-input"]'), dlgError: q('[data-role="dialog-error"]'),
             dlgActions: q('[data-role="dialog-actions"]'),
-            explorer: q('[data-role="explorer"]'), explorerBtn: q('[data-action="explorer"]'), explorerSplit: q('[data-role="explorer-split"]')
+            explorer: q('[data-role="explorer"]'), explorerBtn: q('[data-action="explorer"]'), explorerSplit: q('[data-role="explorer-split"]'),
+            views: q('[data-role="views"]'), format: q('[data-role="format"]'), insert: q('[data-role="insert"]')
         };
         var FB = null, explorer = null;
 
@@ -324,6 +351,8 @@
                     CM.EditorView.contentAttributes.of({ 'aria-label': 'Text of ' + tab.name }),
                     CM.EditorView.updateListener.of(function (u) {
                         if (u.docChanged && tabs[active] === tab) { markModified(tab); }
+                        /* In Split, the page follows the text. */
+                        if (u.docChanged && tabs[active] === tab && visual.api && !visual.fromVisual) { reloadVisual(articleNode()); }
                         if (u.selectionSet || u.docChanged) { showPos(); }
                         if (tabs[active] === tab && (u.selectionSet || u.docChanged ||
                             CM.searchPanelOpen(u.state) !== CM.searchPanelOpen(u.startState))) { keep(); }
@@ -359,7 +388,13 @@
             q('[data-action="save-as"]').disabled = !t;
             var node = t && t.path && F ? F.resolve(F.home(), t.path) : null;
             q('[data-action="source"]').hidden = !(F && F.mounted && node && t.readOnly && F.sourceOf(node));
-            q('[data-action="preview"]').hidden = !(F && F.mounted && node && previewable(node));
+            var page = !!(F && F.mounted && node && previewable(node)), md = page && /\.md$/i.test(F.realOf(node).rel);
+            el.views.hidden = !page;
+            ['visual', 'split'].forEach(function (v) {
+                var b = el.views.querySelector('[data-view="' + v + '"]');
+                b.disabled = !md;
+                b.title = md ? '' : 'Visual editing is for Markdown articles.';
+            });
             var url = node && F.mounted ? F.publicUrl(node) : null;
             var viewLink = q('[data-role="view"]');
             viewLink.hidden = !url;
@@ -706,46 +741,209 @@
             explorer.markCurrent(node ? F.pathOf(F.realOf(node)) : null);
         }
 
-        /* === Preview (edit origin) ======================================== */
+        /* === Views: Text, Visual, Split and Preview ======================= */
 
-        /* Sends the unsaved text to the server as a draft, and shows the
-           public site's page for it beside the text. Pressing Preview again
-           shows the latest text; Save publishes (A11). */
-        async function preview() {
-            var t = current(), node = t && F.resolve(F.home(), t.path);
-            if (!node || !previewable(node)) { return; }
-            say('Making a preview…');
-            var payload = JSON.stringify({ path: F.realOf(node).rel, text: view.state.doc.toString() });
-            /* The token is read at each try, since signing in again (a session
-               that ended while the page was open) replaces it. */
+        /* An article's page is the public site's own page for the unsaved
+           text, a draft the server keeps for an hour (A11). Preview shows it
+           beside the text to read; Visual and Split make that page the
+           editing surface (js/editor-visual.js, Architecture/wysiwyg-editor-design.md),
+           Visual alone and Split beside the text. Save publishes. */
+        var viewMode = 'text';
+        var visual = { api: null, front: null, fromVisual: false, timer: 0, loading: null, gen: 0 };
+
+        /* A call to one of the server's admin APIs, signing in again when the
+           session has ended. The token is read at each try, since signing in
+           replaces it. */
+        async function adminPost(url, data) {
+            var payload = JSON.stringify(data);
             function send() {
                 var token = (document.querySelector('meta[name="request-verification-token"]') || {}).content || '';
-                return fetch('/api/admin/preview', {
+                return fetch(url, {
                     method: 'POST', credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json', Accept: 'application/json', RequestVerificationToken: token },
                     body: payload
                 });
             }
-            var r;
-            try {
-                r = await send();
-                if (r.status === 401 && window.pcAdmin && window.pcAdmin.signIn) {
-                    try { await window.pcAdmin.signIn(); r = await send(); } catch (err) { /* The 401 stands. */ }
-                }
-            } catch (err) { say('The preview could not be made: ' + err.message, true); return; }
+            var r = await send();
+            if (r.status === 401 && window.pcAdmin && window.pcAdmin.signIn) {
+                try { await window.pcAdmin.signIn(); r = await send(); } catch (err) { /* The 401 stands. */ }
+            }
             var body = await r.json().catch(function () { return {}; });
-            if (!r.ok || !body.url) { say('The preview could not be made' + (body.error ? ': ' + body.error : '.'), true); return; }
-            el.preview.src = body.url;
-            el.preview.hidden = false;
-            root.classList.add('ed-previewing');
-            say('This preview is the unsaved text as the site would show it. It works for an hour; Save publishes.');
+            if (!r.ok) { throw new Error(body.error || ('the server answered ' + r.status)); }
+            return body;
         }
 
-        function hidePreview() {
-            el.preview.hidden = true;
-            el.preview.removeAttribute('src');
-            root.classList.remove('ed-previewing');
+        function articleNode() {
+            var t = current(), node = t && t.path && F ? F.resolve(F.home(), t.path) : null;
+            return node && F.mounted && previewable(node) ? node : null;
         }
+        function canEditVisually() { var node = articleNode(); return !!(node && /\.md$/i.test(F.realOf(node).rel)); }
+        function slugOf(node) { return F.realOf(node).rel.replace(/^content\//, '').replace(/\.(md|html)$/i, ''); }
+
+        function preview() { setView(viewMode === 'preview' ? 'text' : 'preview'); }
+
+        /* Shows the article as asked: the page is made again from the text
+           as it is now, and in Visual and Split the editor is put into it. */
+        async function setView(mode) {
+            var node = articleNode();
+            if (mode !== 'text' && !node) { mode = 'text'; }
+            if ((mode === 'visual' || mode === 'split') && !canEditVisually()) { mode = 'preview'; }
+            viewMode = mode;
+            Array.prototype.forEach.call(el.views.querySelectorAll('[data-view]'), function (b) {
+                b.setAttribute('aria-pressed', String(b.getAttribute('data-view') === mode));
+            });
+            root.classList.toggle('ed-previewing', mode !== 'text');
+            root.classList.toggle('ed-visual-only', mode === 'visual');
+            el.format.hidden = !(mode === 'visual' || mode === 'split');
+            detachVisual();
+            if (mode === 'text') {
+                el.preview.hidden = true;
+                el.preview.removeAttribute('src');
+                keep();
+                return;
+            }
+            var gen = ++visual.gen;
+            say(mode === 'preview' ? 'Making a preview…' : 'Opening the page to edit…');
+            var made;
+            try { made = await adminPost('/api/admin/preview', { path: F.realOf(node).rel, text: view.state.doc.toString() }); }
+            catch (err) { if (gen === visual.gen) { say('The page could not be made: ' + err.message, true); } return; }
+            if (gen !== visual.gen) { return; }
+            el.preview.hidden = false;
+            el.preview.onload = mode === 'preview' ? null : function () { if (gen === visual.gen) { attachVisual(gen, node); } };
+            el.preview.src = made.url;
+            if (mode === 'preview') { say('This preview is the unsaved text as the site would show it. It works for an hour; Save publishes.'); }
+            keep();
+        }
+
+        function hidePreview() { if (viewMode !== 'text') { setView('text'); } }
+
+        function detachVisual() {
+            clearTimeout(visual.timer);
+            if (visual.api) { try { visual.api.destroy(); } catch (err) { } }
+            visual.api = null;
+        }
+
+        /* Loads a script or stylesheet into the page, once. */
+        function into(doc, tag, url) {
+            return new Promise(function (resolve, reject) {
+                if (doc.querySelector('[data-ed-asset="' + url + '"]')) { resolve(); return; }
+                var e = doc.createElement(tag);
+                e.setAttribute('data-ed-asset', url);
+                if (tag === 'link') { e.rel = 'stylesheet'; e.href = url; } else { e.src = url; }
+                e.onload = function () { resolve(); };
+                e.onerror = function () { reject(new Error('could not load ' + url)); };
+                (tag === 'link' ? doc.head : doc.body).appendChild(e);
+            });
+        }
+
+        /* The visual editor's files sit beside this one and carry its version,
+           so a change to them ships with the Editor's own (js/applets.js). */
+        var HERE = (SELF_SRC || '/js/editor.js').split('?')[0].replace(/editor\.js$/, '');
+        var STAMP = SELF_SRC && SELF_SRC.indexOf('?') >= 0 ? SELF_SRC.slice(SELF_SRC.indexOf('?')) : '';
+        async function attachVisual(gen, node) {
+            var win = el.preview.contentWindow, doc = el.preview.contentDocument;
+            if (!win || !doc) { say('The page can\'t be edited here.', true); return; }
+            try {
+                await into(doc, 'link', HERE + 'vendor/prosemirror-1.42/prosemirror.css');
+                await into(doc, 'link', HERE + '../css/editor-visual.css' + STAMP);
+                await into(doc, 'script', HERE + 'vendor/prosemirror-1.42/prosemirror.js');
+                await into(doc, 'script', HERE + 'editor-visual.js' + STAMP);
+                var model = await loadModel(node);
+                if (gen !== visual.gen) { return; }
+                visual.front = model.front;
+                visual.api = win.pcVisualEditor.attach(visualHost(model, node));
+                say(viewMode === 'split'
+                    ? 'Edit the text or the page; each follows the other. Double-click a block the page draws to change its Markdown.'
+                    : 'Edit the page as it will look. Double-click a block the page draws to change its Markdown.');
+                visual.api.focus();
+            } catch (err) {
+                say('The page could not be edited: ' + err.message, true);
+            }
+        }
+
+        function loadModel(node) {
+            return adminPost('/api/admin/editor/document', { text: view.state.doc.toString(), slug: slugOf(node) });
+        }
+
+        function visualHost(model, node) {
+            return {
+                model: model,
+                serialize: function (nodes) { return adminPost('/api/admin/editor/serialize', { nodes: nodes }).then(function (b) { return b.markdown; }); },
+                inline: function (src) { return adminPost('/api/admin/editor/inline', { src: src, slug: slugOf(node) }).then(function (b) { return b.html; }); },
+                changed: function (text) { takeVisualText(text); },
+                reload: function () { reloadVisual(node); },
+                prompt: function (title, value) {
+                    return ask(title, '', value, [['cancel', 'Cancel'], ['ok', 'OK', true]], null, true).then(function (v) { return v === 'cancel' ? null : v; });
+                },
+                say: function (text, isError) { say(text, isError); }
+            };
+        }
+
+        /* The page's edit, as text: the least change that turns the text into
+           the new text, so the cursor and the undo history in Split keep
+           their sense. */
+        function takeVisualText(text) {
+            var old = view.state.doc.toString();
+            if (old === text) { return; }
+            var a = 0, b = 0;
+            while (a < old.length && a < text.length && old[a] === text[a]) { a++; }
+            while (b < old.length - a && b < text.length - a && old[old.length - 1 - b] === text[text.length - 1 - b]) { b++; }
+            visual.fromVisual = true;
+            try { view.dispatch({ changes: { from: a, to: old.length - b, insert: text.slice(a, text.length - b) }, userEvent: 'input.visual' }); }
+            finally { visual.fromVisual = false; }
+        }
+
+        /* The text changed in Split, or a block the server must look at was
+           changed on the page: the page's blocks again, from the text. A
+           change to the front matter (the title, the date) makes the page
+           again, since its header comes from there. */
+        function reloadVisual(node) {
+            clearTimeout(visual.timer);
+            visual.timer = setTimeout(async function () {
+                if (!visual.api) { return; }
+                var gen = visual.gen;
+                try {
+                    var model = await loadModel(node);
+                    if (gen !== visual.gen || !visual.api) { return; }
+                    if (model.front !== visual.front) { setView(viewMode); return; }
+                    visual.api.load(model);
+                } catch (err) { say('The page could not follow the text: ' + err.message, true); }
+            }, 300);
+        }
+
+        el.views.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-view]');
+            if (b && !b.disabled) { setView(b.getAttribute('data-view')); }
+        });
+        el.format.addEventListener('mousedown', function (e) { if (e.target.closest('[data-fmt]')) { e.preventDefault(); } });
+        el.format.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-fmt]');
+            if (b && visual.api) { visual.api.run(b.getAttribute('data-fmt')); }
+        });
+
+        /* The insert menu lists the shortcodes, from the server's table. */
+        var shortcodes = null;
+        async function fillInsert() {
+            if (shortcodes) { return; }
+            try {
+                var r = await fetch('/api/admin/editor/shortcodes', { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+                shortcodes = r.ok ? (await r.json()).shortcodes : [];
+            } catch (err) { shortcodes = []; }
+            shortcodes.filter(function (s) { return s.name !== 'column'; }).forEach(function (s) {
+                var o = document.createElement('option');
+                o.value = s.name;
+                o.textContent = s.title;
+                o.title = s.description;
+                el.insert.appendChild(o);
+            });
+        }
+        el.insert.addEventListener('focus', fillInsert);
+        el.insert.addEventListener('pointerdown', fillInsert);
+        el.insert.addEventListener('change', function () {
+            var s = (shortcodes || []).find(function (x) { return x.name === el.insert.value; });
+            el.insert.value = '';
+            if (s && visual.api) { visual.api.insertShortcode(s.kind, s.example); }
+        });
 
         /* === Changes made elsewhere ======================================= */
 
@@ -885,7 +1083,7 @@
                     search: searchOf(st)
                 });
             });
-            var out = { tabs: list, front: frontAt, waiting: waiting, preview: !el.preview.hidden, explorer: explorer ? explorer.snapshot() : null };
+            var out = { tabs: list, front: frontAt, waiting: waiting, view: viewMode, explorer: explorer ? explorer.snapshot() : null };
             /* Undo history is the first thing let go when the whole would be
                too large for the browser to keep. */
             if (JSON.stringify(out).length > SNAPSHOT_MAX) { list.forEach(function (k) { k.history = null; }); }
@@ -955,7 +1153,8 @@
             }
             if (explorer && kept.explorer) { explorer.restore(kept.explorer); }
             keep();
-            return { text: msg, error: waiting.length > 0, preview: !!kept.preview };
+            // A snapshot from before the views kept only whether the preview showed.
+            return { text: msg, error: waiting.length > 0, view: kept.view || (kept.preview ? 'preview' : 'text') };
         }
         async function reopen(all, back, frontKept) {
             var frontTab = null;
@@ -1232,8 +1431,13 @@
                 keyed({ label: 'Wrap lines', disabled: !ready, checked: el.wrap.checked,
                     run: function () { el.wrap.click(); } }, 'toggle-wrap')
             ];
-            var previewButton = q('[data-action="preview"]');
-            if (previewButton && !previewButton.hidden) { viewItems.push(action('preview', 'Preview document')); }
+            if (!el.views.hidden) {
+                viewItems.push('-');
+                [['text', 'Text'], ['visual', 'Visual'], ['split', 'Split'], ['preview', 'Preview']].forEach(function (v) {
+                    var b = el.views.querySelector('[data-view="' + v[0] + '"]');
+                    viewItems.push({ label: v[1], radio: 'ed-view', checked: viewMode === v[0], disabled: !ready || b.disabled, run: function () { setView(v[0]); } });
+                });
+            }
             return { titles: [
                 { label: 'Editor', items: window.pcAppletIdentity(root) },
                 { id: 'file', label: 'File', items: file },
@@ -1280,9 +1484,9 @@
                 if (startFile && !F.resolve(F.home(), startFile)) { newNamed(startFile); } else if (!tabs.length) { newTab(); }
             }
             if (restored && restored.text) { say(restored.text, restored.error); }
-            /* A preview showing before the reload is made again, which asks
-               the server, so it is not waited for. */
-            if (restored && restored.preview && !q('[data-action="preview"]').hidden) { preview(); }
+            /* The view showing before the reload comes back, which asks the
+               server for the page, so it is not waited for. */
+            if (restored && restored.view && restored.view !== 'text' && !el.views.hidden) { setView(restored.view); }
             /* The keyboard goes back where it was: into the text, unless the
                search panel had it, which opening it did. */
             if (snap && snap.focused) { if (!view.dom.contains(document.activeElement)) { view.focus(); } }

@@ -37,24 +37,9 @@
         });
     })();
 
+    /* A window's article takes the page's own steps (js/site.js). */
     function enhance(win) {
-        if (window.hljs) {
-            win.querySelectorAll('pre code:not(.language-mermaid):not([data-highlighted])').forEach(function (block) {
-                window.hljs.highlightElement(block);
-            });
-        }
-        if (window.pcEnhanceCode) { window.pcEnhanceCode(win); }
-        win.querySelectorAll('pre > code[class*="language-mermaid"]').forEach(function (code) {
-            var node = document.createElement('div');
-            node.className = 'mermaid';
-            node.textContent = code.textContent || '';
-            code.parentElement.replaceWith(node);
-        });
-        if (window.mermaid && win.querySelector('.mermaid')) {
-            window.mermaid.initialize({ startOnLoad: false });
-            window.mermaid.run({ nodes: win.querySelectorAll('.mermaid') });
-        }
-        if (window.pcHydrateSource) { window.pcHydrateSource(win); }
+        if (window.pcEnhanceArticle) { window.pcEnhanceArticle(win); }
     }
     /* For content that arrives in a window after it opened, such as a
        book's next chapter (js/books.js). */

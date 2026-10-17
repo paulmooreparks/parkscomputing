@@ -16,7 +16,7 @@ namespace ParksComputing.Engine.Identity;
 /// authentication, so an expired session has already been refused.
 /// </summary>
 public sealed class ServerToolSignIn {
-    private static readonly string[] Apis = { "/api/admin/fs", "/api/admin/ssh/targets", "/api/admin/ssh/ticket", "/api/admin/preview", "/api/admin/settings" };
+    private static readonly string[] Apis = { "/api/admin/fs", "/api/admin/ssh/targets", "/api/admin/ssh/ticket", "/api/admin/preview", "/api/admin/settings", "/api/admin/editor" };
     private readonly RequestDelegate _next;
 
     public ServerToolSignIn(RequestDelegate next) { _next = next; }

@@ -1,0 +1,23 @@
+/* The Editor's visual view (js/editor-visual.js), inside the article's own
+   draft page. These rules only make the page editable; how the article
+   looks is the page's own stylesheets. */
+.pc-visual { outline: none; }
+/* A tight list's items are paragraphs in the editor and bare text on the
+   page, so here they take no paragraph space. */
+.pc-visual :is(ul, ol)[data-tight] > li > p { margin: 0; }
+.pc-visual .pm-hole { display: contents; }
+/* Blocks drawn from the page's HTML are marked only when pointed at, so the
+   page looks as it does until you reach for one. */
+.pc-visual .pm-source { position: relative; border-radius: var(--radius-sm); cursor: default; }
+.pc-visual .pm-source:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+.pc-visual .pm-source.ProseMirror-selectednode { box-shadow: 0 0 0 2px var(--focus-ring); }
+.pc-visual .pm-empty { color: var(--text-muted); font-style: italic; }
+.pc-visual .pm-source-edit { padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.pc-visual .pm-source-edit textarea { width: 100%; box-sizing: border-box; font-family: var(--mono); font-size: var(--text-sm); }
+.pc-visual .pm-source-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
+.pc-visual .pm-source-hint { color: var(--text-muted); font-size: var(--text-xs); }
+.pc-visual .pm-shortcode { cursor: default; }
+.pc-visual .pm-shortcode:hover { outline: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; }
+.pc-visual .pm-container[data-shortcode]:hover { outline: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+/* The page's lightbox and links don't act on a page being edited. */
+.pc-visual-editing .pc-visual img { cursor: text; }

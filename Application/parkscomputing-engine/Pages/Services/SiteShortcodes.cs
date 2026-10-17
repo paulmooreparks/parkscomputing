@@ -73,6 +73,17 @@ public sealed class SiteShortcodes {
         return Safe(def, sc.Call, ctx, sc);
     }
 
+    /// <summary>A container's frame, the HTML before and after its body, for
+    /// the editor to draw around the body it edits; null for a container
+    /// whose body divides ({{columns}}) or one written wrongly.</summary>
+    public (string Open, string Close)? Frame(ShortcodeCall call, ShortcodeContext ctx) {
+        var def = Find(call.Name);
+        if (def is not { Kind: ShortcodeKind.Container } || def.Separator is not null || def.Wrap is null) { return null; }
+        if (def.EditorOnly && !ctx.Editing) { return null; }
+        try { return def.Wrap(call, ctx); }
+        catch (ShortcodeProblem) { return null; }
+    }
+
     internal string RenderBlock(ShortcodeInline sc, ShortcodeContext ctx, HtmlRenderer renderer) =>
         Safe(Find(sc.Call.Name)!, sc.Call, ctx, sc);
 

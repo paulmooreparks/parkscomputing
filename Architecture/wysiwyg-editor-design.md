@@ -110,6 +110,22 @@ Shortcodes render to PUDL's notices and badges, and to plain HTML that `css/pudl
 
 Checks: 14 unit tests (`SiteMarkdownTests`), among them one that Markdown without shortcodes renders exactly as the old pipeline rendered it. `Tools/compare-article-render.js` compared every live Markdown article, draft and book chapter (102) as production rendered it before the change with the new renderer: all 102 were byte for byte the same. The same tool will check each article cleanup. `content/drafts/shortcodes.md` shows every shortcode as it renders and as it is written.
 
+**Steps 2 to 4, the document model, the visual view and Split (2026-10-17).**
+
+`Pages/Services/EditorDocument.cs` holds an article as the editor does, on the server. Load splits the Markdown into its top-level blocks, each with its exact text and the space after it, so the parts always give the file again byte for byte. A paragraph, an ATX heading, a list of paragraphs and lists, or a container shortcode around those is rich text in ProseMirror's JSON, but only when writing it back from that JSON renders as the original does (entities decoded, heading ids aside). Anything else is a source block, carrying the HTML the page renders for it, which `SiteMarkdown.RenderBlocks` takes from one render of the whole document, so ids, contents lists and references are the page's. Serialize writes an edited block back as Markdown. A container carries its rendered frame, so the editor draws the page's own notice or expand around the body it edits. Over the live content, 103 articles and chapters and 4,367 blocks, 81% of the blocks are rich, and every article written back from its rich blocks renders as before (the unit test `TheLiveArticlesRoundTrip`, run with the content folder mounted).
+
+`Identity/EditorController.cs` serves it to the admin who may use the server's tools, at `/api/admin/editor`: `document`, `serialize`, `inline` (a shortcode typed in a line) and `shortcodes` (the table, for the insert menu).
+
+The visual view is `js/editor-visual.js`, which the Editor loads into the article's own draft page, the preview it already made, with ProseMirror (GK Companion's 1.42 bundle, MIT, in `js/vendor/prosemirror-1.42`). The editor takes the place of the article's body, so the page around it, its header, fonts, widths and stylesheets, is the page's own. The schema's elements are the ones Markdig writes; a source block, a shortcode and a container's frame are the server's HTML, given the page's own finishing steps through `pcEnhanceArticle`, which `js/site.js` now provides and the desktop's windows use too. Quotes curl as they are typed. A shortcode typed in a line becomes one when its `}}` closes it. Double-clicking a source block opens its Markdown in place; double-clicking a container's frame or a shortcode changes its arguments.
+
+Every top-level node carries the uid of the block it came from, and a node equal to the one loaded keeps that block's exact text, so an edit writes back only the blocks it touched. The Editor puts the result into its text as the least change, which keeps the cursor and the undo history meaningful in Split.
+
+The Editor's Preview button became a switch: Text, Visual (the page alone, to edit), Split (the text beside the page, each following the other) and Preview (the text beside the page, to read). Visual and Split are for a Markdown article at the top of `content/`; an HTML article has Text and Preview. A formatting bar (bold, italic, strike, code, link, paragraph, headings, lists, and an insert menu of the shortcodes) shows in Visual and Split.
+
+Checks: `Tools/test-visual-editor.js` (17, on the test instance, as a super-user): the page as the editor, a container's frame, a code block, typing in a paragraph and in a container writing exactly what was typed, a shortcode typed in a line, bold from the toolbar, a source block's Markdown edited in place, Split in both directions, Preview and Text.
+
+Still to do: book chapters (the draft preview takes only an article at the top of `content/`), the brochure editor and the article workspace beta (decision 4), and cleaning up the existing articles with shortcodes (decision 6).
+
 ## Rules this follows
 
 The design relies on no undocumented behaviour: Markdig's source positions, ProseMirror and PUDL are used through their documented interfaces. The stored form stays plain Markdown that reads well without the editor, and untouched text is never rewritten. The editor's server endpoints are the super-user's, behind the admin mount's checks.

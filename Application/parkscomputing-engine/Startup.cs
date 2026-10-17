@@ -104,6 +104,7 @@ namespace ParksComputing.Engine {
             // The site's one Markdown renderer and its shortcodes (Architecture/wysiwyg-editor-design.md).
             services.AddSingleton<SiteShortcodes>();
             services.AddSingleton<SiteMarkdown>();
+            services.AddSingleton<EditorDocument>();
             services.AddSingleton<ArticleContentService>();
             services.AddSingleton<BookService>();
             services.AddOptions<ParksComputing.Engine.Api.ContentStorageOptions>();

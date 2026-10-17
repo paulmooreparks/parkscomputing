@@ -60,7 +60,7 @@ async function check(engine, name) {
             'barcode-scanner': ['Barcode Scanner', 'File', 'Edit', 'Scan'],
             editor: ['Editor', 'File', 'Edit'], terminal: ['Terminal', 'Session'],
             dice: ['Dice', 'Roll', 'Set'], diff: ['Diff Viewer', 'File', 'Compare'],
-            'theme-studio': ['Theme Studio', 'File', 'Palette'],
+            'theme-studio': ['PUDL Theme Studio', 'File', 'Palette'],
             sudoku: ['Sudoku', 'Edit', 'Game'], conway: ["Conway's Game of Life", 'Simulation'],
             flashcards: ['Barcode Flash Cards', 'Deck'], barcodes: ['Barcode Tool', 'File', 'Layout'],
             about: ['About']
@@ -70,7 +70,7 @@ async function check(engine, name) {
         await open('terminal', menus.terminal);
         const originalKey = await page.locator('.win[data-win]').first().getAttribute('data-win');
         await page.locator('.menubar-front .menubar-title').filter({ hasText: /^Session$/ }).click();
-        await panel.getByRole('menuitem', { name: 'New terminal here', exact: true }).click();
+        await panel.getByRole('menuitem', { name: 'New terminal window here', exact: true }).click();
         await page.waitForFunction(() => document.querySelectorAll('.win [data-applet="terminal"]').length === 2);
         await page.waitForFunction(key => document.querySelector('.win.active').getAttribute('data-win') !== key, originalKey);
         const secondKey = await page.locator('.win.active').getAttribute('data-win');

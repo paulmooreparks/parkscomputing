@@ -153,6 +153,33 @@
         hydrateSource(document);
     }
 
+    /* What the page does to an article's HTML once it is in place, for
+       article content that arrives after the page loaded: a window's body
+       (js/desktop.js), a book's next chapter, and the visual editor's blocks
+       (js/editor-visual.js). Code is highlighted and given its strip,
+       Mermaid diagrams are drawn, and listings are filled from their files.
+       The page's own article goes through the same steps as it loads. */
+    function enhanceArticle(scope) {
+        if (window.hljs) {
+            scope.querySelectorAll('pre code:not(.language-mermaid):not([data-highlighted])').forEach(function (block) {
+                window.hljs.highlightElement(block);
+            });
+        }
+        enhanceCode(scope);
+        scope.querySelectorAll('pre > code[class*="language-mermaid"]').forEach(function (code) {
+            var node = document.createElement('div');
+            node.className = 'mermaid';
+            node.textContent = code.textContent || '';
+            code.parentElement.replaceWith(node);
+        });
+        if (window.mermaid && scope.querySelector('.mermaid')) {
+            window.mermaid.initialize({ startOnLoad: false });
+            window.mermaid.run({ nodes: scope.querySelectorAll('.mermaid') });
+        }
+        hydrateSource(scope);
+    }
+    window.pcEnhanceArticle = enhanceArticle;
+
     /* An applet an article embeds may say what it opens on, as its
        data-applet-initial state ({{applet:… state=…}} and {{score:…}},
        Pages/Services/SiteShortcodes.cs). PUDL asks the host for an applet's
