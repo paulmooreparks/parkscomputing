@@ -510,14 +510,21 @@
         help: 'help\n\nLists every command with a one-line summary. "man <command>" says more about one.',
         run: function (args, io) {
             io.out(paint('bold', 'This is parkscomputing.com in terminal mode.') + ' The site\'s pages are in /site, and ~ is your own.\n');
-            Object.keys(COMMANDS).sort().forEach(function (k) {
-                io.out('  ' + paint('green', k.padEnd(11)) + COMMANDS[k].summary + '\n');
+            /* A script is listed by the name it runs by, without its .sh or
+               .lua, and every name gets a column as wide as the longest. */
+            var sections = [['Site scripts, in /site/bin', io.fs.resolve('/site/bin')], ['Your scripts, in ~/bin', userBin()]].map(function (sec) {
+                return { title: sec[0], kids: sec[1] && sec[1].children ? sec[1].children.filter(isScript) : [] };
             });
-            [['Site scripts, in /site/bin', io.fs.resolve('/site/bin')], ['Your scripts, in ~/bin', userBin()]].forEach(function (sec) {
-                var kids = sec[1] && sec[1].children ? sec[1].children.filter(isScript) : [];
-                if (!kids.length) { return; }
-                io.out('\n' + paint('bold', sec[0]) + '\n');
-                kids.forEach(function (n) { io.out('  ' + paint('green', n.name.padEnd(11)) + scriptSummary(n.name, scriptSource(n)) + '\n'); });
+            var runName = function (n) { return n.name.replace(/\.(sh|lua)$/i, ''); };
+            var width = Object.keys(COMMANDS).concat.apply(Object.keys(COMMANDS), sections.map(function (s) { return s.kids.map(runName); }))
+                .reduce(function (w, k) { return Math.max(w, k.length); }, 0) + 2;
+            Object.keys(COMMANDS).sort().forEach(function (k) {
+                io.out('  ' + paint('green', k.padEnd(width)) + COMMANDS[k].summary + '\n');
+            });
+            sections.forEach(function (sec) {
+                if (!sec.kids.length) { return; }
+                io.out('\n' + paint('bold', sec.title) + '\n');
+                sec.kids.forEach(function (n) { io.out('  ' + paint('green', runName(n).padEnd(width)) + scriptSummary(n.name, scriptSource(n)) + '\n'); });
             });
             io.out('\n' + wrap('Anything ls marks with * runs by its name, or by its path: the applets, and scripts. Your home directory, ~, holds files you can edit, and a script you put in ~/bin runs like the site\'s; everything else is read-only. Tab completes, the arrow keys recall earlier commands, "|" pipes one command into another, "> file" saves a command\'s output, "< file" feeds one in, and ;, && and || join commands. export sets variables, which $NAME expands to. A script is a file of these commands, or a POSIX shell script ending in .sh, or Lua 5.4 ending in .lua ("man sh", "man lua"), and ~/.profile runs as a terminal starts. "guide" reads the full guide.', io.cols - 1) + '\n');
         }

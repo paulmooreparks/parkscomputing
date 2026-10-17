@@ -164,7 +164,7 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: pcWorkspacePages + 'terminal',
-    ver: '39',
+    ver: '40',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
     actions: '/js/actions/terminal.json',
     instances: 4

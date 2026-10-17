@@ -88,8 +88,10 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
   log('the terminal\'s own script still runs', (await run('greet you')) === 'hi you');
   log('man reads a Lua script\'s comment', /squares a number/.test(await run('man square')));
   const helpText = (await run('help | grep square')) + '\n' + (await run('help | grep twice'));
-  log('help gives a Lua script\'s summary', /square\.lua\s+squares a number/.test(helpText), helpText.split('\n').filter(l => /square|twice/.test(l)).join(' | '));
-  log('help gives a shell script\'s summary without its name', /twice\.sh\s+says its argument twice/.test(helpText), helpText.split('\n').filter(l => /twice/.test(l)).join(' | '));
+  log('help gives a Lua script\'s summary, under the name it runs by', /square\s+squares a number/.test(helpText) && !/square\.lua/.test(helpText), helpText.split('\n').filter(l => /square|twice/.test(l)).join(' | '));
+  log('help gives a shell script\'s summary without its name', /twice\s+says its argument twice/.test(helpText) && !/twice\.sh/.test(helpText), helpText.split('\n').filter(l => /twice/.test(l)).join(' | '));
+  const cols = (await run('help | grep square')).match(/^\s*square(\s+)/);
+  log('help leaves a gap after the longest name', !!cols && cols[1].length >= 2, JSON.stringify(cols && cols[0]));
   log('which finds a script with its extension', /~\/bin\/square\.lua/.test(await run('which square')));
 
   // source and ~/.profile.
