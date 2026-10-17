@@ -122,11 +122,6 @@ public sealed class AccountMenu {
                 ? MenuBuilder.Link("/?open=moderation&top=moderation", ("data-win-open", "moderation"))
                 : MenuBuilder.Link("/moderation")));
         }
-        /* The revision-backed article workspace (/admin/articles) is not in
-           the menu: it keeps its own articles apart from the site's, which
-           are files the Editor edits, and it was getting in the way rather
-           than helping. It returns here when it becomes how articles are
-           edited (Architecture/unified-identity-design.md). */
         items.Add(Item("Sign out", new SiteCommands.Rendered("button", new[] {
             new KeyValuePair<string, string?>("type", "submit"), new KeyValuePair<string, string?>("form", SignOutForm)
         })));

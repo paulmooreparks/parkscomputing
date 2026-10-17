@@ -1,7 +1,0 @@
-@page "/admin/articles/preview/{id:guid}"
-@model ParksComputing.Engine.Pages.Admin.Articles.PreviewModel
-@{ ViewData["Title"] = "Draft preview"; }
-<div class="account-page account-page-wide">
-<p><a href="/admin/articles/edit/@Model.Id">Return to editor</a></p><p>This preview displays saved content with executable code removed.</p>
-<h1>@Model.ArticleTitle</h1><article>@Html.Raw(Model.Body)</article>
-</div>

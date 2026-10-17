@@ -71,8 +71,8 @@ public sealed class EditOriginGate {
     /* The site with accounts (Architecture/unified-identity-design.md, "Beta
        site with accounts"): one origin, where anyone reads the site exactly
        as on the public host, and signing in adds the account's commands to
-       it. The account pages and the revision workspace are private, and the
-       super-user's server tools (the admin mount and SSH) answer only the
+       it. The account pages are private, a brochure site's staff have their
+       workspace, and the super-user's server tools (the admin mount and SSH) answer only the
        super-user. The rest of the old edit-origin workspace, its own pages,
        sign-in and settings, does not exist here: those paths answer 404. */
     private static readonly string[] ServerToolPrefixes = { "/api/admin/fs", "/api/admin/ssh", "/admin/ssh", "/api/admin/preview", "/api/admin/settings", "/api/admin/editor" };
@@ -100,18 +100,16 @@ public sealed class EditOriginGate {
         }
         ctx.Request.Scheme = _accounts.Scheme;
         var path = ctx.Request.Path;
-        // The staff's workspace: on a brochure site its pages and site files
-        // (Pages/Admin/Pages), and elsewhere the revision workspace, whose
-        // /articles would otherwise take a brochure site's public article
-        // list for a private page.
-        bool workspace = _accounts.StaffEnabled && (_site.Brochure
-            ? path.StartsWithSegments("/admin/pages", StringComparison.OrdinalIgnoreCase) || path.StartsWithSegments("/admin/stats", StringComparison.OrdinalIgnoreCase)
-            : path.StartsWithSegments("/admin/articles", StringComparison.OrdinalIgnoreCase) || path.StartsWithSegments("/articles", StringComparison.OrdinalIgnoreCase));
+        // A brochure site's staff workspace: its pages and site files
+        // (Pages/Admin/Pages). Elsewhere the staff edit the site with the
+        // server's tools below.
+        bool workspace = _accounts.StaffEnabled && _site.Brochure &&
+            (path.StartsWithSegments("/admin/pages", StringComparison.OrdinalIgnoreCase) || path.StartsWithSegments("/admin/stats", StringComparison.OrdinalIgnoreCase));
         // The server's own tools, which Terminal, Files and the Editor use
         // for the super-user (the admin mount, SSH and its client, a draft's
         // preview). Each answers 404 to anyone else itself.
         bool serverTools = ServerToolPrefixes.Any(p => path.StartsWithSegments(p, StringComparison.OrdinalIgnoreCase));
-        if (_accounts.StaffEnabled && path == "/admin") { ctx.Response.Redirect(_site.Brochure ? "/admin/pages" : "/admin/articles"); return; }
+        if (_accounts.StaffEnabled && _site.Brochure && path == "/admin") { ctx.Response.Redirect("/admin/pages"); return; }
         if (IsAdminPath(path) && !workspace && !serverTools) { ctx.Response.StatusCode = StatusCodes.Status404NotFound; return; }
 
         bool account = path.StartsWithSegments("/account", StringComparison.OrdinalIgnoreCase) ||

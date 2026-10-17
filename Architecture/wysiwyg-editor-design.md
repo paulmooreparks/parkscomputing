@@ -124,7 +124,9 @@ The Editor's Preview button became a switch: Text, Visual (the page alone, to ed
 
 Checks: `Tools/test-visual-editor.js` (17, on the test instance, as a super-user): the page as the editor, a container's frame, a code block, typing in a paragraph and in a container writing exactly what was typed, a shortcode typed in a line, bold from the toolbar, a source block's Markdown edited in place, Split in both directions, Preview and Text.
 
-Still to do: book chapters (the draft preview takes only an article at the top of `content/`), the brochure editor and the article workspace beta (decision 4), and cleaning up the existing articles with shortcodes (decision 6).
+**The article workspace beta, retired (2026-10-17).** Its pages, `/articles/{id}`, `Publishing/` (store, sanitised renderer, import planner and the `article-import` command) and their tests are gone. The comment policy enum, which comments still use, moved to `Identity/CommentPolicies.cs`, and the policy pages split their front matter with `SiteMarkdown.SplitFrontMatter`. The migration `RetireArticleWorkspace` drops the seven article tables; production, padmajairam.com and its beta each had none of their rows filled. The account test that used the workspace as its staff-only page now checks the server's tools: a member gets 404, and a staff session that hasn't tapped a passkey can read but can't delete.
+
+Still to do: book chapters (the draft preview takes only an article at the top of `content/`), the brochure editor (decision 4), and cleaning up the existing articles with shortcodes (decision 6).
 
 ## Rules this follows
 

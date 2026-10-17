@@ -27,11 +27,6 @@ namespace ParksComputing.Engine {
                 using var accountHost = CreateHostBuilder(Array.Empty<string>()).ConfigureLogging(logging => logging.ClearProviders()).Build();
                 return ParksComputing.Engine.Identity.AccountCommands.RunAsync(accountHost.Services, args).GetAwaiter().GetResult();
             }
-            if (ParksComputing.Engine.Publishing.ArticleImportCommand.Matches(args)) {
-                using var importHost = CreateHostBuilder(Array.Empty<string>())
-                    .ConfigureLogging(logging => logging.ClearProviders()).Build();
-                return ParksComputing.Engine.Publishing.ArticleImportCommand.RunAsync(importHost.Services, args).GetAwaiter().GetResult();
-            }
             if (ParksComputing.Engine.Identity.IdentityInventoryCommand.Matches(args)) {
                 using var inventoryHost = CreateHostBuilder(Array.Empty<string>())
                     .ConfigureLogging(logging => logging.ClearProviders()).Build();

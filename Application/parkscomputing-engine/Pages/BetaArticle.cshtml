@@ -1,6 +1,0 @@
-@page "/articles/{id:guid}"
-@model ParksComputing.Engine.Pages.BetaArticleModel
-@{ ViewData["Title"] = Model.ArticleTitle; }
-<div class="account-page account-page-wide">
-<h1>@Model.ArticleTitle</h1><article>@Html.Raw(Model.Body)</article>
-</div>

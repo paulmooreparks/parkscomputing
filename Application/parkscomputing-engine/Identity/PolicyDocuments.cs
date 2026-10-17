@@ -49,7 +49,7 @@ public sealed class PolicyDocuments {
             if (File.Exists(file)) {
                 var text = File.ReadAllText(file);
                 var (title, version) = FrontMatter(text);
-                var body = Markdig.Markdown.ToHtml(Publishing.ArticleRenderer.WithoutFrontMatter(text), Markdown);
+                var body = Markdig.Markdown.ToHtml(Pages.Services.SiteMarkdown.SplitFrontMatter(text).Body, Markdown);
                 doc = new PolicyDocument(slug, title ?? slug, version, body);
             }
             _loaded[slug] = doc;

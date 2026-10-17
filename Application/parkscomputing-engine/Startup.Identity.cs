@@ -38,8 +38,6 @@ public partial class Startup {
 
         services.AddDbContextFactory<SiteIdentityDbContext>(options =>
             options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(5), null)));
-        services.AddSingleton<ParksComputing.Engine.Publishing.ArticleRenderer>();
-        services.AddSingleton<ParksComputing.Engine.Publishing.ArticleStore>();
 
         services.AddDataProtection()
             .SetApplicationName("parkscomputing")

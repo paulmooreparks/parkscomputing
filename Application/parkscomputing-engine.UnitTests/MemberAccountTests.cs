@@ -102,7 +102,7 @@ public class MemberAccountTests {
                 Assert.IsTrue(user.EmailConfirmed); CollectionAssert.AreEquivalent(new[]{"Member"},(await users.GetRolesAsync(user)).ToArray());
                 var db=scope.ServiceProvider.GetRequiredService<SiteIdentityDbContext>(); Assert.AreEqual(1,await db.SiteSessions.CountAsync());
             }
-            using(var denied=await Send(HttpMethod.Get,"/admin/articles/edit")) { Assert.AreEqual(HttpStatusCode.Redirect,denied.StatusCode); }
+            using(var denied=await Send(HttpMethod.Get,"/api/admin/editor/shortcodes")) { Assert.AreEqual(HttpStatusCode.NotFound,denied.StatusCode); }
             using(var replay=await Send(HttpMethod.Post,"/account/link",form)) { Assert.AreEqual(HttpStatusCode.BadRequest,replay.StatusCode); }
             form=await Form("/account"); form["DisplayName"]="Renamed";
             using(var saved=await Send(HttpMethod.Post,"/account?handler=Profile",form)) { Assert.AreEqual(HttpStatusCode.Redirect,saved.StatusCode); }
@@ -171,28 +171,29 @@ public class MemberAccountTests {
             }
             await workflow.RequestAsync("staff@example.test",null,"staff-fixture");
             form=await Form(LastLink()); using(var signed=await Send(HttpMethod.Post,"/account/link",form)) { Assert.AreEqual(HttpStatusCode.Redirect,signed.StatusCode); }
-            using(var unconfirmed=await Send(HttpMethod.Get,"/admin/articles/edit")) { Assert.AreEqual(HttpStatusCode.Redirect,unconfirmed.StatusCode); }
+            // The super-user's tools read without a passkey tap, but a destructive one waits for it.
+            using(var tools=await Send(HttpMethod.Get,"/api/admin/editor/shortcodes")) { Assert.AreEqual(HttpStatusCode.OK,tools.StatusCode); }
+            async Task<HttpResponseMessage> Fs(string action, string path) {
+                string token;
+                using(var ask=new HttpRequestMessage(HttpMethod.Get,"/api/account/token")) {
+                    ask.Headers.Add("Cookie",string.Join("; ",cookies.Values)); ask.Headers.Add("Accept","application/json");
+                    using var t=await client.SendAsync(ask);
+                    if (t.Headers.TryGetValues("Set-Cookie",out var values)) { foreach (var value in values) { var cookie=value.Split(';')[0]; cookies[cookie.Split('=')[0]]=cookie; } }
+                    token=System.Text.Json.JsonDocument.Parse(await t.Content.ReadAsStringAsync()).RootElement.GetProperty("token").GetString();
+                }
+                using var request=new HttpRequestMessage(HttpMethod.Post,"/api/admin/fs/"+action);
+                request.Headers.Add("Cookie",string.Join("; ",cookies.Values)); request.Headers.Add("RequestVerificationToken",token);
+                request.Content=new StringContent(System.Text.Json.JsonSerializer.Serialize(new{root="home",path}),System.Text.Encoding.UTF8,"application/json");
+                return await client.SendAsync(request);
+            }
+            using(var made=await Fs("mkdir","probe")) { Assert.AreEqual(HttpStatusCode.OK,made.StatusCode,await made.Content.ReadAsStringAsync()); }
+            using(var unconfirmed=await Fs("delete","probe")) { Assert.AreEqual(HttpStatusCode.Forbidden,unconfirmed.StatusCode); }
             // The browser fixture independently tests real assertions. Mark this HTTP fixture's staff session confirmed.
             using(var scope=host.Services.CreateScope()) {
                 var db=scope.ServiceProvider.GetRequiredService<SiteIdentityDbContext>();
                 await db.SiteSessions.Where(s=>s.UserId==staffId&&s.RevokedUtc==null).ExecuteUpdateAsync(s=>s.SetProperty(x=>x.ConfirmedUtc,(DateTime?)DateTime.UtcNow));
             }
-            form=await Form("/admin/articles/edit"); form["Slug"]="http-editor"; form["ArticleTitle"]="HTTP editor"; form["Source"]="<script>alert(1)</script><p>Saved draft</p>"; form["Format"]="1";
-            using(var forged=await Send(HttpMethod.Post,"/admin/articles/edit?handler=Save",new Dictionary<string,string>{{"Slug","forged"}})) { Assert.AreEqual(HttpStatusCode.BadRequest,forged.StatusCode); }
-            string edit;
-            using(var created=await Send(HttpMethod.Post,"/admin/articles/edit?handler=Save",form)) { Assert.AreEqual(HttpStatusCode.Redirect,created.StatusCode); edit=created.Headers.Location.ToString(); }
-            var articleId=edit.Split('/').Last();
-            using(var draft=await client.GetAsync("/articles/"+articleId)) { Assert.AreEqual(HttpStatusCode.NotFound,draft.StatusCode); }
-            form=await Form(edit); form["Source"]="Updated draft"; form["Format"]="0";
-            using(var saved=await Send(HttpMethod.Post,edit+"?handler=Save",form)) { Assert.AreEqual(HttpStatusCode.Redirect,saved.StatusCode); }
-            form["Operation"]=Guid.NewGuid().ToString();
-            using(var stale=await Send(HttpMethod.Post,edit+"?handler=Save",form)) { Assert.AreEqual(HttpStatusCode.Conflict,stale.StatusCode); }
-            form=await Form(edit);
-            using(var published=await Send(HttpMethod.Post,edit+"?handler=Publish",form)) { Assert.AreEqual(HttpStatusCode.Redirect,published.StatusCode, Regex.Match(await published.Content.ReadAsStringAsync(),"<div class=\"form-error[^>]*>(.*?)</div>",RegexOptions.Singleline).Groups[1].Value); }
-            using(var reader=await client.GetAsync("/articles/"+articleId)) { Assert.AreEqual(HttpStatusCode.OK,reader.StatusCode); StringAssert.Contains(await reader.Content.ReadAsStringAsync(),"Updated draft"); }
-            form=await Form(edit);
-            using(var unpublished=await Send(HttpMethod.Post,edit+"?handler=Unpublish",form)) { Assert.AreEqual(HttpStatusCode.Redirect,unpublished.StatusCode); }
-            using(var reader=await client.GetAsync("/articles/"+articleId)) { Assert.AreEqual(HttpStatusCode.NotFound,reader.StatusCode); }
+            using(var confirmed=await Fs("delete","probe")) { Assert.AreEqual(HttpStatusCode.OK,confirmed.StatusCode); }
         } finally { await host.StopAsync(); Directory.Delete(directory,recursive:true); }
     }
 }

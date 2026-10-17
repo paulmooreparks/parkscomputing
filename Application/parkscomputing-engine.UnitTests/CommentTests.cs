@@ -12,7 +12,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ParksComputing.Engine.Identity;
-using ParksComputing.Engine.Publishing;
 
 namespace ParksComputing.Engine.UnitTests;
 

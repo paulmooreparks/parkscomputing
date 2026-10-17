@@ -7,7 +7,7 @@
    applet fills with the discussion as this reader sees it, so the article
    itself stays the same for everyone. Without script, the link leads to the
    discussion's own page. *@
-@if (AccountConfig.Value.Enabled && CommentConfig.Value.Enabled && Policies.Of(Model) is { } info && info.Policy != ParksComputing.Engine.Publishing.ArticleCommentPolicy.Disabled)
+@if (AccountConfig.Value.Enabled && CommentConfig.Value.Enabled && Policies.Of(Model) is { } info && info.Policy != ParksComputing.Engine.Identity.ArticleCommentPolicy.Disabled)
 {
     <section class="discussion-mount" aria-label="Comments">
         <div data-applet="comments" data-discussion="@info.Slug">

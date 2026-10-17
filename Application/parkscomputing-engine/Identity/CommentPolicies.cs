@@ -3,9 +3,11 @@ using System.IO;
 using HtmlAgilityPack;
 using Microsoft.AspNetCore.Hosting;
 using ParksComputing.Engine.Pages.Services;
-using ParksComputing.Engine.Publishing;
 
 namespace ParksComputing.Engine.Identity;
+
+/// <summary>Whether an article shows comments, and whether it takes new ones.</summary>
+public enum ArticleCommentPolicy { Disabled, Open, Closed }
 
 /// <summary>An article's comment state and title, as its file says.</summary>
 public sealed record ArticleDiscussionInfo(string Slug, string Title, ArticleCommentPolicy Policy);

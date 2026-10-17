@@ -55,6 +55,10 @@
 			<!-- <PackageReference Include="ParksComputing.Xfer.Lang" Version="0.1.0-preview" /> -->
 	 </ItemGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="ParksComputing.Engine.UnitTests" />
+	</ItemGroup>
+
 	<!-- Exclude IDE / build artifacts accidentally under wwwroot that cause large deployments & duplicate static web asset keys -->
 	<ItemGroup>
 		<Content Remove="wwwroot\\**\\.vs\\**" />
