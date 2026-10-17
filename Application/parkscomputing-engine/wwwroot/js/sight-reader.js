@@ -2,8 +2,9 @@
    cursor reaches it (Architecture/sight-reader-design.md). The score is
    drawn by OpenSheetMusicDisplay (BSD-3-Clause), vendored in js/vendor and
    loaded only when the applet opens. A score is MusicXML, plain or
-   compressed; the samples are listed in content/scores/index.json, and one
-   from the reader's own device opens as well.
+   compressed; the samples are the files in content/scores, which the site
+   lists (api/site/listing), and one from the reader's own device opens as
+   well.
 
    The quiz takes steps through the score. A step is the notes that start
    together at the cursor, so one note, an interval or a chord, and a tied
@@ -1076,9 +1077,36 @@
 
         /* === Opening a score ==================================================== */
 
+        /* The samples, from the site's listing of content/scores
+           (Controllers/ContentListingController.cs), read afresh each time,
+           so a score dropped into the folder is there the next time the
+           dialog opens. A score is in the group of the folder it is in, and
+           its title is its file's name. The levels come first, easiest
+           first, then other folders by name, and the licenses folder is
+           left out. */
+        var LEVELS = ['simple', 'beginner', 'intermediate', 'advanced'];
         function fetchIndex() {
-            return fetch(SAMPLES + 'index.json', { credentials: 'same-origin', cache: 'no-cache' })
-                .then(function (r) { return r.ok ? r.json() : { groups: [] }; })
+            return fetch('/api/site/listing?path=scores', { credentials: 'same-origin', cache: 'no-cache' })
+                .then(function (r) { return r.ok ? r.json() : { files: [] }; })
+                .then(function (listing) {
+                    var groups = {};
+                    (listing.files || []).forEach(function (f) {
+                        if (!/\.(mxl|musicxml|xml)$/i.test(f.name) || /^licenses(\/|$)/i.test(f.folder)) { return; }
+                        var name = f.folder.split('/').join(' / ');
+                        (groups[name] = groups[name] || []).push({ title: f.name.replace(/\.[^.]*$/, ''), file: f.path });
+                    });
+                    var byName = function (a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }); };
+                    var rank = function (name) {
+                        if (name === '') { return -1; }
+                        var i = LEVELS.indexOf(name.split(' / ')[0].toLowerCase());
+                        return i >= 0 ? i : LEVELS.length;
+                    };
+                    return {
+                        groups: Object.keys(groups).sort(function (a, b) { return rank(a) - rank(b) || byName(a, b); }).map(function (name) {
+                            return { name: name, scores: groups[name].sort(function (a, b) { return byName(a.title, b.title); }) };
+                        })
+                    };
+                })
                 .catch(function () { return { groups: [] }; });
         }
 

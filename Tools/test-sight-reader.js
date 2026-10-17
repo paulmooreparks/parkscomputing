@@ -569,6 +569,9 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   const groups = await page.evaluate(() => [...document.querySelectorAll('.sr-group-name')].map(h => h.textContent));
   const levels = ['simple', 'beginner', 'intermediate', 'advanced'], at = groups.map(g => levels.indexOf(g));
   log('the chooser lists the samples by level, easiest first', groups.length > 0 && at.every((n, k) => n >= 0 && (k === 0 || n > at[k - 1])), groups.join());
+  // The list is the folder as it is now (api/site/listing), so a file added
+  // to it appears without an index to rebuild.
+  log('a score added to the folder is in the chooser', await page.isVisible('.sr-pick[data-sr-name="Happy Birthday To You"]'));
   await page.click('.sr-pick[data-sr-name="Twinkle Twinkle Little Star"]');
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(500);
