@@ -44,10 +44,11 @@
         <a href="/admin/pages">Back to the pages</a>
     </div>
 </form>
-@if (Model.PreviewHtml is not null)
+@if (Model.PreviewUrl is not null)
 {
     <section class="site-admin-preview" aria-labelledby="preview-title">
         <h2 id="preview-title" class="site-admin-preview-title">Preview, not saved</h2>
-        <div class="post-body">@Html.Raw(Model.PreviewHtml)</div>
+        <p><a href="@Model.PreviewUrl" target="_blank" rel="noopener">Open the preview in its own tab</a></p>
+        <iframe class="site-admin-preview-frame" src="@Model.PreviewUrl" title="Preview of @Model.FileInfo.Title"></iframe>
     </section>
 }

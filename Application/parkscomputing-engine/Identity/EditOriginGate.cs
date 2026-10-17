@@ -78,11 +78,12 @@ public sealed class EditOriginGate {
     private static readonly string[] ServerToolPrefixes = { "/api/admin/fs", "/api/admin/ssh", "/admin/ssh", "/api/admin/preview", "/api/admin/settings", "/api/admin/editor" };
 
     // Cloudflare Turnstile's script and frame, for the challenge on Create
-    // account and on asking for a sign-in link (Identity/Turnstile.cs).
+    // account and on asking for a sign-in link (Identity/Turnstile.cs), and
+    // the site's own pages, for a brochure editor's preview of a draft.
     private static readonly string AccountsCsp =
         "default-src 'none'; script-src 'self' https://plausible.io " + Turnstile.Origin + "; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://plausible.io; " +
-        "frame-src " + Turnstile.Origin + "; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
+        "frame-src 'self' " + Turnstile.Origin + "; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
 
     private async Task InvokeAccountsSite(HttpContext ctx) {
         var host = ctx.Request.Host.Host;

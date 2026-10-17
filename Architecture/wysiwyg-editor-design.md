@@ -126,7 +126,11 @@ Checks: `Tools/test-visual-editor.js` (17, on the test instance, as a super-user
 
 **The article workspace beta, retired (2026-10-17).** Its pages, `/articles/{id}`, `Publishing/` (store, sanitised renderer, import planner and the `article-import` command) and their tests are gone. The comment policy enum, which comments still use, moved to `Identity/CommentPolicies.cs`, and the policy pages split their front matter with `SiteMarkdown.SplitFrontMatter`. The migration `RetireArticleWorkspace` drops the seven article tables; production, padmajairam.com and its beta each had none of their rows filled. The account test that used the workspace as its staff-only page now checks the server's tools: a member gets 404, and a staff session that hasn't tapped a passkey can read but can't delete.
 
-Still to do: book chapters (the draft preview takes only an article at the top of `content/`), the brochure editor (decision 4), and cleaning up the existing articles with shortcodes (decision 6).
+**The brochure editor's preview, on the readers' code (2026-10-17).** The brochure workspace's Preview (`Pages/SiteAdmin/Edit.cshtml.cs`) rendered a Markdown page with its own `UseAdvancedExtensions` pipeline and an HTML page with its own body extraction, so it could differ from what readers get. It now keeps the unsaved text as a draft (`PreviewDrafts`) and frames `/preview/{token}`, the page the readers' own code draws in the brochure layout, without the staff bar. On padmajairam's beta the preview's page body matched the live page's exactly, apart from the edit. The workspace's content policy allows framing the site's own pages for this.
+
+The brochure editor does not have the visual view yet. Every one of padmajairam.com's 17 pages is HTML exported from WordPress, and the visual view edits Markdown (decision 2), so it waits on a choice between converting her pages to Markdown and giving the visual view HTML pages.
+
+Still to do: book chapters (the draft preview takes only an article at the top of `content/`), the brochure editor's visual view (above), and cleaning up the existing articles with shortcodes (decision 6).
 
 ## Rules this follows
 

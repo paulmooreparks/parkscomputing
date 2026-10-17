@@ -137,8 +137,10 @@
         // The staff's own bar, for an Admin or the super-user signed in:
         // their way to edit the page they are on, to the editing pages and
         // to their account. Nobody else sees it, and a page drawn with it is
-        // never cached (Api/CachingMiddleware.cs).
+        // never cached (Api/CachingMiddleware.cs). A draft's preview shows
+        // the page as readers will see it, so it has no staff bar.
         bool staff = AccountsConfig.Value.Enabled && User.Identity?.IsAuthenticated == true
+            && ViewData["Draft"] is not true
             && await StaffCheck.AllowedAsync(User, confirmed: false);
         string? editPath = null;
         if (staff && !workspace && mdSlug is not null) {

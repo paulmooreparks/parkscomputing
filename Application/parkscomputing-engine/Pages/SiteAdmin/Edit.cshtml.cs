@@ -1,7 +1,4 @@
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using HtmlAgilityPack;
-using Markdig;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using ParksComputing.Engine.Identity;
@@ -17,14 +14,19 @@ namespace ParksComputing.Engine.Pages.SiteAdmin;
 /// since (Pages/Services/SiteEditor.cs).
 /// </summary>
 public sealed class EditModel : SiteAdminModel {
-    public EditModel(SiteEditor editor, StaffAccess staff, IOptions<AccountOptions> accounts, IOptions<SiteOptions> site)
-        : base(editor, staff, accounts, site) { }
+    private readonly PreviewDrafts _drafts;
+
+    public EditModel(SiteEditor editor, StaffAccess staff, IOptions<AccountOptions> accounts, IOptions<SiteOptions> site, PreviewDrafts drafts)
+        : base(editor, staff, accounts, site) { _drafts = drafts; }
 
     public EditableFile? FileInfo { get; private set; }
     [BindProperty(SupportsGet = true, Name = "file")] public string? FilePath { get; set; }
     [BindProperty] public string Text { get; set; } = "";
     [BindProperty] public string Version { get; set; } = "";
-    public string? PreviewHtml { get; private set; }
+    /// <summary>Where the unsaved text shows as its page: /preview/{token},
+    /// which the readers' own page code renders (Identity/PreviewDrafts.cs),
+    /// so the preview cannot differ from what they will see.</summary>
+    public string? PreviewUrl { get; private set; }
     public string? Message { get; private set; }
     public bool Conflict { get; private set; }
 
@@ -52,7 +54,11 @@ public sealed class EditModel : SiteAdminModel {
 
     public async Task<IActionResult> OnPostPreviewAsync() {
         if (await LoadAsync() is { } away) { return away; }
-        if (IsPage) { PreviewHtml = Render(FileInfo!.Path, Text); }
+        if (IsPage) {
+            var token = _drafts.Keep(FileInfo!.Path, Text);
+            if (token is null) { Message = "This page can't be previewed; save it to see it."; }
+            else { PreviewUrl = "/preview/" + token; }
+        }
         return Page();
     }
 
@@ -66,19 +72,5 @@ public sealed class EditModel : SiteAdminModel {
             return Page();
         }
         return Redirect("/admin/pages/edit?file=" + System.Uri.EscapeDataString(FileInfo!.Path) + "&saved=1");
-    }
-
-    /// <summary>A page's body as readers see it: an HTML file's body, or a
-    /// Markdown file rendered after its front matter.</summary>
-    private static string Render(string path, string text) {
-        if (path.EndsWith(".md")) {
-            var body = text.StartsWith("---") && text.IndexOf("\n---", 3) is var end and > -1 ? text[(end + 4)..] : text;
-            return Markdown.ToHtml(body, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
-        }
-        var doc = new HtmlDocument();
-        doc.LoadHtml(text);
-        var html = (doc.DocumentNode.SelectSingleNode("//body") ?? doc.DocumentNode).InnerHtml;
-        // A preview runs nothing.
-        return Regex.Replace(html, @"<script\b[\s\S]*?</script>", "", RegexOptions.IgnoreCase);
     }
 }
