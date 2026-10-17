@@ -237,6 +237,36 @@ body.desktop .site-header { position: static; flex: none; }
 }
 .posted-on { font-style: italic; font-size: smaller; color: var(--text-muted); }
 
+/* Shortcodes in an article (Pages/Services/SiteShortcodes.cs). Notices and
+   status badges are PUDL's own; these place them in an article and style
+   what PUDL has no component for. */
+.post-body .sc-notice { margin: 0 0 1.1rem; }
+.post-body .notice-body > :last-child { margin-bottom: 0; }
+.post-body .sc-figure { text-align: center; }
+.post-body .sc-figure img { height: auto; }
+.post-body .sc-expand { margin: 0 0 1.1rem; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 var(--space-4); }
+.post-body .sc-expand > summary { cursor: pointer; padding: var(--space-2) 0; font-weight: 600; }
+.post-body .sc-expand[open] > summary { border-bottom: 1px solid var(--border); margin-bottom: var(--space-3); }
+.post-body .sc-toc { margin: 0 0 1.1rem; padding: var(--space-3) var(--space-4); border-inline-start: 3px solid var(--border); }
+.post-body .sc-toc ul { margin: 0; padding-inline-start: 1.2rem; }
+.post-body .sc-toc > ul { padding-inline-start: 0; list-style: none; }
+.post-body .sc-list .sc-date { color: var(--text-muted); font-size: smaller; margin-inline-start: .4em; }
+.post-body .sc-list .sc-desc { color: var(--text-muted); font-size: .95em; }
+.post-body .sc-video { position: relative; max-width: 720px; margin: 0 auto 1.1rem; aspect-ratio: 16 / 9; }
+.post-body .sc-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.post-body .sc-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--space-5); margin: 0 0 1.1rem; }
+.post-body .sc-column > :last-child { margin-bottom: 0; }
+.post-body kbd {
+  display: inline-block; padding: 0 .4em; border: 1px solid var(--border); border-bottom-width: 2px;
+  border-radius: var(--radius-sm); background: var(--surface-alt); font-family: var(--mono); font-size: .85em; line-height: 1.5;
+}
+.post-body .sc-glyph { --glyph-size: 1em; vertical-align: -0.1em; }
+/* A note to self shows only in the editor, tinted so it can't be taken for the article. */
+.post-body .sc-draft-note { margin: 0 0 1.1rem; padding: var(--space-3) var(--space-4); border: 1px dashed var(--warn); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--warn) 8%, transparent); }
+.post-body .sc-draft-note-label { margin: 0 0 var(--space-1); font-size: var(--text-2xs); font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+/* A shortcode written wrongly shows as itself, marked, with the reason as its title. */
+.sc-problem { color: var(--danger); text-decoration: wavy underline var(--danger); cursor: help; }
+
 /* Article images invite the lightbox. */
 .content-body img:not([data-no-lightbox]), .win-body img:not([data-no-lightbox]) { cursor: pointer; }
 

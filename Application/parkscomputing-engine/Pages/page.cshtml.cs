@@ -171,19 +171,10 @@ namespace ParksComputing.Engine.Pages {
                 var (frontMatter, body) = SplitFrontMatter(raw);
                 var metadata = ParseFrontMatter(frontMatter, mdPath);
 
-                // If title missing, attempt first H1 extraction later after markdown conversion
-                var pipeline = new MarkdownPipelineBuilder()
-                    .UsePipeTables()
-                    .UseTaskLists()
-                    .UseAutoLinks()
-                    .UseEmphasisExtras()
-                    .UseSmartyPants()
-                    .UseMediaLinks()
-                    // Headings get ids, as GitHub and mdBook give them, so a link to #section lands there.
-                    .UseAutoIdentifiers(Markdig.Extensions.AutoIdentifiers.AutoIdentifierOptions.GitHub)
-                    .UseGenericAttributes() // enables attribute lists: ![alt](img.png){ width=512 height=512 }
-                    .Build();
-                string htmlBody = Markdown.ToHtml(body, pipeline);
+                // The site's one renderer, which the window and the editor
+                // share (Pages/Services/SiteMarkdown.cs). If the title is
+                // missing, the first heading gives it below.
+                string htmlBody = HttpContext.RequestServices.GetRequiredService<SiteMarkdown>().Render(body, slug);
 
                 // Detect code blocks to decide whether to inject highlight.js assets.
                 bool hasCodeBlocks = htmlBody.Contains("<pre><code", StringComparison.OrdinalIgnoreCase);
@@ -224,18 +215,7 @@ namespace ParksComputing.Engine.Pages {
             }
         }
 
-        private (string frontMatter, string body) SplitFrontMatter(string raw) {
-            if (raw.StartsWith("---")) {
-                int second = raw.IndexOf("\n---", 3, StringComparison.Ordinal);
-                if (second > -1) {
-                    int fmEnd = second + 4; // position after second delimiter line
-                    var fm = raw.Substring(3, second - 3).Trim('\r', '\n');
-                    var body = raw.Substring(fmEnd).TrimStart('\r', '\n');
-                    return (fm, body);
-                }
-            }
-            return (string.Empty, raw);
-        }
+        private static (string frontMatter, string body) SplitFrontMatter(string raw) => SiteMarkdown.SplitFrontMatter(raw);
 
         private (string Title, string Description, DateTime DateUtc, DateTime LastModifiedUtc, bool CommentsAllowed, bool CommentsEnabled, string Lang, bool HasAudio, string AudioFile, bool AudioTranscript, string VideoLink, int ReadingTimeMinutes, string[] Keywords) ParseFrontMatter(string fm, string path) {
             DateTime fileCreate = System.IO.File.GetCreationTimeUtc(path);

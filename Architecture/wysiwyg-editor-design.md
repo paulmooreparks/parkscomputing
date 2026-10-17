@@ -1,6 +1,15 @@
 # The visual editor: editing an article as the site shows it
 
-Status: proposal, 2026-10-17, waiting for Paul's decisions at the end. Nothing is built yet.
+Status: accepted, 2026-10-17, with Paul's decisions below; building in the order of work. The MCP work (Architecture/applet-platform-design.md) is pinned at its next step, the queue to the admin's desktop, while this is built.
+
+## Decisions (Paul, 2026-10-17)
+
+1. Shortcodes use GK's syntax, `{{name:args}}` and `{{name:args}} … {{/name}}`.
+2. The visual view covers Markdown articles and book chapters first; HTML articles keep Text and Preview.
+3. The visual view shows and types curly quotes, and untouched text keeps its straight quotes in the file.
+4. The beta article workspace is retired, and the brochure site editor (padmajairam.com) moves onto the one renderer and the new editor.
+5. Every proposed shortcode is in the first build: the GK ports (notices, expand, status, toc, anchor, page, children, include) and the site's own (figure, applet, video, code, score, tagged, latest, kbd, glyph, columns, draft-note).
+6. The existing Markdown articles should edit in the new Editor as they are, and may also be cleaned up, with shortcodes replacing hand-written HTML, as long as what a reader sees stays identical or so close as not to matter. Each cleanup is checked by comparing the page's rendered article before and after.
 
 Paul asked for GK Companion's WYSIWYG editor on parkscomputing.com, with shortcodes that the site engine renders to HTML, new shortcodes that make editing the site easier, and one hard rule: the editing view must look exactly like the published article, so the editor and the site share one renderer. Text mode and split mode stay.
 
@@ -93,14 +102,18 @@ Markdown articles and book chapters come first. HTML articles keep Text and Prev
 4. **Split mode,** and the Editor's views settled as Text, Visual, Split and Preview.
 5. **The remaining shortcodes,** and moving HTML articles to Markdown where Paul wants to.
 
+## As built
+
+**Step 1, one renderer and the shortcodes (2026-10-17).** `Pages/Services/SiteMarkdown.cs` is the site's one Markdown renderer, a singleton the article page and the desktop window now both use; the editor's preview already renders through the page. Its pipeline is the one the page and the window had, plus precise source positions and the shortcodes. `Pages/Services/Shortcodes.cs` is how Markdig finds them: a block parser for a container's tags, each alone on its line, an inline parser for `{{name:args}}`, and a paragraph renderer that writes a block shortcode alone on its line without a `<p>` around it. `Pages/Services/SiteShortcodes.cs` is the table: every shortcode's kind, parameters, description, example and renderer, which the editor will read for its insert menu. A shortcode written wrongly renders as itself, marked `sc-problem` and underlined, with the reason as its title.
+
+Shortcodes render to PUDL's notices and badges, and to plain HTML that `css/pudl-site.css` styles in an article (`sc-*` classes). An applet an article embeds may say what it opens on (`data-applet-initial`); `js/site.js` hands that to PUDL's `pudl:applet-state` when the host keeps no state of its own, which is how `{{score}}` opens Sight Reader on its score.
+
+Checks: 14 unit tests (`SiteMarkdownTests`), among them one that Markdown without shortcodes renders exactly as the old pipeline rendered it. `Tools/compare-article-render.js` compared every live Markdown article, draft and book chapter (102) as production rendered it before the change with the new renderer: all 102 were byte for byte the same. The same tool will check each article cleanup. `content/drafts/shortcodes.md` shows every shortcode as it renders and as it is written.
+
 ## Rules this follows
 
 The design relies on no undocumented behaviour: Markdig's source positions, ProseMirror and PUDL are used through their documented interfaces. The stored form stays plain Markdown that reads well without the editor, and untouched text is never rewritten. The editor's server endpoints are the super-user's, behind the admin mount's checks.
 
-## Decisions for Paul
+## The questions that were put to Paul
 
-1. **Shortcode syntax.** GK's `{{name:args}}`, as proposed, or another?
-2. **Visual for Markdown only at first,** with HTML articles in Text and Preview, as proposed?
-3. **Curly quotes,** shown and typed in the visual view, with untouched text keeping its straight quotes, as proposed?
-4. **The other editors.** The beta article workspace (database-backed, last touched 2026-10-04) uses its own sanitised pipeline and produces different HTML. The brochure site editor that padmajairam.com uses has a third. The proposal is to retire the workspace beta and move the brochure editor onto `SiteMarkdown` and the new editor, so padmajairam.com gets the same tool. Agree?
-5. **The shortcode list.** Which of the new shortcodes above do you want, and are there others you reach for when writing?
+The proposal asked five questions, answered in the Decisions section above: the shortcode syntax, the visual view's first scope, curly quotes, the other two editors (the database-backed article workspace beta, which used its own sanitised pipeline, and the brochure site editor with a third), and which shortcodes to build.

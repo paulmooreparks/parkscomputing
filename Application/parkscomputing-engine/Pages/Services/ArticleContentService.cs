@@ -34,11 +34,14 @@ public class ArticleContentService {
     private readonly bool _accounts;
     private readonly ParksComputing.Engine.Identity.PolicyDocuments? _policies;
 
-    public ArticleContentService(IWebHostEnvironment environment, BookService books,
+    private readonly SiteMarkdown _markdown;
+
+    public ArticleContentService(IWebHostEnvironment environment, BookService books, SiteMarkdown markdown,
         Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions>? accounts = null,
         ParksComputing.Engine.Identity.PolicyDocuments? policies = null) {
         _environment = environment;
         _books = books;
+        _markdown = markdown;
         _accounts = accounts?.Value.Enabled ?? false;
         _policies = policies;
     }
@@ -403,7 +406,7 @@ public class ArticleContentService {
             || File.Exists(Path.Combine(baseDir, slug + ".html"));
     }
 
-    private static ArticleWindowContent LoadMarkdown(string path, string slug) {
+    private ArticleWindowContent LoadMarkdown(string path, string slug) {
         string raw = File.ReadAllText(path);
         string body = raw;
         string? title = null;
@@ -429,18 +432,8 @@ public class ArticleContentService {
             }
         }
 
-        var pipeline = new MarkdownPipelineBuilder()
-            .UsePipeTables()
-            .UseTaskLists()
-            .UseAutoLinks()
-            .UseEmphasisExtras()
-            .UseSmartyPants()
-            .UseMediaLinks()
-            // Headings get ids, as on the page, so a link to #section lands there.
-            .UseAutoIdentifiers(Markdig.Extensions.AutoIdentifiers.AutoIdentifierOptions.GitHub)
-            .UseGenericAttributes()
-            .Build();
-        string html = menu + Markdown.ToHtml(body, pipeline);
+        // The site's one renderer, as the page renders it (Pages/Services/SiteMarkdown.cs).
+        string html = menu + _markdown.Render(body, slug);
 
         if (string.IsNullOrWhiteSpace(title)) {
             var temp = new HtmlDocument();

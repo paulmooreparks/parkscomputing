@@ -153,4 +153,14 @@
         hydrateSource(document);
     }
 
+    /* An applet an article embeds may say what it opens on, as its
+       data-applet-initial state ({{applet:… state=…}} and {{score:…}},
+       Pages/Services/SiteShortcodes.cs). PUDL asks the host for an applet's
+       state just before it starts (pudl:applet-state); a state the host
+       already keeps for it comes first. */
+    document.addEventListener('pudl:applet-state', function (e) {
+        var initial = e.target && e.target.getAttribute && e.target.getAttribute('data-applet-initial');
+        if (initial && e.detail && e.detail.state == null) { e.detail.state = initial; }
+    });
+
 })();

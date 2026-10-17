@@ -101,6 +101,9 @@ namespace ParksComputing.Engine {
             services.AddSingleton<ParksComputing.Engine.Identity.RecentLogs>();
             services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider, ParksComputing.Engine.Identity.RecentLogProvider>();
             services.AddSingleton<ParksComputing.Engine.Identity.PolicyDocuments>();
+            // The site's one Markdown renderer and its shortcodes (Architecture/wysiwyg-editor-design.md).
+            services.AddSingleton<SiteShortcodes>();
+            services.AddSingleton<SiteMarkdown>();
             services.AddSingleton<ArticleContentService>();
             services.AddSingleton<BookService>();
             services.AddOptions<ParksComputing.Engine.Api.ContentStorageOptions>();
