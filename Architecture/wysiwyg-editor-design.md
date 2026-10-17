@@ -1,0 +1,106 @@
+# The visual editor: editing an article as the site shows it
+
+Status: proposal, 2026-10-17, waiting for Paul's decisions at the end. Nothing is built yet.
+
+Paul asked for GK Companion's WYSIWYG editor on parkscomputing.com, with shortcodes that the site engine renders to HTML, new shortcodes that make editing the site easier, and one hard rule: the editing view must look exactly like the published article, so the editor and the site share one renderer. Text mode and split mode stay.
+
+## What exists
+
+**On parkscomputing.com** articles are Markdown (`content/{slug}.md`, with front matter) or HTML (`content/{slug}.html`). Paul edits them in the Editor applet (CodeMirror 6), whose Preview posts the unsaved text to the server and shows `/preview/{token}?frame`, rendered by the real page code. Markdown becomes HTML on the server with Markdig, and the browser then changes the article further: highlight.js colours code, `pudl-code.js` wraps each block in a strip with Copy and Download, Mermaid draws diagrams, applets mount on `data-applet`, `code[data-code-src]` fetches its listing, and images get the lightbox.
+
+Six different Markdig configurations exist today. The page and the desktop window share one (pipe tables, task lists, auto links, emphasis extras, SmartyPants, media links, GitHub-style heading ids and generic attributes). The beta article workspace, the brochure site editor, the Terminal, the policy pages and comments each use another. There is no JavaScript Markdown renderer anywhere in the project.
+
+Paul's Markdown articles lean on raw HTML for what Markdown can't say. The live content has 41 hand-written `<figure>` blocks with inline styles, an iframe in a centred `div`, a raw table, and links with generic attributes. HTML articles embed applets (16 of them), carry their own scripts and styles, and keep old WordPress markup.
+
+**In GK Companion** the editor has four views: Visual, Text, Split and Preview. Markdown with `{{shortcode}}` syntax is the stored form. The Visual view is ProseMirror (vendored as a 258 KB bundle, MIT), and all parsing and serialising happens on the server (Go), not in the browser:
+
+- The server splits the Markdown into blocks. A block is edited as rich text (paragraphs, headings, lists, tables, emphasis, links) only if it comes back byte for byte after a round trip; anything else is a source block, drawn as the preview draws it and edited as Markdown in place.
+- Containers such as panels and expands are drawn with the preview's own frame around an editable body. Inline shortcodes are atoms whose HTML comes from the preview.
+- An untouched block is written back as its original text, so opening and saving a file never changes what wasn't edited. A corpus of 413 real documents round-trips byte for byte, and the test is a gate.
+- The preview is "true by construction": it runs the publish conversion and turns the result into HTML, so no shortcode has a second renderer.
+
+GK's shortcodes are registered in one table, each with its syntax, its parameters (for completion) and its renderer. Most target Confluence: panels (`info`, `note`, `tip`, `warning`), `expand`, `status`, `toc`, `anchor`, `page`, `include`, `excerpt`, `children`, `jira`, `mention`, `date`, `attachment`, `layout`, `raw`, review comments and change marks.
+
+## The proposal
+
+### One renderer, on the server
+
+The site's Markdig pipeline is the only renderer, and the visual editor never renders Markdown itself. A JavaScript renderer in the editor would be a second renderer, and its differences are exactly the friction Paul wants to avoid. GK reached the same answer for the same reason.
+
+The first step is a single `SiteMarkdown` service: the page, the desktop window, the draft preview and the visual editor all render through it, with the shortcodes as Markdig extensions inside it. The Terminal's text view and the policy pages can use it too; comments keep their stricter configuration on purpose.
+
+### The editing surface is the page itself
+
+The visual view is the article's own page, the draft preview the Editor already shows, with the editor attached to the article body. The title, date, tags, fonts, widths, colours and every stylesheet are then the page's, not a copy of them. Blocks the editor draws from server HTML go through the same client steps as the published page (highlighting, the code strip, Mermaid, applets, listings), called from the functions `site.js` and `desktop.js` already use rather than repeated in the editor. An applet embedded in an article runs in the editor, as it does on the page.
+
+### How editing works
+
+The model is GK's, ported:
+
+- Markdown stays the stored form, and Text mode is the Editor's CodeMirror view, as now.
+- The server parses the Markdown with Markdig's own syntax tree, with precise source positions, into blocks. Each block has its source text and its HTML from `SiteMarkdown`.
+- Paragraphs, headings, lists, tables, emphasis, inline code and links are rich text in ProseMirror. A block becomes rich only when it round-trips exactly. Code blocks, raw HTML, figures and anything unusual are source blocks: the visual view shows the server's HTML, and a click opens that block's Markdown in place.
+- Shortcode containers (a panel, an expand) show their rendered frame around an editable body; inline shortcodes are atoms showing their rendered HTML.
+- The server writes the document back to Markdown. An untouched block keeps its exact text. A gate test round-trips every live Markdown article and book chapter byte for byte before the visual view ships.
+- PUDL's editing toolbar (0.61) gives formatting, and a `/` menu inserts shortcodes, with completion from the shortcode table.
+
+**Split mode** is Text beside Visual, kept in step as GK keeps them: a change in either side updates the other after a short pause. **Preview** stays as a read-only view of the same page, for reading without the editor attached.
+
+**Typographic quotes** need one rule, because SmartyPants turns straight quotes into curly ones on the page, and rich text in the editor would otherwise show them straight. The proposal is that the visual view shows and types curly quotes, which the page renders the same, while an untouched block keeps its straight quotes in the file.
+
+### Shortcodes
+
+The syntax is GK's, `{{name:args}}` for an inline shortcode and `{{name:args}} … {{/name}}` for a container, so GK's editor code works unchanged and text moves between the two tools. Each shortcode is one entry in a table in the engine: its syntax, its parameters with descriptions (which drive completion and the `/` menu), and its renderer. A shortcode the table doesn't know renders as itself, visibly marked, so a typo shows rather than vanishing.
+
+**From GK, rendered to the site's HTML:**
+
+| Shortcode | Renders as |
+|---|---|
+| `{{info}}`, `{{note}}`, `{{tip}}`, `{{warning}}` … `{{/…}}`, optional title | PUDL notices, with glyph and colour |
+| `{{expand:Title}} … {{/expand}}` | a `<details>` disclosure |
+| `{{status:green Done}}` | a PUDL status badge |
+| `{{toc}}` | a contents list from the article's headings |
+| `{{anchor:name}}` | an anchor to link to |
+| `{{page:slug}}` | a link to a site page, titled from sitenav, opening as a window in the window view |
+| `{{children}}` | the pages of a section or the chapters of a book |
+| `{{include:slug}}` | another page's body, for text shared between pages |
+
+The Confluence-only ones stay behind: `jira`, `mention`, `attachment`, `raw`, `layout`, review comments and change marks. Raw HTML already does what `raw` does here.
+
+**New, for editing this site:**
+
+| Shortcode | Renders as | Why |
+|---|---|---|
+| `{{figure:src=/images/x.png alt="…" width=80%}} caption {{/figure}}` | the site's `<figure>`, `<img>` and `<figcaption>` | Replaces the 41 hand-written figure blocks and their inline styles |
+| `{{applet:conway fit=flow}}` | an applet mount (`data-applet`) | Embeds an applet in a Markdown article, which today needs an HTML article |
+| `{{score:simple/Frere Jacques.musicxml}}` | Sight Reader opened on that score | Music in an article, readable in place |
+| `{{video:youtube ID}}` | a privacy-respecting embed | Replaces the hand-written iframe |
+| `{{code:/path/to/file.cs}}` | a listing fetched from the file | Markdown's way to the `data-code-src` listings HTML articles use |
+| `{{tagged:travel}}`, `{{latest:5}}` | a list of articles under a tag, or the newest | Index pages that stay current without editing |
+| `{{kbd:Ctrl+C}}`, `{{glyph:check}}` | PUDL's key cap and glyph | Small things now written as raw HTML |
+| `{{columns}} … {{column}} … {{/columns}}` | PUDL's grid | Side-by-side content without CSS in the article |
+| `{{draft-note}} … {{/draft-note}}` | nothing on the page; a tinted note in the editor | Notes to self that never publish |
+
+### What the visual view covers first
+
+Markdown articles and book chapters come first. HTML articles keep Text and Preview: they are whole documents with their own scripts and styles, and a visual view for them would need a second model. An HTML article can move to Markdown once the shortcodes above cover what it does; the applet, video and code shortcodes exist for that.
+
+### Order of work
+
+1. **One pipeline and the shortcode table.** `SiteMarkdown` replaces the page, window and preview configurations, with the shortcode framework and the first shortcodes (figure, notices, expand, toc, applet, page). This is useful by itself: the Editor's existing Preview shows shortcodes at once, and figures become one line.
+2. **The document model on the server.** Blocks with source positions and HTML, the writer that keeps untouched blocks exact, and the round-trip gate over every live article and chapter.
+3. **The visual view.** ProseMirror (GK's bundle), attached to the article body in the draft page, with rich text, source blocks, containers and atoms; PUDL's editing toolbar; the `/` menu.
+4. **Split mode,** and the Editor's views settled as Text, Visual, Split and Preview.
+5. **The remaining shortcodes,** and moving HTML articles to Markdown where Paul wants to.
+
+## Rules this follows
+
+The design relies on no undocumented behaviour: Markdig's source positions, ProseMirror and PUDL are used through their documented interfaces. The stored form stays plain Markdown that reads well without the editor, and untouched text is never rewritten. The editor's server endpoints are the super-user's, behind the admin mount's checks.
+
+## Decisions for Paul
+
+1. **Shortcode syntax.** GK's `{{name:args}}`, as proposed, or another?
+2. **Visual for Markdown only at first,** with HTML articles in Text and Preview, as proposed?
+3. **Curly quotes,** shown and typed in the visual view, with untouched text keeping its straight quotes, as proposed?
+4. **The other editors.** The beta article workspace (database-backed, last touched 2026-10-04) uses its own sanitised pipeline and produces different HTML. The brochure site editor that padmajairam.com uses has a third. The proposal is to retire the workspace beta and move the brochure editor onto `SiteMarkdown` and the new editor, so padmajairam.com gets the same tool. Agree?
+5. **The shortcode list.** Which of the new shortcodes above do you want, and are there others you reach for when writing?
