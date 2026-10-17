@@ -66,6 +66,29 @@ function diff(a, b) {
     log('Visual makes the article\'s own page the editor', await frame.isVisible('.post-body .pc-visual h1') && await page.isHidden('.ed-surface'));
     log('a container is drawn in the page\'s own frame', await frame.isVisible('.pc-visual .notice.positive .notice-title'));
     log('a code block is drawn as the page draws it', await frame.isVisible('.pc-visual .pm-source pre'));
+    /* The toolbar is one line when it has room for everything on it, and
+       the formatting wraps as a group when it hasn't. The Classic page's
+       column is too narrow for one line, so the check widens the Editor. */
+    const rows = await page.evaluate(async () => {
+        const bar = document.querySelector('[data-role="format"]').parentElement;
+        const box = bar.closest('.pc-editor');
+        box.style.width = '1700px'; box.style.maxWidth = 'none';
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const mid = s => { const r = document.querySelector(s).getBoundingClientRect(); return Math.round(r.top + r.height / 2); };
+        const wide = [mid('[data-role="format"] [data-fmt="bold"]'), mid('[data-role="views"]'), mid('[data-action="undo"]'),
+            Math.round(document.querySelector('[data-role="insert"]').getBoundingClientRect().height), Math.round(document.querySelector('[data-action="save"]').getBoundingClientRect().height)];
+        box.style.width = ''; box.style.maxWidth = '';
+        return wide;
+    });
+    log('with room, the formatting shares the toolbar\'s line', rows[0] === rows[1] && rows[1] === rows[2], JSON.stringify(rows));
+    log('Insert is as tall as the buttons beside it', Math.abs(rows[3] - rows[4]) <= 2, JSON.stringify(rows));
+    const sorted = await page.evaluate(async () => {
+        const s = document.querySelector('[data-role="insert"]'); s.dispatchEvent(new Event('focus'));
+        for (let i = 0; i < 50 && s.options.length < 2; i++) { await new Promise(r => setTimeout(r, 100)); }
+        const t = [...s.options].slice(1).map(o => o.textContent);
+        return { t, ok: t.length > 1 && t.every((x, i) => i === 0 || t[i - 1].localeCompare(x, undefined, { sensitivity: 'base' }) <= 0) };
+    });
+    log('the Insert list is in alphabetical order', sorted.ok, JSON.stringify(sorted.t));
     let base = await cmText();
     log('the Editor\'s text can be read', base === SOURCE, JSON.stringify(base && base.slice(0, 80)));
 

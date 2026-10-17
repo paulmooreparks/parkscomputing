@@ -42,10 +42,12 @@
 .pc-editor.ed-visual-only .ed-surface { display: none; }
 .pc-editor .ed-views { flex: none; }
 .pc-editor .ed-views[hidden] { display: none; }
-/* The visual view's formatting, a row under the toolbar. */
-.pc-editor .ed-format { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+/* The visual view's formatting, a group in the toolbar that wraps whole. */
+.pc-editor .ed-format { display: flex; align-items: center; gap: 6px; flex: none; }
 .pc-editor .ed-format[hidden] { display: none; }
-.pc-editor .ed-format .ed-insert { min-width: 10rem; }
+/* Insert sits among small buttons, so it takes their height and text size;
+   PUDL has no small select. */
+.pc-editor .ed-format .ed-insert .form-select:not([multiple], [size]) { height: auto; padding-block: 4px; font-size: var(--text-xs); width: auto; min-width: 7.5rem; }
 .pc-editor .ed-view { font-size: var(--text-sm); }
 .pc-editor .ed-view[hidden] { display: none; }
 

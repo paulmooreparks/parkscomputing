@@ -183,6 +183,26 @@
               '<button type="button" class="icon-btn" data-action="redo" aria-label="Redo" title="Redo (Ctrl+Y)"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 3.5l3 3-3 3"/><path d="M13.5 6.5h-7a4 4 0 0 0 0 8H9"/></svg></button>' +
               '<button type="button" class="icon-btn" data-action="find" aria-label="Find and replace" title="Find and replace (Ctrl+F)"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></button>' +
               '<label class="check ed-wrap"><input type="checkbox" data-role="wrap" checked /> Wrap lines</label>' +
+              /* The visual view's formatting (js/editor-visual.js), on the
+                 same line when there is room, and as one group on the next
+                 when there isn't. */
+              '<div class="ed-format" role="toolbar" aria-label="Formatting" data-role="format" hidden>' +
+                '<span class="ed-sep"></span>' +
+                '<button type="button" class="icon-btn" data-fmt="bold" aria-label="Bold" title="Bold (Ctrl+B)"><span class="glyph" style="--glyph: var(--glyph-bold)" aria-hidden="true"></span></button>' +
+                '<button type="button" class="icon-btn" data-fmt="italic" aria-label="Italic" title="Italic (Ctrl+I)"><span class="glyph" style="--glyph: var(--glyph-italic)" aria-hidden="true"></span></button>' +
+                '<button type="button" class="icon-btn" data-fmt="strike" aria-label="Strike through" title="Strike through"><span class="glyph" style="--glyph: var(--glyph-strike)" aria-hidden="true"></span></button>' +
+                '<button type="button" class="icon-btn" data-fmt="code" aria-label="Code" title="Code (Ctrl+`)"><span class="glyph" style="--glyph: var(--glyph-code)" aria-hidden="true"></span></button>' +
+                '<button type="button" class="icon-btn" data-fmt="link" aria-label="Link" title="Link (Ctrl+K)"><span class="glyph" style="--glyph: var(--glyph-link)" aria-hidden="true"></span></button>' +
+                '<span class="ed-sep"></span>' +
+                '<button type="button" class="icon-btn" data-fmt="paragraph" aria-label="Paragraph" title="Paragraph (Ctrl+Alt+0)"><span class="glyph" style="--glyph: var(--glyph-paragraph)" aria-hidden="true"></span></button>' +
+                '<button type="button" class="btn btn-sm" data-fmt="h2" title="Heading (Ctrl+Alt+2)">H2</button>' +
+                '<button type="button" class="btn btn-sm" data-fmt="h3" title="Subheading (Ctrl+Alt+3)">H3</button>' +
+                '<button type="button" class="icon-btn" data-fmt="bullets" aria-label="Bulleted list" title="Bulleted list"><span class="glyph" style="--glyph: var(--glyph-list)" aria-hidden="true"></span></button>' +
+                '<button type="button" class="icon-btn" data-fmt="numbers" aria-label="Numbered list" title="Numbered list"><span class="glyph" style="--glyph: var(--glyph-list-numbered)" aria-hidden="true"></span></button>' +
+                '<span class="ed-sep"></span>' +
+                '<label class="visually-hidden" for="ed-insert-' + n + '">Insert a shortcode</label>' +
+                '<span class="form-select-wrap ed-insert"><select class="form-select" id="ed-insert-' + n + '" data-role="insert"><option value="">Insert…</option></select></span>' +
+              '</div>' +
               '<span class="ed-spacer"></span>' +
               /* On the edit origin: a site page's source, a file's place on
                  the public site, and a preview of unsaved text. */
@@ -199,23 +219,6 @@
               '</div>' +
               '<a class="ed-view" data-role="view" target="_blank" rel="noopener" hidden>View on the site</a>' +
               '<span class="ed-readonly" data-role="readonly" hidden><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Read-only</span>' +
-            '</div>' +
-            /* The visual view's formatting (js/editor-visual.js). */
-            '<div class="ed-format" role="toolbar" aria-label="Formatting" data-role="format" hidden>' +
-              '<button type="button" class="icon-btn" data-fmt="bold" aria-label="Bold" title="Bold (Ctrl+B)"><span class="glyph" style="--glyph: var(--glyph-bold)" aria-hidden="true"></span></button>' +
-              '<button type="button" class="icon-btn" data-fmt="italic" aria-label="Italic" title="Italic (Ctrl+I)"><span class="glyph" style="--glyph: var(--glyph-italic)" aria-hidden="true"></span></button>' +
-              '<button type="button" class="icon-btn" data-fmt="strike" aria-label="Strike through" title="Strike through"><span class="glyph" style="--glyph: var(--glyph-strike)" aria-hidden="true"></span></button>' +
-              '<button type="button" class="icon-btn" data-fmt="code" aria-label="Code" title="Code (Ctrl+`)"><span class="glyph" style="--glyph: var(--glyph-code)" aria-hidden="true"></span></button>' +
-              '<button type="button" class="icon-btn" data-fmt="link" aria-label="Link" title="Link (Ctrl+K)"><span class="glyph" style="--glyph: var(--glyph-link)" aria-hidden="true"></span></button>' +
-              '<span class="ed-sep"></span>' +
-              '<button type="button" class="icon-btn" data-fmt="paragraph" aria-label="Paragraph" title="Paragraph (Ctrl+Alt+0)"><span class="glyph" style="--glyph: var(--glyph-paragraph)" aria-hidden="true"></span></button>' +
-              '<button type="button" class="btn btn-sm" data-fmt="h2" title="Heading (Ctrl+Alt+2)">H2</button>' +
-              '<button type="button" class="btn btn-sm" data-fmt="h3" title="Subheading (Ctrl+Alt+3)">H3</button>' +
-              '<button type="button" class="icon-btn" data-fmt="bullets" aria-label="Bulleted list" title="Bulleted list"><span class="glyph" style="--glyph: var(--glyph-list)" aria-hidden="true"></span></button>' +
-              '<button type="button" class="icon-btn" data-fmt="numbers" aria-label="Numbered list" title="Numbered list"><span class="glyph" style="--glyph: var(--glyph-list-numbered)" aria-hidden="true"></span></button>' +
-              '<span class="ed-sep"></span>' +
-              '<label class="visually-hidden" for="ed-insert-' + n + '">Insert a shortcode</label>' +
-              '<span class="form-select-wrap ed-insert"><select class="form-select" id="ed-insert-' + n + '" data-role="insert"><option value="">Insert…</option></select></span>' +
             '</div>' +
             '<div class="tablist doc-tabs ed-tabs" role="tablist" aria-label="Open files" data-role="tabs"></div>' +
             /* PUDL's splitter divides the Explorer from the work. */
@@ -921,7 +924,8 @@
             if (b && visual.api) { visual.api.run(b.getAttribute('data-fmt')); }
         });
 
-        /* The insert menu lists the shortcodes, from the server's table. */
+        /* The insert menu lists the shortcodes, from the server's table, in
+           alphabetical order of the titles it shows. */
         var shortcodes = null;
         async function fillInsert() {
             if (shortcodes) { return; }
@@ -929,7 +933,9 @@
                 var r = await fetch('/api/admin/editor/shortcodes', { credentials: 'same-origin', headers: { Accept: 'application/json' } });
                 shortcodes = r.ok ? (await r.json()).shortcodes : [];
             } catch (err) { shortcodes = []; }
-            shortcodes.filter(function (s) { return s.name !== 'column'; }).forEach(function (s) {
+            shortcodes.filter(function (s) { return s.name !== 'column'; }).sort(function (a, b) {
+                return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+            }).forEach(function (s) {
                 var o = document.createElement('option');
                 o.value = s.name;
                 o.textContent = s.title;
