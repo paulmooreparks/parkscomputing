@@ -39,6 +39,8 @@ public class SiteMarkdownTests {
 
     private static string _root = "";
 
+    internal static SiteMarkdown SiteForTests() => Site();
+
     private static SiteMarkdown Site() {
         if (_root.Length == 0) {
             _root = Path.Combine(Path.GetTempPath(), "sitemarkdown-tests-" + Guid.NewGuid().ToString("n"));
