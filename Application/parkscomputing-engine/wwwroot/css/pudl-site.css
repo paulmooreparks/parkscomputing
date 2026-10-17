@@ -264,6 +264,12 @@ body.desktop .site-header { position: static; flex: none; }
 /* A note to self shows only in the editor, tinted so it can't be taken for the article. */
 .post-body .sc-draft-note { margin: 0 0 1.1rem; padding: var(--space-3) var(--space-4); border: 1px dashed var(--warn); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--warn) 8%, transparent); }
 .post-body .sc-draft-note-label { margin: 0 0 var(--space-1); font-size: var(--text-2xs); font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+/* A container's body starts at its top: a heading there drops the space
+   it keeps above it in the article. In the visual editor the body sits in
+   a wrapper with no box of its own (.pm-hole, css/editor-visual.css). */
+.post-body :is(.sc-draft-note-label + *, .sc-expand > summary + *, .sc-column > :first-child, .sc-notice .notice-body > :first-child),
+.post-body :is(.sc-draft-note-label, .sc-expand > summary) + .pm-hole > :first-child,
+.post-body :is(.sc-column, .sc-notice .notice-body) > .pm-hole:first-child > :first-child { margin-top: 0; }
 /* A shortcode written wrongly shows as itself, marked, with the reason as its title. */
 .sc-problem { color: var(--danger); text-decoration: wavy underline var(--danger); cursor: help; }
 

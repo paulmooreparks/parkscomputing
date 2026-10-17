@@ -23,7 +23,8 @@ const SOURCE = [
     'The first paragraph, with *emphasis*.', '',
     '{{tip:A tip}}', 'Inside the tip.', '{{/tip}}', '',
     '```js', 'let x = 1;', '```', '',
-    'The last paragraph.', ''
+    'The last paragraph.', '',
+    '{{draft-note}}', '## A heading first', '', 'Then a line.', '{{/draft-note}}', ''
 ].join('\n');
 
 /* What changed between two texts: the one stretch each has that the other doesn't. */
@@ -66,6 +67,11 @@ function diff(a, b) {
     log('Visual makes the article\'s own page the editor', await frame.isVisible('.post-body .pc-visual h1') && await page.isHidden('.ed-surface'));
     log('a container is drawn in the page\'s own frame', await frame.isVisible('.pc-visual .notice.positive .notice-title'));
     log('a code block is drawn as the page draws it', await frame.isVisible('.pc-visual .pm-source pre'));
+    const lead = await frame.evaluate(() => {
+        const label = document.querySelector('.pc-visual .sc-draft-note-label'), h = document.querySelector('.pc-visual .sc-draft-note h2');
+        return h ? Math.round(h.getBoundingClientRect().top - label.getBoundingClientRect().bottom) : null;
+    });
+    log('a heading that opens a note sits close under its label', lead !== null && lead < 24, lead);
     /* The toolbar is one line when it has room for everything on it, and
        the formatting wraps as a group when it hasn't. The Classic page's
        column is too narrow for one line, so the check widens the Editor. */
