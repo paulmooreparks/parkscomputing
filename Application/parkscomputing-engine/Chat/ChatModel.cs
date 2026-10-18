@@ -114,6 +114,15 @@ public sealed class ChatSettings {
         return etc is null ? null : System.IO.Path.Combine(etc, FileName);
     }
 
+    /// <summary>Writes the settings whole, as the settings dialog gives them.</summary>
+    public void Write(ChatConfig config) {
+        var path = PathOf() ?? throw new InvalidOperationException("There is no settings folder.");
+        var tmp = path + ".tmp";
+        File.WriteAllText(tmp, JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true, DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull }) + "\n");
+        File.Move(tmp, path, overwrite: true);
+        lock (_gate) { _cached = null; }
+    }
+
     /// <summary>The settings, and why they could not be read, or null.</summary>
     public (ChatConfig Config, string? Error) Read() {
         var path = PathOf();

@@ -49,6 +49,9 @@ services:
       - Admin__EditOrigin=https://parkscomputing.com
       - Admin__PublicOrigin=https://parkscomputing.com
       - RESEND_API_KEY=${RESEND_API_KEY}
+      # The staff's Chat (Architecture/chat-design.md): a provider's key is
+      # named in /etc/chat.json and lives only here.
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - EMAIL_FROM=${EMAIL_FROM}
       - EMAIL_REPLY_TO=${EMAIL_REPLY_TO}
     # Loopback only: the public reaches the site through the cloudflared

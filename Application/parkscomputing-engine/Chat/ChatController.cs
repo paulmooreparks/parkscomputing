@@ -97,6 +97,55 @@ public sealed class ChatController : ControllerBase {
         });
     }
 
+    /// <summary>The settings as the dialog edits them: every provider with
+    /// whether the server has its key, never the key itself. Any of the
+    /// staff may read them; the super-user alone writes them, since they
+    /// are the server's own file, /etc/chat.json.</summary>
+    [HttpGet("settings")]
+    public async Task<IActionResult> Settings() {
+        if (await ReaderAsync() is null) { return NotFound(); }
+        var (config, error) = _settings.Read();
+        Response.Headers.CacheControl = "no-store";
+        return Ok(new JsonObject {
+            ["providers"] = new JsonArray(config.Providers.Select(p => (JsonNode)new JsonObject {
+                ["id"] = p.Id, ["name"] = p.Name, ["kind"] = p.Kind, ["baseUrl"] = p.BaseUrl, ["keyEnv"] = p.KeyEnv,
+                ["models"] = p.Models is null ? null : new JsonArray(p.Models.Select(m => (JsonNode)m).ToArray()),
+                ["maxTokens"] = p.MaxTokens, ["thinkingBudget"] = p.ThinkingBudget,
+                ["hasKey"] = string.IsNullOrWhiteSpace(p.KeyEnv) ? null : !string.IsNullOrEmpty(p.Key)
+            }).ToArray()),
+            ["defaultProvider"] = config.DefaultProvider, ["defaultModel"] = config.DefaultModel,
+            ["system"] = config.System, ["maxToolRounds"] = config.MaxToolRounds,
+            ["error"] = error, ["path"] = "/etc/" + ChatSettings.FileName, ["canEdit"] = await ToolsAllowedAsync()
+        });
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex IdShape = new("^[a-z][a-z0-9-]{0,39}$");
+
+    [HttpPut("settings")]
+    public async Task<IActionResult> SaveSettings([FromBody] ChatConfig body) {
+        if (await ReaderAsync() is null) { return NotFound(); }
+        if (!await ToolsAllowedAsync()) { return StatusCode(403, new { error = "Only the super-user may change the chat's settings." }); }
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var p in body.Providers) {
+            p.Id = (p.Id ?? "").Trim().ToLowerInvariant(); p.Name = string.IsNullOrWhiteSpace(p.Name) ? null : p.Name!.Trim();
+            p.Kind = (p.Kind ?? "openai").Trim().ToLowerInvariant(); p.BaseUrl = (p.BaseUrl ?? "").Trim(); p.KeyEnv = string.IsNullOrWhiteSpace(p.KeyEnv) ? null : p.KeyEnv!.Trim();
+            if (!IdShape.IsMatch(p.Id)) { return BadRequest(new { error = "A provider's id is lower-case letters, digits and hyphens, starting with a letter: " + (p.Id.Length > 0 ? p.Id : "(empty)") }); }
+            if (!seen.Add(p.Id)) { return BadRequest(new { error = "Two providers are called " + p.Id + "." }); }
+            if (p.Kind is not ("openai" or "anthropic")) { return BadRequest(new { error = p.Id + ": the kind is openai or anthropic." }); }
+            if (!Uri.TryCreate(p.BaseUrl, UriKind.Absolute, out var u) || (u.Scheme != "http" && u.Scheme != "https")) { return BadRequest(new { error = p.Id + ": the address must start with http:// or https://." }); }
+            if (p.KeyEnv is not null && !System.Text.RegularExpressions.Regex.IsMatch(p.KeyEnv, "^[A-Za-z_][A-Za-z0-9_]*$")) { return BadRequest(new { error = p.Id + ": the key's variable is a name such as ANTHROPIC_API_KEY." }); }
+            p.Models = p.Models?.Select(m => m.Trim()).Where(m => m.Length > 0).ToList();
+            if (p.Models is { Count: 0 }) { p.Models = null; }
+        }
+        body.DefaultProvider = string.IsNullOrWhiteSpace(body.DefaultProvider) ? null : body.DefaultProvider!.Trim().ToLowerInvariant();
+        if (body.DefaultProvider is not null && !seen.Contains(body.DefaultProvider)) { return BadRequest(new { error = "The default provider, " + body.DefaultProvider + ", is not in the list." }); }
+        body.DefaultModel = string.IsNullOrWhiteSpace(body.DefaultModel) ? null : body.DefaultModel!.Trim();
+        body.System = string.IsNullOrWhiteSpace(body.System) ? null : body.System!.Trim();
+        body.MaxToolRounds = Math.Clamp(body.MaxToolRounds, 1, 200);
+        _settings.Write(body);
+        return NoContent();
+    }
+
     [HttpGet("conversations")]
     public async Task<IActionResult> List() {
         if (await ReaderAsync() is not { } me) { return NotFound(); }

@@ -62,6 +62,16 @@ Paul asked to look hard for any way to use his Claude Code or Cowork subscriptio
 
 A provider for headless Claude Code on a subscription would fit the provider interface if Anthropic ever approves it in writing. The ACP transport GK uses for Devin and Codex would fit the same way, for any agent installed in the container.
 
+## The look, after GK Companion's (Paul, 2026-10-18)
+
+The first version was built from the protocol up and looked nothing like GK Companion's Chat; Paul wants GK's look and features on the site. The applet now keeps GK's shape and most of its markup and rules: a page head with the chat's title, the rename and delete buttons and a state line; the run as a log of rows with the time at the left (your messages and the model's as cards with Copy, Edit and Quote, the model's thoughts as muted rows shown by a preference, each tool call as a row with its status and folded details, several in a row folded into a PUDL disclosure card that counts them, and the end of each turn with its length and tokens); your last message pinned at the top of the run once it scrolls away; Jump to the Latest; the questions between the run and the composer; and GK's composer, a bar of small controls (the provider, Thinking on or off, the model as a button with a menu, Add for files and pictures, the site tools, anything queued, Usage, and Stop at the end while a reply runs) over the box with Send and Steer stacked beside it. Esc stops, F2 renames, and files drop onto the window.
+
+GK's Chats pane is a window of its own; here the list of chats sits inside the window, as Paul asked: the list and the chat pane share the space over the composer across PUDL's splitter, whose width the reader sets is kept with their preferences, and the composer runs the whole width below them. A glyph button beside the title, and the View menu, collapse the list, which PUDL's `data-split-pane="second"` does by giving the pane the whole width. The list is grouped as GK groups them: Needs You (a question waits), Working (a reply runs) and Chats, with the provider and time under each title and a badge for its state.
+
+A second message sent while the first chat was still being made had made another chat (two "Liveness check" chats, 0.85 s apart). Sending is now guarded: one chat is made at a time, and Send waits while a message goes.
+
+**The settings dialog** (File > Chat Settings…) has two tabs. Providers edits the server's `/etc/chat.json` through `GET` and `PUT settings`: each provider's id, name, kind, address, the name of its key's environment variable (and whether the server has a value for it), its models, its largest reply and thinking budget; the default provider and model; the tool rounds; the system prompt. The super-user alone may save it; other staff see it read-only. Preferences are the reader's own, kept by `pudlHost.config` as `~/.config/chat.json`: whether thoughts show, whether the list of chats shows, and whether Enter or Ctrl+Enter sends.
+
 ## Checks
 
 - `ChatTests` (6 unit tests): both stream parsers, both request bodies, and the grants.
