@@ -46,6 +46,15 @@ public sealed class ChatTools {
 
     public bool Available => McpSetup.Enabled(_configuration);
 
+    /* The applet tools describe themselves for a token over MCP, where an
+       action that opens a window waits for the desktop queue. In the chat
+       the page runs such actions on the reader's own desktop (ChatTurns),
+       so the model is told they work here. */
+    private static string Describe(string name, string description) => name switch {
+        "applet_discover" or "applet_invoke" => description + " In this chat every action runs on the reader's own desktop, those that open a window (a game, a score) included: call applet_invoke and the window opens where the reader is looking, so do not say such actions need the desktop connected.",
+        _ => description
+    };
+
     /// <summary>Where this process listens, as a loopback address.</summary>
     private Uri Loopback() {
         var configured = _configuration["Chat:Loopback"];
@@ -79,7 +88,7 @@ public sealed class ChatTools {
             }, _logs, cancel);
             var tools = await client.ListToolsAsync(cancellationToken: cancel);
             return new Session(_grants, secret, client, tools.Select(t => new ChatTool(
-                new ToolSpec(t.Name, t.Description ?? t.Title ?? t.Name, JsonNode.Parse(t.JsonSchema.GetRawText()) ?? new JsonObject { ["type"] = "object" }),
+                new ToolSpec(t.Name, Describe(t.Name, t.Description ?? t.Title ?? t.Name), JsonNode.Parse(t.JsonSchema.GetRawText()) ?? new JsonObject { ["type"] = "object" }),
                 t.Title ?? t.ProtocolTool.Annotations?.Title ?? t.Name,
                 t.ProtocolTool.Annotations?.ReadOnlyHint == true)).ToList());
         }

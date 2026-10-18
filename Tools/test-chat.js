@@ -157,6 +157,14 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
         await page.waitForFunction(() => document.querySelector('.pudl-chat').classList.contains('is-working'), null, { timeout: 15000 }).catch(() => { });
         await idle();
         log('the mentioned file reaches the model', /giraffe/i.test(await lastReply()), await lastReply());
+        await page.fill('.chat-text', '');
+        await page.type('.chat-text', '@dice');
+        await page.waitForSelector('.slash-pop:not([hidden]) .mention-row', { timeout: 10000 }).catch(() => { });
+        const appletGroups = await page.$$eval('.slash-pop .md-section-label', ls => ls.map(l => l.textContent));
+        const appletNames = await page.$$eval('.slash-pop .mention-name', ns => ns.map(n => n.textContent));
+        log('"@" offers the applets with their actions', appletGroups.includes('Applets') && appletNames.includes('Dice'), appletGroups.join() + ' / ' + appletNames.join());
+        await page.keyboard.press('Escape');
+        await page.fill('.chat-text', '');
     }
 
     // Up in the box recalls what was sent.

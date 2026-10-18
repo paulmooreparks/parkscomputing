@@ -24,6 +24,22 @@ window.pcAppletActions = [];
    it, belong to no applet. */
 window.pcActionsSrc = '/js/applet-actions.js?v=3';
 window.pcAppletActions.push({ applet: null, manifest: '/js/actions/page.json?v=1', handles: null, page: null });
+/* The applets' action manifests, read once for whoever lists them (the
+   chat's @ menu): each as { id, title, description, manifest, actions }. */
+var appletManifests = (function () {
+    var loaded = null;
+    return function () {
+        if (loaded) { return loaded; }
+        loaded = Promise.all(window.pcAppletActions.filter(function (e) { return e.applet; }).map(function (e) {
+            return fetch(e.manifest, { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+                if (!m || !m.actions) { return null; }
+                return { id: m.id || e.applet, title: m.title || e.applet, description: m.description || '', manifest: e.manifest,
+                    actions: (m.actions || []).map(function (a) { return { ref: a.ref, title: a.title || a.ref, description: a.description || '' }; }) };
+            }, function () { return null; });
+        })).then(function (list) { return list.filter(Boolean).sort(function (a, b) { return a.title.localeCompare(b.title); }); });
+        return loaded;
+    };
+})();
 
 /* Identity actions use PUDL's documented capability snapshots. */
 pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '20' });
@@ -288,12 +304,21 @@ pudlApplets.define('settings', {
                 siteFs().then(function (f) { if (!gone) { off = f.onChange(function () { fn(); }); } });
                 return function () { gone = true; if (off) { off(); } };
             },
-            /* The files and pages whose names hold the words, the reader's
-               own first. */
+            /* The applets with published actions, the files and the pages
+               whose names hold the words; the applets first, then the
+               reader's own files. An applet comes with its manifest's
+               address, so a chat can give the model the actions it offers. */
             find: function (query, limit) {
                 var words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean), max = limit || 40;
-                return fs().then(function (F) {
-                    var out = [];
+                return Promise.all([fs(), appletManifests()]).then(function (got) {
+                    var F = got[0], out = [];
+                    got[1].forEach(function (m) {
+                        var text = (m.title + ' ' + m.id + ' ' + (m.description || '') + ' ' + m.actions.map(function (a) { return a.title + ' ' + a.ref; }).join(' ')).toLowerCase();
+                        if (words.every(function (w) { return text.indexOf(w) >= 0; })) {
+                            out.push({ path: m.id, name: m.title, kind: 'applet', description: m.description || m.actions.map(function (a) { return a.title; }).join(' · '), manifest: m.manifest });
+                        }
+                    });
+                    var applets = out; out = [];
                     (function walk(n, depth) {
                         if (out.length >= max || depth > 12) { return; }
                         (n.children || []).forEach(function (c) {
@@ -307,7 +332,7 @@ pudlApplets.define('settings', {
                         });
                     })(F.root(), 0);
                     out.sort(function (a, b) { return (a.path.indexOf('~/') === 0 ? 0 : 1) - (b.path.indexOf('~/') === 0 ? 0 : 1) || a.path.localeCompare(b.path); });
-                    return out.slice(0, max);
+                    return applets.concat(out).slice(0, max);
                 });
             },
             readText: function (path) {
