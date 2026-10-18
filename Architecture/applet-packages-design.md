@@ -117,6 +117,14 @@ In the engine, `Pages/Services/AppletCatalog.cs` scans `wwwroot/applets/*/applet
 
 Checks: six unit tests over a temporary web root (`AppletCatalogTests`), and `Tools/test-applet-packages.js` (18, on the test instance with the Hello package installed): the registry and its ETag, the page and its applet, `pudlHost`, a file kept under `~`, continuity, the Applets menu, a window with the manifest's shape and least size and the applet's menu, and the package's action through the broker. `test-mcp.js` gained two checks, the package's actions discovered and one run on the server. Live on parkscomputing.com with no package installed, so the registry is empty and every page renders as before (102 articles compared).
 
+**Step 2, PUDLSplash and Space Invaders (2026-10-18).** The repo `PUDLSplash` (local at `C:\Users\paul\source\repos\PUDLSplash`, Apache-2.0) holds `packages/invaders` and `packages/shared`, with `tools/pack.js` copied from the kit. The shared folder sits inside `packages/` beside the games, not beside the repo's root, because the packing tool reads a collection as one folder; the manifest's `shared: ["../shared"]` points there. `splash-input.js` reads keys on the applet's own root, so a game in one window never takes keys from another, draws a touch pad when the pointer is a finger, and reports when the keyboard leaves; `splash-scores.js` keeps the ten best of each game in `~/.splash/scores.json` through `pudlHost.fs`, or in this browser's storage on a host without one.
+
+Space Invaders draws the 1978 game on a canvas of 224 by 256 in PUDL's theme tokens, with a five-by-seven pixel font for its words, since a text font rasterised at that size and scaled looked nothing like the arcade. It pauses when it loses the keyboard, keeps its sound setting through `pudlHost.config`, and answers a `play` request with a level. Its one published action, `splash.invaders/play@1`, opens it; the games have no pure action yet, so nothing of theirs runs over `/mcp`.
+
+Two things the first package taught the host. A page body must not set the mount's fit, since a window is built from the same body and PUDL then honours it; the host decides. And the site now gives any mount PUDL marks `data-applet-fit="fill"` a definite box (`pudl-site.css`), which every site applet had been doing for itself under a class of its own, so a package's stylesheet sizes only its own insides.
+
+Checks: `tools/test-invaders.js` (20, against any host with the package installed): the page, a game started, moved, fired, paused by the key, by losing the keyboard and by the button, the dialogs, the scores file ranked and kept under `~`, and the game in a window with its shape and menu. Live on parkscomputing.com at `/page/invaders` and in the Applets menu, installed by copying `dist/invaders` and `dist/shared` into the live content's `wwwroot/applets/`.
+
 ## Decisions for Paul
 
 1. The package shape and `pudlHost` as set out above.
