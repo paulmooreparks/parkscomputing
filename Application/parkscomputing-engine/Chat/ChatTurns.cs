@@ -60,7 +60,7 @@ public sealed class ChatTurns {
     private sealed class Live {
         public readonly object Gate = new();
         public long Seq;
-        public readonly List<Channel<string>> Subscribers = new();
+        public readonly List<Channel<(long Seq, string Text)>> Subscribers = new();
         public bool Working;
         public ChatMessage? Partial;
         public readonly LinkedList<ChatSend> Queue = new();
@@ -69,7 +69,14 @@ public sealed class ChatTurns {
         public readonly Dictionary<string, TaskCompletionSource<(string? Output, string? Error)>> Actions = new();
         public CancellationTokenSource? Cancel;
         public int QuestionCount, ActionCount;
+        /* The last events, so a page whose stream broke picks up where it
+           left off (its Last-Event-ID) rather than missing an action. */
+        public readonly Queue<(long Seq, string Text)> Recent = new();
+        /* The grant an agent provider (Codex) keeps for the site's MCP
+           server, for the thread's life rather than one turn's. */
+        public (string Secret, Action Revoke, DateTimeOffset Since)? AgentGrant;
     }
+    private const int RecentMax = 300;
 
     private readonly ConcurrentDictionary<string, Live> _live = new();
     private readonly ChatStore _store;
@@ -110,21 +117,29 @@ public sealed class ChatTurns {
     public static JsonNode ToJson(object value) => JsonSerializer.SerializeToNode(value, Wire)!;
 
     private void Publish(Live live, JsonObject evt) {
-        string text;
-        Channel<string>[] subs;
+        string text; long seq;
+        Channel<(long, string)>[] subs;
         lock (live.Gate) {
-            evt["seq"] = ++live.Seq;
+            seq = ++live.Seq;
+            evt["seq"] = seq;
             text = evt.ToJsonString();
+            live.Recent.Enqueue((seq, text));
+            while (live.Recent.Count > RecentMax) { live.Recent.Dequeue(); }
             subs = live.Subscribers.ToArray();
         }
-        foreach (var s in subs) { s.Writer.TryWrite(text); }
+        foreach (var s in subs) { s.Writer.TryWrite((seq, text)); }
     }
 
-    /// <summary>A page following a conversation: its events as JSON, until it lets go.</summary>
-    public (ChannelReader<string> Events, Action Leave) Subscribe(string home, string id) {
+    /// <summary>A page following a conversation: its events as JSON with
+    /// their numbers, until it lets go; a page that comes back after its
+    /// stream broke says the last number it saw and gets what it missed.</summary>
+    public (ChannelReader<(long Seq, string Text)> Events, Action Leave) Subscribe(string home, string id, long after = -1) {
         var live = LiveOf(home, id);
-        var ch = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true });
-        lock (live.Gate) { live.Subscribers.Add(ch); }
+        var ch = Channel.CreateUnbounded<(long, string)>(new UnboundedChannelOptions { SingleReader = true });
+        lock (live.Gate) {
+            if (after >= 0) { foreach (var (seq, text) in live.Recent) { if (seq > after) { ch.Writer.TryWrite((seq, text)); } } }
+            live.Subscribers.Add(ch);
+        }
         return (ch.Reader, () => { lock (live.Gate) { live.Subscribers.Remove(ch); } ch.Writer.TryComplete(); });
     }
 
@@ -256,7 +271,6 @@ public sealed class ChatTurns {
         var clock = Stopwatch.StartNew();
         int inputTokens = 0, outputTokens = 0; string? turnError = null; string stopReason = "end_turn";
         ChatTools.Session? tools = null;
-        Action? revokeGrant = null;
         AgentContext? agent = null;
         var isAgent = string.Equals(providerConfig.Kind, "codex", StringComparison.OrdinalIgnoreCase);
         try {
@@ -265,8 +279,14 @@ public sealed class ChatTurns {
                    a grant of its own, at the site's public address. */
                 string? mcpUrl = null, mcpSecret = null;
                 if (conv.Tools && send.ToolsAllowed && _tools.Available) {
-                    var (secret, revoke) = _tools.Grant(send.User);
-                    mcpSecret = secret; revokeGrant = revoke;
+                    /* Codex keeps its connection to the site's MCP server across
+                       turns, so the grant lives with the conversation and is
+                       renewed well before it runs out. */
+                    lock (live.Gate) {
+                        if (live.AgentGrant is { } old && _clock.GetUtcNow() - old.Since > TimeSpan.FromHours(20)) { old.Revoke(); live.AgentGrant = null; }
+                        if (live.AgentGrant is null) { var (secret, revoke) = _tools.Grant(send.User, TimeSpan.FromHours(24)); live.AgentGrant = (secret, revoke, _clock.GetUtcNow()); }
+                        mcpSecret = live.AgentGrant.Value.Secret;
+                    }
                     mcpUrl = _admin.PublicOrigin.TrimEnd('/') + McpSetup.Path;
                 }
                 var cwd = _files.RootDir(ServerFiles.Home, home) ?? throw new ProviderException("The reader has no home folder on the server for Codex to work in.");
@@ -314,6 +334,9 @@ public sealed class ChatTurns {
                                 }
                                 break;
                             }
+                            case AgentNotice an:
+                                Publish(live, new JsonObject { ["type"] = "notice", ["text"] = an.Text });
+                                break;
                             case AgentApproval ap: {
                                 /* The agent asks before a command or a change: the same
                                    question card as the chat's own tools, with its choices. */
@@ -401,7 +424,6 @@ public sealed class ChatTurns {
         finally {
             lock (live.Gate) { live.Cancel = null; live.Partial = null; }
             if (tools is not null) { try { await tools.DisposeAsync(); } catch (Exception ex) { _log.LogDebug(ex, "Closing the chat's tools"); } }
-            revokeGrant?.Invoke();
             if (agent is not null) { try { await _store.SaveAsync(home, conv); } catch (Exception ex) { _log.LogDebug(ex, "Keeping the agent's thread"); } }
         }
         Publish(live, new JsonObject {

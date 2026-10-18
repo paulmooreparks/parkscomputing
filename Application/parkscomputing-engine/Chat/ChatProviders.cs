@@ -35,6 +35,9 @@ public sealed record AgentTool(string Id, string Title, string Kind, string Stat
 /// <summary>An agent provider asks the reader before going on (Codex's
 /// approval to run a command or change files): the options are the
 /// decisions it takes, and Answer gets the chosen one, or cancel.</summary>
+/// <summary>Something an agent provider says about its own state that the
+/// reader should see (its connection to the site's tools failed).</summary>
+public sealed record AgentNotice(string Text) : ProviderEvent;
 public sealed record AgentApproval(string Id, string Title, JsonNode? Input, IReadOnlyList<(string Id, string Name, string Kind)> Options, TaskCompletionSource<string> Answer) : ProviderEvent;
 
 /// <summary>A tool the model may ask for: its name, what it does, and its input's JSON Schema.</summary>

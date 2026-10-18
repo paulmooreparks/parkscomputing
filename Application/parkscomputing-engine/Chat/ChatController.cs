@@ -288,19 +288,22 @@ public sealed class ChatController : ControllerBase {
         Response.Headers.ContentType = "text/event-stream";
         Response.Headers.CacheControl = "no-cache, no-store";
         Response.Headers["X-Accel-Buffering"] = "no";
-        var (events, leave) = _turns.Subscribe(me.Home, id);
+        /* A page whose stream broke comes back with the last number it saw
+           (the browser's Last-Event-ID) and gets what it missed first. */
+        var after = long.TryParse(Request.Headers["Last-Event-ID"].FirstOrDefault(), out var last) ? last : -1;
+        var (events, leave) = _turns.Subscribe(me.Home, id, after);
         try {
             await Response.WriteAsync(": open\n\n", cancel);
             await Response.Body.FlushAsync(cancel);
             while (!cancel.IsCancellationRequested) {
                 using var wait = CancellationTokenSource.CreateLinkedTokenSource(cancel);
                 wait.CancelAfter(TimeSpan.FromSeconds(20));
-                string text;
-                try { text = await events.ReadAsync(wait.Token); }
+                (long Seq, string Text) e;
+                try { e = await events.ReadAsync(wait.Token); }
                 catch (OperationCanceledException) when (!cancel.IsCancellationRequested) {
                     await Response.WriteAsync(": keep\n\n", cancel); await Response.Body.FlushAsync(cancel); continue;
                 }
-                await Response.WriteAsync("data: " + text + "\n\n", cancel);
+                await Response.WriteAsync("id: " + e.Seq + "\ndata: " + e.Text + "\n\n", cancel);
                 await Response.Body.FlushAsync(cancel);
             }
         }

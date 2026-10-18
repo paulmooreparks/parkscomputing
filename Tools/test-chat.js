@@ -189,7 +189,7 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
     await ask('Use chat_info to say which providers this chat has and which model this conversation uses. One line.');
     await idle();
     const ownRows = await page.evaluate(() => [...document.querySelectorAll('.chat-tool')].map(t => t.querySelector('.tool-title').textContent + ':' + t.getAttribute('data-status')));
-    log('chat_info answers about the chat without asking', ownRows.some(r => /Ask the chat about itself:completed/.test(r)) && (await page.locator('.question').count()) === 0 && /Ollama|Claude/.test(await lastReply()), ownRows.join() + ' / ' + await lastReply());
+    log('chat_info answers about the chat without asking', ownRows.some(r => /Ask the chat about itself:completed/.test(r)) && (await page.locator('.question').count()) === 0 && /ollama|claude|codex/i.test(await lastReply()), ownRows.join() + ' / ' + await lastReply());
     await ask('Use web_fetch to read https://example.com/ and quote its heading. One line.');
     await idle();
     const webRows = await page.evaluate(() => [...document.querySelectorAll('.chat-tool')].map(t => t.querySelector('.tool-title').textContent + ':' + t.getAttribute('data-status')));

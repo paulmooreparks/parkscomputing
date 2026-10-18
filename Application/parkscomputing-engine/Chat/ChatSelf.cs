@@ -46,16 +46,27 @@ public sealed class ChatSelf {
     /// <summary>The providers with their models, as GET providers gives
     /// them: a provider that lists no models in the settings is asked, with
     /// a short wait, and a missing key or a failed listing is its problem.</summary>
+    /* A provider's own model list, kept ten minutes: every chat window asks
+       for the providers as it opens, and asking Codex or Ollama each time
+       held the window up. */
+    private readonly Dictionary<string, (DateTimeOffset At, IReadOnlyList<string> Models)> _models = new();
+    private readonly object _gate = new();
+
     public async Task<JsonObject> ProvidersAsync(ChatConfig config, string? error, bool toolsOffered, CancellationToken cancel) {
         var list = new JsonArray();
         foreach (var p in config.Providers) {
             IReadOnlyList<string> models = p.Models ?? new List<string>();
             string? problem = null;
             if (models.Count == 0) {
+                var key = p.Id + "|" + p.Kind + "|" + p.BaseUrl + "|" + p.Command;
+                lock (_gate) { if (_models.TryGetValue(key, out var kept) && DateTimeOffset.UtcNow - kept.At < TimeSpan.FromMinutes(10)) { models = kept.Models; } }
+            }
+            if (models.Count == 0) {
                 try {
                     using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel);
                     timeout.CancelAfter(TimeSpan.FromSeconds(8));
                     models = await ChatProviders.For(p, _http.CreateClient(ChatProviders.ClientName), _codex).ModelsAsync(timeout.Token);
+                    if (models.Count > 0) { lock (_gate) { _models[p.Id + "|" + p.Kind + "|" + p.BaseUrl + "|" + p.Command] = (DateTimeOffset.UtcNow, models); } }
                 }
                 catch (Exception ex) when (ex is ProviderException or HttpRequestException or OperationCanceledException) { problem = "Its models could not be listed: " + ex.Message; }
             }

@@ -26,6 +26,7 @@ namespace ParksComputing.Engine.Chat;
 /// provider gives Codex its earlier messages once, as the first turn.
 /// </summary>
 public sealed class CodexProvider : IChatProvider {
+    public const string McpServerName = "parkscomputing";
     private readonly ChatProviderConfig _config;
     private readonly CodexHost _host;
     public CodexProvider(ChatProviderConfig config, CodexHost host) { _config = config; _host = host; }
@@ -63,7 +64,7 @@ public sealed class CodexProvider : IChatProvider {
         if (agent.McpUrl is { Length: > 0 } url && agent.McpSecret is { Length: > 0 } secret) {
             start["config"] = new JsonObject {
                 ["mcp_servers"] = new JsonObject {
-                    ["parkscomputing"] = new JsonObject {
+                    [McpServerName] = new JsonObject {
                         ["url"] = url, ["http_headers"] = new JsonObject { ["Authorization"] = "Bearer " + secret },
                         ["enabled"] = true, ["required"] = false, ["default_tools_approval_mode"] = "writes", ["tool_timeout_sec"] = 60
                     }
@@ -78,6 +79,13 @@ public sealed class CodexProvider : IChatProvider {
         if (fresh) { agent.ThreadStarted(threadId); }
 
         using var sub = conn.Subscribe(threadId, m => OnMessageAsync(conn, turn, m));
+        /* The site's tools come to Codex over MCP, which it connects as the
+           thread starts; the turn waits a little for that, so the model has
+           them from its first word, and says so when the connection failed. */
+        if (start["config"] is not null) {
+            var ready = await Task.WhenAny(turn.McpStatus.Task, Task.Delay(TimeSpan.FromSeconds(15), cancel));
+            if (ready != turn.McpStatus.Task) { events.Writer.TryWrite(new AgentNotice("Codex is still connecting to the site's tools; this reply may begin without them.")); }
+        }
         var input = Input(request, fresh);
         var q = new JsonObject { ["threadId"] = threadId, ["input"] = input };
         if (!string.IsNullOrWhiteSpace(request.Model)) { q["model"] = request.Model; }
@@ -103,6 +111,8 @@ public sealed class CodexProvider : IChatProvider {
         public string? TurnId; public bool Cancelled; public string? Error;
         public readonly HashSet<string> Streamed = new();
         public readonly Dictionary<string, TaskCompletionSource<string>> Approvals = new();
+        /* The site's MCP server, as Codex reports its start: ready or failed. */
+        public readonly TaskCompletionSource<string> McpStatus = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TurnState(ChannelWriter<ProviderEvent> events) { Events = events; }
     }
 
@@ -194,6 +204,16 @@ public sealed class CodexProvider : IChatProvider {
             }
             case "item/commandExecution/outputDelta":
                 return null;
+            case "mcpServer/startupStatus/updated": {
+                if (p["name"]?.GetValue<string>() != McpServerName) { return null; }
+                var status = p["status"]?.GetValue<string>() ?? "";
+                if (status == "ready") { turn.McpStatus.TrySetResult("ready"); }
+                else if (status == "failed") {
+                    turn.McpStatus.TrySetResult("failed");
+                    turn.Events.TryWrite(new AgentNotice("Codex could not connect to the site's tools: " + (p["error"]?.GetValue<string>() ?? "no reason given") + "."));
+                }
+                return null;
+            }
             case "thread/tokenUsage/updated": {
                 var last = p["tokenUsage"]?["last"];
                 if (last is not null) { turn.Events.TryWrite(new UsageReport(last["inputTokens"]?.GetValue<int>(), last["outputTokens"]?.GetValue<int>())); }

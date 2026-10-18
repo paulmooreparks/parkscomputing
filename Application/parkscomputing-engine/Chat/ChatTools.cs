@@ -78,8 +78,8 @@ public sealed class ChatTools {
     /// <summary>A grant for an MCP client of the provider's own (Codex),
     /// which reaches the site's server at its public address with it; the
     /// returned action revokes it.</summary>
-    public (string Secret, Action Revoke) Grant(IdentityUser user) {
-        var secret = _grants.Create(user, "chat-codex", TokenCapabilities.All.Select(c => c.Name).ToList(), TimeSpan.FromHours(2));
+    public (string Secret, Action Revoke) Grant(IdentityUser user, TimeSpan? lifetime = null) {
+        var secret = _grants.Create(user, "chat-codex", TokenCapabilities.All.Select(c => c.Name).ToList(), lifetime ?? TimeSpan.FromHours(2));
         return (secret, () => _grants.Revoke(secret));
     }
 
