@@ -328,7 +328,6 @@
 
         /* === Languages ==================================================== */
 
-        function isLayouts(path) { return path === '~/barcode-layouts.json'; }
         function languageFor(path) {
             var p = String(path || '');
             if (/\.(md|markdown)$/i.test(p)) { return 'markdown'; }
@@ -426,23 +425,10 @@
             return [];
         }
 
-        /* JSON is checked as it is typed; the barcode layouts are checked
-           further, with the barcode tool's own rules, and cannot be saved
-           while they fail. */
+        /* JSON is checked as it is typed. */
         function lintExtension(tab) {
             if (tab.lang !== 'json' || tab.readOnly) { return []; }
-            var parse = CM.jsonParseLinter();
-            if (!isLayouts(tab.path)) { return [CM.linter(parse), CM.lintGutter()]; }
-            return [CM.linter(async function (v) {
-                var d = parse(v);
-                if (d.length) { tab.layoutsError = d[0].message; return d; }
-                var c = await F.checkLayouts(v.state.doc.toString());
-                tab.layoutsError = c.error || null;
-                if (!c.error) { return []; }
-                return (c.errors || [c.error]).slice(0, 20).map(function (m) {
-                    return { from: 0, to: Math.min(1, v.state.doc.length), severity: 'error', message: m };
-                });
-            }, { delay: 400 }), CM.lintGutter()];
+            return [CM.linter(CM.jsonParseLinter()), CM.lintGutter()];
         }
 
         function stateFor(tab, text) {

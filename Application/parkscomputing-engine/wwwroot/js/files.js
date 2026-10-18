@@ -199,7 +199,6 @@
             if (F.size(c) != null) { bits.push(FB.fmtSize(F.size(c))); }
             if (kind === 'dir') { bits.push((r.children || []).length + ' items'); }
             var desc = kind === 'script' ? F.scriptSummary(c.name, F.scriptSource(c)) : r.description;
-            if (r.special === 'layouts') { desc = 'The barcode tool\'s layouts; edit it to change them.'; }
             if (kind === 'link') { desc = (desc ? desc + ' · ' : '') + r.url; }
             el.detail.innerHTML =
                 '<span class="fm-d-title">' + FB.glyph(kind) + esc(r.title && !r.home ? r.title : c.name) + '</span>' +

@@ -1103,7 +1103,7 @@
                 if (n && realOf(n).home && !n.children) {
                     /* A server file keeps its time: rewriting it would only
                        file an identical copy in its history. */
-                    if (!n.special && !realOf(n).server) { n.mtime = new Date(); var e = io.fs.save(); if (e) { io.err('touch: ' + e); status = 1; } }
+                    if (!realOf(n).server) { n.mtime = new Date(); var e = io.fs.save(); if (e) { io.err('touch: ' + e); status = 1; } }
                     continue;
                 }
                 var r = await io.fs.write(args[i], '', false);
@@ -2377,8 +2377,7 @@
                     node = res.node;
                     label = displayPath(node);
                     modified = false;
-                    say(node.special ? 'Saved the layouts.'
-                        : 'Saved ' + label + ' (' + textLines() + (textLines() === 1 ? ' line)' : ' lines)'));
+                    say('Saved ' + label + ' (' + textLines() + (textLines() === 1 ? ' line)' : ' lines)'));
                     return true;
                 }
 

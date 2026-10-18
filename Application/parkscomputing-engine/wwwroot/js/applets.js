@@ -92,23 +92,9 @@ pudlApplets.define('conway', {
     ver: '7'
 });
 
-/* The barcode tool and the flash cards each load barcode-engine.js beside
-   themselves, with their own version, so a change to the engine bumps
-   both of them. */
-pudlApplets.define('barcodes', {
-    src: '/js/barcode-tool.js',
-    css: '/css/barcode-tool.css',
-    page: '/page/barcodes',
-    ver: '31',
-    actions: '/js/actions/barcode.json'
-});
-
-pudlApplets.define('flashcards', {
-    src: '/js/flashcards.js',
-    css: '/css/flashcards.css',
-    page: '/page/flashcards',
-    ver: '8'
-});
+/* The Barcode Tool, the Barcode Scanner and the flash cards are installed
+   applet packages (wwwroot/applets, from the pudl-barcodes repo), which
+   /applets/registry.js defines; their pages are still in content/. */
 
 /* The terminal loads xterm.js from js/vendor beside itself, and the files
    of extra JavaScript commands listed here, each with the terminal's own
@@ -128,9 +114,9 @@ window.pcTerminalCommands = ['/js/terminal-text.js', '/js/terminal-lua.js', '/js
 /* The site filesystem the terminal, the file manager and the editor share
    (js/sitefs.js). Every applet loads it from this one address, so a page
    holds one copy; raise its v on every change to the file. */
-window.pcSiteFsSrc = '/js/sitefs.js?v=8';
+window.pcSiteFsSrc = '/js/sitefs.js?v=9';
 
-/* The file browser Files, the editor and the barcode tool share (js/filebrowser.js), with its
+/* The file browser Files, the editor and installed packages share (js/filebrowser.js), with its
    stylesheet; like the site filesystem, one copy a page, and a raised v on
    every change to either. */
 window.pcFileBrowserSrc = '/js/filebrowser.js?v=9';
@@ -160,7 +146,7 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: pcWorkspacePages + 'terminal',
-    ver: '40',
+    ver: '41',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
     actions: '/js/actions/terminal.json',
     instances: 4
@@ -171,7 +157,7 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: pcWorkspacePages + 'files',
-    ver: '24',
+    ver: '25',
     handles: { browse: { param: 'path' } },
     actions: '/js/actions/files.json'
 });
@@ -181,7 +167,7 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
-    ver: '30',
+    ver: '31',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } },
     actions: '/js/actions/editor.json'
 });
@@ -194,15 +180,7 @@ pudlApplets.define('settings', {
     src: '/js/settings.js',
     css: '/css/settings.css',
     page: pcWorkspacePages + 'settings',
-    ver: '19'
-});
-
-/* The scanner shares the engine and layout library with the Barcode Tool. */
-pudlApplets.define('barcode-scanner', {
-    src: '/js/barcode-scanner.js',
-    css: '/css/barcode-scanner.css',
-    page: '/page/barcode-scanner',
-    ver: '19'
+    ver: '20'
 });
 
 pudlApplets.define('dice', {
@@ -243,8 +221,10 @@ pudlApplets.define('diff', {
 /* What an installed applet package gets from this site
    (Architecture/applet-packages-design.md): the kit's menu helpers
    (js/pudl-host-kit.js, loaded before this file), where applet pages are,
-   the snapshot service, and the site filesystem and settings files as
-   paths and text, each loading when first asked. The packages' define()
+   the snapshot service, the site filesystem and settings files as paths
+   and text with the site's Open and Save as dialogs, each loading when
+   first asked, and the product lookup's proxy as a named service. The
+   packages' define()
    calls follow in /applets/registry.js. */
 (function () {
     var kit = window.pudlHostKit;
@@ -267,11 +247,60 @@ pudlApplets.define('diff', {
         };
     }
     var siteFs = shared(window.pcSiteFsSrc, 'pcSiteFs'), config = shared(window.pcConfigSrc, 'pcConfig');
+    var fileBrowser = shared(window.pcFileBrowserSrc, 'pcFileBrowser');
     function fs() { return siteFs().then(function (f) { return f.load().then(function () { return f; }); }); }
+    function withDialog() { return Promise.all([fs(), fileBrowser()]); }
+    function isText(blob) { return /^text\/|json|xml|javascript/.test(blob.type || 'text/plain'); }
     window.pudlHost = kit.host({
         pages: pcWorkspacePages,
         snapshot: window.pcSnapshot || null,
+        /* The product lookup's proxy (Controllers/BarcodeProductsController.cs). */
+        services: { 'barcode-products': '/api/barcode-products/' },
         fs: {
+            /* The site's own Open and Save as (js/filebrowser.js). A
+               reader's ~ in this browser keeps text only, so there a
+               picture is offered as a download. */
+            open: function (o) {
+                o = o || {};
+                return withDialog().then(function (x) {
+                    var F = x[0], FB = x[1];
+                    return FB.pick(F, {
+                        mode: 'open', title: o.title, host: o.host, start: o.start || '~', accept: o.accept || [], computer: true,
+                        check: o.check ? function (node) { return o.check(F.displayPath(node)); } : null
+                    }).then(function (res) {
+                        if (!res) { return null; }
+                        if (res.file) { return res.file.text().then(function (text) { return { name: res.file.name, text: text }; }); }
+                        return F.read(res.node).then(function (text) { return { path: res.path, name: res.node.name, text: text }; });
+                    });
+                });
+            },
+            save: function (o) {
+                o = o || {};
+                var blob = o.blob, text = isText(blob);
+                return withDialog().then(function (x) {
+                    var F = x[0], FB = x[1];
+                    return FB.pick(F, {
+                        mode: 'save', title: o.title, name: o.name, host: o.host, start: o.start || '~', computer: true,
+                        canSaveIn: text ? null : function (dir) { return dir.server ? null : 'Pictures can\'t be kept in ~ in this browser, which holds only text. Download it instead.'; }
+                    }).then(function (res) {
+                        if (!res) { return null; }
+                        if (res.download) { return { download: res.download }; }
+                        var refused = o.check && o.check(res.path);
+                        if (refused) { throw new Error(refused); }
+                        var written = text ? blob.text().then(function (t) { return F.write(null, res.path, t, false); })
+                            : F.upload(res.dir, new File([blob], res.name, { type: blob.type }));
+                        return written.then(function (out) {
+                            if (out && out.error) { throw new Error(out.error); }
+                            return { path: res.path };
+                        });
+                    });
+                });
+            },
+            onChange: function (fn) {
+                var off = null, gone = false;
+                siteFs().then(function (f) { if (!gone) { off = f.onChange(function () { fn(); }); } });
+                return function () { gone = true; if (off) { off(); } };
+            },
             readText: function (path) {
                 return fs().then(function (f) { var n = f.resolve(null, path); return n && !n.children ? f.read(n) : null; });
             },

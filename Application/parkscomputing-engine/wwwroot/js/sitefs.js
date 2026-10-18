@@ -32,31 +32,7 @@
     'use strict';
     if (window.pcSiteFs) { return; }
 
-    var SELF_SRC = document.currentScript && document.currentScript.src;
-    function beside(file) { return SELF_SRC ? SELF_SRC.replace(/sitefs\.js/, file) : '/js/' + file; }
-    function loadScript(src) {
-        return new Promise(function (resolve, reject) {
-            var s = document.createElement('script');
-            s.src = src;
-            s.onload = resolve;
-            s.onerror = function () { reject(new Error('could not load ' + src)); };
-            document.head.appendChild(s);
-        });
-    }
-    /* The barcode engine, only to check the layout library before saving. */
-    var engineReady = null;
-    function loadBarcodeEngine() {
-        if (window.pcBarcode) { return Promise.resolve(window.pcBarcode); }
-        if (!engineReady) {
-            engineReady = loadScript(beside('barcode-engine.js'))
-                .then(function () { return window.pcBarcode; })
-                .catch(function (err) { engineReady = null; throw err; });
-        }
-        return engineReady;
-    }
-
     var HOME_KEY = 'pc-terminal-home';
-    var LAYOUTS_KEY = 'pc-barcode-layouts';
     var FILE_MAX = 256 * 1024;
     var HOME_MAX = 2 * 1024 * 1024;
     var SERVER_MAX = 10 * 1024 * 1024;
@@ -219,9 +195,7 @@
     /* === The home directory ===============================================
        /home/guest, shown as ~, lives in localStorage under pc-terminal-home
        as { seeded, files: { "/path": { t: "f"|"d", c, m } } }. The first
-       visit seeds a few files so there is something to try. The barcode
-       tool's layout library appears as ~/barcode-layouts.json, read from
-       and written to the tool's own storage. */
+       visit seeds a few files so there is something to try. */
 
     var home = { dir: null, raw: undefined };
 
@@ -338,7 +312,6 @@
         }
         home.dir.children = [];
         Object.keys(data.files).sort().forEach(function (p) { homeInsert(p, data.files[p]); });
-        home.dir.children.push({ name: 'barcode-layouts.json', kind: 'file', home: true, special: 'layouts', parent: home.dir, mtime: null });
         sortKids(home.dir);
         home.generation = (home.generation || 0) + 1;
         if (seedNow) { homeSave(); }
@@ -348,7 +321,6 @@
         var files = {};
         (function walk(d, prefix) {
             d.children.forEach(function (c) {
-                if (c.special) { return; }
                 var p = prefix + '/' + c.name;
                 if (c.children) { files[p] = { t: 'd', m: +c.mtime }; walk(c, p); }
                 else { files[p] = { t: 'f', c: c.content, m: +c.mtime }; }
@@ -382,7 +354,6 @@
     window.addEventListener('storage', function (e) {
         if (MOUNT) { return; }
         if (e.key === HOME_KEY || e.key === null) { homeSync(); }
-        else if (e.key === LAYOUTS_KEY) { emit('layouts'); }
     });
 
     /* === The server directories ===========================================
@@ -566,39 +537,9 @@
 
     function validName(n) { return !!n && n !== '.' && n !== '..' && n !== '~' && n.length <= 100 && !/[\/\x00-\x1f]/.test(n); }
 
-    function layoutsText() {
-        var raw = null, obj = null;
-        try { raw = localStorage.getItem(LAYOUTS_KEY); } catch (err) { }
-        try { obj = raw ? JSON.parse(raw) : null; } catch (err) { obj = null; }
-        if (!obj || !Array.isArray(obj.layouts)) { obj = { format: 'pc-barcode-layouts', version: 1, layouts: [] }; }
-        return JSON.stringify(obj, null, 2) + '\n';
-    }
-
-    /* Checks the layout library as the barcode tool would; null when it is
-       fine, otherwise a message naming the first few problems. */
-    async function checkLayouts(text) {
-        var obj;
-        try { obj = JSON.parse(text); } catch (err) { return { error: 'not valid JSON: ' + err.message }; }
-        var B;
-        try { B = await loadBarcodeEngine(); } catch (err) { return { error: 'the barcode engine could not load to check the file' }; }
-        var v = B.layouts.validateFile(obj);
-        if (!v.ok) { return { error: v.errors.slice(0, 3).join('; ') + (v.errors.length > 3 ? ' (and ' + (v.errors.length - 3) + ' more)' : ''), errors: v.errors }; }
-        return { obj: obj };
-    }
-
-    async function writeLayouts(text) {
-        var c = await checkLayouts(text);
-        if (c.error) { return c.error; }
-        try { localStorage.setItem(LAYOUTS_KEY, JSON.stringify({ format: 'pc-barcode-layouts', version: 1, layouts: c.obj.layouts })); }
-        catch (err) { return 'this browser would not store the layouts (' + err.name + ')'; }
-        emit('layouts');
-        return null;
-    }
-
     /* A writable file's text as far as it is known at once: a local file's
        text, or a server file's once it has been read. read() fetches it. */
     function readHome(n) {
-        if (n.special === 'layouts') { return layoutsText(); }
         if (n.server) { return n.content != null ? n.content : ''; }
         return n.content;
     }
@@ -629,7 +570,6 @@
             return serverPut(d, name, bytes, path, full);
         }
         if (full.length > FILE_MAX) { return { error: path + ': too large (the limit is 256 KB)' }; }
-        if (n && n.special) { var e = await writeLayouts(full); return e ? { error: path + ': ' + e } : { node: n }; }
         if (n) {
             n.content = full;
             n.mtime = new Date();
@@ -713,7 +653,6 @@
         label = label || displayPath(n);
         if (!n.home) { return label + ' is part of the site, which is read-only'; }
         if (n === home.dir || isServerRoot(n)) { return label + ' can\'t be removed'; }
-        if (n.special) { return label + ' belongs to the barcode tool; remove layouts in the file or in the tool instead'; }
         if (n.children && !recursive) { return label + ': is a directory (use rm -r)'; }
         if (n.server) {
             var r = await call('/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ root: n.server, path: n.rel, recursive: !!recursive }) });
@@ -736,7 +675,6 @@
         label = label || displayPath(n);
         if (!n.home) { return label + ' is part of the site, which is read-only'; }
         if (n === home.dir || isServerRoot(n)) { return label + ' can\'t be moved'; }
-        if (n.special) { return label + ' belongs to the barcode tool and can\'t be moved'; }
         var target = resolve(base, dest), parent, name;
         if (target && target.children) { parent = realOf(target); name = n.name; }
         else {
@@ -750,7 +688,7 @@
         for (var x = parent; x; x = x.parent) { if (x === n) { return 'a directory can\'t be moved into itself'; } }
         var clash = childNamed(parent, name);
         if (clash === n) { return null; }
-        if (clash && (clash.children || n.children || clash.special)) { return displayPath(parent).replace(/\/$/, '') + '/' + name + ' already exists'; }
+        if (clash && (clash.children || n.children)) { return displayPath(parent).replace(/\/$/, '') + '/' + name + ' already exists'; }
 
         if (n.server && parent.server === n.server) {
             var to = joinRel(parent.rel, name);
@@ -830,7 +768,7 @@
         if (r.children) { return false; }
         if (r.kind === 'script') { return true; }
         var ub = userBin();
-        return !!(r.home && ub && r.parent === ub && !r.special);
+        return !!(r.home && ub && r.parent === ub);
     }
 
     /* Something that runs by name: an applet or a script. */
@@ -943,7 +881,6 @@
         readBytes: function (n) { var r = realOf(n); return r.server ? serverBytes(r) : Promise.resolve(new TextEncoder().encode(readHome(r)).buffer); },
         limitFor: limitFor,
         prefetch: prefetch,
-        checkLayouts: checkLayouts,
         userBin: userBin,
         isScript: isScript,
         isRunnable: isRunnable,
