@@ -153,7 +153,9 @@ public partial class Startup {
         services.AddHttpClient(ParksComputing.Engine.Chat.ChatWeb.ClientName, c => { c.Timeout = TimeSpan.FromSeconds(40); c.DefaultRequestHeaders.UserAgent.ParseAdd("parkscomputing-chat/1.0 (+https://parkscomputing.com)"); })
             .ConfigurePrimaryHttpMessageHandler(() => new System.Net.Http.SocketsHttpHandler { AllowAutoRedirect = true, MaxAutomaticRedirections = 5, UseCookies = false });
         services.AddSingleton<ParksComputing.Engine.Chat.ChatTurns>();
-        services.AddHttpClient(ParksComputing.Engine.Chat.ChatProviders.ClientName, c => c.Timeout = TimeSpan.FromMinutes(15));
+        /* A reply may think for a long while (a model playing a hard Sudoku
+           took twelve minutes on one reply), so a provider gets an hour. */
+        services.AddHttpClient(ParksComputing.Engine.Chat.ChatProviders.ClientName, c => c.Timeout = TimeSpan.FromMinutes(60));
         services.AddHostedService<HistoryPruner>();
         services.AddMemoryCache();
         services.AddSingleton<PreviewDrafts>();
