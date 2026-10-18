@@ -61,6 +61,14 @@
    the window's bottom would cut off. */
 .pc-editor .ed-message { margin-left: auto; min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pc-editor .ed-message-error { color: var(--danger); }
+/* A shortcode in the text: its name and braces, and its arguments. */
+.pc-editor .cm-shortcode-name { color: var(--syntax-tag); font-weight: 600; }
+.pc-editor .cm-shortcode-args { color: var(--syntax-attr); }
+.pc-editor .cm-tooltip .ed-sc-tip { max-width: 28rem; padding: var(--space-2) var(--space-3); font-size: var(--text-sm); }
+.pc-editor .ed-sc-tip p { margin: 0 0 var(--space-1); }
+.pc-editor .ed-sc-tip dl { margin: var(--space-2) 0 0; display: grid; grid-template-columns: auto 1fr; gap: 2px var(--space-3); }
+.pc-editor .ed-sc-tip dd { margin: 0; color: var(--text-muted); }
+.pc-editor .cm-tooltip.cm-tooltip-autocomplete .cm-completionInfo { white-space: pre-wrap; max-width: 24rem; }
 /* The figure dialog's form. */
 .ed-figure { max-width: 34rem; }
 .ed-figure-fields { display: grid; gap: var(--space-1); }

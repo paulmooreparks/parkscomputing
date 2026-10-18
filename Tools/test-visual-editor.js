@@ -235,6 +235,29 @@ function diff(a, b) {
     now = await cmText();
     log('and writes the figure into the text', now.includes('{{figure:/images/new.png alt="A new picture" width=600px}}'), JSON.stringify(now.split('\n').filter(l => /figure/.test(l))));
 
+    // Shortcodes in the text: marked, completed and explained.
+    log('a shortcode in the text is marked as one, its name and arguments apart', (await page.locator('.cm-shortcode-name').count()) >= 2 && (await page.locator('.cm-shortcode-args').count()) >= 1, (await page.locator('.cm-shortcode-name').count()) + '/' + (await page.locator('.cm-shortcode-args').count()));
+    await page.click('.cm-content');
+    await page.keyboard.press('Control+End');
+    await page.keyboard.type('\n{{ti');
+    await page.waitForSelector('.cm-tooltip-autocomplete', { timeout: 5000 });
+    const offered = await page.locator('.cm-tooltip-autocomplete .cm-completionLabel').allTextContents();
+    log('{{ offers the shortcodes that match', offered.includes('tip') && !offered.includes('figure'), offered.join());
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    now = await cmText();
+    log('and accepting one writes its name, inside the braces that closed themselves', /^\{\{tip:\}\}$/m.test(now), now.split('\n').pop());
+    await page.keyboard.type('A tip ');
+    await page.waitForTimeout(600);
+    await page.keyboard.type('x');
+    await page.waitForSelector('.cm-tooltip-autocomplete', { timeout: 5000 }).catch(() => { });
+    await page.keyboard.press('Backspace');
+    await page.waitForTimeout(400);
+    const figLine = page.locator('.cm-line', { hasText: '{{figure:/images/pelican' }).first();
+    await figLine.locator('.cm-shortcode-name').first().hover();
+    await page.waitForSelector('.ed-sc-tip', { timeout: 5000 });
+    log('the pointer over a shortcode says what it is and takes', /Figure/.test(await page.textContent('.ed-sc-tip')) && /caption/.test(await page.textContent('.ed-sc-tip')), await page.textContent('.ed-sc-tip'));
+
     // Tidy up: the file goes, unsaved changes and all.
     await page.evaluate(async path => {
         const F = window.pcSiteFs; const n = F.resolve(F.home(), path);

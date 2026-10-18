@@ -5,7 +5,7 @@ export { EditorState, Compartment, StateEffect, StateField, Transaction } from '
 export {
     EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter,
     drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightSpecialChars,
-    placeholder
+    placeholder, Decoration, ViewPlugin, MatchDecorator, WidgetType, hoverTooltip
 } from '@codemirror/view';
 export { defaultKeymap, history, historyField, historyKeymap, indentWithTab, undo, redo } from '@codemirror/commands';
 export {
@@ -17,7 +17,7 @@ export {
     foldGutter, foldKeymap, indentUnit
 } from '@codemirror/language';
 export { linter, lintGutter, lintKeymap, forceLinting } from '@codemirror/lint';
-export { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+export { closeBrackets, closeBracketsKeymap, autocompletion, completionKeymap, startCompletion, acceptCompletion } from '@codemirror/autocomplete';
 export { markdown } from '@codemirror/lang-markdown';
 export { json, jsonParseLinter } from '@codemirror/lang-json';
 export { shell } from '@codemirror/legacy-modes/mode/shell';

@@ -22,7 +22,7 @@
     function loadCodeMirror() {
         if (window.CM && window.CM.EditorView) { return Promise.resolve(window.CM); }
         if (!cmReady) {
-            cmReady = loadScript(beside('vendor/codemirror-6.43/codemirror.js?v=2'))
+            cmReady = loadScript(beside('vendor/codemirror-6.43/codemirror.js?v=3'))
                 .then(function () { return window.CM; })
                 .catch(function (err) { cmReady = null; throw err; });
         }
@@ -337,8 +337,90 @@
             return 'text';
         }
         var LANG_NAMES = { markdown: 'Markdown', json: 'JSON', script: 'Script', text: 'Plain text' };
+        /* === Shortcodes in the text =========================================
+           A {{shortcode}} is marked as one, its name and its arguments in
+           their own colours; {{ offers the shortcodes' names and, inside a
+           call, its parameters; and the pointer over one says what it is
+           and takes. All from the server's table (/api/admin/editor/shortcodes),
+           which the Insert menu reads too. */
+        var SHORTCODE = /\{\{\/?[a-z][a-z0-9-]*(?::(?:[^}]|\}(?!\}))*)?\}\}/g;
+        var shortcodeHighlight = null, shortcodeHover = null;
+        /* Built when first asked for, since CodeMirror loads only when the
+           first text is shown. */
+        function shortcodeHighlighting() {
+            if (shortcodeHighlight) { return shortcodeHighlight; }
+            var marks = new CM.MatchDecorator({
+                regexp: SHORTCODE,
+                decorate: function (add, from, to, m) {
+                    var head = /^\{\{\/?[a-z][a-z0-9-]*/.exec(m[0])[0].length;
+                    add(from, from + head, CM.Decoration.mark({ class: 'cm-shortcode cm-shortcode-name' }));
+                    if (to - 2 > from + head) { add(from + head, to - 2, CM.Decoration.mark({ class: 'cm-shortcode cm-shortcode-args' })); }
+                    add(to - 2, to, CM.Decoration.mark({ class: 'cm-shortcode cm-shortcode-name' }));
+                }
+            });
+            shortcodeHighlight = CM.ViewPlugin.define(function (v) {
+                return { deco: marks.createDeco(v), update: function (u) { this.deco = marks.updateDeco(u, this.deco); } };
+            }, { decorations: function (p) { return p.deco; } });
+            return shortcodeHighlight;
+        }
+        function shortcodeByName(name) { return (shortcodes || []).find(function (s) { return s.name === name; }) || null; }
+        function shortcodeComplete(ctx) {
+            var name = ctx.matchBefore(/\{\{\/?[a-z0-9-]*$/);
+            if (name) {
+                var closing = name.text.indexOf('{{/') === 0;
+                return loadShortcodes().then(function (list) {
+                    return {
+                        from: name.from + (closing ? 3 : 2),
+                        validFor: /^[a-z0-9-]*$/,
+                        options: list.filter(function (s) { return !closing || s.kind === 'container'; }).map(function (s) {
+                            /* The braces close themselves as {{ is typed (closeBrackets), so only the name goes in, with a colon where arguments follow. */
+                            return { label: s.name, type: 'keyword', detail: s.title, info: s.description + (s.example ? '\n\n' + s.example : ''),
+                                apply: !closing && s.params.length ? s.name + ':' : s.name };
+                        })
+                    };
+                });
+            }
+            var inside = ctx.matchBefore(/\{\{([a-z][a-z0-9-]*)(?::[^}]*)?[\s:]([a-z0-9-]*)$/);
+            if (!inside) { return null; }
+            var m = /\{\{([a-z][a-z0-9-]*)/.exec(inside.text), word = /[a-z0-9-]*$/.exec(inside.text)[0];
+            return loadShortcodes().then(function () {
+                var s = shortcodeByName(m[1]);
+                if (!s || !s.params.length) { return null; }
+                return {
+                    from: ctx.pos - word.length,
+                    validFor: /^[a-z0-9-]*$/,
+                    options: s.params.map(function (p) { return { label: p.name, type: 'property', detail: p.required ? 'needed' : '', info: p.description, apply: p.name + '=' }; })
+                };
+            });
+        }
+        function shortcodeHovering() {
+            if (shortcodeHover) { return shortcodeHover; }
+            shortcodeHover = CM.hoverTooltip(function (v, pos) {
+            var line = v.state.doc.lineAt(pos), text = line.text, m;
+            SHORTCODE.lastIndex = 0;
+            while ((m = SHORTCODE.exec(text))) {
+                var from = line.from + m.index, to = from + m[0].length;
+                if (pos < from || pos > to) { continue; }
+                var name = /^\{\{\/?([a-z][a-z0-9-]*)/.exec(m[0])[1], s = shortcodeByName(name);
+                if (!s) { loadShortcodes(); return null; }
+                return { pos: from, end: to, above: true, create: function () {
+                    var dom = document.createElement('div');
+                    dom.className = 'ed-sc-tip';
+                    dom.innerHTML = '<p class="ed-sc-tip-title"><strong>' + esc(s.title) + '</strong> <code>{{' + esc(s.name) + '}}</code></p><p>' + esc(s.description) + '</p>' +
+                        (s.params.length ? '<dl>' + s.params.map(function (p) { return '<dt><code>' + esc(p.name) + '</code>' + (p.required ? ' (needed)' : '') + '</dt><dd>' + esc(p.description) + '</dd>'; }).join('') + '</dl>' : '');
+                    return { dom: dom };
+                } };
+            }
+            return null;
+            }, { hoverTime: 350 });
+            return shortcodeHover;
+        }
+        function shortcodeExtensions() {
+            return [shortcodeHighlighting(), CM.autocompletion({ override: [shortcodeComplete], activateOnTyping: true, icons: false }), shortcodeHovering()];
+        }
+
         function langExtension(lang) {
-            if (lang === 'markdown') { return CM.markdown(); }
+            if (lang === 'markdown') { return [CM.markdown(), shortcodeExtensions()]; }
             if (lang === 'json') { return CM.json(); }
             if (lang === 'script') { return CM.StreamLanguage.define(CM.shell); }
             return [];
@@ -1118,13 +1200,22 @@
 
         /* The insert menu lists the shortcodes, from the server's table, in
            alphabetical order of the titles it shows. */
-        var shortcodes = null;
+        var shortcodes = null, shortcodesLoading = null;
+        function loadShortcodes() {
+            if (shortcodes) { return Promise.resolve(shortcodes); }
+            if (!shortcodesLoading) {
+                shortcodesLoading = fetch('/api/admin/editor/shortcodes', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+                    .then(function (r) { return r.ok ? r.json() : { shortcodes: [] }; })
+                    .then(function (b) { shortcodes = (b.shortcodes || []).map(function (s) { s.params = s.params || []; return s; }); return shortcodes; })
+                    .catch(function () { shortcodes = []; return shortcodes; });
+            }
+            return shortcodesLoading;
+        }
+        var insertFilled = false;
         async function fillInsert() {
-            if (shortcodes) { return; }
-            try {
-                var r = await fetch('/api/admin/editor/shortcodes', { credentials: 'same-origin', headers: { Accept: 'application/json' } });
-                shortcodes = r.ok ? (await r.json()).shortcodes : [];
-            } catch (err) { shortcodes = []; }
+            if (insertFilled) { return; }
+            insertFilled = true;
+            await loadShortcodes();
             shortcodes.filter(function (s) { return s.name !== 'column'; }).sort(function (a, b) {
                 return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
             }).forEach(function (s) {
