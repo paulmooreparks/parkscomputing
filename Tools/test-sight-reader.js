@@ -686,7 +686,10 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('and stays lit while the rest of the chord goes in', JSON.stringify(await lit()) === '[0,4]', JSON.stringify(await lit()));
   await page.click(key(7));
   i = await info();
-  log('the last note ends the chord, the keys clear, and the cursor goes on', i.pos === 'Bar 1 · 2 of 4' && (await lit()).length === 0, i.pos + ' ' + JSON.stringify(await lit()));
+  const lastLit = JSON.stringify(await lit());
+  log('the last note ends the chord and lights with the others as the cursor goes on', i.pos === 'Bar 1 · 2 of 4' && lastLit === '[0,4,7]', i.pos + ' ' + lastLit);
+  await page.waitForTimeout(900);
+  log('then the keys clear for the next step', (await lit()).length === 0, JSON.stringify(await lit()));
   log('each key plays the note, at its pitch', JSON.stringify(await page.evaluate(() => window.__tones)) === JSON.stringify([261.63, 329.63, 392]), JSON.stringify(await page.evaluate(() => window.__tones)));
   await menu('Practice', 'Restart');
   await page.focus('.pc-sight-reader');
@@ -859,7 +862,9 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await cell(64, 0).click();
   await cell(67, 0).click();
   i = await info();
-  log('the last note of the chord ends it, the neck clears, and the cursor goes on', i.pos === 'Bar 1 · 2 of 4' && (await litCells()).length === 0, i.pos);
+  log('the last note of the chord ends it and lights on the neck as the cursor goes on', i.pos === 'Bar 1 · 2 of 4' && (await litCells()).includes(67), i.pos + ' ' + JSON.stringify(await litCells()));
+  await page.waitForTimeout(900);
+  log('then the neck clears', (await litCells()).length === 0, JSON.stringify(await litCells()));
   await options(() => setSwitch('accidentals', false));
   const offCells = await page.evaluate(() => [...document.querySelectorAll('.sr-fingerboard .sr-cell')].filter(c => c.getAttribute('data-black') === '1').every(c => c.classList.contains('sr-off')));
   log('with sharps and flats not named, the black-key positions are off', offCells);

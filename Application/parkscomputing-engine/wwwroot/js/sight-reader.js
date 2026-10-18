@@ -588,13 +588,25 @@
             if (!centered) { centerOnC4(); }
             if (!step) { return; }
             step.notes.forEach(function (s) {
-                if (!s.state) { return; }
-                var cls = s.state === 'ok' ? 'sr-named' : 'sr-missed';
-                /* On a fingerboard a pitch is lit everywhere it lies. */
-                if (!el.board.hidden) {
-                    boardCells.forEach(function (c) { if (+c.getAttribute('data-midi') === target(s)) { c.classList.add(cls); } });
-                } else { keyFor(target(s)).classList.add(cls); }
+                if (s.state) { light(s, s.state === 'ok' ? 'sr-named' : 'sr-missed'); }
             });
+        }
+        /* On a fingerboard a pitch is lit everywhere it lies. */
+        function light(s, cls) {
+            if (!el.board.hidden) {
+                boardCells.forEach(function (c) { if (+c.getAttribute('data-midi') === target(s)) { c.classList.add(cls); } });
+            } else { keyFor(target(s)).classList.add(cls); }
+        }
+
+        /* The cursor goes on as soon as a step's last note is named, which
+           would clear the keys before that note was ever lit. The step's
+           notes stay lit for a moment after it, so the last note shows as the
+           others did, in a chord or alone. */
+        var doneTimer = null;
+        function lightDone(notes) {
+            clearTimeout(doneTimer);
+            notes.forEach(function (s) { light(s, 'sr-named'); });
+            doneTimer = setTimeout(showPiano, 700);
         }
 
         /* After a right press on a fingerboard, the place pressed stays lit, and
@@ -907,6 +919,7 @@
             if (left.length) { showPiano(); say('Right. ' + Object.keys(pitches).length + ' more to name', 'positive'); return; }
             conclude(tries ? 'retried' : 'first');
             advance();
+            lightDone(step.notes);
         }
 
         /* A letter, with the sharp or flat waiting for it when sharps and flats
