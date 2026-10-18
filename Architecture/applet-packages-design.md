@@ -152,7 +152,11 @@ The Theme Studio's preview frame had loaded `/pudl/pudl.css`, a path this site h
 
 Checks: `Tools/test-small-packages.js` (12, on the test instance and live): each page runs its package, the article opens a 2015-style link with its five live cells and lists the source, a board request reaches Conway in its window, Dice rolls, the preview loads the site's PUDL and takes the palette, and the Diff Viewer reads two paths and opens a file through the site's dialog. `test-applet-actions.js` and `test-mcp.js` (Dice's roll, now from its package) pass.
 
-Sight Reader is the last to move, and waits on where its sample scores live: the site lists them live from `content/scores` through its own listing API, which a package cannot call.
+**Step 7, Sight Reader (2026-10-18).** Sight Reader is the repo `pudl-sight-reader` (Apache-2.0), with OpenSheetMusicDisplay in its own `vendor` folder. Its sample scores had been listed live from `content/scores` through the site's listing API, which a package may not call. Paul chose to have both (2026-10-18). The package ships the samples, 65 scores in four levels, listed in `scores/index.json`, which `tools/make-index.js` in the repo writes. A host may also offer a library as the service `score-library`, whose `index.json` lists its scores in the same shape and under which a score is fetched by its path. The chooser lists both, each path once, and a score is fetched from the package first. Here the service is `Controllers/ScoreLibraryController.cs` at `/api/score-library/`, over `content/scores` with its `.listed` marker, read from the disk on each request, so a score Paul drops into the folder appears at once. Settings go through `pudlHost.config` and the reload snapshot through `pudlHost.snapshot`; a host without settings keeps them for the page.
+
+Checks: four unit tests over the library (`ScoreLibraryTests`), and `Tools/test-sight-reader.js`, now 188, with three new checks: a score in both places is listed once, the site's library alone fills the chooser with what it lists, and the package's scores fill it when there is no library. Live on parkscomputing.com, with the server image that carries the library; the rollback tag is `prev-20261018-163635`.
+
+Every applet the design meant to move has moved. The Terminal, Files and the Editor stay with the engine.
 
 ## Decisions for Paul
 

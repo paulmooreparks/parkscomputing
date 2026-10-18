@@ -40,15 +40,19 @@ public sealed class ContentListingController : ControllerBase {
         if (dir is null || dir == _content || !Directory.Exists(dir) || !System.IO.File.Exists(System.IO.Path.Combine(dir, Marker))) {
             return NotFound();
         }
+        Response.Headers.CacheControl = "no-cache";
+        return Ok(new { path = ServerFiles.Rel(_content, dir), files = List(dir) });
+    }
+
+    /// <summary>Every file under dir, as the listing gives them.</summary>
+    public static System.Collections.Generic.List<ListedFile> List(string dir) {
         var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden };
-        var files = new DirectoryInfo(dir).EnumerateFiles("*", options)
+        return new DirectoryInfo(dir).EnumerateFiles("*", options)
             .Select(f => (f, rel: ServerFiles.Rel(dir, f.FullName)))
             .Where(x => !x.rel.Split('/').Any(part => part.StartsWith('.')))
             .OrderBy(x => x.rel, StringComparer.Ordinal)
             .Select(x => new ListedFile(x.rel, x.f.Name, x.rel.Contains('/') ? x.rel[..x.rel.LastIndexOf('/')] : "", x.f.Length,
                 new DateTimeOffset(x.f.LastWriteTimeUtc)))
             .ToList();
-        Response.Headers.CacheControl = "no-cache";
-        return Ok(new { path = ServerFiles.Rel(_content, dir), files });
     }
 }

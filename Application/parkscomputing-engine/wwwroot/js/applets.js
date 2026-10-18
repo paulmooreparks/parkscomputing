@@ -177,18 +177,10 @@ pudlApplets.define('settings', {
     ver: '20'
 });
 
-/* Sight Reader loads OpenSheetMusicDisplay from js/vendor when it opens
-   (Architecture/sight-reader-design.md). It opens the kind "score", a
-   sample score's path under content/scores, which nothing else opens, so
-   a request to open a file still goes to the editor. */
-pudlApplets.define('sight-reader', {
-   src: '/js/sight-reader.js',
-   css: '/css/sight-reader.css',
-   page: '/page/sight-reader',
-   ver: '32',
-   handles: { open: { param: 'score', kinds: ['score'] } },
-   actions: '/js/actions/sight-reader.json'
-});
+/* Sight Reader is an installed applet package too (pudl-sight-reader). It
+   opens the kind "score", a sample score's path, which nothing else opens,
+   so a request to open a file still goes to the editor; the site's own
+   scores in content/scores reach it as the service score-library below. */
 
 
 /* What an installed applet package gets from this site
@@ -228,7 +220,7 @@ pudlApplets.define('sight-reader', {
         pages: pcWorkspacePages,
         snapshot: window.pcSnapshot || null,
         /* The product lookup's proxy (Controllers/BarcodeProductsController.cs). */
-        services: { 'barcode-products': '/api/barcode-products/' },
+        services: { 'barcode-products': '/api/barcode-products/', 'score-library': '/api/score-library/' },
         fs: {
             /* The site's own Open and Save as (js/filebrowser.js). A
                reader's ~ in this browser keeps text only, so there a

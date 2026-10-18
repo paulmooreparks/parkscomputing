@@ -268,7 +268,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await type('bbbbbb');
   i = await info();
   log('with the answer set to never, wrong tries only mark errors', i.fb === 'Not that one', i.fb);
-  const saved = await page.evaluate(() => window.pcConfig.get('sight-reader').revealAfter);
+  const saved = await page.evaluate(() => window.pudlHost.config.get('sight-reader').revealAfter);
   log('the setting is kept in ~/.config/sight-reader.json', saved === 0, saved);
   await options(() => pick('revealAfter', '3'));
 
@@ -572,9 +572,30 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   const groups = await page.evaluate(() => [...document.querySelectorAll('.sr-group-name')].map(h => h.textContent));
   const levels = ['simple', 'beginner', 'intermediate', 'advanced'], at = groups.map(g => levels.indexOf(g));
   log('the chooser lists the samples by level, easiest first', groups.length > 0 && at.every((n, k) => n >= 0 && (k === 0 || n > at[k - 1])), groups.join());
-  // The list is the folder as it is now (api/site/listing), so a file added
-  // to it appears without an index to rebuild.
+  // The list is the package's scores and the site's score library, which is
+  // the folder as it is now (/api/score-library/), so a file added to it
+  // appears without an index to rebuild.
   log('a score added to the folder is in the chooser', await page.isVisible('.sr-pick[data-sr-name="Happy Birthday To You"]'));
+  const picks = () => page.evaluate(() => document.querySelectorAll('.sr-pick').length);
+  const both = await picks();
+  const pickNames = await page.evaluate(() => [...document.querySelectorAll(".sr-pick")].map(p => p.getAttribute('data-sr-name')));
+  log('a score in both the package and the library is listed once', new Set(pickNames).size === pickNames.length, pickNames.length + " " + new Set(pickNames).size);
+  await page.keyboard.press('Escape');
+  await page.route('**/applets/sight-reader/scores/index.json*', route => route.fulfill({ contentType: 'application/json', body: '{"files":[]}' }));
+  await page.click('.sr-top [data-sr="choose"]');
+  await page.waitForSelector('.sr-pick');
+  const inLibrary = await page.evaluate(() => fetch('/api/score-library/index.json').then(r => r.json()).then(l => l.files.filter(f => /\.(mxl|musicxml|xml)$/i.test(f.name) && !/^licenses(\/|$)/i.test(f.folder)).length));
+  log('the site\'s library alone fills the chooser with what it lists', (await picks()) === inLibrary && inLibrary > 0, (await picks()) + ' of ' + inLibrary);
+  await page.keyboard.press('Escape');
+  await page.unroute('**/applets/sight-reader/scores/index.json*');
+  await page.route('**/api/score-library/**', route => route.fulfill({ status: 404, body: '' }));
+  await page.click('.sr-top [data-sr="choose"]');
+  await page.waitForSelector('.sr-pick');
+  log('and the package\'s own scores fill it on a host without one', (await picks()) > 30, await picks());
+  await page.keyboard.press('Escape');
+  await page.unroute('**/api/score-library/**');
+  await page.click('.sr-top [data-sr="choose"]');
+  await page.waitForSelector('.sr-pick');
   await page.click('.sr-pick[data-sr-name="Twinkle Twinkle Little Star"]');
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(500);
