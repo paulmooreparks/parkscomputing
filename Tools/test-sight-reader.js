@@ -407,6 +407,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForSelector('.sr-read', { state: 'visible' });
   let staves = await staffList();
   log('Read lists the staves top to bottom, named, with the clefs each uses in order', staves === 'Piano, upper (Treble)+2 | Piano, lower (Bass, Treble)+2', staves);
+  log('and says how a staff that changes clef is read', /changes clef is read in every clef/.test(await page.textContent('.sr-read')));
   await page.screenshot({ path: path.join(SHOTS, 'sr-read.png') });
   await setStaff(0, false);
   await page.waitForTimeout(500);
@@ -453,6 +454,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForSelector('.sr-read', { state: 'visible' });
   staves = await staffList();
   log('Read lists each instrument\'s staff with its clef', staves === 'Voice (Treble)+1 | Piano (Treble)+1', staves);
+  log('with no clef change, the dialog says nothing about one', !/changes clef/.test(await page.textContent('.sr-read')));
   await setStaff(0, false);
   await page.click('[data-sr="close-read"]');
   await page.focus('.pc-sight-reader');

@@ -1286,7 +1286,9 @@
                         var label = staffLabel(x.s);
                         return '<div class="sr-staff-row" data-name="' + esc(label.toLowerCase()) + '"><label class="check"><input type="checkbox" data-staff="' + x.n + '" data-notes="' + x.s.count + '"' + (x.s.count ? ' checked' : ' disabled') + ' /> ' + esc(label) + '</label>' +
                             (x.s.count ? '<button type="button" class="link link-muted" data-only="' + x.n + '">Only</button>' : '<span class="sr-muted">nothing to read</span>') + '</div>';
-                    }).join('') + '</div><p class="sr-muted">A hand that moves into another clef stays with its own staff.</p></section>';
+                    }).join('') + '</div>' +
+                    /* Said only where it applies: a staff whose clef changes. */
+                    (c.staves.some(function (x) { return x.s.clefs.length > 1; }) ? '<p class="sr-muted">A staff that changes clef is read in every clef it uses.</p>' : '') + '</section>';
             }
             if (!html) { html = '<p class="sr-muted">This piece has one staff to read, so there is nothing to choose.</p>'; }
             el.readBody.innerHTML = html;

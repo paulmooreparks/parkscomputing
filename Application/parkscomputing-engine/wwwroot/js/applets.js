@@ -225,7 +225,7 @@ pudlApplets.define('sight-reader', {
    src: '/js/sight-reader.js',
    css: '/css/sight-reader.css',
    page: '/page/sight-reader',
-   ver: '31',
+   ver: '32',
    handles: { open: { param: 'score', kinds: ['score'] } },
    actions: '/js/actions/sight-reader.json'
 });
