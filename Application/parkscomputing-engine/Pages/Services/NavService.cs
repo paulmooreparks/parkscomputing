@@ -128,7 +128,8 @@ namespace ParksComputing.Engine.Pages.Services {
             var listed = Enumerate(root).Select(n => n.Slug).Where(s => !string.IsNullOrEmpty(s)).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var add = packages.Where(p => !listed.Contains(p.Name)).Select(p => new NavNode {
                 Slug = p.Name, Title = p.Title, Description = p.Description,
-                Tags = p.Tags.Count > 0 ? p.Tags.ToArray() : null, Win = p.WindowShape, Min = p.WindowMin, Max = p.WindowMax
+                Tags = p.Tags.Count > 0 ? p.Tags.ToArray() : null, Win = p.WindowShape, Min = p.WindowMin, Max = p.WindowMax,
+                Icon = p.Icon is null ? null : p.Url(p.Icon)
             }).ToArray();
             if (add.Length == 0) { return; }
             var section = (root.Nav ?? Array.Empty<NavNode>()).FirstOrDefault(n => string.Equals(n.Slug, "applets", StringComparison.OrdinalIgnoreCase));

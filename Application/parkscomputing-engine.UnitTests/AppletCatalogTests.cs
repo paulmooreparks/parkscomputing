@@ -28,11 +28,12 @@ public class AppletCatalogTests {
         var root = Path.Combine(Path.GetTempPath(), "applet-catalog-tests-" + Guid.NewGuid().ToString("n"));
         Directory.CreateDirectory(Path.Combine(root, "applets", "hello"));
         File.WriteAllText(Path.Combine(root, "applets", "hello", "applet.json"),
-            "{ \"name\": \"hello\", \"title\": \"Hello & Co\", \"version\": \"0.1.0\", \"description\": \"A greeting\", \"src\": \"hello.js\", \"css\": \"hello.css\"," +
+            "{ \"name\": \"hello\", \"title\": \"Hello & Co\", \"version\": \"0.1.0\", \"description\": \"A greeting\", \"src\": \"hello.js\", \"css\": \"hello.css\", \"icon\": \"icon.svg\"," +
             " \"page\": { \"body\": \"page.html\", \"fit\": \"flow\" }, \"window\": { \"shape\": \"0.3,0.3\", \"min\": \"260,160\" }," +
             " \"handles\": { \"open\": { \"param\": \"name\" } }, \"instances\": 2, \"actions\": \"actions.json\", \"continuity\": true, \"wants\": [\"fs\"], \"tags\": [\"example\"] }");
         File.WriteAllText(Path.Combine(root, "applets", "hello", "hello.js"), "");
         File.WriteAllText(Path.Combine(root, "applets", "hello", "hello.css"), "");
+        File.WriteAllText(Path.Combine(root, "applets", "hello", "icon.svg"), "<svg/>");
         File.WriteAllText(Path.Combine(root, "applets", "hello", "page.html"), "<div data-applet=\"hello\" data-applet-fit=\"flow\"></div>\n");
         File.WriteAllText(Path.Combine(root, "applets", "hello", "actions.json"), "{ \"id\": \"example.hello\", \"module\": \"actions.js\", \"actions\": [] }");
         // Refused: its name is not its folder's.
@@ -126,6 +127,7 @@ public class AppletCatalogTests {
             Assert.AreEqual("Hello & Co", hello.Title);
             Assert.AreEqual("0.3,0.3", hello.Win);
             Assert.AreEqual("/page/hello", hello.Url);
+            Assert.AreEqual("/applets/hello/icon.svg", hello.Icon);
             CollectionAssert.AreEqual(new[] { "example" }, hello.Tags);
         } finally { Directory.Delete(root, true); }
     }

@@ -116,7 +116,10 @@ public static class MenuBuilder {
                     break;
                 default:
                     if (e.Element == null) { break; }
-                    html.Append("<li>").Append(e.Element.Open()).Append(WebUtility.HtmlEncode(e.Label ?? "")).Append(e.Element.Close()).Append("</li>");
+                    // An entry with an icon, such as an applet's, shows it before its words, as the menu bar's items may.
+                    html.Append("<li>").Append(e.Element.Open());
+                    if (!string.IsNullOrEmpty(e.Icon)) { html.Append("<img src=\"").Append(WebUtility.HtmlEncode(e.Icon)).Append("\" alt=\"\" /> "); }
+                    html.Append(WebUtility.HtmlEncode(e.Label ?? "")).Append(e.Element.Close()).Append("</li>");
                     break;
             }
         }

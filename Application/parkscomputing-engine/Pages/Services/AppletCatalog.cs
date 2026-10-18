@@ -20,7 +20,7 @@ namespace ParksComputing.Engine.Pages.Services;
 /// package's folder, wwwroot/applets/{Name}.</summary>
 public sealed record AppletPackage(
     string Name, string Title, string Version, string? Description, string? License,
-    string Src, string? Css, string? PageBody, string? Fit, string? WindowShape, string? WindowMin, string? WindowMax,
+    string Src, string? Css, string? Icon, string? PageBody, string? Fit, string? WindowShape, string? WindowMin, string? WindowMax,
     JsonObject? Handles, int? Instances, string? Actions, bool Continuity,
     IReadOnlyList<string> Needs, IReadOnlyList<string> Wants, IReadOnlyList<string> Tags, string Dir) {
     /// <summary>A file of the package by its address on the site.</summary>
@@ -159,7 +159,7 @@ public sealed class AppletCatalog {
                 else { throw new ManifestProblem("continuity must be true or false"); }
             }
             return new AppletPackage(name, title!.Trim(), version!.Trim(), Str("description"), Str("license"),
-                src, File("css"), body, fit, shape, min, max,
+                src, File("css"), File("icon"), body, fit, shape, min, max,
                 handles?.DeepClone().AsObject(), instances, File("actions"), continuity,
                 List("needs", true), List("wants", true), List("tags", false), dir);
         }
