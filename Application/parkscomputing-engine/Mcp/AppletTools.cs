@@ -84,7 +84,7 @@ public sealed class AppletTools {
         var invocationId = id ?? Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
         McpInvocations.Entry entry;
         try {
-            var outcome = await _runner.RunAsync(found.Manifest, action, inputJson, invocationId, cancel);
+            var outcome = await _runner.RunAsync(found.Manifest, found.Base, action, inputJson, invocationId, cancel);
             entry = new McpInvocations.Entry(invocationId, _caller.TokenId, action, inputJson, "done", outcome.Output, null, DateTime.UtcNow, outcome.Artifacts);
         }
         catch (AppletRunner.ActionFailed ex) {

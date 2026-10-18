@@ -40,8 +40,12 @@ public sealed class AppletRunner {
     private const long MemoryLimit = 256L * 1024 * 1024;
     private const int MaxStatements = 50_000_000;
 
+    private readonly string _root;
     private readonly string _js;
+    private readonly Pages.Services.AppletCatalog? _catalog;
     private readonly ILogger<AppletRunner> _log;
+    /// <summary>Where the site's own manifests' modules live, relative to the web root.</summary>
+    private const string SiteBase = "js/actions/";
     private readonly Lazy<string> _host = new(() => {
         using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("ParksComputing.Engine.Mcp.AppletRunner.js")
             ?? throw new InvalidOperationException("Mcp/AppletRunner.js is not embedded.");
@@ -49,34 +53,41 @@ public sealed class AppletRunner {
         return r.ReadToEnd();
     });
 
-    public AppletRunner(IWebHostEnvironment env, ILogger<AppletRunner> log) {
-        _js = Path.GetFullPath(Path.Combine(env.WebRootPath, "js"));
+    public AppletRunner(IWebHostEnvironment env, ILogger<AppletRunner> log, Pages.Services.AppletCatalog? catalog = null) {
+        _root = Path.GetFullPath(env.WebRootPath);
+        _js = Path.Combine(_root, "js");
+        _catalog = catalog;
         _log = log;
     }
 
     /* === Manifests ====================================================== */
 
-    /// <summary>Every manifest the site serves, as written.</summary>
-    public List<(string File, JsonObject Manifest)> Manifests() {
+    /// <summary>Every manifest the site serves, as written: the site's own
+    /// under js/actions, then the installed packages', each with the folder
+    /// its module lives in, relative to the web root.</summary>
+    public List<(string File, JsonObject Manifest, string Base)> Manifests() {
         var dir = Path.Combine(_js, "actions");
-        var list = new List<(string, JsonObject)>();
-        if (!Directory.Exists(dir)) {
-            return list;
-        }
-        foreach (var file in Directory.EnumerateFiles(dir, "*.json").OrderBy(f => f, StringComparer.Ordinal)) {
-            if (JsonNode.Parse(File.ReadAllText(file)) is JsonObject m) {
-                list.Add((file, m));
+        var list = new List<(string, JsonObject, string)>();
+        if (Directory.Exists(dir)) {
+            foreach (var file in Directory.EnumerateFiles(dir, "*.json").OrderBy(f => f, StringComparer.Ordinal)) {
+                if (JsonNode.Parse(File.ReadAllText(file)) is JsonObject m) {
+                    list.Add((file, m, SiteBase));
+                }
             }
+        }
+        if (_catalog is not null) {
+            list.AddRange(_catalog.ActionManifests());
         }
         return list;
     }
 
-    /// <summary>The manifest and action a reference belongs to, or null.</summary>
-    public (JsonObject Manifest, JsonObject Action)? Find(string reference) {
-        foreach (var (_, m) in Manifests()) {
+    /// <summary>The manifest and action a reference belongs to, with the
+    /// module's folder, or null.</summary>
+    public (JsonObject Manifest, JsonObject Action, string Base)? Find(string reference) {
+        foreach (var (_, m, b) in Manifests()) {
             foreach (var a in (m["actions"] as JsonArray ?? new JsonArray()).OfType<JsonObject>()) {
                 if (a["ref"]?.GetValue<string>() == reference) {
-                    return (m, a);
+                    return (m, a, b);
                 }
             }
         }
@@ -110,12 +121,12 @@ public sealed class AppletRunner {
 
     /// <summary>Runs a pure action and gives its output and artifacts; throws
     /// ActionFailed with the reason it failed.</summary>
-    public Task<Outcome> RunAsync(JsonObject manifest, string reference, string inputJson, string invocationId, CancellationToken cancel) =>
-        Task.Run(() => Run(manifest, reference, inputJson, invocationId, cancel), cancel);
+    public Task<Outcome> RunAsync(JsonObject manifest, string moduleBase, string reference, string inputJson, string invocationId, CancellationToken cancel) =>
+        Task.Run(() => Run(manifest, moduleBase, reference, inputJson, invocationId, cancel), cancel);
 
     public sealed class ActionFailed : Exception { public ActionFailed(string message) : base(message) { } }
 
-    private Outcome Run(JsonObject manifest, string reference, string inputJson, string invocationId, CancellationToken cancel) {
+    private Outcome Run(JsonObject manifest, string moduleBase, string reference, string inputJson, string invocationId, CancellationToken cancel) {
         var schemaDir = Path.Combine(_js, "vendor", "cfworker-json-schema-4.1.1");
         using var engine = new Jint.Engine(o => o
             .LimitMemory(MemoryLimit)
@@ -128,6 +139,7 @@ public sealed class AppletRunner {
         engine.SetValue("__random", new Func<int, double>(RandomOf));
         engine.SetValue("__describeText", new Func<string, string>(DescribeText));
         engine.SetValue("__source", new Func<string, string, string>(SourceBeside));
+        engine.SetValue("__moduleBase", moduleBase);
         try {
             engine.Execute(_host.Value, "AppletRunner.js");
             engine.SetValue("__schemaLib", engine.Modules.Import("./index.js"));
@@ -182,12 +194,13 @@ public sealed class AppletRunner {
     }
 
     /// <summary>A script's text: the module itself when src is empty, or
-    /// src beside it, stripped of any ?query. Only .js files under
-    /// wwwroot/js, and no link on the way.</summary>
+    /// src beside it, stripped of any ?query. Only .js files under the web
+    /// root (the site's js/actions, or a package's folder), and no link on
+    /// the way.</summary>
     private string SourceBeside(string moduleRel, string src) {
         var rel = string.IsNullOrEmpty(src) ? moduleRel
             : Path.Combine(Path.GetDirectoryName(moduleRel.Replace('/', Path.DirectorySeparatorChar)) ?? "", src.Split('?', '#')[0].Replace('/', Path.DirectorySeparatorChar));
-        var full = Identity.ServerFiles.Resolve(_js, rel.Replace(Path.DirectorySeparatorChar, '/'));
+        var full = Identity.ServerFiles.Resolve(_root, rel.Replace(Path.DirectorySeparatorChar, '/'));
         if (full is null || !full.EndsWith(".js", StringComparison.OrdinalIgnoreCase) || !File.Exists(full)) {
             throw new ActionFailed("the action's module asked for " + src + ", which isn't a script beside it");
         }

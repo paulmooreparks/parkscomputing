@@ -27,6 +27,7 @@ public sealed class EditOriginGate {
         "/js/continuity.js", "/js/window-bar.js", "/css/window-bar.css", "/js/config.js", "/js/settings.js", "/css/settings.css",
         "/js/applets.js", "/js/sitefs.js", "/js/filebrowser.js", "/js/terminal.js", "/js/terminal-text.js", "/js/files.js", "/js/editor.js", "/js/vendor/",
         "/css/terminal.css", "/css/files.css", "/css/filebrowser.css", "/css/editor.css",
+        "/js/pudl-host-kit.js", "/applets/",
         "/api/site/"
     };
 

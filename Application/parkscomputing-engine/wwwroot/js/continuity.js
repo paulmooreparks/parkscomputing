@@ -13,7 +13,10 @@
     'use strict';
     if (window.pcContinuity) { return; }
 
+    /* The site's own applets with continuity, and the installed packages
+       that ask for it, which the registry (/applets/registry.js) adds. */
     var CONTINUITY = { sudoku: 'pc-sudoku', barcodes: 'pc-barcodes', terminal: 'pc-terminal' };
+    function add(name) { if (name && !CONTINUITY[name]) { CONTINUITY[name] = 'pc-' + name; } }
 
     /* The key an instance goes by: the applet's own name for the first,
        and name-2, name-3 and so on for the numbered windows PUDL's
@@ -65,5 +68,5 @@
     });
 
     /* The storage prefixes, for the settings dialog's Forget. */
-    window.pcContinuity = { keys: function () { return Object.keys(CONTINUITY).map(function (n) { return CONTINUITY[n]; }); } };
+    window.pcContinuity = { add: add, keys: function () { return Object.keys(CONTINUITY).map(function (n) { return CONTINUITY[n]; }); } };
 })();

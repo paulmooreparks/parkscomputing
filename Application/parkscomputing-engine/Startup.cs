@@ -83,6 +83,9 @@ namespace ParksComputing.Engine {
 
             // One for the whole site: it keeps sitenav.xfer, read and filled in, until a
             // file it comes from changes (Pages/Services/NavService.cs).
+            // The installed applet packages (Pages/Services/AppletCatalog.cs),
+            // which the navigation, the pages and the registry read.
+            services.AddSingleton<AppletCatalog>();
             services.AddSingleton<INavService, NavService>();
 
             // What the engine makes from a file, kept until the file changes

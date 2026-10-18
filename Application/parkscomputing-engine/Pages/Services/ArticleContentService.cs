@@ -36,12 +36,15 @@ public class ArticleContentService {
 
     private readonly SiteMarkdown _markdown;
 
+    private readonly AppletCatalog? _catalog;
+
     public ArticleContentService(IWebHostEnvironment environment, BookService books, SiteMarkdown markdown,
         Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions>? accounts = null,
-        ParksComputing.Engine.Identity.PolicyDocuments? policies = null) {
+        ParksComputing.Engine.Identity.PolicyDocuments? policies = null, AppletCatalog? catalog = null) {
         _environment = environment;
         _books = books;
         _markdown = markdown;
+        _catalog = catalog;
         _accounts = accounts?.Value.Enabled ?? false;
         _policies = policies;
     }
@@ -322,6 +325,13 @@ public class ArticleContentService {
         var htmlPath = Path.Combine(baseDir, slug + ".html");
         if (File.Exists(htmlPath)) { return LoadHtml(htmlPath, slug); }
 
+        // An installed applet package's page (Pages/Services/AppletCatalog.cs).
+        if (_catalog?.PageDocument(slug) is { } packaged) {
+            var doc = new HtmlDocument();
+            doc.LoadHtml(packaged);
+            return LoadHtml(doc, slug);
+        }
+
         return null;
     }
 
@@ -403,7 +413,8 @@ public class ArticleContentService {
     private bool ContentExists(string slug) {
         var baseDir = Path.Combine(_environment.WebRootPath, "content");
         return File.Exists(Path.Combine(baseDir, slug + ".md"))
-            || File.Exists(Path.Combine(baseDir, slug + ".html"));
+            || File.Exists(Path.Combine(baseDir, slug + ".html"))
+            || _catalog?.Find(slug) is not null;
     }
 
     private ArticleWindowContent LoadMarkdown(string path, string slug) {
@@ -447,6 +458,10 @@ public class ArticleContentService {
     private static ArticleWindowContent LoadHtml(string path, string slug) {
         var doc = new HtmlDocument();
         doc.Load(path);
+        return LoadHtml(doc, slug);
+    }
+
+    private static ArticleWindowContent LoadHtml(HtmlDocument doc, string slug) {
         var title = System.Net.WebUtility.HtmlDecode(doc.DocumentNode.SelectSingleNode("//title")?.InnerText.Trim());
         var body = doc.DocumentNode.SelectSingleNode("//body")?.InnerHtml ?? doc.DocumentNode.InnerHtml;
 

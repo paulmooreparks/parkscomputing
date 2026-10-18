@@ -31,11 +31,13 @@ namespace ParksComputing.Engine.Pages.Services {
            are looked at every few seconds instead (a documented
            PhysicalFileProvider mode); an edit shows within seconds. */
         private readonly SiteOptions _site;
+        private readonly AppletCatalog? _catalog;
 
-        public NavService(IWebHostEnvironment environment, ILogger<NavService> logger, Microsoft.Extensions.Options.IOptions<SiteOptions> site) {
+        public NavService(IWebHostEnvironment environment, ILogger<NavService> logger, Microsoft.Extensions.Options.IOptions<SiteOptions> site, AppletCatalog? catalog = null) {
             Environment = environment;
             _logger = logger;
             _site = site.Value;
+            _catalog = catalog;
             _files = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(environment.WebRootPath) {
                 UsePollingFileWatcher = true,
                 UseActivePolling = true
@@ -72,11 +74,12 @@ namespace ParksComputing.Engine.Pages.Services {
                 // Watched from before the reading starts, so a change made
                 // while it runs is not missed.
                 _changed = new Microsoft.Extensions.Primitives.CompositeChangeToken(new[] {
-                    _files.Watch("sitenav.xfer"), _files.Watch("content/*.md"), _files.Watch("content/*.html")
+                    _files.Watch("sitenav.xfer"), _files.Watch("content/*.md"), _files.Watch("content/*.html"),
+                    _catalog?.Watch() ?? Microsoft.Extensions.FileProviders.NullChangeToken.Singleton
                 });
                 var xferPath = Path.Combine(Environment.WebRootPath, "sitenav.xfer");
-                if (!File.Exists(xferPath)) { return _cached ??= new NavNode { Slug = "root" }; }
-                var rootNode = ParseRoot(File.ReadAllText(xferPath), xferPath);
+                var rootNode = File.Exists(xferPath) ? ParseRoot(File.ReadAllText(xferPath), xferPath) : new NavNode { Slug = "root" };
+                if (_catalog is not null) { AddPackages(rootNode, _catalog.Packages); }
                 PostProcess(rootNode);
                 EnrichFromContent(rootNode);
                 ShareBetweenTwins(rootNode);
@@ -112,6 +115,28 @@ namespace ParksComputing.Engine.Pages.Services {
                 if (string.IsNullOrWhiteSpace(entry.Url)) { entry.Url = _site.UrlOf(entry.Slug); entry.DerivedUrl = true; }
                 else if (Uri.TryCreate(entry.Url, UriKind.Absolute, out var abs) && (abs.Scheme == Uri.UriSchemeHttp || abs.Scheme == Uri.UriSchemeHttps)) { entry.External = true; }
             }
+        }
+
+        /// <summary>The installed applet packages (Pages/Services/AppletCatalog.cs)
+        /// join the Applets section after the entries the file lists, each
+        /// with what its manifest says: title, description, tags and window
+        /// shape. A package the file already lists anywhere keeps the file's
+        /// entry, which may say more or put it elsewhere. A site whose file
+        /// has no Applets section gets one when a package is installed.</summary>
+        private void AddPackages(NavNode root, IReadOnlyList<AppletPackage> packages) {
+            if (packages.Count == 0) { return; }
+            var listed = Enumerate(root).Select(n => n.Slug).Where(s => !string.IsNullOrEmpty(s)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var add = packages.Where(p => !listed.Contains(p.Name)).Select(p => new NavNode {
+                Slug = p.Name, Title = p.Title, Description = p.Description,
+                Tags = p.Tags.Count > 0 ? p.Tags.ToArray() : null, Win = p.WindowShape, Min = p.WindowMin, Max = p.WindowMax
+            }).ToArray();
+            if (add.Length == 0) { return; }
+            var section = (root.Nav ?? Array.Empty<NavNode>()).FirstOrDefault(n => string.Equals(n.Slug, "applets", StringComparison.OrdinalIgnoreCase));
+            if (section is null) {
+                section = new NavNode { Slug = "applets", Title = "Applets", Description = "Applets installed on this site" };
+                root.Nav = (root.Nav ?? Array.Empty<NavNode>()).Append(section).ToArray();
+            }
+            section.Nav = (section.Nav ?? Array.Empty<NavNode>()).Concat(add).ToArray();
         }
 
         private IEnumerable<NavNode> Enumerate(NavNode node) {

@@ -556,4 +556,7 @@
         invocations: function () { return Array.from(records.values()).reverse().map(view); },
         provide: provide
     });
+    /* A packaged applet's module (Architecture/applet-packages-design.md)
+       provides its handlers under the host-neutral name. */
+    window.pudlActions = window.pcActions;
 })();

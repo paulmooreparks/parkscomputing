@@ -157,6 +157,11 @@ async function init(token) {
   log('input the schema refuses is refused, saying where', c.error && /invalid input to parks\.dice\/roll@1 at dice/.test(c.text), c.text);
   c = await call(READ, 'applet_invoke', { action: 'parks.sudoku/solve@1', input: { puzzle: '530070000600195000098000060800060003400803001700020006060000280000419005000080079' } });
   log('a sudoku is solved on the server', !c.error && c.json && c.json.output.solutions === 'one' && c.json.output.solution === '534678912672195348198342567859761423426853791713924856961537284287419635345286179', c.text.slice(0, 300));
+  // An installed applet package's actions (Pages/Services/AppletCatalog.cs), with
+  // the example package at wwwroot/applets/hello.
+  log('applet_discover lists an installed package\'s actions', providers.some(p => p.id === 'example.hello'), providers.map(p => p.id).join());
+  c = await call(READ, 'applet_invoke', { action: 'example.hello/greet@1', input: { name: 'Ada' } });
+  log('and runs one on the server, from the package\'s own module', !c.error && c.json && c.json.output.greeting === 'Hello, Ada.', c.text.slice(0, 300));
   c = await call(READ, 'applet_invoke', { action: 'parks.barcode/generate@1', input: { symbology: 'ean13', data: '400638133393' } });
   log('an action needing artifact.create is refused to a token without it', c.error && /needs artifact\.create, which this token was not given/.test(c.text), c.text);
   c = await call(ALL, 'applet_invoke', { action: 'parks.barcode/generate@1', input: { symbology: 'ean13', data: '400638133393' } });

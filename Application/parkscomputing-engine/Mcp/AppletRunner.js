@@ -52,6 +52,8 @@
 
     var provided = {};
     global.pcActions = { provide: function (id, handlers) { provided[id] = handlers; } };
+    /* A packaged applet's module uses the host-neutral name. */
+    global.pudlActions = global.pcActions;
 
     /* A script beside the module runs as a page's script would, in the
        global scope. */
@@ -70,7 +72,9 @@
         if (!e) { throw new Error('there is no action ' + ref); }
         var input = C.asJSON(JSON.parse(inputJson), 'the input');
         C.check(e.input, input, 'input to ' + ref);
-        var moduleRel = 'actions/' + m.module;
+        /* Where the module lives, relative to the web root: js/actions/ for
+           the site's own, a package's folder for an installed package. */
+        var moduleRel = __moduleBase + m.module;
         loadBeside(moduleRel, '');
         var handler = provided[m.id] && provided[m.id][e.local];
         if (typeof handler !== 'function') { throw new Error(m.id + '\'s module gives no handler for ' + e.local); }

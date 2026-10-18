@@ -243,3 +243,60 @@ pudlApplets.define('diff', {
    page: '/page/diff',
    ver: '5'
 });
+
+/* What an installed applet package gets from this site
+   (Architecture/applet-packages-design.md): the kit's menu helpers
+   (js/pudl-host-kit.js, loaded before this file), where applet pages are,
+   the snapshot service, and the site filesystem and settings files as
+   paths and text, each loading when first asked. The packages' define()
+   calls follow in /applets/registry.js. */
+(function () {
+    var kit = window.pudlHostKit;
+    if (!kit) { return; }
+    function loadScript(src) {
+        return new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = function () { reject(new Error(src + ' did not load')); };
+            document.head.appendChild(s);
+        });
+    }
+    /* A shared script's global, loading the script the first time. */
+    function shared(src, name) {
+        var loading = null;
+        return function () {
+            if (!loading) { loading = (window[name] ? Promise.resolve() : loadScript(src)).then(function () { return window[name]; }); }
+            return loading;
+        };
+    }
+    var siteFs = shared(window.pcSiteFsSrc, 'pcSiteFs'), config = shared(window.pcConfigSrc, 'pcConfig');
+    function fs() { return siteFs().then(function (f) { return f.load().then(function () { return f; }); }); }
+    window.pudlHost = kit.host({
+        pages: pcWorkspacePages,
+        snapshot: window.pcSnapshot || null,
+        fs: {
+            readText: function (path) {
+                return fs().then(function (f) { var n = f.resolve(null, path); return n && !n.children ? f.read(n) : null; });
+            },
+            writeText: function (path, text) {
+                return fs().then(function (f) {
+                    var sp = f.splitPath(path);
+                    var made = sp.dir && !f.resolve(null, sp.dir) ? f.mkdir(null, sp.dir, true) : Promise.resolve(null);
+                    return made.then(function (err) { return err ? err : f.write(null, path, text, false).then(function (r) { return r.error || null; }); });
+                });
+            },
+            mkdir: function (path) { return fs().then(function (f) { return f.mkdir(null, path, true); }); }
+        },
+        config: {
+            load: function (name, defaults) { return config().then(function (c) { return c.load(name, defaults); }); },
+            get: function (name) { return window.pcConfig ? window.pcConfig.get(name) : null; },
+            set: function (name, changes) { return config().then(function (c) { return c.set(name, changes); }); },
+            onChange: function (name, fn) {
+                var off = null, gone = false;
+                config().then(function (c) { if (!gone) { off = c.onChange(name, fn); } });
+                return function () { gone = true; if (off) { off(); } };
+            }
+        }
+    });
+})();

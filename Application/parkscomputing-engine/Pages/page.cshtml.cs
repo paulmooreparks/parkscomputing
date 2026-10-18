@@ -158,6 +158,15 @@ namespace ParksComputing.Engine.Pages {
                     return ExtractAndRender(doc, slug);
                 }
 
+                // An installed applet package's page, which the catalogue
+                // writes from its manifest (Pages/Services/AppletCatalog.cs).
+                var packaged = HttpContext.RequestServices.GetService<AppletCatalog>()?.PageDocument(slug);
+                if (packaged is not null) {
+                    var packageDoc = new HtmlDocument();
+                    packageDoc.LoadHtml(packaged);
+                    return ExtractAndRender(packageDoc, slug);
+                }
+
                 return Task.FromResult<IActionResult>(NotFound());
             }
             catch (Exception) {

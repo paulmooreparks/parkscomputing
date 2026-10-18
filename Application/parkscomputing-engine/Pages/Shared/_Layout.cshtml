@@ -437,7 +437,12 @@
        key-summoned menu panel on every page. *@
     <script src="~/pudl/pudl-menu.js" defer asp-append-version="true"></script>
     <script src="~/pudl/pudl-applets.js" defer asp-append-version="true"></script>
+    @* The host kit before the registry, which builds pudlHost from it, and
+       the installed packages' registry after, written by the server
+       (Pages/Services/AppletCatalog.cs). *@
+    <script src="~/js/pudl-host-kit.js" defer asp-append-version="true"></script>
     <script src="~/js/applets.js" defer asp-append-version="true"></script>
+    <script src="/applets/registry.js" defer></script>
     @* The menu bar, after the menu, window and applet scripts it uses
        (PUDL 0.38.0), and the site's commands, which its menu names. *@
     <script src="~/pudl/pudl-menubar.js" defer asp-append-version="true"></script>
