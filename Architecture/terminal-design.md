@@ -42,7 +42,9 @@ A slug is served only if it appears in the tree as a page, and the tree's slugs 
 
 ## The applet
 
-`js/terminal.js` registers the `terminal` applet. It hosts xterm.js 6.0.0 and its fit addon (MIT), vendored unmodified at `js/vendor/xterm-6.0.0/`. The terminal's colors come from the PUDL tokens on the page and update when the theme changes.
+`js/terminal.js` registers the `terminal` applet. It hosts xterm.js 6.0.0 and its fit, serialize and unicode-graphemes add-ons (MIT), vendored unmodified at `js/vendor/xterm-6.0.0/`. The terminal's colors come from the PUDL tokens on the page and update when the theme changes.
+
+The unicode-graphemes add-on (0.4.0) is there because xterm measures characters by Unicode 6 unless told otherwise, where an emoji such as ✅ or ❌ is one cell, while a program at the far end of an SSH session (Microsoft Edit, say) draws it as two; every such character then shifted the rest of the screen by a cell, and a file full of them, opened in Edit over SSH, painted as a jumble (Paul, 2026-10-19). With the add-on's width table active (`15-graphemes`), the two sides agree, variation selectors included.
 
 Commands are JavaScript objects registered with the terminal: a name, a one-line summary, a help text, optional completion, and an async `run(args, io)`. The `io` object is the only way a command reaches anything:
 

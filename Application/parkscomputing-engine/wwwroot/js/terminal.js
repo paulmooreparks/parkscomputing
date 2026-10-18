@@ -28,7 +28,7 @@
     }
     var xtermReady = null;
     function loadXterm() {
-        if (window.Terminal && window.FitAddon && window.SerializeAddon) { return Promise.resolve(); }
+        if (window.Terminal && window.FitAddon && window.SerializeAddon && window.UnicodeGraphemesAddon) { return Promise.resolve(); }
         if (!xtermReady) {
             if (!document.querySelector('link[data-xterm-css]')) {
                 var css = document.createElement('link');
@@ -43,6 +43,12 @@
                    from the same release (0.14.0), which a reload brings
                    back (js/snapshot.js). */
                 .then(function () { return loadScript(beside('vendor/xterm-6.0.0/addon-serialize.js')); })
+                /* xterm's own add-on for the width of today's characters
+                   (0.4.0): without it xterm measures by Unicode 6, where an
+                   emoji such as a check mark is one cell, while a program
+                   on the far side (Microsoft Edit, say) draws it as two,
+                   and the screen comes apart around every one. */
+                .then(function () { return loadScript(beside('vendor/xterm-6.0.0/addon-unicode-graphemes.js')); })
                 .catch(function (err) { xtermReady = null; throw err; });
         }
         return xtermReady;
@@ -2568,12 +2574,18 @@
                    directory anyone may write to, stay readable in the
                    site's palette. 4.5 is WCAG AA for body text. */
                 minimumContrastRatio: 4.5,
-                allowProposedApi: false
+                /* The unicode-graphemes add-on uses xterm's proposed API,
+                   which is stable within the vendored release. */
+                allowProposedApi: true
             });
             fit = new window.FitAddon.FitAddon();
             term.loadAddon(fit);
             serializer = new window.SerializeAddon.SerializeAddon();
             term.loadAddon(serializer);
+            if (window.UnicodeGraphemesAddon) {
+                term.loadAddon(new window.UnicodeGraphemesAddon.UnicodeGraphemesAddon());
+                term.unicode.activeVersion = '15-graphemes';
+            }
             term.open(screen);
             try { fit.fit(); } catch (err) { }
             term.onData(onData);
