@@ -470,9 +470,13 @@ body.desktop { height: 100dvh; }
    need know nothing of them. The site's own applets say the same under a
    class of their own, which wins where it differs, such as hiding overflow. */
 .win-body:where(:has(> .post-content > .post-body > [data-applet-fit="fill"]:not([data-applet="comments"]))) { display: flex; flex-direction: column; overflow: auto; }
-.win-body:where(:has(> .post-content > .post-body > [data-applet-fit="fill"]:not([data-applet="comments"]))) .post-content { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; max-width: none; }
-.win-body:where(:has(> .post-content > .post-body > [data-applet-fit="fill"]:not([data-applet="comments"]))) .post-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.win-body :where(> .post-content > .post-body > [data-applet-fit="fill"]:not([data-applet="comments"])) { flex: 1 1 auto; min-height: 0; }
+/* The wrappers take the whole width as well: the reading column is
+   centred by auto margins, which in a column would size it to its
+   content, and an applet with size containment (Theme Studio, Diff) has
+   no intrinsic width at all. */
+.win-body:where(:has(> .post-content > .post-body > [data-applet-fit="fill"]:not([data-applet="comments"]))) .post-content { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; max-width: none; width: 100%; }
+.win-body:where(:has(> .post-content > .post-body > [data-applet-fit="fill"]:not([data-applet="comments"]))) .post-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; width: 100%; }
+.win-body :where(> .post-content > .post-body > [data-applet-fit="fill"]:not([data-applet="comments"])) { flex: 1 1 auto; min-height: 0; width: 100%; }
 
 /* A window hosting an app page in a frame gives it the whole body. */
 .win-app-frame { display: block; width: 100%; height: 100%; border: 0; }
