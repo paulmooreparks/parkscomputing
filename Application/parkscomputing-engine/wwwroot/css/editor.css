@@ -52,11 +52,14 @@
 .pc-editor .ed-view[hidden] { display: none; }
 
 .pc-editor .ed-status {
-  display: flex; flex-wrap: wrap; gap: 4px var(--space-4);
+  display: flex; flex-wrap: nowrap; gap: 4px var(--space-4); align-items: baseline;
   color: var(--text-muted); font-size: var(--text-xs); min-height: 1.5em;
 }
 .pc-editor .ed-status [data-role="where"] { font-family: var(--mono); color: var(--text); }
-.pc-editor .ed-message { flex-basis: 100%; }
+/* What just happened sits at the right of the same line as the file, its
+   language and the cursor, trimmed rather than wrapped onto a second line
+   the window's bottom would cut off. */
+.pc-editor .ed-message { margin-left: auto; min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pc-editor .ed-message-error { color: var(--danger); }
 .pc-editor .ed-failed { color: var(--text-muted); padding: var(--space-4); }
 .pc-editor .ed-dialog .form-input { width: 100%; }

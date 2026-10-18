@@ -80,12 +80,14 @@
             nav [
                 {
                     slug "settings"
+                    icon "/images/icons/settings.svg"
                     title "Settings"
                     description "Theme, default view, window preferences, and this browser's data"
                     tags [ "web apps" "site development" ]
                 }
                 {
                     slug "theme-studio"
+                    icon "/images/icons/theme-studio.svg"
                     win "0.9,0.9"
                     title "PUDL Theme Studio"
                     description "Make a PUDL theme: edit its colours, watch PUDL's components take them, check their contrast, and take the CSS"
@@ -93,18 +95,21 @@
                 }
                 {
                     slug "barcode-scanner"
+                    icon "/images/icons/barcode-scanner.svg"
                     title "Barcode Scanner"
                     description "Scan camera images and decode retail layouts"
                     tags [ "web apps" "barcodes" "retail" ]
                 }
                 {
                     slug "barcodes"
+                    icon "/images/icons/barcodes.svg"
                     title "Barcode Tool"
                     description "Make retail barcodes with embedded data, and read them back"
                     tags [ "web apps" "barcodes" ]
                 }
                 {
                     slug "terminal"
+                    icon "/images/icons/terminal.svg"
                     win "0.5,0.7"
                     min "420,220"
                     title "Terminal"
@@ -113,6 +118,7 @@
                 }
                 {
                     slug "files"
+                    icon "/images/icons/files.svg"
                     win "0.6,0.75"
                     title "Files"
                     description "The site and your own files as folders: browse the pages, launch the applets, keep files of your own"
@@ -120,6 +126,7 @@
                 }
                 {
                     slug "editor"
+                    icon "/images/icons/editor.svg"
                     win "0.6,0.8"
                     title "Editor"
                     description "A text editor for your own files, with syntax colouring, search and replace, and tabs"
@@ -127,6 +134,7 @@
                 }
                 {
                     slug "diff"
+                    icon "/images/icons/diff.svg"
                     win "0.85,0.85"
                     title "Diff Viewer"
                     description "Compare two texts line by line, side by side or in one column, from the site's files, your computer, or pasted in"
@@ -134,12 +142,14 @@
                 }
                 {
                     slug "dice"
+                    icon "/images/icons/dice.svg"
                     title "Dice"
                     description "Roll up to three dice"
                     tags [ "web apps" "games" ]
                 }
                 {
                     slug "sudoku"
+                    icon "/images/icons/sudoku.svg"
                     win "0.28,0.88"
                     title "Sudoku"
                     description "A Sudoku game that lets you edit and share games"
@@ -147,6 +157,7 @@
                 }
                 {
                     slug "conway"
+                    icon "/images/icons/conway.svg"
                     win "0.22,0.6"
                     title "Conway's Game of Life"
                     description "The game alone; the article about it is under Articles"
@@ -154,6 +165,7 @@
                 }
                 {
                     slug "flashcards"
+                    icon "/images/icons/flashcards.svg"
                     win "0.54,0.66"
                     title "Barcode Flash Cards"
                     description "The drill alone; the article about it is under Articles"
@@ -236,6 +248,7 @@
         { slug "parks-laws-of-debugging" tags ["programming"] }
         {
             slug "sudoku"
+            icon "/images/icons/sudoku.svg"
             win "0.17,0.58"
             tags ["games" "programming"]
             excerpt <"I didn't like most of the Sudoku apps I found, so I decided to write one as a fun little evening and weekend project. It lets you edit and share games.">
