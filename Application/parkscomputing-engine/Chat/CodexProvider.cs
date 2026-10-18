@@ -74,7 +74,14 @@ public sealed class CodexProvider : IChatProvider {
         string threadId;
         var fresh = agent.ThreadId is null;
         if (!fresh) { start["threadId"] = agent.ThreadId; }
-        var started = await conn.CallAsync(fresh ? "thread/start" : "thread/resume", start, cancel) as JsonObject;
+        JsonObject? started;
+        try { started = await conn.CallAsync(fresh ? "thread/start" : "thread/resume", start, cancel) as JsonObject; }
+        catch (ProviderException) when (!fresh) {
+            /* The thread is gone (Codex's home moved or was cleared): a
+               fresh one, with the conversation's history, carries on. */
+            fresh = true; start.Remove("threadId");
+            started = await conn.CallAsync("thread/start", start, cancel) as JsonObject;
+        }
         threadId = started?["thread"]?["id"]?.GetValue<string>() ?? throw new ProviderException("Codex gave no thread.");
         if (fresh) { agent.ThreadStarted(threadId); }
 

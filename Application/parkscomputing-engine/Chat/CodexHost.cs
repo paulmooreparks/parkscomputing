@@ -20,8 +20,8 @@ namespace ParksComputing.Engine.Chat;
 /// over its standard streams, started once and shared by every chat that
 /// uses a provider of kind codex. The process gets a scrubbed environment
 /// (no key, secret, token or password of the server's, since Codex runs
-/// commands), CODEX_HOME where its sign-in lives (the etc folder's codex
-/// directory unless the environment says otherwise), and, when the server
+/// commands), CODEX_HOME where its sign-in and sessions live (a volume of
+/// its own, /app/codex-home, unless the environment says otherwise), and, when the server
 /// has OPENAI_API_KEY and Codex is not signed in yet, a sign-in with that
 /// key through the documented <c>codex login --with-api-key</c>.
 ///
@@ -34,7 +34,10 @@ namespace ParksComputing.Engine.Chat;
 /// </summary>
 public sealed class CodexHost : IAsyncDisposable {
     public const string DefaultCommand = "/app/codex/codex";
-    public const string DefaultHome = "/app/etc/codex";
+    /* Codex's home is a volume of its own, never inside etc: the site lists
+       etc for the super-user, keeps history of its files and syncs it, and
+       Codex writes session databases there by the hundred of megabytes. */
+    public const string DefaultHome = "/app/codex-home";
     private static readonly string[] SecretWords = { "KEY", "SECRET", "TOKEN", "PASSWORD", "PASSWD", "CONNECTIONSTRING", "CONNECTION_STRING" };
 
     private readonly ILogger<CodexHost> _log;

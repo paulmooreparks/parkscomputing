@@ -52,10 +52,11 @@ services:
       # The staff's Chat (Architecture/chat-design.md): a provider's key is
       # named in /etc/chat.json and lives only here.
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      # Codex (Chat/CodexHost.cs): its sign-in lives in the etc volume's
-      # codex folder (auth.json copied from a signed-in machine, or made
-      # from OPENAI_API_KEY at first start).
-      - CODEX_HOME=/app/etc/codex
+      # Codex (Chat/CodexHost.cs): its home, with its sign-in (auth.json
+      # copied from a signed-in machine, or made from OPENAI_API_KEY at
+      # first start) and its session databases, is a volume of its own,
+      # outside etc, which the site lists, keeps history of, and syncs.
+      - CODEX_HOME=/app/codex-home
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       # The chat's own web search for models without one (Chat/ChatSearch.cs):
       # the Brave Search API key, named as keyEnv under "search" in /etc/chat.json.
@@ -78,6 +79,8 @@ services:
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\wwwroot:/app/wwwroot
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\home:/app/home
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\etc:/app/etc
+      # Codex's home: local, not synced, since it churns (Chat/CodexHost.cs).
+      - C:\Users\paul\.config\docker-sites\parkscomputing-codex:/app/codex-home
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\history:/app/history
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\config:/app/config:ro
     depends_on:
