@@ -204,20 +204,18 @@
                 '<span class="form-select-wrap ed-insert"><select class="form-select" id="ed-insert-' + n + '" data-role="insert"><option value="">Insert…</option></select></span>' +
               '</div>' +
               '<span class="ed-spacer"></span>' +
-              /* On the edit origin: a site page's source, a file's place on
-                 the public site, and a preview of unsaved text. */
+              /* On the edit origin: a site page's source, and a file's place
+                 on the public site, which Preview opens. */
               '<button type="button" class="btn btn-sm" data-action="source" hidden>Edit the source</button>' +
-              /* How an article is shown (Architecture/wysiwyg-editor-design.md):
-                 its text, the page itself to edit, both side by side, or the
-                 text beside the page to read. Visual and Split are for a
-                 Markdown article; an HTML article has Text and Preview. */
+              /* How a Markdown article is shown (Architecture/wysiwyg-editor-design.md):
+                 its text, the page itself to edit, or both side by side.
+                 Each tab keeps its own. */
               '<div class="seg ed-views" role="group" aria-label="View" data-role="views" hidden>' +
                 '<button type="button" data-view="text" aria-pressed="true">Text</button>' +
                 '<button type="button" data-view="visual" aria-pressed="false">Visual</button>' +
                 '<button type="button" data-view="split" aria-pressed="false">Split</button>' +
-                '<button type="button" data-view="preview" aria-pressed="false">Preview</button>' +
               '</div>' +
-              '<a class="ed-view" data-role="view" target="_blank" rel="noopener" hidden>View on the site</a>' +
+              '<a class="ed-view" data-role="view" target="_blank" rel="noopener" title="Open this page on the site" hidden>Preview</a>' +
               '<span class="ed-readonly" data-role="readonly" hidden><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Read-only</span>' +
             '</div>' +
             '<div class="tablist doc-tabs ed-tabs" role="tablist" aria-label="Open files" data-role="tabs"></div>' +
@@ -493,12 +491,7 @@
             var node = t && t.path && F ? F.resolve(F.home(), t.path) : null;
             q('[data-action="source"]').hidden = !(F && F.mounted && node && t.readOnly && F.sourceOf(node));
             var page = !!(F && F.mounted && node && previewable(node)), md = page && /\.md$/i.test(F.realOf(node).rel);
-            el.views.hidden = !page;
-            ['visual', 'split'].forEach(function (v) {
-                var b = el.views.querySelector('[data-view="' + v + '"]');
-                b.disabled = !md;
-                b.title = md ? '' : 'Visual editing is for Markdown articles.';
-            });
+            el.views.hidden = !md;
             var url = node && F.mounted ? F.publicUrl(node) : null;
             var viewLink = q('[data-role="view"]');
             viewLink.hidden = !url;
@@ -519,10 +512,14 @@
         }
 
         function activate(i) {
-            var prev = current();
+            var prev = current(), switching = i !== active;
             if (prev && view) { prev.state = view.state; prev.scroll = scrollAnchor(); }
-            /* A preview belongs to the file it was made for. */
-            if (i !== active) { hidePreview(); }
+            /* Each tab keeps its own view. The page belongs to the file it
+               was made for, so the one coming to the front makes its own. */
+            if (switching) {
+                if (prev) { prev.view = viewMode; }
+                if (viewMode !== 'text') { setView('text'); }
+            }
             active = i;
             var t = current();
             if (!t) { view.setState(CM.EditorState.create({ doc: '' })); renderTabs(); announce(); return; }
@@ -539,6 +536,7 @@
             announce();
             markExplorer();
             say(t.external ? 'This file was changed somewhere else since you opened it.' : '', !!t.external);
+            if (switching && t.view && t.view !== 'text' && canEditVisually()) { setView(t.view); }
         }
 
         function addTab(t, text) {
@@ -939,13 +937,14 @@
             explorer.markCurrent(node ? F.pathOf(F.realOf(node)) : null);
         }
 
-        /* === Views: Text, Visual, Split and Preview ======================= */
+        /* === Views: Text, Visual and Split ================================= */
 
-        /* An article's page is the public site's own page for the unsaved
-           text, a draft the server keeps for an hour (A11). Preview shows it
-           beside the text to read; Visual and Split make that page the
-           editing surface (js/editor-visual.js, Architecture/wysiwyg-editor-design.md),
-           Visual alone and Split beside the text. Save publishes. */
+        /* A Markdown article's page is the public site's own page for the
+           unsaved text, a draft the server keeps for an hour (A11). Visual
+           and Split make that page the editing surface (js/editor-visual.js,
+           Architecture/wysiwyg-editor-design.md), Visual alone and Split
+           beside the text. Save publishes. Preview is not a view: it opens
+           the page as it is on the site (openOnSite). */
         var viewMode = 'text';
         var visual = { api: null, front: null, fromVisual: false, timer: 0, loading: null, gen: 0 };
 
@@ -978,14 +977,12 @@
         function canEditVisually() { var node = articleNode(); return !!(node && /\.md$/i.test(F.realOf(node).rel)); }
         function slugOf(node) { return F.realOf(node).rel.replace(/^content\//, '').replace(/\.(md|html)$/i, ''); }
 
-        function preview() { setView(viewMode === 'preview' ? 'text' : 'preview'); }
-
         /* Shows the article as asked: the page is made again from the text
-           as it is now, and in Visual and Split the editor is put into it. */
+           as it is now, and the editor is put into it. */
         async function setView(mode) {
             var node = articleNode();
-            if (mode !== 'text' && !node) { mode = 'text'; }
-            if ((mode === 'visual' || mode === 'split') && !canEditVisually()) { mode = 'preview'; }
+            if (mode !== 'visual' && mode !== 'split') { mode = 'text'; }
+            if (mode !== 'text' && !canEditVisually()) { mode = 'text'; }
             viewMode = mode;
             Array.prototype.forEach.call(el.views.querySelectorAll('[data-view]'), function (b) {
                 b.setAttribute('aria-pressed', String(b.getAttribute('data-view') === mode));
@@ -1001,19 +998,16 @@
                 return;
             }
             var gen = ++visual.gen;
-            say(mode === 'preview' ? 'Making a preview…' : 'Opening the page to edit…');
+            say('Opening the page to edit…');
             var made;
             try { made = await adminPost('/api/admin/preview', { path: F.realOf(node).rel, text: view.state.doc.toString() }); }
             catch (err) { if (gen === visual.gen) { say('The page could not be made: ' + err.message, true); } return; }
             if (gen !== visual.gen) { return; }
             el.preview.hidden = false;
-            el.preview.onload = mode === 'preview' ? null : function () { if (gen === visual.gen) { attachVisual(gen, node); } };
+            el.preview.onload = function () { if (gen === visual.gen) { attachVisual(gen, node); } };
             el.preview.src = made.url;
-            if (mode === 'preview') { say('This preview is the unsaved text as the site would show it. It works for an hour; Save publishes.'); }
             keep();
         }
-
-        function hidePreview() { if (viewMode !== 'text') { setView('text'); } }
 
         function detachVisual() {
             clearTimeout(visual.timer);
@@ -1294,13 +1288,45 @@
         /* The Editor's snapshot (js/snapshot.js): each open tab with its
            unsaved text, cursor and selection, how far it is scrolled, its
            undo history and its search, and which tab is in front and whether
-           the preview is showing. A reload brings all of it back. A draft
+           which view each is in. A reload brings all of it back. A draft
            for a file that can't be reached when the Editor starts, as a
            server file can't while signed out, waits in the snapshot until it
-           can. Closing the Editor's window on purpose forgets it. */
+           can.
+
+           The same record is the Editor's session, kept in this browser's
+           storage under pc-editor-session, so closing the Editor's window
+           and opening it again, in this tab or another, or after the browser
+           restarts, brings back the documents it had open, unsaved text
+           and all. A reload prefers the tab's own snapshot, which is newer
+           when two tabs each have an Editor. The first instance keeps the
+           session; a numbered one keeps only its snapshot. */
         var snap = window.pcSnapshot ? window.pcSnapshot.join(root, takeSnapshot) : null;
         var waiting = [], restoring = false;
-        function keep() { if (snap && !restoring) { snap.changed(); } }
+        var SESSION_KEY = 'pc-editor-session';
+        /* PUDL keys a numbered instance name-2 to name-9 (0.27.0). */
+        var ownsSession = !/-[2-9]$/.test(String(opts.instance || ''));
+        var sessionTimer = 0;
+        function keep() {
+            if (restoring) { return; }
+            if (snap) { snap.changed(); }
+            if (ownsSession) { clearTimeout(sessionTimer); sessionTimer = setTimeout(keepSession, 500); }
+        }
+        /* Writes the session now; false when the browser would not keep it. */
+        function keepSession() {
+            clearTimeout(sessionTimer);
+            if (!ownsSession || restoring || !view || !CM) { return true; }
+            var s = takeSnapshot();
+            try {
+                if (s && (s.tabs.length || s.waiting.length)) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+                else { localStorage.removeItem(SESSION_KEY); }
+                return true;
+            } catch (err) { return false; }
+        }
+        function readSession() {
+            if (!ownsSession) { return null; }
+            try { var s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); return s && Array.isArray(s.tabs) ? s : null; }
+            catch (err) { return null; }
+        }
 
         /* Whether a file is the one a snapshot was taken against: its
            length and an FNV-1a hash of its text. */
@@ -1363,7 +1389,7 @@
                     path: t.path, name: t.name, lang: t.lang, mtime: t.mtime, fresh: !!t.fresh,
                     draft: t.modified ? text : null, sum: t.modified ? null : fingerprint(text),
                     selection: json.selection, history: json.history, scroll: t.scroll == null ? null : t.scroll,
-                    search: searchOf(st)
+                    search: searchOf(st), view: t === front ? viewMode : (t.view || 'text')
                 });
             });
             var out = { tabs: list, front: frontAt, waiting: waiting, view: viewMode, explorer: explorer ? explorer.snapshot() : null };
@@ -1401,6 +1427,7 @@
             }
             t.state = state;
             t.scroll = k.scroll;
+            t.view = k.view === 'visual' || k.view === 'split' ? k.view : 'text';
             t.openSearch = !!(k.search && k.search.open);
             t.modified = text !== t.saved;
             /* The tab in front takes its new state through activate(), which
@@ -1413,6 +1440,8 @@
            from before snapshots, which it kept the same way. */
         function readKept() {
             if (snap && snap.kept && Array.isArray(snap.kept.tabs)) { return snap.kept; }
+            var session = readSession();
+            if (session) { return session; }
             try {
                 var old = JSON.parse(sessionStorage.getItem('pc-editor-work') || 'null');
                 sessionStorage.removeItem('pc-editor-work');
@@ -1437,7 +1466,7 @@
             if (explorer && kept.explorer) { explorer.restore(kept.explorer); }
             keep();
             // A snapshot from before the views kept only whether the preview showed.
-            return { text: msg, error: waiting.length > 0, view: kept.view || (kept.preview ? 'preview' : 'text') };
+            return { text: msg, error: waiting.length > 0, view: kept.view || 'text' };
         }
         async function reopen(all, back, frontKept) {
             var frontTab = null;
@@ -1474,20 +1503,24 @@
             return frontTab;
         }
 
+        /* Unsaved text kept in the session comes back with the Editor, so
+           leaving or closing asks only when the session could not keep it. */
         function onBeforeUnload(e) {
-            if (tabs.some(function (t) { return t.modified; })) { e.preventDefault(); e.returnValue = ''; }
+            if (tabs.some(function (t) { return t.modified; }) && !(ownsSession && keepSession())) { e.preventDefault(); e.returnValue = ''; }
         }
         window.addEventListener('beforeunload', onBeforeUnload);
 
-        /* Closing the editor's window with unsaved changes asks first
-           (pudl:window-closing, PUDL 0.28.0): Cancel keeps the window,
+        /* Closing the editor's window with unsaved changes that the session
+           could not keep asks first (pudl:window-closing, PUDL 0.28.0); when
+           the session keeps them, the window closes and they come back with
+           it. The question's Cancel keeps the window,
            Don't save closes it, and Save all saves every changed file and
            then closes, unless a save fails. */
         var win = root.closest('.win[data-win]'), closeAgreed = false;
         function onWindowClosing(e) {
             if (e.target !== win || closeAgreed) { return; }
             var changed = tabs.filter(function (t) { return t.modified; });
-            if (!changed.length) { return; }
+            if (!changed.length || (ownsSession && keepSession())) { return; }
             e.preventDefault();
             var key = win.getAttribute('data-win');
             var names = changed.map(function (t) { return t.name; });
@@ -1519,19 +1552,34 @@
                 if (fromList && b) { b.focus(); }
             });
         });
-        /* View on the site, in the window view, opens a page of this site as
-           a window rather than a browser tab, and one already open comes to
-           the front with its content fetched again, so it shows what was
-           just saved. Anywhere else, or for an address that is not a page
-           of this site, the link opens a new tab as the browser chooses. */
+        /* Preview opens the page as it is on the site. In the window view it
+           opens a page of this site as a window rather than a browser tab,
+           and one already open comes to the front with its content fetched
+           again, so it shows what was just saved. Anywhere else, or for an
+           address that is not a page of this site, it opens a new tab. Text
+           not yet saved is not on the site, which the status line says. */
+        function previewNote() {
+            if (current() && current().modified) { say('Preview shows the page as it is on the site; save to see your changes there.'); }
+        }
+        function preview() {
+            var link = q('[data-role="view"]');
+            if (link.hidden || !link.href) { return; }
+            previewNote();
+            if (!inWindowView(link.href)) { window.open(link.href, '_blank', 'noopener'); }
+        }
         function viewOnSite(e) {
             var link = e.target.closest('[data-role="view"]');
             if (!link || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) { return false; }
+            previewNote();
+            if (!inWindowView(link.href)) { return false; }
+            e.preventDefault();
+            return true;
+        }
+        function inWindowView(href) {
             if (!window.pudlWindows || !document.querySelector('[data-win-layer]')) { return false; }
-            var url = new URL(link.href, location.href);
+            var url = new URL(href, location.href);
             var page = url.origin === location.origin && /^\/page\/([A-Za-z0-9_-]+)$/.exec(url.pathname);
             if (!page) { return false; }
-            e.preventDefault();
             var key = page[1], win = document.querySelector('.win[data-win="' + key + '"]');
             if (win && window.pudlWindows.state().open.indexOf(key) >= 0) {
                 window.pudlWindows.raise(key);
@@ -1716,10 +1764,12 @@
             ];
             if (!el.views.hidden) {
                 viewItems.push('-');
-                [['text', 'Text'], ['visual', 'Visual'], ['split', 'Split'], ['preview', 'Preview']].forEach(function (v) {
-                    var b = el.views.querySelector('[data-view="' + v[0] + '"]');
-                    viewItems.push({ label: v[1], radio: 'ed-view', checked: viewMode === v[0], disabled: !ready || b.disabled, run: function () { setView(v[0]); } });
+                [['text', 'Text'], ['visual', 'Visual'], ['split', 'Split']].forEach(function (v) {
+                    viewItems.push({ label: v[1], radio: 'ed-view', checked: viewMode === v[0], disabled: !ready, run: function () { setView(v[0]); } });
                 });
+            }
+            if (!q('[data-role="view"]').hidden) {
+                viewItems.push('-', command('preview', 'Preview on the site'));
             }
             return { titles: [
                 { label: 'Editor', items: window.pcAppletIdentity(root) },
@@ -1784,6 +1834,8 @@
             setState: takeFile,
             menus: menus,
             destroy: function () {
+                /* The session as the Editor closes, for when it opens again. */
+                keepSession();
                 destroyed = true;
                 if (snap) { snap.leave(); }
                 if (unsubscribe) { unsubscribe(); }

@@ -177,11 +177,29 @@ function diff(a, b) {
     await page.waitForTimeout(2500);
     log('text typed on the left appears on the page', /A paragraph typed as text\./.test(await frame2.textContent('.pc-visual')));
 
-    // Preview and back to Text.
-    await page.click('[data-view="preview"]');
+    // Each tab keeps its own view: another file in front shows its text,
+    // and the article comes back in Split.
+    await page.evaluate(() => pudlHost.fs.writeText('~/visual-editor-other.txt', 'Another file.\n'));
+    await page.click('[data-action="open"]');
+    await page.waitForSelector('dialog[open] [data-pick="input"]', { timeout: 10000 });
+    await page.fill('dialog[open] [data-pick="input"]', '~/visual-editor-other.txt');
+    await page.click('dialog[open] [data-pick="ok"]');
+    await page.waitForFunction(() => /Another file/.test(document.querySelector('.cm-content').textContent), null, { timeout: 10000 });
+    log('another tab in front shows its text, with no page', await page.isHidden('iframe.ed-preview'));
+    await page.click('[data-role="tabs"] [data-tab][title*="visual-editor-test"]');
     await page.waitForTimeout(2500);
-    const frame3 = await (await page.waitForSelector('iframe.ed-preview')).contentFrame();
-    log('Preview is the page, not editable', !(await frame3.$('.pc-visual')) && /A paragraph typed as text/.test(await frame3.textContent('.post-body')));
+    log('the article comes back in the view it was in', (await page.getAttribute('[data-view="split"]', 'aria-pressed')) === 'true' && await page.isVisible('iframe.ed-preview'), await page.getAttribute('[data-view="split"]', 'aria-pressed'));
+
+    // Preview is no longer a view: it opens the page on the site.
+    log('the views are Text, Visual and Split', (await page.$$eval('[data-role="views"] [data-view]', bs => bs.map(b => b.getAttribute('data-view')).join())) === 'text,visual,split');
+    const previewLink = page.locator('[data-role="view"]');
+    log('Preview is a link to the page on the site', (await previewLink.textContent()) === 'Preview' && /\/page\/visual-editor-test$/.test(await previewLink.getAttribute('href')), await previewLink.getAttribute('href'));
+    const [tab] = await Promise.all([page.context().waitForEvent('page', { timeout: 10000 }).catch(() => null), previewLink.click()]);
+    /* The test instance's public origin may not resolve here, so the new
+       tab is checked for being there; the link above says where it goes. */
+    log('on a page of its own it opens the page in a new tab', !!tab, 'no new tab');
+    if (tab) { await tab.close(); }
+    log('and says the unsaved text is not on the site yet', /save to see your changes/.test(await page.textContent('[data-role="message"]')), await page.textContent('[data-role="message"]'));
     await page.click('[data-view="text"]');
     log('Text hides the page', await page.isHidden('iframe.ed-preview'));
 
@@ -262,6 +280,9 @@ function diff(a, b) {
     await page.evaluate(async path => {
         const F = window.pcSiteFs; const n = F.resolve(F.home(), path);
         if (n) { await F.remove(n, false); }
+        const o = F.resolve(F.home(), '~/visual-editor-other.txt');
+        if (o) { await F.remove(o, false); }
+        localStorage.removeItem('pc-editor-session');
     }, FILE);
     log('no page errors', errors.length === 0, errors.join(' | '));
     console.log(failures ? failures + ' check(s) failed' : 'all checks passed');

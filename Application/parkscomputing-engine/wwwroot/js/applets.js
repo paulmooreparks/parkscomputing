@@ -161,7 +161,7 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
-    ver: '31',
+    ver: '32',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } },
     actions: '/js/actions/editor.json'
 });
@@ -174,7 +174,7 @@ pudlApplets.define('settings', {
     src: '/js/settings.js',
     css: '/css/settings.css',
     page: pcWorkspacePages + 'settings',
-    ver: '20'
+    ver: '21'
 });
 
 /* Sight Reader is an installed applet package too (pudl-sight-reader). It

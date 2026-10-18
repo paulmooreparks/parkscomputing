@@ -45,7 +45,7 @@
        before Settings became an applet in the Applets menu. */
 
     var FORGET_KEYS = ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku', 'pc-barcodes',
-        'pc-barcode-layouts', 'pc-barcode-layouts-moved', 'pc-terminal', 'pc-terminal-history', 'pc-terminal-home'];
+        'pc-barcode-layouts', 'pc-barcode-layouts-moved', 'pc-editor-session', 'pc-terminal', 'pc-terminal-history', 'pc-terminal-home'];
 
     function viewChoice() {
         var m = document.cookie.match(/(?:^|;\s*)pc-view=([^;]*)/);
