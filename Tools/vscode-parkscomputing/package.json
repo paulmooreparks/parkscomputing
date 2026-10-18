@@ -2,7 +2,7 @@
   "name": "parkscomputing-site",
   "displayName": "Parks Computing site",
   "description": "Shortcode completion, hover and problems for the site's Markdown, from the site engine's own language server.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "paulmooreparks",
   "license": "Apache-2.0",
   "private": true,
@@ -11,6 +11,13 @@
   "activationEvents": ["onLanguage:markdown"],
   "main": "./extension.js",
   "contributes": {
+    "grammars": [
+      {
+        "scopeName": "parkscomputing.shortcode.injection",
+        "path": "./syntaxes/shortcode.injection.json",
+        "injectTo": ["text.html.markdown"]
+      }
+    ],
     "configuration": {
       "title": "Parks Computing site",
       "properties": {

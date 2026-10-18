@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "scopeName": "parkscomputing.shortcode.injection",
+  "comment": "The site's shortcodes, {{name:arguments}} and {{/name}}, coloured inside Markdown: the braces and the name as a tag, a parameter's name as an attribute, a quoted value as a string, and a bare value as a value. The language server (Lsp/SiteLanguageServer.cs) says whether a shortcode is right; this only colours it.",
+  "injectionSelector": "L:text.html.markdown -markup.fenced_code -markup.inline.raw -markup.raw",
+  "patterns": [{ "include": "#shortcode" }],
+  "repository": {
+    "shortcode": {
+      "begin": "(\\{\\{)(/?)([a-z][a-z0-9-]*)(:?)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.shortcode" },
+        "2": { "name": "punctuation.definition.tag.shortcode" },
+        "3": { "name": "entity.name.tag.shortcode" },
+        "4": { "name": "punctuation.separator.key-value.shortcode" }
+      },
+      "end": "\\}\\}",
+      "endCaptures": { "0": { "name": "punctuation.definition.tag.end.shortcode" } },
+      "name": "meta.tag.shortcode",
+      "patterns": [
+        {
+          "match": "([A-Za-z][A-Za-z0-9_-]*)(=)",
+          "captures": {
+            "1": { "name": "entity.other.attribute-name.shortcode" },
+            "2": { "name": "punctuation.separator.key-value.shortcode" }
+          }
+        },
+        {
+          "begin": "\"",
+          "end": "\"",
+          "name": "string.quoted.double.shortcode",
+          "patterns": [{ "match": "\\\\.", "name": "constant.character.escape.shortcode" }]
+        },
+        { "match": "[^\\s\"}]+", "name": "string.unquoted.shortcode" }
+      ]
+    }
+  }
+}
