@@ -139,6 +139,14 @@ public partial class Startup {
         services.AddSingleton<AdminMenu>();
         services.AddSingleton<ServerFiles>();
         services.AddSingleton<AccessTokens>();
+        services.AddSingleton<ChatGrants>();
+        // The staff's chat (Chat/, Architecture/chat-design.md). A reply
+        // streams for as long as the model takes, so its client waits long.
+        services.AddSingleton<ParksComputing.Engine.Chat.ChatSettings>();
+        services.AddSingleton<ParksComputing.Engine.Chat.ChatStore>();
+        services.AddSingleton<ParksComputing.Engine.Chat.ChatTools>();
+        services.AddSingleton<ParksComputing.Engine.Chat.ChatTurns>();
+        services.AddHttpClient(ParksComputing.Engine.Chat.ChatProviders.ClientName, c => c.Timeout = TimeSpan.FromMinutes(15));
         services.AddHostedService<HistoryPruner>();
         services.AddMemoryCache();
         services.AddSingleton<PreviewDrafts>();

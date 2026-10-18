@@ -76,7 +76,7 @@ public sealed class EditOriginGate {
        workspace, and the super-user's server tools (the admin mount and SSH) answer only the
        super-user. The rest of the old edit-origin workspace, its own pages,
        sign-in and settings, does not exist here: those paths answer 404. */
-    private static readonly string[] ServerToolPrefixes = { "/api/admin/fs", "/api/admin/ssh", "/admin/ssh", "/api/admin/preview", "/api/admin/settings", "/api/admin/editor" };
+    private static readonly string[] ServerToolPrefixes = { "/api/admin/fs", "/api/admin/ssh", "/admin/ssh", "/api/admin/preview", "/api/admin/settings", "/api/admin/editor", "/api/admin/chat" };
 
     // Cloudflare Turnstile's script and frame, for the challenge on Create
     // account and on asking for a sign-in link (Identity/Turnstile.cs), and

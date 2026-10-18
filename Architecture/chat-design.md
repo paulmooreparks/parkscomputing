@@ -1,0 +1,75 @@
+# Chat
+
+Chat is a conversation with a language model for the site's staff, ported from GK Companion's Chat. Paul asked for it on 2026-10-18: configurable, able to point at any LLM provider, starting with Claude, and available to admins only.
+
+## Decisions (Paul, 2026-10-18)
+
+1. **Billing.** Anthropic's terms limit a Claude subscription's sign-in to Claude Code and Anthropic's own apps, and they ask anything built on Claude to use an API key. A server endpoint on Paul's Max plan fits neither, so Claude goes through the Messages API with a key billed separately. Paul chose to start with an OpenAI-compatible provider and add Claude when he has a key. The research is summarised under "Claude through a subscription" below.
+2. **Site tools, with prompts.** The model may use the site's own MCP tools. Reading is free, and anything that changes something asks the reader first.
+3. **Scope.** The first version carries attachments, the queue and Steer, Mermaid diagrams and the model's thinking, besides conversations, streaming, Markdown, the model picker and Stop.
+
+## What came from GK Companion
+
+GK Companion's Chat is about 3,600 lines inside its desktop page script. It talks to Go through Wails bindings and events, and it is built around agents that run on the reader's machine (Devin over ACP, Codex over its app server). None of that transport fits a web host, and GK has no client for an HTTP LLM API. What carried over is the shape of a conversation as ACP streams it (message chunks, thought chunks, tool calls with their status, permission requests with allow-once, allow-always and reject), the Markdown renderer, the folding of several tool calls into one line, the permission card, and the composer's Send, Queue, Steer and Stop. GK's Jira and Confluence chips, skills, flows, Devin's cost reporting and the applet MCP server stayed behind.
+
+## The parts
+
+**The applet** is the package `chat` in the repo `pudl-chat` (local at `C:\Users\paul\source\repos\pudl-chat`, Apache-2.0). It asks the host for the service `chat` (`pudlHost.service('chat')`) and sends its requests through `pudlHost.fetch`, which kit 0.4.0 adds, so the site's token against forgery travels with them without the package knowing about it. Code and diagrams use highlight.js and Mermaid when the host page has loaded them. The applet's state is the conversation's id, `c=<id>`.
+
+**The server** is `Chat/` in the engine:
+
+- `ChatModel.cs` holds the conversation as files store it, in parts no provider owns (text, thinking with its signature, image, file, tool_use, tool_result), and the settings.
+- `ChatProviders.cs` holds one interface and two providers. `OpenAiProvider` speaks any OpenAI-compatible chat completions API: OpenAI, Ollama's `/v1`, OpenRouter and the many that copy it. `AnthropicProvider` speaks Anthropic's Messages API, with thinking and its signature sent back as the API requires. Both stream server-sent events, and both turn the stream into the same events.
+- `ChatTurns.cs` runs one turn at a time per conversation, on the server, so a reply carries on when the page goes away. It runs the tools the model asks for, asks the reader about any that changes something, and holds the queue. Steer stops the reply and sends its message next. Stop ends the turn and empties the queue.
+- `ChatTools.cs` gives the model the site's tools by being a client of the site's own `/mcp` on the loopback address. It uses a grant made in memory for the turn (`Identity/ChatGrants.cs`, secrets starting `pcchat_`), which `AccessTokenAuthentication` accepts as it accepts a personal access token. Each tool therefore checks and logs the call exactly as before, and nothing is stored in the token list. A tool runs without asking only when its MCP annotations say it is read-only.
+- `ChatStore.cs` keeps each conversation as `~/.chat/<id>.json` in its owner's home directory on the server.
+- `ChatController.cs` is the service at `/api/admin/chat/`, listed with the server's tools in `EditOriginGate`.
+
+**Events.** A page follows a conversation through `GET conversations/{id}/events`, a server-sent event stream whose events are numbered within the conversation. The page subscribes, then reads the conversation, which carries the number of the last event it includes, the reply in progress, the questions waiting and the queue. It then applies the newer events it held, so nothing is lost or seen twice. A stream that breaks and reconnects reads the conversation again.
+
+## Settings and keys
+
+The providers are in `/etc/chat.json` on the server, which the super-user edits like any other settings file. It is read again when it changes. A key is never written there; `keyEnv` names the environment variable that holds it, which the container gets from `.env` through `docker-compose.yml`. The file is readable through the site's own tools, so a key kept in it could be read back into a conversation; keeping keys in the environment prevents that.
+
+```jsonc
+{
+  "providers": [
+    { "id": "ollama", "name": "Ollama", "kind": "openai", "baseUrl": "http://host.docker.internal:11434/v1/" },
+    { "id": "anthropic", "name": "Claude", "kind": "anthropic", "baseUrl": "https://api.anthropic.com/v1/",
+      "keyEnv": "ANTHROPIC_API_KEY", "models": ["claude-opus-5-5", "claude-sonnet-5-5"], "thinkingBudget": 4096 }
+  ],
+  "defaultProvider": "ollama",
+  "defaultModel": "glm-5.3-flash:cloud",
+  "system": "(optional: replaces the default system prompt)",
+  "maxToolRounds": 25
+}
+```
+
+Without `models`, a provider's own list (`GET models`) is offered. A provider whose key variable is empty says so in the picker.
+
+## Who may use it
+
+Every call needs an Admin or SuperAdmin on a live session, the bar Files, the Editor and the Terminal hold to; anyone else gets 404. The site's tools are offered in the super-user's chats only, since they act as the super-user. In the menu, Chat is `{ slug "chat" title "Chat" when "admin" }` in the Applets menu. `NavService` now keeps a package that the menu offers to an audience out of the Applets section, which everyone sees, and gives its menu entries the package's title, icon and window shape.
+
+## Claude through a subscription
+
+Paul asked to look hard for any way to use his Claude Code or Cowork subscription. The findings, from Anthropic's documentation on 2026-10-18:
+
+- Headless Claude Code (`claude -p --output-format stream-json`) can run on a subscription sign-in or a `claude setup-token` token, and it streams. Anthropic's legal page limits that sign-in to "ordinary use of Claude Code and other native Anthropic applications". It also says developers building products or services should use API keys, and that they may not store or intermediate Claude.ai credentials. A server endpoint fits none of the allowed uses.
+- The Agent SDK, and the ACP adapter built on it, document API keys, Bedrock, Vertex and Foundry. Claude.ai sign-in for a third-party product needs Anthropic's approval.
+- Claude Code on the web, cloud sessions (`claude -p --cloud`) and routines' API triggers do run on plan usage, but they queue work and give back a session; they do not stream a chat reply.
+- Cowork has no programmatic interface.
+
+A provider for headless Claude Code on a subscription would fit the provider interface if Anthropic ever approves it in writing. The ACP transport GK uses for Devin and Codex would fit the same way, for any agent installed in the container.
+
+## Checks
+
+- `ChatTests` (6 unit tests): both stream parsers, both request bodies, and the grants.
+- `AppletCatalogTests`: a package kept for an audience.
+- `Tools/test-chat.js`, on the test instance against a real provider:
+  - hidden from readers, and present for staff;
+  - a reply streamed with its thinking;
+  - a read-only tool run without asking, and a writing tool that asks first and runs once allowed;
+  - an attachment;
+  - the queue and Stop;
+  - the conversation brought back by its address.

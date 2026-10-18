@@ -25,10 +25,11 @@ public sealed class AccessTokenAuthentication : AuthenticationHandler<Authentica
 
     private readonly AccessTokens _tokens;
     private readonly AdminSessions _sessions;
+    private readonly ChatGrants _chat;
 
     public AccessTokenAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder,
-        AccessTokens tokens, AdminSessions sessions) : base(options, logger, encoder) {
-        _tokens = tokens; _sessions = sessions;
+        AccessTokens tokens, AdminSessions sessions, ChatGrants chat) : base(options, logger, encoder) {
+        _tokens = tokens; _sessions = sessions; _chat = chat;
     }
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync() {
@@ -36,7 +37,11 @@ public sealed class AccessTokenAuthentication : AuthenticationHandler<Authentica
         if (!header.StartsWith("Bearer ", System.StringComparison.OrdinalIgnoreCase)) {
             return AuthenticateResult.NoResult();
         }
-        var found = await _tokens.FindAsync(header["Bearer ".Length..].Trim(), AdminOptions.ClientIp(Context));
+        var secret = header["Bearer ".Length..].Trim();
+        // The chat's grant for a turn (ChatGrants), made in this process.
+        var found = secret.StartsWith(ChatGrants.Prefix, System.StringComparison.Ordinal)
+            ? _chat.Find(secret)
+            : await _tokens.FindAsync(secret, AdminOptions.ClientIp(Context));
         if (found is null || !await _sessions.MaySignInAsync(found.User)) {
             return AuthenticateResult.Fail("The token is not valid.");
         }

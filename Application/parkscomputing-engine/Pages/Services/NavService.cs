@@ -122,11 +122,27 @@ namespace ParksComputing.Engine.Pages.Services {
         /// with what its manifest says: title, description, tags and window
         /// shape. A package the file already lists anywhere keeps the file's
         /// entry, which may say more or put it elsewhere. A site whose file
-        /// has no Applets section gets one when a package is installed.</summary>
+        /// has no Applets section gets one when a package is installed.
+        ///
+        /// A package the menu offers to an audience only, such as an entry
+        /// with when "admin", is kept for that audience: it stays out of the
+        /// Applets section, which everyone sees, and its menu entries take
+        /// its title, description, icon and window shape.</summary>
         private void AddPackages(NavNode root, IReadOnlyList<AppletPackage> packages) {
             if (packages.Count == 0) { return; }
             var listed = Enumerate(root).Select(n => n.Slug).Where(s => !string.IsNullOrEmpty(s)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var add = packages.Where(p => !listed.Contains(p.Name)).Select(p => new NavNode {
+            var kept = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in MenuEntries(root.Menu)) {
+                var package = packages.FirstOrDefault(p => string.Equals(p.Name, entry.Slug, StringComparison.OrdinalIgnoreCase));
+                if (package is null || entry.When is null ||
+                    !entry.When.Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(w => MenuBuilder.Audiences.Contains(w, StringComparer.OrdinalIgnoreCase))) { continue; }
+                kept.Add(package.Name);
+                entry.Title ??= package.Title;
+                entry.Description ??= package.Description;
+                entry.Icon ??= package.Icon is null ? null : package.Url(package.Icon);
+                entry.Win ??= package.WindowShape;
+            }
+            var add = packages.Where(p => !listed.Contains(p.Name) && !kept.Contains(p.Name)).Select(p => new NavNode {
                 Slug = p.Name, Title = p.Title, Description = p.Description,
                 Tags = p.Tags.Count > 0 ? p.Tags.ToArray() : null, Win = p.WindowShape, Min = p.WindowMin, Max = p.WindowMax,
                 Icon = p.Icon is null ? null : p.Url(p.Icon)
@@ -138,6 +154,13 @@ namespace ParksComputing.Engine.Pages.Services {
                 root.Nav = (root.Nav ?? Array.Empty<NavNode>()).Append(section).ToArray();
             }
             section.Nav = (section.Nav ?? Array.Empty<NavNode>()).Concat(add).ToArray();
+        }
+
+        private static IEnumerable<NavNode> MenuEntries(NavNode[]? entries) {
+            foreach (var e in entries ?? Array.Empty<NavNode>()) {
+                yield return e;
+                foreach (var c in MenuEntries(e.Nav)) { yield return c; }
+            }
         }
 
         private IEnumerable<NavNode> Enumerate(NavNode node) {

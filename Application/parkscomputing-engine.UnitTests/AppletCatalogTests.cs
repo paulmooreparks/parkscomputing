@@ -133,6 +133,24 @@ public class AppletCatalogTests {
     }
 
     [TestMethod]
+    public void APackageTheMenuKeepsForAnAudienceStaysOutOfTheAppletsSection() {
+        var root = Root();
+        try {
+            File.WriteAllText(Path.Combine(root, "sitenav.xfer"),
+                "{ slug \"root\" nav [ { slug \"applets\" title \"Applets\" nav [ ] } ] " +
+                "menu [ { menu-id \"applets\" title \"Applets\" nav [ { from \"applets\" } { slug \"hello\" when \"admin\" } ] } ] }");
+            var nav = new NavService(new Env { WebRootPath = root }, NullLogger<NavService>.Instance, Options.Create(new SiteOptions()), Catalog(root));
+            var r = nav.GetRoot();
+            var applets = NavService.Sections(r).Single(s => s.Slug == "applets");
+            CollectionAssert.AreEqual(new[] { "bare" }, applets.Nav!.Select(n => n.Slug).ToArray(), "everyone's list leaves it out");
+            var entry = r.Menu!.Single().Nav!.Single(n => n.Slug == "hello");
+            Assert.AreEqual("Hello & Co", entry.Title);
+            Assert.AreEqual("/applets/hello/icon.svg", entry.Icon);
+            Assert.AreEqual("0.3,0.3", entry.Win);
+        } finally { Directory.Delete(root, true); }
+    }
+
+    [TestMethod]
     public void ASiteWithNoAppletsSectionGetsOneWhenAPackageIsInstalled() {
         var root = Root();
         try {

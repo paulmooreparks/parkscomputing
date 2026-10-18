@@ -220,7 +220,18 @@ pudlApplets.define('settings', {
         pages: pcWorkspacePages,
         snapshot: window.pcSnapshot || null,
         /* The product lookup's proxy (Controllers/BarcodeProductsController.cs). */
-        services: { 'barcode-products': '/api/barcode-products/', 'score-library': '/api/score-library/' },
+        services: { 'barcode-products': '/api/barcode-products/', 'score-library': '/api/score-library/', 'chat': '/api/admin/chat/' },
+        /* A request from the site's pages carries the token the server
+           checks against forgery on anything but a read. */
+        fetch: function (url, init) {
+            init = Object.assign({ credentials: 'same-origin' }, init || {});
+            var method = (init.method || 'GET').toUpperCase();
+            if (method !== 'GET' && method !== 'HEAD') {
+                var token = (document.querySelector('meta[name="request-verification-token"]') || {}).content || '';
+                init.headers = Object.assign({}, init.headers || {}, { RequestVerificationToken: token });
+            }
+            return window.fetch(url, init);
+        },
         fs: {
             /* The site's own Open and Save as (js/filebrowser.js). A
                reader's ~ in this browser keeps text only, so there a
