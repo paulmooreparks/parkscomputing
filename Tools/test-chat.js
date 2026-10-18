@@ -185,6 +185,18 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
     log('an applet action runs on the desktop and comes back done', actRows.some(r => /parks\.dice\/roll@1 \(on your desktop\):completed/.test(r)), actRows.join());
     log('and the model gets its result', /[1-6]/.test(await lastReply()), await lastReply());
 
+    // The chat's own tools: what it knows of itself, and a public web page.
+    await ask('Use chat_info to say which providers this chat has and which model this conversation uses. One line.');
+    await idle();
+    const ownRows = await page.evaluate(() => [...document.querySelectorAll('.chat-tool')].map(t => t.querySelector('.tool-title').textContent + ':' + t.getAttribute('data-status')));
+    log('chat_info answers about the chat without asking', ownRows.some(r => /Ask the chat about itself:completed/.test(r)) && (await page.locator('.question').count()) === 0 && /Ollama|Claude/.test(await lastReply()), ownRows.join() + ' / ' + await lastReply());
+    await ask('Use web_fetch to read https://example.com/ and quote its heading. One line.');
+    await idle();
+    const webRows = await page.evaluate(() => [...document.querySelectorAll('.chat-tool')].map(t => t.querySelector('.tool-title').textContent + ':' + t.getAttribute('data-status')));
+    log('web_fetch reads a public page', webRows.some(r => /Read a web page:completed/.test(r)) && /Example Domain/i.test(await lastReply()), webRows.join() + ' / ' + await lastReply());
+    const local = await page.evaluate(() => pudlHost.fetch('/api/admin/chat/providers').then(r => r.status));
+    log('(the chat\'s API still answers the page)', local === 200, local);
+
     // The queue, then Stop.
     await ask('Count slowly from 1 to 200, one number per line.');
     await page.fill('.chat-text', 'Then say queued-ok.');

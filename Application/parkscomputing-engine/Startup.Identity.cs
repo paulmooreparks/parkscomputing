@@ -146,6 +146,11 @@ public partial class Startup {
         services.AddSingleton<ParksComputing.Engine.Chat.ChatStore>();
         services.AddSingleton<ParksComputing.Engine.Chat.ChatTools>();
         services.AddSingleton<ParksComputing.Engine.Chat.ChatSkills>();
+        services.AddSingleton<ParksComputing.Engine.Chat.ChatSelf>();
+        services.AddSingleton<ParksComputing.Engine.Chat.ChatWeb>();
+        services.AddSingleton<ParksComputing.Engine.Chat.ChatSearch>();
+        services.AddHttpClient(ParksComputing.Engine.Chat.ChatWeb.ClientName, c => { c.Timeout = TimeSpan.FromSeconds(40); c.DefaultRequestHeaders.UserAgent.ParseAdd("parkscomputing-chat/1.0 (+https://parkscomputing.com)"); })
+            .ConfigurePrimaryHttpMessageHandler(() => new System.Net.Http.SocketsHttpHandler { AllowAutoRedirect = true, MaxAutomaticRedirections = 5, UseCookies = false });
         services.AddSingleton<ParksComputing.Engine.Chat.ChatTurns>();
         services.AddHttpClient(ParksComputing.Engine.Chat.ChatProviders.ClientName, c => c.Timeout = TimeSpan.FromMinutes(15));
         services.AddHostedService<HistoryPruner>();

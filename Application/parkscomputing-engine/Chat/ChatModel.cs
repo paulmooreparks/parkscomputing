@@ -32,6 +32,14 @@ public sealed class ChatPart {
     [JsonPropertyName("data")] public string? Data { get; set; }
     /// <summary>A tool result: completed, failed or rejected.</summary>
     [JsonPropertyName("status")] public string? Status { get; set; }
+    /// <summary>A block the provider ran itself (Anthropic's web search:
+    /// server_tool_use and web_search_tool_result), kept as the provider
+    /// gave it, since it must go back unchanged in later turns; type
+    /// server_block.</summary>
+    [JsonPropertyName("raw")] public JsonNode? Raw { get; set; }
+    /// <summary>A text's citations, as the provider gave them, which go
+    /// back with the text in later turns.</summary>
+    [JsonPropertyName("citations")] public JsonArray? Citations { get; set; }
 
     public static ChatPart TextPart(string text) => new() { Type = "text", Text = text };
 }
@@ -82,9 +90,29 @@ public sealed class ChatProviderConfig {
     [JsonPropertyName("thinkingType")] public string? ThinkingType { get; set; }
     /// <summary>Anthropic: the thinking budget when thinkingType is enabled.</summary>
     [JsonPropertyName("thinkingBudget")] public int? ThinkingBudget { get; set; }
+    /// <summary>Anthropic: whether the model may search the web with the
+    /// API's own web search tool, on by default; billed per search.</summary>
+    [JsonPropertyName("webSearch")] public bool? WebSearch { get; set; }
+    /// <summary>Anthropic: the most searches in one reply (5 by default).</summary>
+    [JsonPropertyName("webSearchMaxUses")] public int? WebSearchMaxUses { get; set; }
 
     [JsonIgnore] public string Label => string.IsNullOrWhiteSpace(Name) ? Id : Name!;
     [JsonIgnore] public string? Key => string.IsNullOrWhiteSpace(KeyEnv) ? null : Environment.GetEnvironmentVariable(KeyEnv!);
+    [JsonIgnore] public bool SearchesTheWeb => string.Equals(Kind, "anthropic", StringComparison.OrdinalIgnoreCase) && WebSearch != false;
+}
+
+/// <summary>A search engine for the chat's own web_search tool, which any
+/// provider's model may call: brave (the Brave Search API) or searxng (a
+/// SearXNG instance with its JSON format on). The key, where one is
+/// needed, is in the environment keyEnv names, never in the file.</summary>
+public sealed class ChatSearchConfig {
+    [JsonPropertyName("kind")] public string Kind { get; set; } = "";
+    [JsonPropertyName("baseUrl")] public string? BaseUrl { get; set; }
+    [JsonPropertyName("keyEnv")] public string? KeyEnv { get; set; }
+    [JsonPropertyName("count")] public int? Count { get; set; }
+
+    [JsonIgnore] public string? Key => string.IsNullOrWhiteSpace(KeyEnv) ? null : Environment.GetEnvironmentVariable(KeyEnv!);
+    [JsonIgnore] public bool Configured => Kind is "brave" or "searxng";
 }
 
 public sealed class ChatConfig {
@@ -93,6 +121,7 @@ public sealed class ChatConfig {
     [JsonPropertyName("defaultModel")] public string? DefaultModel { get; set; }
     [JsonPropertyName("system")] public string? System { get; set; }
     [JsonPropertyName("maxToolRounds")] public int MaxToolRounds { get; set; } = 25;
+    [JsonPropertyName("search")] public ChatSearchConfig? Search { get; set; }
 
     public ChatProviderConfig? Find(string? id) => Providers.FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase));
 }

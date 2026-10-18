@@ -32,6 +32,13 @@
    (window.open) and notify(text, kind) (notification.post), with load(src)
    and beside(rel) for the module's own files.
 
+   An action on an applet's open window, such as a move on the Sudoku
+   board the reader is watching, is run by the running applet, which
+   attaches handlers for it with pcActions.attach(id, handlers) and gets
+   back the function that detaches them; the module's handler asks for
+   them with pcActions.attached(id, ms) and hands the call on, opening
+   the window first with ctx.open where there is none.
+
    An action with handles is one of the applet's handles verbs: the broker
    asks PUDL for the window, as pudlApplets.request does, and needs no
    module. In the classic view, where a request would leave the page, it
@@ -159,6 +166,30 @@
         providers[id] = handlers;
         (providerWaits[id] || []).forEach(function (w) { w(); });
         delete providerWaits[id];
+    }
+
+    /* === Live handlers ===================================================
+       An action on an applet's open window (a move on the Sudoku board the
+       reader is watching) is run by the applet itself: while it runs, it
+       attaches handlers for those actions, and detaches them as it goes;
+       the module's handler for such an action asks for them with
+       attached(id), which gives the newest instance's, waiting up to ms
+       for one that is opening. An applet that starts before this broker
+       loads attaches when pudl:actions-ready fires on the document. */
+    var live = {};             // provider id -> [handlers], the newest last
+    var liveWaits = {};
+
+    function attach(id, handlers) {
+        if (!PROVIDER_ID.test(id || '') || !handlers || typeof handlers !== 'object') { throw new Error('pcActions.attach needs a provider id and its handlers'); }
+        (live[id] = live[id] || []).push(handlers);
+        (liveWaits[id] || []).forEach(function (w) { w(); });
+        delete liveWaits[id];
+        return function () { var at = (live[id] || []).indexOf(handlers); if (at >= 0) { live[id].splice(at, 1); } };
+    }
+    function attached(id, ms) {
+        var got = function () { var l = live[id]; return l && l.length ? l[l.length - 1] : null; };
+        if (got() || !ms) { return Promise.resolve(got()); }
+        return new Promise(function (resolve) { (liveWaits[id] = liveWaits[id] || []).push(resolve); setTimeout(resolve, ms); }).then(got);
     }
 
     function moduleUrl(e) {
@@ -554,9 +585,13 @@
         cancel: cancel,
         artifact: artifact,
         invocations: function () { return Array.from(records.values()).reverse().map(view); },
-        provide: provide
+        provide: provide,
+        attach: attach,
+        attached: attached
     });
     /* A packaged applet's module (Architecture/applet-packages-design.md)
-       provides its handlers under the host-neutral name. */
+       provides its handlers under the host-neutral name, and a running
+       applet attaches its live handlers under it. */
     window.pudlActions = window.pcActions;
+    document.dispatchEvent(new CustomEvent('pudl:actions-ready'));
 })();

@@ -19,6 +19,13 @@ public sealed record TextDelta(string Text) : ProviderEvent;
 public sealed record ThinkingDelta(string Text) : ProviderEvent;
 public sealed record ThinkingSignature(string Signature) : ProviderEvent;
 public sealed record ToolCallReady(string Id, string Name, JsonNode Input) : ProviderEvent;
+/// <summary>A new text block begins (Anthropic), so its citations stay with it.</summary>
+public sealed record BlockStart(string Type) : ProviderEvent;
+/// <summary>A citation on the text block in progress, as the provider gave it.</summary>
+public sealed record Citation(JsonObject Value) : ProviderEvent;
+/// <summary>A block the provider ran itself (its web search's call and
+/// result), whole, as it must go back in later turns.</summary>
+public sealed record ServerBlock(JsonObject Block) : ProviderEvent;
 public sealed record UsageReport(int? Input, int? Output) : ProviderEvent;
 public sealed record Finished(string StopReason) : ProviderEvent;
 
@@ -224,14 +231,20 @@ public sealed class AnthropicProvider : IChatProvider {
     /// <summary>thinking as the model takes it: adaptive, which the current
     /// models ask for, or enabled with a budget for the older ones; the
     /// provider's thinkingType in /etc/chat.json says which.</summary>
-    public static JsonObject Body(ProviderRequest request, int? maxTokens, int? thinkingBudget, string? thinkingType = null) {
+    public static JsonObject Body(ProviderRequest request, int? maxTokens, int? thinkingBudget, string? thinkingType = null, int? webSearchMaxUses = null) {
         var messages = new JsonArray();
         foreach (var m in request.Messages) {
             var content = new JsonArray();
             foreach (var p in m.Parts) {
                 switch (p.Type) {
-                    case "text" when !string.IsNullOrEmpty(p.Text):
-                        content.Add(new JsonObject { ["type"] = "text", ["text"] = p.Text }); break;
+                    case "text" when !string.IsNullOrEmpty(p.Text): {
+                        var text = new JsonObject { ["type"] = "text", ["text"] = p.Text };
+                        if (p.Citations is { Count: > 0 }) { text["citations"] = p.Citations.DeepClone(); }
+                        content.Add(text); break;
+                    }
+                    // The API's own tool blocks go back exactly as they came.
+                    case "server_block" when p.Raw is not null:
+                        content.Add(p.Raw.DeepClone()); break;
                     // Thinking goes back only with its signature, and only as
                     // the model gave it.
                     case "thinking" when m.Role == "assistant" && request.Thinking && !string.IsNullOrEmpty(p.Signature):
@@ -257,17 +270,20 @@ public sealed class AnthropicProvider : IChatProvider {
         if (!string.IsNullOrWhiteSpace(request.System)) { body["system"] = request.System; }
         if (budgeted) { body["thinking"] = new JsonObject { ["type"] = "enabled", ["budget_tokens"] = budget }; }
         else if (request.Thinking) { body["thinking"] = new JsonObject { ["type"] = "adaptive" }; }
-        if (request.Tools.Count > 0) {
-            body["tools"] = new JsonArray(request.Tools.Select(t => (JsonNode)new JsonObject {
-                ["name"] = t.Name, ["description"] = t.Description, ["input_schema"] = t.Schema.DeepClone()
-            }).ToArray());
-        }
+        var tools = new JsonArray(request.Tools.Select(t => (JsonNode)new JsonObject {
+            ["name"] = t.Name, ["description"] = t.Description, ["input_schema"] = t.Schema.DeepClone()
+        }).ToArray());
+        /* The API's web search, run on Anthropic's side: the model searches
+           when the question needs it, and cites what it found. */
+        if (webSearchMaxUses is > 0) { tools.Add(new JsonObject { ["type"] = "web_search_20250305", ["name"] = "web_search", ["max_uses"] = webSearchMaxUses }); }
+        if (tools.Count > 0) { body["tools"] = tools; }
         return body;
     }
 
     public async IAsyncEnumerable<ProviderEvent> StreamAsync(ProviderRequest request, [EnumeratorCancellation] CancellationToken cancel) {
         var req = Request(HttpMethod.Post, "messages");
-        req.Content = new StringContent(Body(request, _config.MaxTokens, _config.ThinkingBudget, _config.ThinkingType).ToJsonString(), Encoding.UTF8, "application/json");
+        var searches = _config.SearchesTheWeb ? Math.Max(1, _config.WebSearchMaxUses ?? 5) : (int?)null;
+        req.Content = new StringContent(Body(request, _config.MaxTokens, _config.ThinkingBudget, _config.ThinkingType, searches).ToJsonString(), Encoding.UTF8, "application/json");
         using var r = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cancel);
         if (!r.IsSuccessStatusCode) { throw new ProviderException(await ChatProviders.ErrorOf(r, cancel)); }
         await using var body = await r.Content.ReadAsStreamAsync(cancel);
@@ -287,7 +303,11 @@ public sealed class AnthropicProvider : IChatProvider {
                     break;
                 case "content_block_start": {
                     var i = node["index"]!.GetValue<int>(); var b = node["content_block"];
-                    blocks[i] = (b?["type"]?.GetValue<string>() ?? "", b?["id"]?.GetValue<string>(), b?["name"]?.GetValue<string>(), new StringBuilder());
+                    var type = b?["type"]?.GetValue<string>() ?? "";
+                    blocks[i] = (type, b?["id"]?.GetValue<string>(), b?["name"]?.GetValue<string>(), new StringBuilder());
+                    if (type == "text") { yield return new BlockStart("text"); }
+                    /* A web search's result comes whole, as the block starts. */
+                    else if (type == "web_search_tool_result" && b is JsonObject whole) { yield return new ServerBlock((JsonObject)whole.DeepClone()); }
                     break;
                 }
                 case "content_block_delta": {
@@ -297,16 +317,18 @@ public sealed class AnthropicProvider : IChatProvider {
                         case "thinking_delta": yield return new ThinkingDelta(d["thinking"]?.GetValue<string>() ?? ""); break;
                         case "signature_delta": yield return new ThinkingSignature(d["signature"]?.GetValue<string>() ?? ""); break;
                         case "input_json_delta": if (blocks.TryGetValue(i, out var blk)) { blk.Json.Append(d["partial_json"]?.GetValue<string>() ?? ""); } break;
+                        case "citations_delta": if (d["citation"] is JsonObject cite) { yield return new Citation((JsonObject)cite.DeepClone()); } break;
                     }
                     break;
                 }
                 case "content_block_stop": {
                     var i = node["index"]!.GetValue<int>();
-                    if (blocks.TryGetValue(i, out var blk) && blk.Type == "tool_use") {
+                    if (blocks.TryGetValue(i, out var blk) && blk.Type is "tool_use" or "server_tool_use") {
                         JsonNode args;
                         try { args = blk.Json.Length == 0 ? new JsonObject() : JsonNode.Parse(blk.Json.ToString()) ?? new JsonObject(); }
                         catch (JsonException) { args = new JsonObject { ["_unparsed"] = blk.Json.ToString() }; }
-                        yield return new ToolCallReady(blk.Id ?? ("toolu_" + i), blk.Name ?? "", args);
+                        if (blk.Type == "tool_use") { yield return new ToolCallReady(blk.Id ?? ("toolu_" + i), blk.Name ?? "", args); }
+                        else { yield return new ServerBlock(new JsonObject { ["type"] = "server_tool_use", ["id"] = blk.Id ?? ("srvtoolu_" + i), ["name"] = blk.Name ?? "web_search", ["input"] = args }); }
                     }
                     break;
                 }

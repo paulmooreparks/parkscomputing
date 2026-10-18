@@ -53,8 +53,9 @@ public sealed class ChatController : ControllerBase {
     private readonly UserManager<IdentityUser> _users;
     private readonly IHttpClientFactory _http;
 
-    public ChatController(ChatStore store, ChatSettings settings, ChatTurns turns, ChatTools tools, StaffAccess staff, UserManager<IdentityUser> users, IHttpClientFactory http) {
-        _store = store; _settings = settings; _turns = turns; _tools = tools; _staff = staff; _users = users; _http = http;
+    private readonly ChatSelf _self;
+    public ChatController(ChatStore store, ChatSettings settings, ChatTurns turns, ChatTools tools, ChatSelf self, StaffAccess staff, UserManager<IdentityUser> users, IHttpClientFactory http) {
+        _store = store; _settings = settings; _turns = turns; _tools = tools; _self = self; _staff = staff; _users = users; _http = http;
     }
 
     /// <summary>The reader, when they may use the chat, with their home's
@@ -72,29 +73,7 @@ public sealed class ChatController : ControllerBase {
     public async Task<IActionResult> Providers(CancellationToken cancel) {
         if (await ReaderAsync() is null) { return NotFound(); }
         var (config, error) = _settings.Read();
-        var list = new JsonArray();
-        foreach (var p in config.Providers) {
-            IReadOnlyList<string> models = p.Models ?? new List<string>();
-            string? problem = null;
-            if (models.Count == 0) {
-                try {
-                    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel);
-                    timeout.CancelAfter(TimeSpan.FromSeconds(8));
-                    models = await ChatProviders.For(p, _http.CreateClient(ChatProviders.ClientName)).ModelsAsync(timeout.Token);
-                }
-                catch (Exception ex) when (ex is ProviderException or HttpRequestException or OperationCanceledException) { problem = "Its models could not be listed: " + ex.Message; }
-            }
-            if (!string.IsNullOrWhiteSpace(p.KeyEnv) && string.IsNullOrEmpty(p.Key)) { problem = "The server has no " + p.KeyEnv + " for its key."; }
-            list.Add(new JsonObject {
-                ["id"] = p.Id, ["name"] = p.Label, ["kind"] = p.Kind,
-                ["models"] = new JsonArray(models.Select(m => (JsonNode)m).ToArray()), ["problem"] = problem
-            });
-        }
-        return Ok(new JsonObject {
-            ["providers"] = list, ["defaultProvider"] = config.DefaultProvider ?? config.Providers.FirstOrDefault()?.Id,
-            ["defaultModel"] = config.DefaultModel, ["error"] = error,
-            ["tools"] = _tools.Available && await ToolsAllowedAsync(), ["settings"] = "/etc/" + ChatSettings.FileName
-        });
+        return Ok(await _self.ProvidersAsync(config, error, _tools.Available && await ToolsAllowedAsync(), cancel));
     }
 
     /// <summary>The settings as the dialog edits them: every provider with
@@ -111,8 +90,13 @@ public sealed class ChatController : ControllerBase {
                 ["id"] = p.Id, ["name"] = p.Name, ["kind"] = p.Kind, ["baseUrl"] = p.BaseUrl, ["keyEnv"] = p.KeyEnv,
                 ["models"] = p.Models is null ? null : new JsonArray(p.Models.Select(m => (JsonNode)m).ToArray()),
                 ["maxTokens"] = p.MaxTokens, ["thinkingType"] = p.ThinkingType, ["thinkingBudget"] = p.ThinkingBudget,
+                ["webSearch"] = p.WebSearch, ["webSearchMaxUses"] = p.WebSearchMaxUses,
                 ["hasKey"] = string.IsNullOrWhiteSpace(p.KeyEnv) ? null : !string.IsNullOrEmpty(p.Key)
             }).ToArray()),
+            ["search"] = config.Search is null ? null : new JsonObject {
+                ["kind"] = config.Search.Kind, ["baseUrl"] = config.Search.BaseUrl, ["keyEnv"] = config.Search.KeyEnv, ["count"] = config.Search.Count,
+                ["hasKey"] = string.IsNullOrWhiteSpace(config.Search.KeyEnv) ? null : !string.IsNullOrEmpty(config.Search.Key)
+            },
             ["defaultProvider"] = config.DefaultProvider, ["defaultModel"] = config.DefaultModel,
             ["system"] = config.System, ["maxToolRounds"] = config.MaxToolRounds,
             ["error"] = error, ["path"] = "/etc/" + ChatSettings.FileName, ["canEdit"] = await ToolsAllowedAsync()
@@ -142,6 +126,17 @@ public sealed class ChatController : ControllerBase {
         body.DefaultModel = string.IsNullOrWhiteSpace(body.DefaultModel) ? null : body.DefaultModel!.Trim();
         body.System = string.IsNullOrWhiteSpace(body.System) ? null : body.System!.Trim();
         body.MaxToolRounds = Math.Clamp(body.MaxToolRounds, 1, 200);
+        if (body.Search is { } s) {
+            s.Kind = (s.Kind ?? "").Trim().ToLowerInvariant(); s.BaseUrl = string.IsNullOrWhiteSpace(s.BaseUrl) ? null : s.BaseUrl!.Trim(); s.KeyEnv = string.IsNullOrWhiteSpace(s.KeyEnv) ? null : s.KeyEnv!.Trim();
+            if (s.Kind.Length == 0) { body.Search = null; }
+            else {
+                if (s.Kind is not ("brave" or "searxng")) { return BadRequest(new { error = "The search engine is brave or searxng." }); }
+                if (s.Kind == "searxng" && s.BaseUrl is null) { return BadRequest(new { error = "A SearXNG search needs the instance's address." }); }
+                if (s.BaseUrl is not null && (!Uri.TryCreate(s.BaseUrl, UriKind.Absolute, out var su) || (su.Scheme != "http" && su.Scheme != "https"))) { return BadRequest(new { error = "The search engine's address must start with http:// or https://." }); }
+                if (s.KeyEnv is not null && !System.Text.RegularExpressions.Regex.IsMatch(s.KeyEnv, "^[A-Za-z_][A-Za-z0-9_]*$")) { return BadRequest(new { error = "The search key's variable is a name such as BRAVE_SEARCH_KEY." }); }
+                if (s.Count is { } c) { s.Count = Math.Clamp(c, 1, 20); }
+            }
+        }
         _settings.Write(body);
         return NoContent();
     }

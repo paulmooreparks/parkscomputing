@@ -77,6 +77,79 @@ public class ChatTests {
         Assert.AreEqual("tool_use", events.OfType<Finished>().Single().StopReason);
     }
 
+    [TestMethod]
+    public async Task AnAnthropicStreamCarriesItsOwnWebSearchAndCitations() {
+        var sse = string.Join("\n\n", new[] {
+            "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":10}}}",
+            "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"server_tool_use\",\"id\":\"srvtoolu_1\",\"name\":\"web_search\"}}",
+            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"query\\\":\\\"ollama library\\\"}\"}}",
+            "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}",
+            "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"web_search_tool_result\",\"tool_use_id\":\"srvtoolu_1\",\"content\":[{\"type\":\"web_search_result\",\"url\":\"https://ollama.com/library\",\"title\":\"Library\",\"encrypted_content\":\"abc\"}]}}",
+            "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1}",
+            "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}",
+            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"text_delta\",\"text\":\"It lists many.\"}}",
+            "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"citations_delta\",\"citation\":{\"type\":\"web_search_result_location\",\"url\":\"https://ollama.com/library\",\"title\":\"Library\",\"encrypted_index\":\"idx\",\"cited_text\":\"many\"}}}",
+            "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":2}",
+            "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":5}}", ""
+        });
+        var events = await Read(AnthropicProvider.Parse(Body(sse), CancellationToken.None));
+        var blocks = events.OfType<ServerBlock>().ToList();
+        Assert.AreEqual(2, blocks.Count);
+        Assert.AreEqual("server_tool_use", blocks[0].Block["type"]!.GetValue<string>());
+        Assert.AreEqual("ollama library", blocks[0].Block["input"]!["query"]!.GetValue<string>());
+        Assert.AreEqual("web_search_tool_result", blocks[1].Block["type"]!.GetValue<string>());
+        Assert.AreEqual("abc", blocks[1].Block["content"]![0]!["encrypted_content"]!.GetValue<string>());
+        Assert.AreEqual(1, events.OfType<BlockStart>().Count());
+        Assert.AreEqual("idx", events.OfType<Citation>().Single().Value["encrypted_index"]!.GetValue<string>());
+        Assert.IsFalse(events.OfType<ToolCallReady>().Any(), "the API's own search is not a tool call for the chat to run");
+
+        /* The call row the page shows, and the result's listing. */
+        var call = ChatTurns.ServerBlockEvent(blocks[0].Block)!;
+        Assert.AreEqual("tool_call", call["type"]!.GetValue<string>());
+        StringAssert.Contains(call["title"]!.GetValue<string>(), "ollama library");
+        var result = ChatTurns.ServerBlockEvent(blocks[1].Block)!;
+        Assert.AreEqual("completed", result["status"]!.GetValue<string>());
+        StringAssert.Contains(result["output"]!.GetValue<string>(), "https://ollama.com/library");
+    }
+
+    [TestMethod]
+    public void AnAnthropicRequestAsksForWebSearchAndSendsItsBlocksBack() {
+        var messages = new List<ChatMessage> {
+            new() { Role = "user", Parts = { ChatPart.TextPart("What does Ollama's library list?") } },
+            new() { Role = "assistant", Parts = {
+                new ChatPart { Type = "server_block", Raw = new JsonObject { ["type"] = "server_tool_use", ["id"] = "srvtoolu_1", ["name"] = "web_search", ["input"] = new JsonObject { ["query"] = "ollama library" } } },
+                new ChatPart { Type = "server_block", Raw = new JsonObject { ["type"] = "web_search_tool_result", ["tool_use_id"] = "srvtoolu_1", ["content"] = new JsonArray(new JsonObject { ["type"] = "web_search_result", ["url"] = "https://ollama.com/library", ["encrypted_content"] = "abc" }) } },
+                new ChatPart { Type = "text", Text = "Many.", Citations = new JsonArray(new JsonObject { ["type"] = "web_search_result_location", ["encrypted_index"] = "idx" }) } } },
+            new() { Role = "user", Parts = { ChatPart.TextPart("Such as?") } }
+        };
+        var body = AnthropicProvider.Body(new ProviderRequest("m", null, messages, Array.Empty<ToolSpec>(), false), null, null, null, 5);
+        var tool = body["tools"]![0]!;
+        Assert.AreEqual("web_search_20250305", tool["type"]!.GetValue<string>());
+        Assert.AreEqual(5, tool["max_uses"]!.GetValue<int>());
+        var assistant = body["messages"]![1]!["content"]!.AsArray();
+        Assert.AreEqual("server_tool_use", assistant[0]!["type"]!.GetValue<string>());
+        Assert.AreEqual("abc", assistant[1]!["content"]![0]!["encrypted_content"]!.GetValue<string>());
+        Assert.AreEqual("idx", assistant[2]!["citations"]![0]!["encrypted_index"]!.GetValue<string>());
+        Assert.IsNull(AnthropicProvider.Body(new ProviderRequest("m", null, messages, Array.Empty<ToolSpec>(), false), null, null)["tools"], "no search, no tools");
+    }
+
+    [TestMethod]
+    public void TheChatsOwnSearchReadsBraveAndSearxngAnswers() {
+        var brave = JsonNode.Parse("{\"web\":{\"results\":[{\"title\":\"Library\",\"url\":\"https://ollama.com/library\",\"description\":\"Models.\"},{\"title\":\"No address\",\"url\":\"\"}]}}");
+        var found = ChatSearch.Results("brave", brave);
+        Assert.AreEqual(1, found.Count);
+        Assert.AreEqual("Models.", found[0].Snippet);
+        var searx = JsonNode.Parse("{\"results\":[{\"title\":\"Library\",\"url\":\"https://ollama.com/library\",\"content\":\"Models.\"}]}");
+        Assert.AreEqual("Models.", ChatSearch.Results("searxng", searx)[0].Snippet);
+        var text = ChatSearch.Format("ollama library", found);
+        StringAssert.Contains(text, "1. Library");
+        StringAssert.Contains(text, "https://ollama.com/library");
+        Assert.AreEqual("Nothing found for \"x\".", ChatSearch.Format("x", Array.Empty<ChatSearch.Found>()));
+        var address = ChatSearch.Address(new ChatSearchConfig { Kind = "brave" }, "a b", 7);
+        Assert.AreEqual("https://api.search.brave.com/res/v1/web/search?q=a%20b&count=7", address.AbsoluteUri);
+        Assert.AreEqual("https://searx.example/search?q=a%20b&format=json", ChatSearch.Address(new ChatSearchConfig { Kind = "searxng", BaseUrl = "https://searx.example/" }, "a b", 7).AbsoluteUri);
+    }
+
     private static ProviderRequest Conversation(bool thinking) {
         var messages = new List<ChatMessage> {
             new() { Role = "user", Parts = { ChatPart.TextPart("Read it"), new ChatPart { Type = "file", Name = "a.md", Text = "# A" }, new ChatPart { Type = "image", MediaType = "image/png", Data = "AAAA" } } },

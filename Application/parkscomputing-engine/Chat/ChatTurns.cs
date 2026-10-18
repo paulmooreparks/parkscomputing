@@ -35,12 +35,15 @@ public sealed record ChatSend(string Text, IReadOnlyList<ChatPart> Attachments, 
 public sealed class ChatTurns {
     public const string DefaultSystem =
         "You are the assistant in the admin chat of parkscomputing.com, Paul Parks's site. Answer plainly and concisely, in Markdown. " +
+        "chat_info tells you about this chat itself (its providers and models, this conversation's settings, the reader's chats, the skills, the settings file, the API): use it for questions about the chat rather than guessing. " +
+        "web_fetch reads a public web page, and web_search (where the chat offers it) finds pages: use them for what is current or outside the site, such as the models a provider's public library lists (Ollama's is https://ollama.com/library; a provider's own models are in chat_info), and say which pages you used. " +
         "When site tools are offered, they act as the site's super-user: ~ is the super-user's home folder on the server, /wwwroot is the live site " +
         "(pages are Markdown or HTML in /wwwroot/content) and /etc is the server's settings. Use a tool only when the reader's message needs it: never look " +
         "around the site, check a log, a queue or a folder, or run an action the reader did not ask for, and answer a greeting or a check-in with words alone. " +
         "Any tool that changes something asks the reader first, so say what you mean to do before you do it. The site's applets publish actions (applet_discover lists them: rolling dice, solving a sudoku, " +
         "drawing a barcode, starting a game such as Asteroids or Space Invaders at a level, opening a score); applet_invoke runs one, and an action that opens a window " +
-        "opens it on the reader's own desktop. Mermaid diagrams in ```mermaid blocks are drawn for the reader.";
+        "opens it on the reader's own desktop. Asked to play a game, play it yourself, move by move with the actions the game publishes (Sudoku: new, then enter, " +
+        "one or a few cells a call, with pencil marks on the cells you are working), reasoning from the board each action gives back; use a solver only when the reader asks you to. Mermaid diagrams in ```mermaid blocks are drawn for the reader.";
 
     private sealed class Question {
         public string Key = ""; public string ToolCallId = ""; public string Name = ""; public string Title = ""; public JsonNode? Input;
@@ -70,7 +73,11 @@ public sealed class ChatTurns {
     private readonly ILogger<ChatTurns> _log;
     private readonly TimeProvider _clock;
 
-    public ChatTurns(ChatStore store, ChatSettings settings, ChatTools tools, ChatSkills skills, IHttpClientFactory http, ILogger<ChatTurns> log, TimeProvider clock) {
+    private readonly ChatSelf _self;
+    private readonly ChatWeb _web;
+    private readonly ChatSearch _search;
+    public ChatTurns(ChatStore store, ChatSettings settings, ChatTools tools, ChatSkills skills, ChatSelf self, ChatWeb web, ChatSearch search, IHttpClientFactory http, ILogger<ChatTurns> log, TimeProvider clock) {
+        _self = self; _web = web; _search = search;
         _store = store; _settings = settings; _tools = tools; _skills = skills; _http = http; _log = log; _clock = clock;
     }
 
@@ -248,7 +255,12 @@ public sealed class ChatTurns {
                 }
             }
             var provider = ChatProviders.For(providerConfig, _http.CreateClient(ChatProviders.ClientName));
-            var specs = tools?.Tools.Select(t => t.Spec).ToList() ?? new List<ToolSpec>();
+            /* The chat's own tool comes first, for every reader; the site's
+               follow when the chat has them. */
+            var specs = new List<ToolSpec> { _self.Spec, _web.Spec };
+            /* The chat's own search, for a model whose provider has none of its own. */
+            if (config.Search is { Configured: true } && !providerConfig.SearchesTheWeb) { specs.Add(_search.Spec); }
+            if (tools is not null) { specs.AddRange(tools.Tools.Select(t => t.Spec)); }
             var system = (string.IsNullOrWhiteSpace(config.System) ? DefaultSystem : config.System) + "\n\nToday is " + _clock.GetUtcNow().ToString("dddd, d MMMM yyyy") + " (UTC).";
             var model = string.IsNullOrWhiteSpace(conv.Model) ? (config.DefaultModel ?? providerConfig.Models?.FirstOrDefault() ?? "") : conv.Model;
 
@@ -263,6 +275,23 @@ public sealed class ChatTurns {
                                 lock (live.Gate) { Append(reply, "text", t.Text); }
                                 Publish(live, new JsonObject { ["type"] = "text", ["text"] = t.Text });
                                 break;
+                            case BlockStart b when b.Type == "text":
+                                /* A fresh text part, so a citation lands on its own block. */
+                                lock (live.Gate) { if (reply.Parts.LastOrDefault() is { Type: "text" } open && !string.IsNullOrEmpty(open.Text)) { reply.Parts.Add(new ChatPart { Type = "text", Text = "" }); } }
+                                break;
+                            case Citation cite: {
+                                lock (live.Gate) {
+                                    var text = reply.Parts.LastOrDefault(p => p.Type == "text") ?? AppendNew(reply, "text");
+                                    (text.Citations ??= new JsonArray()).Add(cite.Value.DeepClone());
+                                }
+                                Publish(live, new JsonObject { ["type"] = "citation", ["url"] = cite.Value["url"]?.GetValue<string>(), ["title"] = cite.Value["title"]?.GetValue<string>() });
+                                break;
+                            }
+                            case ServerBlock sb: {
+                                lock (live.Gate) { reply.Parts.Add(new ChatPart { Type = "server_block", Raw = sb.Block }); }
+                                PublishServerBlock(live, sb.Block);
+                                break;
+                            }
                             case ThinkingDelta t:
                                 lock (live.Gate) { Append(reply, "thinking", t.Text); }
                                 Publish(live, new JsonObject { ["type"] = "thought", ["text"] = t.Text });
@@ -271,7 +300,7 @@ public sealed class ChatTurns {
                                 lock (live.Gate) { var last = reply.Parts.LastOrDefault(p => p.Type == "thinking"); if (last is not null) { last.Signature = (last.Signature ?? "") + s.Signature; } }
                                 break;
                             case ToolCallReady c: {
-                                var known = tools?.Find(c.Name);
+                                var known = c.Name == ChatSelf.ToolName ? SelfTool : c.Name == ChatWeb.ToolName ? WebTool : c.Name == ChatSearch.ToolName ? SearchTool : tools?.Find(c.Name);
                                 lock (live.Gate) { reply.Parts.Add(new ChatPart { Type = "tool_use", Id = c.Id, Name = c.Name, Input = c.Input }); }
                                 Publish(live, new JsonObject {
                                     ["type"] = "tool_call", ["toolCallId"] = c.Id, ["name"] = c.Name, ["title"] = known?.Title ?? c.Name,
@@ -300,12 +329,14 @@ public sealed class ChatTurns {
                 var uses = reply.Parts.Where(p => p.Type == "tool_use").ToList();
                 if (uses.Count > 0) {
                     var results = new ChatMessage { Role = "user", At = _clock.GetUtcNow() };
-                    foreach (var use in uses) { results.Parts.Add(await RunToolAsync(live, conv, tools, use, cancel.Token)); }
+                    foreach (var use in uses) { results.Parts.Add(await RunToolAsync(live, conv, tools, use, home, send, cancel.Token)); }
                     conv.Messages.Add(results);
                 }
                 conv.Updated = _clock.GetUtcNow();
                 await _store.SaveAsync(home, conv);
-                if (uses.Count == 0 || reply.Stop is "cancelled" or "error" || cancel.IsCancellationRequested) { break; }
+                /* The API pauses a long search turn (pause_turn): the reply so
+                   far goes back as it is and the model goes on. */
+                if ((uses.Count == 0 && reply.Stop != "pause_turn") || reply.Stop is "cancelled" or "error" || cancel.IsCancellationRequested) { break; }
             }
         }
         finally {
@@ -323,10 +354,39 @@ public sealed class ChatTurns {
         if (last is not null && last.Type == type) { last.Text += text; }
         else { m.Parts.Add(new ChatPart { Type = type, Text = text }); }
     }
+    private static ChatPart AppendNew(ChatMessage m, string type) { var p = new ChatPart { Type = type, Text = "" }; m.Parts.Add(p); return p; }
+
+    /// <summary>A web search the provider ran itself, shown as a tool row:
+    /// the call with its query, then its result with what it found.</summary>
+    public static JsonObject? ServerBlockEvent(JsonObject block) {
+        switch (block["type"]?.GetValue<string>()) {
+            case "server_tool_use": {
+                var query = block["input"]?["query"]?.GetValue<string>();
+                return new JsonObject {
+                    ["type"] = "tool_call", ["toolCallId"] = block["id"]?.GetValue<string>(), ["name"] = block["name"]?.GetValue<string>() ?? "web_search",
+                    ["title"] = query is { Length: > 0 } ? "Searched the web for \"" + query + "\"" : "Searched the web", ["input"] = block["input"]?.DeepClone(), ["readOnly"] = true, ["status"] = "completed"
+                };
+            }
+            case "web_search_tool_result": {
+                var id = block["tool_use_id"]?.GetValue<string>();
+                if (block["content"] is JsonArray found) {
+                    var lines = found.Select(r => (r?["title"]?.GetValue<string>() ?? "") + "\n" + (r?["url"]?.GetValue<string>() ?? "")).ToList();
+                    return new JsonObject { ["type"] = "tool_result", ["toolCallId"] = id, ["status"] = "completed", ["output"] = lines.Count == 0 ? "Nothing found." : string.Join("\n\n", lines) };
+                }
+                return new JsonObject { ["type"] = "tool_result", ["toolCallId"] = id, ["status"] = "failed", ["output"] = "The search failed: " + (block["content"]?["error_code"]?.GetValue<string>() ?? "unknown") };
+            }
+            default: return null;
+        }
+    }
+    private void PublishServerBlock(Live live, JsonObject block) { if (ServerBlockEvent(block) is { } e) { Publish(live, e); } }
 
     /// <summary>Runs one tool the model asked for, asking the reader first
     /// when it changes something, and gives its result to send back.</summary>
-    private async Task<ChatPart> RunToolAsync(Live live, Conversation conv, ChatTools.Session? tools, ChatPart use, CancellationToken cancel) {
+    private ChatTool SelfTool => new(_self.Spec, "Ask the chat about itself", true);
+    private ChatTool WebTool => new(_web.Spec, "Read a web page", true);
+    private ChatTool SearchTool => new(_search.Spec, "Search the web", true);
+
+    private async Task<ChatPart> RunToolAsync(Live live, Conversation conv, ChatTools.Session? tools, ChatPart use, string home, ChatSend send, CancellationToken cancel) {
         ChatPart Result(string status, string text) {
             var part = new ChatPart { Type = "tool_result", Id = use.Id, Name = use.Name, Status = status, Text = text };
             Publish(live, new JsonObject {
@@ -336,6 +396,21 @@ public sealed class ChatTurns {
             return part;
         }
         if (cancel.IsCancellationRequested) { return Result("rejected", "The reader stopped the reply before this ran."); }
+        if (use.Name == ChatSelf.ToolName) {
+            Publish(live, new JsonObject { ["type"] = "tool_progress", ["toolCallId"] = use.Id, ["status"] = "in_progress" });
+            try { return Result("completed", await _self.RunAsync(use.Input, home, conv, send.ToolsAllowed && _tools.Available, send.ToolsAllowed, cancel)); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { return Result("failed", ex.Message); }
+        }
+        if (use.Name == ChatWeb.ToolName) {
+            Publish(live, new JsonObject { ["type"] = "tool_progress", ["toolCallId"] = use.Id, ["status"] = "in_progress" });
+            try { return Result("completed", await _web.RunAsync(use.Input, cancel)); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { return Result("failed", ex.Message); }
+        }
+        if (use.Name == ChatSearch.ToolName) {
+            Publish(live, new JsonObject { ["type"] = "tool_progress", ["toolCallId"] = use.Id, ["status"] = "in_progress" });
+            try { return Result("completed", await _search.RunAsync(use.Input, cancel)); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { return Result("failed", ex.Message); }
+        }
         var tool = tools?.Find(use.Name ?? "");
         if (tool is null) { return Result("failed", "There is no tool called " + use.Name + " in this chat."); }
 
