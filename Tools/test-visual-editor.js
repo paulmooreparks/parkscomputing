@@ -24,6 +24,7 @@ const SOURCE = [
     '{{tip:A tip}}', 'Inside the tip.', '{{/tip}}', '',
     '```js', 'let x = 1;', '```', '',
     'The last paragraph.', '',
+    '{{figure:/images/pelican-bicycle.png alt="A pelican" width=50% caption="A pelican."}}', '',
     '{{draft-note}}', '## A heading first', '', 'Then a line.', '{{/draft-note}}', ''
 ].join('\n');
 
@@ -140,8 +141,21 @@ function diff(a, b) {
     log('Bold from the toolbar writes **…**', now.includes('The **first** paragraph'), JSON.stringify(d));
     base = now;
 
+    // A figure pressed in the page opens its form, not the lightbox.
+    await frame.click('.pc-visual .sc-figure img');
+    await page.waitForSelector('[data-role="figure"][open]', { timeout: 5000 });
+    log('pressing a figure opens the figure form with its settings', (await page.inputValue('[data-role="figure-src"]')) === '/images/pelican-bicycle.png' && (await page.inputValue('[data-role="figure-alt"]')) === 'A pelican' && (await page.inputValue('[data-role="figure-width"]')) === '50%' && (await page.inputValue('[data-role="figure-caption"]')) === 'A pelican.');
+    log('and not the lightbox', !(await frame.$('.lightbox[open], dialog.lightbox[open]')));
+    await page.fill('[data-role="figure-caption"]', 'A pelican, changed.');
+    await page.click('[data-role="figure-ok"]');
+    await page.waitForTimeout(3000);
+    now = await cmText();
+    log('the form writes the figure back', now.includes('{{figure:/images/pelican-bicycle.png alt="A pelican" width=50% caption="A pelican, changed."}}'), JSON.stringify(diff(base, now)));
+    log('and the page draws it again', /A pelican, changed\./.test(await frame.textContent('.pc-visual .sc-figure')));
+    base = now;
+
     // A source block's Markdown, edited in place.
-    await frame.dblclick('.pc-visual .pm-source');
+    await frame.dblclick('.pc-visual .pm-source >> nth=0');
     await frame.waitForSelector('.pm-source-edit textarea');
     await frame.fill('.pm-source-edit textarea', '```js\nlet y = 2;\n```');
     await frame.press('.pm-source-edit textarea', 'Control+Enter');
@@ -170,6 +184,56 @@ function diff(a, b) {
     log('Preview is the page, not editable', !(await frame3.$('.pc-visual')) && /A paragraph typed as text/.test(await frame3.textContent('.post-body')));
     await page.click('[data-view="text"]');
     log('Text hides the page', await page.isHidden('iframe.ed-preview'));
+
+    // The formatting bar on the Markdown itself, in Text.
+    log('the formatting bar stays for a Markdown file in Text', await page.isVisible('[data-role="format"]'));
+    /* The cursor goes to the line by number, through Go to line, since a
+       long line wraps and a click lands where the mouse is. */
+    const lineNo = (await cmText()).split('\n').findIndex(l => /^The last paragraph\./.test(l)) + 1;
+    await page.click('.cm-content');
+    await page.keyboard.press('Control+Alt+g');
+    await page.waitForSelector('.cm-panel input');
+    await page.fill('.cm-panel input', String(lineNo));
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    await page.keyboard.press('Home');
+    await page.keyboard.press('Shift+End');
+    await page.waitForTimeout(200);
+    const beforeBold = await cmText(), selected = await page.evaluate(() => String(getSelection()).slice(0, 60));
+    await page.click('[data-fmt="bold"]');
+    await page.waitForTimeout(300);
+    now = await cmText();
+    log('Bold wraps the chosen text', /^\*\*The last paragraph\..*\*\*$/m.test(now), 'selected ' + JSON.stringify(selected) + ' change ' + JSON.stringify(diff(beforeBold, now)) + ' active ' + (await page.evaluate(() => document.activeElement.className + '/' + (document.querySelector('[data-role="format"]').hidden))));
+    await page.click('[data-fmt="bold"]');
+    await page.waitForTimeout(300);
+    now = await cmText();
+    log('and again takes it off', !/\*\*The last/.test(now) && /^The last paragraph\./m.test(now), now.split('\n').find(l => /last paragraph/.test(l)));
+    await page.click('[data-fmt="h2"]');
+    await page.waitForTimeout(300);
+    now = await cmText();
+    log('H2 marks the line', /^## The last paragraph\./m.test(now), now.split('\n').find(l => /last paragraph/.test(l)));
+    await page.click('[data-fmt="paragraph"]');
+    await page.waitForTimeout(300);
+    now = await cmText();
+    log('Paragraph takes the mark off', /^The last paragraph\./m.test(now), now.split('\n').find(l => /last paragraph/.test(l)));
+    await page.click('[data-fmt="bullets"]');
+    await page.waitForTimeout(300);
+    now = await cmText();
+    log('Bulleted list marks the line', /^- The last paragraph\./m.test(now), now.split('\n').find(l => /last paragraph/.test(l)));
+    await page.click('[data-fmt="paragraph"]');
+    await page.waitForTimeout(300);
+    await page.focus('[data-role="insert"]');
+    await page.waitForFunction(() => document.querySelector('[data-role="insert"]').options.length > 2, null, { timeout: 10000 });
+    await page.selectOption('[data-role="insert"]', 'figure');
+    await page.waitForSelector('[data-role="figure"][open]', { timeout: 5000 });
+    log('Insert a figure in Text opens the form, empty', (await page.inputValue('[data-role="figure-src"]')) === '' && (await page.textContent('[data-role="figure-ok"]')) === 'Insert');
+    await page.fill('[data-role="figure-src"]', '/images/new.png');
+    await page.fill('[data-role="figure-alt"]', 'A new picture');
+    await page.fill('[data-role="figure-width"]', '600px');
+    await page.click('[data-role="figure-ok"]');
+    await page.waitForTimeout(500);
+    now = await cmText();
+    log('and writes the figure into the text', now.includes('{{figure:/images/new.png alt="A new picture" width=600px}}'), JSON.stringify(now.split('\n').filter(l => /figure/.test(l))));
 
     // Tidy up: the file goes, unsaved changes and all.
     await page.evaluate(async path => {

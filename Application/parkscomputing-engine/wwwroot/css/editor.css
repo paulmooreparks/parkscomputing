@@ -61,6 +61,13 @@
    the window's bottom would cut off. */
 .pc-editor .ed-message { margin-left: auto; min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pc-editor .ed-message-error { color: var(--danger); }
+/* The figure dialog's form. */
+.ed-figure { max-width: 34rem; }
+.ed-figure-fields { display: grid; gap: var(--space-1); }
+.ed-figure-fields .form-label { margin-top: var(--space-3); }
+.ed-figure-fields .form-help { margin: 0; }
+.ed-figure-src { display: flex; gap: var(--space-2); }
+.ed-figure-src .form-input { flex: 1 1 auto; min-width: 0; }
 .pc-editor .ed-failed { color: var(--text-muted); padding: var(--space-4); }
 .pc-editor .ed-dialog .form-input { width: 100%; }
 .pc-editor .ed-dialog .dialog-actions { gap: 8px; }

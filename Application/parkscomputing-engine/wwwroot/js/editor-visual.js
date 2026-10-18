@@ -22,6 +22,9 @@
      reload()                 asks for the document again, after an edit the
                               server must look at (a source block, a shortcode)
      prompt(title, value)     a promise of text the person types, or null
+     figure(src)              a promise of a {{figure}} shortcode from a form
+                              for the one given (null for a new one), '' to
+                              remove it, or null for no change (optional)
      say(text, isError)       a line in the Editor's status bar
 
    An untouched block is written back as its own text: each top-level node
@@ -105,7 +108,11 @@
     function finish(el) {
         if (window.pcEnhanceArticle) { window.pcEnhanceArticle(el); }
         if (window.pudlApplets && window.pudlApplets.boot) { window.pudlApplets.boot(el); }
+        /* A picture in the editor is edited, not shown in the lightbox. */
+        el.querySelectorAll('img').forEach(function (i) { i.setAttribute('data-no-lightbox', ''); });
     }
+
+    var FIGURE = /^\{\{figure[:}]/;
 
     /* === Node views ===================================================== */
 
@@ -121,10 +128,30 @@
         this.show();
         var self = this;
         this.dom.addEventListener('dblclick', function (e) { e.preventDefault(); self.edit(v, getPos); });
+        /* A figure pressed opens its form (host.figure), where there is one. */
+        this.dom.addEventListener('click', function (e) {
+            if (self.editing || !host.figure || !FIGURE.test(self.node.attrs.src) || !e.target.closest('figure, img')) { return; }
+            e.preventDefault();
+            host.figure(self.node.attrs.src).then(function (src) {
+                if (src === null || src === undefined) { v.focus(); return; }
+                var pos = getPos();
+                if (typeof pos !== 'number') { return; }
+                if (src === '') { v.dispatch(v.state.tr.delete(pos, pos + self.node.nodeSize)); }
+                else { self.apply(v, pos, src); }
+                emit(true);
+                v.focus();
+            });
+        });
     }
     SourceView.prototype.show = function () {
         this.dom.innerHTML = this.node.attrs.html || '<p class="pm-empty">(nothing on the page)</p>';
         finish(this.dom);
+        if (host && host.figure && FIGURE.test(this.node.attrs.src)) { this.dom.title = 'Click the picture to change the figure; double-click to edit it as Markdown'; }
+    };
+    /* The block's Markdown replaced; the server renders it again. */
+    SourceView.prototype.apply = function (v, pos, src) {
+        if (src === this.node.attrs.src) { return; }
+        v.dispatch(v.state.tr.setNodeMarkup(pos, null, Object.assign({}, this.node.attrs, { src: src, html: '' })));
     };
     SourceView.prototype.edit = function (v, getPos) {
         if (this.editing) { return; }
@@ -169,7 +196,7 @@
         if (changed && !this.editing) { this.show(); }
         return true;
     };
-    SourceView.prototype.stopEvent = function (e) { return !!this.editing || e.type === 'dblclick'; };
+    SourceView.prototype.stopEvent = function (e) { return !!this.editing || e.type === 'dblclick' || (e.type === 'click' && FIGURE.test(this.node.attrs.src)); };
     SourceView.prototype.ignoreMutation = function () { return true; };
 
     /* A container shortcode: the page's own frame (a notice, an expand)
