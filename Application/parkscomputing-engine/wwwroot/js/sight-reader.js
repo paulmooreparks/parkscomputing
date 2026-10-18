@@ -14,8 +14,8 @@
    step is named. A wrong letter marks an error and the cursor stays. After
    a number of wrong tries the answer is shown, and any key goes on. With
    Name sharps and flats on, a note's sharp or flat is named too, by a key
-   or button pressed before its letter. The reader chooses which clefs and
-   parts to read, and a right answer can sound the note. */
+   or button pressed before its letter. The reader chooses which staves to
+   read, and a right answer can sound the note. */
 (function () {
     'use strict';
 
@@ -252,7 +252,7 @@
                 '<ol class="sr-steps">' +
                   '<li><strong>Choose a score</strong> with Scores…, or drop a MusicXML file on the page.</li>' +
                   '<li><strong>Answer</strong> on the piano, on a fingerboard (guitar, bass guitar, ukulele, mandolin, violin, viola, cello or double bass), or with the letters A to G. Options chooses which.</li>' +
-                  '<li><strong>Choose what to read</strong> with Read…: one clef, or some of the parts of a score.</li>' +
+                  '<li><strong>Choose what to read</strong> with Read…: some of the staves of a score, such as a pianist\'s left hand or one instrument of a quartet.</li>' +
                   '<li><strong>Listen and watch</strong> with Play: the piece plays at the speed beside it, from where the cursor is, and its notes light on your instrument. A press of any key stops it.</li>' +
                   '<li><strong>Practise a passage</strong> by giving a first and last bar, and tick Loop to go round again. Restart begins the piece again.</li>' +
                 '</ol>' +
@@ -303,10 +303,10 @@
            reader has got. A step is { adv, measure, notes, result }, where
            adv is how many times the cursor's iterator moves on from the
            start to reach it, and a note is { note, key, state }. info says
-           what the score holds to choose from, its clefs and parts with the
-           number of notes in each, and chosen what the reader chose; null
-           for all of them. */
-        var score = null, info = null, chosen = { clefs: null, parts: null };
+           what the score holds to choose from, its staves with the number of
+           notes on each, and chosen the staves the reader chose, by their
+           place in the score; null for all of them. */
+        var score = null, info = null, chosen = { staves: null };
         var steps = [], cur = -1, curAdv = 0;
         var tries = 0, revealed = false, finished = false, pendingAlter = 0;
         /* The bars being practised, as bar numbers (null is the start or the
@@ -326,7 +326,7 @@
         root.innerHTML =
             '<div class="sr-top">' +
               '<button type="button" class="btn" data-sr="choose">Scores…</button>' +
-              '<button type="button" class="btn" data-sr="read" title="Choose the clefs and parts to read" disabled>Read…</button>' +
+              '<button type="button" class="btn" data-sr="read" title="Choose the staves to read" disabled>Read…</button>' +
               '<button type="button" class="btn" data-sr="options">Options…</button>' +
               '<button type="button" class="btn" data-sr="restart" title="Start the piece again from the beginning">Restart</button>' +
               '<span class="sr-range" role="group" aria-label="Bars to practise">' +
@@ -720,24 +720,34 @@
 
         /* Walks the whole score once, noting each step. The iterator moves
            without drawing, and the cursor goes back to the start after. The
-           clef in effect on each staff is followed through the score's clef
-           instructions, at the start of each bar and within it, so a hand
-           that moves into another clef counts as that clef while it is
-           there. The first walk also notes what there is to choose from. */
+           first walk also notes what there is to choose from: each staff,
+           top to bottom, with its part's name and the clefs it uses in the
+           order they come, followed through the score's clef instructions at
+           the start of each bar and within it. */
         function build() {
             var first = !info, instruments = osmd.Sheet.Instruments;
-            if (first) { info = { clefs: {}, parts: instruments.map(function (i, n) { return { name: i.Name || 'Part ' + (n + 1), count: 0 }; }) }; }
-            steps = [];
             /* A bar's lists of instructions, which hold one entry for each staff
                of the score in order, instrument by instrument: those that open
                the bar, and those that close it, where a clef change at the
                barline is filed with the bar before. A clef met on the way
                stands for its staff until the next. */
             var staves = [].concat.apply([], instruments.map(function (i) { return i.Staves; }));
+            if (first) {
+                info = { staves: staves.map(function (s) {
+                    var inst = s.ParentInstrument, of = inst.Staves.length;
+                    return { name: (inst.Name || '').trim(), at: inst.Staves.indexOf(s), of: of, clefs: [], count: 0, tab: !!s.isTab };
+                }) };
+            }
+            steps = [];
             var clefAt = [], lastMeasure = null;
             function takeAt(entry, idx) {
                 if (!entry) { return; }
-                (entry.Instructions || []).forEach(function (ins) { if (isClef(ins)) { clefAt[idx] = clefName(ins); } });
+                (entry.Instructions || []).forEach(function (ins) {
+                    if (!isClef(ins)) { return; }
+                    clefAt[idx] = clefName(ins);
+                    var known = first && info.staves[idx];
+                    if (known && known.clefs.indexOf(clefAt[idx]) < 0) { known.clefs.push(clefAt[idx]); }
+                });
             }
             var cursor = osmd.cursor;
             cursor.reset();
@@ -754,10 +764,8 @@
                     if (!readable(n)) { return; }
                     var staff = staves.indexOf(n.ParentStaff);
                     if (n.ParentStaffEntry) { takeAt(n.ParentStaffEntry, staff); }
-                    var clef = clefAt[staff] || 'Treble', part = instruments.indexOf(n.ParentStaff.ParentInstrument);
-                    if (first) { info.clefs[clef] = (info.clefs[clef] || 0) + 1; if (info.parts[part]) { info.parts[part].count++; } }
-                    if (chosen.clefs && !chosen.clefs[clef]) { return; }
-                    if (chosen.parts && !chosen.parts[part]) { return; }
+                    if (first && info.staves[staff]) { info.staves[staff].count++; }
+                    if (chosen.staves && !chosen.staves[staff]) { return; }
                     var midi = midiOf(n), oct = n.Pitch.Octave + OS.Pitch.OctaveXmlDifference;
                     found.push({
                         note: n, key: keyOf(n), midi: midi, pc: ((midi % 12) + 12) % 12, oct: oct,
@@ -1084,7 +1092,7 @@
             if (!score || !osmd) { return; }
             if (needsDraw && !el.score.clientWidth) { return; }
             build();
-            if (!steps.length) { cur = -1; say('Nothing in the clefs and parts chosen has notes to read.', 'warn'); refresh(); return; }
+            if (!steps.length) { cur = -1; say('Nothing on the staves chosen has notes to read.', 'warn'); refresh(); return; }
             restart();
         }
 
@@ -1156,15 +1164,14 @@
                     if (destroyed || id !== loadId) { return; }
                     score = src;
                     info = null;
-                    chosen = { clefs: null, parts: null };
+                    chosen = { staves: null };
                     barFrom = null; barTo = null; pass = 1; showRange();
                     finished = false;
                     tally = { first: 0, retried: 0, missed: 0 };
                     cur = -1;
                     if (!draw()) { pending = again || null; say('', ''); refresh(); return; }
                     build();
-                    if (again && again.cs) { chosen.clefs = setOf(again.cs); build(); }
-                    if (again && again.ps) { chosen.parts = setOf(again.ps); build(); }
+                    if (again && again.ss) { chosen.staves = setOf(again.ss); build(); }
                     if (!steps.length) { say('This score has no notes to read.', 'warn'); refresh(); renderRead(); return; }
                     if (again) { restoreProgress(again); } else { begin(0); }
                     refresh();
@@ -1239,49 +1246,49 @@
 
         /* === Read: what to read from this piece ================================== */
 
-        /* The clefs and parts the score offers. A part with no note to read is
-           listed, greyed, so the list matches the score's. */
+        /* The staves the score offers, top to bottom as it prints them. A
+           tablature staff is left out, since it repeats the staff above it; a
+           staff with no note to read is listed, greyed, so the list matches
+           the score. */
         function readChoices() {
-            if (!info) { return { clefs: [], parts: [], readable: 0 }; }
-            var clefs = Object.keys(info.clefs).sort(function (a, b) { return info.clefs[b] - info.clefs[a]; });
-            var parts = info.parts.map(function (p, n) { return { n: n, name: p.name, count: p.count }; });
-            return { clefs: clefs, parts: parts, readable: parts.filter(function (p) { return p.count; }).length };
+            if (!info) { return { staves: [], readable: 0 }; }
+            var staves = info.staves.map(function (s, n) { return { n: n, s: s }; }).filter(function (x) { return !x.s.tab; });
+            return { staves: staves, readable: staves.filter(function (x) { return x.s.count; }).length };
+        }
+
+        /* A staff as the list shows it: its part's name, where the score
+           has one, with the staff's place in a part of several, and the clefs
+           it uses in the order they come; with no name, the clefs alone. */
+        function staffLabel(s) {
+            var clefs = (s.clefs.length ? s.clefs : ['Treble']).join(', ');
+            if (!s.name) { return clefs; }
+            var where = s.of === 2 ? (s.at === 0 ? ', upper' : ', lower') : s.of > 2 ? ', staff ' + (s.at + 1) : '';
+            return s.name + where + ' (' + clefs + ')';
         }
 
         /* What the reader has narrowed the piece to, in words; empty when all of it is read. */
         function readingText() {
-            var c = readChoices(), bits = [];
-            if (chosen.clefs && c.clefs.length > 1) {
-                var on = c.clefs.filter(function (n) { return chosen.clefs[n]; });
-                bits.push(on.join(' and ') + (on.length > 1 ? ' clefs' : ' clef'));
-            }
-            if (chosen.parts && c.readable > 1) {
-                bits.push(Object.keys(chosen.parts).length + ' of ' + c.readable + ' parts');
-            }
-            return bits.join(', ');
+            var c = readChoices();
+            if (!chosen.staves || c.readable < 2) { return ''; }
+            var on = c.staves.filter(function (x) { return chosen.staves[x.n]; });
+            return on.length <= 2 ? on.map(function (x) { return staffLabel(x.s); }).join(' and ') : on.length + ' of ' + c.readable + ' staves';
         }
 
-        /* The body of the Read dialog for the score open. A score in one clef,
-           which is most single-staff music, has no clef to choose, and one with
-           a single part has no part to choose. */
+        /* The body of the Read dialog for the score open: a checkbox for each
+           staff, since any number may be read at once. A piece on one staff
+           has nothing to choose. */
         function renderRead() {
             var c = readChoices(), html = '';
-            if (c.clefs.length > 1) {
-                /* Several clefs may be read at once, so each is a checkbox in
-                   a list, as the parts are; only the ticked clefs are shown. */
-                html += '<section><h4 class="sr-read-h">Clefs</h4><div class="sr-parts" role="group" aria-label="Clefs to read">' + c.clefs.map(function (n) {
-                    return '<div class="sr-part-row"><label class="check"><input type="checkbox" data-clef="' + esc(n) + '" data-notes="' + info.clefs[n] + '" checked /> ' + esc(n) + '</label></div>';
-                }).join('') + '</div><p class="sr-muted">A hand that moves into another clef counts as that clef while it is there.</p></section>';
-            }
             if (c.readable > 1) {
-                html += '<section><div class="sr-read-row"><h4 class="sr-read-h">Parts</h4><button type="button" class="btn btn-sm" data-sr="parts-all">All</button></div>' +
-                    (c.parts.length > 8 ? '<input type="search" class="form-input sr-part-filter" data-part-filter placeholder="Filter the parts…" aria-label="Filter the parts" />' : '') +
-                    '<div class="sr-parts" role="group" aria-label="Parts to read">' + c.parts.map(function (p) {
-                        return '<div class="sr-part-row" data-name="' + esc(p.name.toLowerCase()) + '"><label class="check"><input type="checkbox" data-part="' + p.n + '" data-notes="' + p.count + '" checked' + (p.count ? '' : ' disabled') + ' /> ' + esc(p.name) + '</label>' +
-                            (p.count ? '<button type="button" class="link link-muted" data-only="' + p.n + '">Only</button>' : '<span class="sr-muted">nothing to read</span>') + '</div>';
-                    }).join('') + '</div></section>';
+                html += '<section><div class="sr-read-row"><h4 class="sr-read-h">Staves</h4><button type="button" class="btn btn-sm" data-sr="staves-all">All</button></div>' +
+                    (c.staves.length > 8 ? '<input type="search" class="form-input sr-staff-filter" data-staff-filter placeholder="Filter the staves…" aria-label="Filter the staves" />' : '') +
+                    '<div class="sr-staves" role="group" aria-label="Staves to read">' + c.staves.map(function (x) {
+                        var label = staffLabel(x.s);
+                        return '<div class="sr-staff-row" data-name="' + esc(label.toLowerCase()) + '"><label class="check"><input type="checkbox" data-staff="' + x.n + '" data-notes="' + x.s.count + '"' + (x.s.count ? ' checked' : ' disabled') + ' /> ' + esc(label) + '</label>' +
+                            (x.s.count ? '<button type="button" class="link link-muted" data-only="' + x.n + '">Only</button>' : '<span class="sr-muted">nothing to read</span>') + '</div>';
+                    }).join('') + '</div><p class="sr-muted">A hand that moves into another clef stays with its own staff.</p></section>';
             }
-            if (!html) { html = '<p class="sr-muted">This piece has one clef and one part, so there is nothing to choose.</p>'; }
+            if (!html) { html = '<p class="sr-muted">This piece has one staff to read, so there is nothing to choose.</p>'; }
             el.readBody.innerHTML = html;
             syncRead();
         }
@@ -1290,17 +1297,14 @@
            dialog, on the button's tooltip, and in the quiet line under the toolbar. */
         function syncRead() {
             var c = readChoices(), text = readingText();
-            [].slice.call(el.readBody.querySelectorAll('[data-clef]')).forEach(function (b) {
-                b.checked = !chosen.clefs || !!chosen.clefs[b.getAttribute('data-clef')];
-            });
-            [].slice.call(el.readBody.querySelectorAll('[data-part]')).forEach(function (b) {
-                if (!b.disabled) { b.checked = !chosen.parts || !!chosen.parts[b.getAttribute('data-part')]; }
+            [].slice.call(el.readBody.querySelectorAll('[data-staff]')).forEach(function (b) {
+                if (!b.disabled) { b.checked = !chosen.staves || !!chosen.staves[b.getAttribute('data-staff')]; }
             });
             el.readSummary.textContent = (score ? score.name : '') + (text ? ' · reading ' + text : '');
-            el.readButton.title = 'Choose the clefs and parts to read' + (text ? ' (now ' + text + ')' : '');
-            el.readButton.disabled = !score || (c.clefs.length < 2 && c.readable < 2);
+            el.readButton.title = 'Choose the staves to read' + (text ? ' (now ' + text + ')' : '');
+            el.readButton.disabled = !score || c.readable < 2;
             el.reading.hidden = !text;
-            el.readingText.textContent = text ? 'Reading ' + text.replace(/^./, function (m) { return m; }) + '.' : '';
+            el.readingText.textContent = text ? 'Reading ' + text + '.' : '';
         }
 
         function openRead() {
@@ -1308,33 +1312,22 @@
             if (!el.read.open) { el.read.showModal(); }
         }
 
-        /* A clef ticked or unticked: at least one stays ticked, and the piece
-           starts again on the ticked clefs. */
-        function onClefChange(box) {
-            var boxes = [].slice.call(el.readBody.querySelectorAll('[data-clef]'));
-            var ticked = boxes.filter(function (b) { return b.checked; });
-            if (!ticked.length) { box.checked = true; return; }
-            chosen.clefs = ticked.length === boxes.length ? null : setOf(ticked.map(function (b) { return b.getAttribute('data-clef'); }));
-            syncRead();
-            rebuild();
-        }
-
-        /* A part ticked or unticked: at least one stays ticked, and the piece
+        /* A staff ticked or unticked: at least one stays ticked, and the piece
            starts again on what is ticked. */
-        function onPartChange(box) {
-            var boxes = [].slice.call(el.readBody.querySelectorAll('[data-part]')).filter(function (b) { return !b.disabled; });
+        function onStaffChange(box) {
+            var boxes = [].slice.call(el.readBody.querySelectorAll('[data-staff]')).filter(function (b) { return !b.disabled; });
             var ticked = boxes.filter(function (b) { return b.checked; });
             if (!ticked.length) { box.checked = true; return; }
-            chosen.parts = ticked.length === boxes.length ? null : setOf(ticked.map(function (b) { return b.getAttribute('data-part'); }));
+            chosen.staves = ticked.length === boxes.length ? null : setOf(ticked.map(function (b) { return b.getAttribute('data-staff'); }));
             syncRead();
             rebuild();
         }
-        function onlyPart(n) { chosen.parts = setOf([n]); syncRead(); rebuild(); }
-        function allParts() { chosen.parts = null; syncRead(); rebuild(); }
+        function onlyStaff(n) { chosen.staves = setOf([n]); syncRead(); rebuild(); }
+        function allStaves() { chosen.staves = null; syncRead(); rebuild(); }
 
-        function filterParts(input) {
+        function filterStaves(input) {
             var needle = input.value.trim().toLowerCase();
-            [].slice.call(el.readBody.querySelectorAll('.sr-part-row')).forEach(function (r) { r.hidden = !!needle && r.getAttribute('data-name').indexOf(needle) < 0; });
+            [].slice.call(el.readBody.querySelectorAll('.sr-staff-row')).forEach(function (r) { r.hidden = !!needle && r.getAttribute('data-name').indexOf(needle) < 0; });
         }
 
         /* === Help ================================================================ */
@@ -1382,7 +1375,7 @@
             return {
                 rel: score.rel, name: score.name, k: cur,
                 r: steps.map(function (s) { return s.result ? s.result.charAt(0) : '-'; }).join(''), t: tally,
-                cs: chosen.clefs ? Object.keys(chosen.clefs) : null, ps: chosen.parts ? Object.keys(chosen.parts) : null,
+                ss: chosen.staves ? Object.keys(chosen.staves) : null,
                 bf: barFrom, bt: barTo, lp: looping, ps2: pass
             };
         }) : null;
@@ -1424,7 +1417,7 @@
             var pref = e.target.closest('[data-opt]');
             if (pref && el.options.contains(pref) && pref.tagName !== 'SELECT') { if (!pref.disabled) { setPref(pref); } return; }
             var only = e.target.closest('[data-only]');
-            if (only && el.readBody.contains(only)) { onlyPart(only.getAttribute('data-only')); return; }
+            if (only && el.readBody.contains(only)) { onlyStaff(only.getAttribute('data-only')); return; }
             var tab = e.target.closest('[role="tab"]');
             if (tab && el.help.contains(tab)) { selectTab(tab); return; }
             var act = e.target.closest('[data-sr]');
@@ -1436,7 +1429,7 @@
                 case 'stop': stopPlay(); root.focus({ preventScroll: true }); break;
                 case 'read': openRead(); break;
                 case 'close-read': el.read.close(); root.focus({ preventScroll: true }); break;
-                case 'parts-all': allParts(); break;
+                case 'staves-all': allStaves(); break;
                 case 'help': openHelp(); break;
                 case 'restart': restart(); root.focus({ preventScroll: true }); break;
                 case 'clear-bars': barFrom = null; barTo = null; showRange(); restart(); root.focus({ preventScroll: true }); break;
@@ -1450,8 +1443,7 @@
         function onChange(e) {
             var t = e.target;
             if (t.hasAttribute('data-bar') || t.hasAttribute('data-loop')) { onRange(t); return; }
-            if (t.hasAttribute('data-part') && el.readBody.contains(t)) { onPartChange(t); return; }
-            if (t.hasAttribute('data-clef') && el.readBody.contains(t)) { onClefChange(t); return; }
+            if (t.hasAttribute('data-staff') && el.readBody.contains(t)) { onStaffChange(t); return; }
             if (t.hasAttribute('data-play-speed')) { saveSetting({ playSpeed: SPEEDS.indexOf(+t.value) >= 0 ? +t.value : 1 }); return; }
             if (t.tagName === 'SELECT' && t.getAttribute('data-opt') === 'keyboard' && el.options.contains(t)) {
                 saveSetting({ keyboard: KEYBOARDS.indexOf(t.value) >= 0 ? t.value : 'piano' });
@@ -1460,7 +1452,7 @@
             }
         }
 
-        function onInput(e) { if (e.target.hasAttribute('data-part-filter')) { filterParts(e.target); } }
+        function onInput(e) { if (e.target.hasAttribute('data-staff-filter')) { filterStaves(e.target); } }
 
         function onKeyDown(e) {
             if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) { return; }

@@ -177,8 +177,9 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   /* The controls of Options and Read: a segmented control's choice, a switch, a clef box, a part box. */
   const pick = async (opt, val) => { const sel = '[data-opt="' + opt + '"]'; if ((await page.locator(sel).first().evaluate(e => e.tagName)) === 'SELECT') { return page.selectOption(sel, val); } return page.click(sel + '[data-value="' + val + '"]'); };
   const setSwitch = async (opt, on) => { const sel = '[data-opt="' + opt + '"]'; if (((await page.getAttribute(sel, 'aria-checked')) === 'true') !== on) { await page.click(sel); } };
-  const setClef = async (name, on) => { const sel = '[data-clef="' + name + '"]'; if ((await page.isChecked(sel)) !== on) { await page.click(sel); } };
-  const setPart = async (n, on) => { const sel = '[data-part="' + n + '"]'; if ((await page.isChecked(sel)) !== on) { await page.click(sel); } };
+  const setStaff = async (n, on) => { const sel = '[data-staff="' + n + '"]'; if ((await page.isChecked(sel)) !== on) { await page.click(sel); } };
+  /* The Read dialog's staves, top to bottom, as label, ticked, and notes. */
+  const staffList = () => page.evaluate(() => [...document.querySelectorAll('[data-staff]')].map(b => b.parentElement.textContent.trim() + (b.checked ? '+' : '-') + b.getAttribute('data-notes')).join(' | '));
   const pending = () => page.evaluate(() => { const p = document.querySelector('[data-role="pending"]'); return p.hidden ? '' : p.textContent; });
 
   // 1. A single-line tune from the samples.
@@ -397,63 +398,62 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('the answer shows its accidental', /^The answer is B♭/.test(shownAnswer), shownAnswer);
   await options(() => setSwitch('accidentals', false));
 
-  // 6d. Choosing what to read: clefs, following a clef change.
+  // 6d. Choosing what to read: the staves, top to bottom, each with its clefs.
   await page.setInputFiles('.sr-file', pianoFile);
   await page.waitForTimeout(800);
   i = await info();
-  log('a piano score with both clefs has two steps', i.pos === 'Bar 1 · 1 of 2', i.pos);
+  log('a piano score on two staves has two steps', i.pos === 'Bar 1 · 1 of 2', i.pos);
   await page.click('.sr-top [data-sr="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
-  const clefs = await page.evaluate(() => [...document.querySelectorAll('[data-clef]')].map(b => b.getAttribute('data-clef') + (b.checked ? '+' : '-')).join());
-  log('Read offers the clefs the score uses', clefs === 'Treble+,Bass+', clefs);
+  let staves = await staffList();
+  log('Read lists the staves top to bottom, named, with the clefs each uses in order', staves === 'Piano, upper (Treble)+2 | Piano, lower (Bass, Treble)+2', staves);
   await page.screenshot({ path: path.join(SHOTS, 'sr-read.png') });
-  await setClef('Treble', false);
+  await setStaff(0, false);
   await page.waitForTimeout(500);
-  await page.click('[data-clef="Bass"]');
-  const guard = await page.evaluate(() => document.querySelector('[data-clef="Bass"]').checked);
-  log('the last clef stays on', guard);
+  await page.click('[data-staff="1"]');
+  log('the last staff stays ticked', await page.isChecked('[data-staff="1"]'));
   await page.click('[data-sr="close-read"]');
   await page.focus('.pc-sight-reader');
   i = await info();
-  log('with only bass chosen the quiz reads just the bass notes: one step', i.pos === 'Bar 1 · 1 of 1', i.pos);
+  log('with only the lower staff chosen, both its notes are read: two steps', i.pos === 'Bar 1 · 1 of 2', i.pos);
   await type('e');
-  log('a treble note is not asked for', (await info()).fb === 'Not that one');
+  log('an upper-staff note is not asked for', (await info()).fb === 'Not that one');
   await type('c');
-  log('the bass note ends it', /^Finished: \d of 1/.test((await info()).fb), (await info()).fb);
+  await type('d');
+  log('the left hand in the treble clef stays with its own staff: the piece ends', /^Finished: \d of 2/.test((await info()).fb), (await info()).fb);
+
+  // 6d1. A score that names no part lists its staves by their clefs alone.
+  const unnamed = path.join(os.tmpdir(), 'sight-reader-unnamed.musicxml');
+  fs.writeFileSync(unnamed, PIANO.replace('<part-name>Piano</part-name>', '<part-name></part-name>'));
+  await page.setInputFiles('.sr-file', unnamed);
+  await page.waitForTimeout(800);
   await page.click('.sr-top [data-sr="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
-  await setClef('Treble', true);
-  await setClef('Bass', false);
+  staves = await staffList();
+  log('with no part names, the staves are their clefs', staves === 'Treble+2 | Bass, Treble+2', staves);
   await page.click('[data-sr="close-read"]');
-  await page.focus('.pc-sight-reader');
-  i = await info();
-  log('with only treble chosen, the left hand in the treble clef counts: two steps', i.pos === 'Bar 1 · 1 of 2', i.pos);
-  await type('eg');
-  log('G alone is not the whole bar', /1 more/.test((await info()).fb));
-  await type('d');
-  log('the treble-clef left hand note is read with the right hand: the piece ends', /^Finished: 2 of 2/.test((await info()).fb), (await info()).fb);
 
   // 6d2. A real song, where a hand moves between clefs many times.
   await openSong('Schumann - Fruhlingsnacht.mxl');
   await page.click('.sr-top [data-sr="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
-  const songClefs = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-clef]')].map(b => [b.getAttribute('data-clef'), +b.getAttribute('data-notes')])));
-  /* The counts are what reading the score's XML note by note gives, with each
-     staff's clef followed through its changes, rests, grace notes and tied
-     continuations left out: 1,219 in the treble clef and 280 in the bass. */
-  log('a song lists its clefs with how many notes are in each, following the changes', songClefs.Treble === 1219 && songClefs.Bass === 280, JSON.stringify(songClefs));
+  const song = await page.evaluate(() => [...document.querySelectorAll('[data-staff]')].map(b => ({ label: b.parentElement.textContent.trim(), notes: +b.getAttribute('data-notes') })));
+  /* 1,499 notes in all, what reading the score's XML note by note gives with
+     rests, grace notes and tied continuations left out. */
+  log('a song lists the voice, then the piano\'s upper and lower staves, and every note is on one of them',
+    song.map(s => s.label).join(' | ') === 'Voice (Treble) | Piano, upper (Treble) | Piano, lower (Bass, Treble)' && song.reduce((t, s) => t + s.notes, 0) === 1499, JSON.stringify(song));
   await page.click('[data-sr="close-read"]');
 
-  // 6e. Choosing what to read: parts.
+  // 6e. Choosing what to read: one instrument of several.
   await page.setInputFiles('.sr-file', partsFile);
   await page.waitForTimeout(800);
   i = await info();
   log('a score with a voice and a piano has one step asking for two notes', i.pos === 'Bar 1 · 1 of 1' && /interval/.test(i.fb), JSON.stringify(i));
   await page.click('.sr-top [data-sr="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
-  const parts = await page.evaluate(() => [...document.querySelectorAll('[data-part]')].map(b => b.parentElement.textContent.trim().replace(/\s+/g, ' ') + ' ' + b.getAttribute('data-notes')).join());
-  log('Read offers the parts', /Voice 1,Piano 1/.test(parts), parts);
-  await setPart(0, false);
+  staves = await staffList();
+  log('Read lists each instrument\'s staff with its clef', staves === 'Voice (Treble)+1 | Piano (Treble)+1', staves);
+  await setStaff(0, false);
   await page.click('[data-sr="close-read"]');
   await page.focus('.pc-sight-reader');
   await type('d');
@@ -466,23 +466,23 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForTimeout(800);
   const readState = () => page.evaluate(() => ({ disabled: document.querySelector('.sr-top [data-sr="read"]').disabled, title: document.querySelector('.sr-top [data-sr="read"]').title, line: document.querySelector('[data-role="reading"]').hidden ? '' : document.querySelector('[data-role="reading-text"]').textContent }));
   let rs = await readState();
-  log('Read is there for a score with more than one part, and says nothing while all of it is read', !rs.disabled && rs.line === '', JSON.stringify(rs));
+  log('Read is there for a score with more than one staff, and says nothing while all of it is read', !rs.disabled && rs.line === '', JSON.stringify(rs));
   await page.click('.sr-top [data-sr="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
-  log('the parts list has no filter box when it is short', (await page.locator('[data-part-filter]').count()) === 0);
+  log('the staves list has no filter box when it is short', (await page.locator('[data-staff-filter]').count()) === 0);
   await page.click('[data-only="1"]');
   rs = await readState();
-  log('Only reads one part alone, and the line and the button say so', /^Reading 1 of 2 parts\.$/.test(rs.line) && /now 1 of 2 parts/.test(rs.title), JSON.stringify(rs));
-  log('the dialog says so too', /reading 1 of 2 parts/.test(await page.textContent('[data-role="read-summary"]')));
-  await page.click('[data-sr="parts-all"]');
+  log('Only reads one staff alone, and the line and the button say which', rs.line === 'Reading Piano (Treble).' && /now Piano \(Treble\)/.test(rs.title), JSON.stringify(rs));
+  log('the dialog says so too', /reading Piano \(Treble\)/.test(await page.textContent('[data-role="read-summary"]')));
+  await page.click('[data-sr="staves-all"]');
   rs = await readState();
-  log('All reads every part again, and the line goes', rs.line === '', JSON.stringify(rs));
+  log('All reads every staff again, and the line goes', rs.line === '', JSON.stringify(rs));
   await page.click('[data-sr="close-read"]');
   await page.focus('.pc-sight-reader');
   await page.goto(BASE + '/page/sight-reader?score=simple/Ode to Joy.musicxml', { waitUntil: 'networkidle' });
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   rs = await readState();
-  log('a tune with one clef and one part has nothing to choose, and Read is off', rs.disabled, JSON.stringify(rs));
+  log('a tune on one staff has nothing to choose, and Read is off', rs.disabled, JSON.stringify(rs));
   const names = ['Flute', 'Oboe', 'Clarinet', 'Bassoon', 'Horn', 'Trumpet', 'Violin', 'Viola', 'Cello', 'Bass'];
   const many = path.join(os.tmpdir(), 'sight-reader-many.musicxml');
   fs.writeFileSync(many, '<?xml version="1.0" encoding="UTF-8"?><score-partwise version="4.0"><work><work-title>Many</work-title></work><part-list>' +
@@ -492,10 +492,10 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForTimeout(900);
   await page.click('.sr-top [data-sr="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
-  log('with more than eight parts a filter box appears', (await page.locator('[data-part-filter]').count()) === 1);
-  await page.fill('[data-part-filter]', 'violin');
-  const shown = await page.evaluate(() => [...document.querySelectorAll('.sr-part-row')].filter(r => !r.hidden).map(r => r.getAttribute('data-name')).join());
-  log('the filter keeps the parts that match', shown === 'violin', shown);
+  log('with more than eight staves a filter box appears', (await page.locator('[data-staff-filter]').count()) === 1);
+  await page.fill('[data-staff-filter]', 'violin');
+  const shown = await page.evaluate(() => [...document.querySelectorAll('.sr-staff-row')].filter(r => !r.hidden).map(r => r.getAttribute('data-name')).join());
+  log('the filter keeps the staves that match', shown === 'violin (treble)', shown);
   await page.click('[data-sr="close-read"]');
   await page.focus('.pc-sight-reader');
 
@@ -737,21 +737,21 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForTimeout(800);
   await page.click('.sr-top [data-sr="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
-  await page.click('[data-clef="Treble"]');
+  await setStaff(0, false);
   await page.waitForTimeout(400);
   await page.click('[data-sr="close-read"]');
   i = await info();
-  log('with only the bass clef chosen the keyboard is centred on the bass register: C3 in view', (await visible(48)) && i.pos === 'Bar 1 · 1 of 1', i.pos);
+  log('with only the lower staff chosen the keyboard is centred on its register: C3 in view', (await visible(48)) && i.pos === 'Bar 1 · 1 of 2', i.pos);
   await page.click('.sr-top [data-sr="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
-  await setClef('Treble', true);
-  await setClef('Bass', false);
+  await setStaff(0, true);
+  await setStaff(1, false);
   await page.click('[data-sr="close-read"]');
   await page.waitForTimeout(400);
-  log('and with only the treble clef it moves to the treble: E5 in view', await visible(76));
+  log('and with only the upper staff it moves to the treble: E5 in view', await visible(76));
   await page.click('.sr-top [data-sr="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
-  await setClef('Bass', true);
+  await setStaff(1, true);
   await page.click('[data-sr="close-read"]');
   await page.waitForTimeout(400);
   // E5 and C3 together are more than two octaves apart, and both are on the one keyboard.
