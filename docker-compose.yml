@@ -57,6 +57,9 @@ services:
       # from OPENAI_API_KEY at first start).
       - CODEX_HOME=/app/etc/codex
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # The chat's own web search for models without one (Chat/ChatSearch.cs):
+      # the Brave Search API key, named as keyEnv under "search" in /etc/chat.json.
+      - BRAVE_SEARCH_KEY=${BRAVE_SEARCH_KEY:-}
       - EMAIL_FROM=${EMAIL_FROM}
       - EMAIL_REPLY_TO=${EMAIL_REPLY_TO}
     # Loopback only: the public reaches the site through the cloudflared
