@@ -213,6 +213,20 @@ namespace ParksComputing.Engine {
             // answered it (Identity/AiVisits.cs).
             app.Use((ctx, next) => ParksComputing.Engine.Identity.AiVisitCounter.Middleware(ctx, next));
 
+            // A request that takes more than two seconds is logged with its
+            // path and time, so a slow page can be found after the fact
+            // without request logging for every request.
+            app.Use(async (ctx, next) => {
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+                try { await next(); }
+                finally {
+                    if (clock.ElapsedMilliseconds > 2000) {
+                        var log = ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("ParksComputing.Engine.SlowRequest");
+                        log.LogWarning("Slow request: {Method} {Path} took {Ms} ms ({Status})", ctx.Request.Method, ctx.Request.Path.Value, clock.ElapsedMilliseconds, ctx.Response.StatusCode);
+                    }
+                }
+            });
+
             // Admin work on its own origin, before anything else answers.
             app.UseMiddleware<ParksComputing.Engine.Identity.EditOriginGate>();
 

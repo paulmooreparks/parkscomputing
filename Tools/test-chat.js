@@ -67,6 +67,13 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
     const toolsOffered = await page.evaluate(() => document.querySelector('[data-role="tools-wrap"]').hidden === false);
     log('the super-user is offered the site\'s tools', toolsOffered);
 
+    // The provider chosen before the first message is the one the chat takes.
+    await page.selectOption('[data-role="provider"]', 'anthropic');
+    await page.fill('.chat-text', 'x');
+    log('a chosen provider stays chosen until the chat is made', (await page.inputValue('[data-role="provider"]')) === 'anthropic' && /claude/.test(await page.textContent('[data-role="model-name"]')), await page.inputValue('[data-role="provider"]') + ' ' + await page.textContent('[data-role="model-name"]'));
+    await page.fill('.chat-text', '');
+    await page.selectOption('[data-role="provider"]', 'ollama');
+
     // A reply, streamed, with its thinking.
     await page.click('[data-act="new"]');
     await page.waitForSelector('.chat-item.is-active', { timeout: 10000 });
