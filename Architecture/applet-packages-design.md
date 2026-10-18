@@ -125,6 +125,12 @@ Two things the first package taught the host. A page body must not set the mount
 
 Checks: `tools/test-invaders.js` (20, against any host with the package installed): the page, a game started, moved, fired, paused by the key, by losing the keyboard and by the button, the dialogs, the scores file ranked and kept under `~`, and the game in a window with its shape and menu. Live on parkscomputing.com at `/page/invaders` and in the Applets menu, installed by copying `dist/invaders` and `dist/shared` into the live content's `wwwroot/applets/`.
 
+**Step 3, the shell and Asteroids (2026-10-18).** What the two games would have duplicated is one module, `packages/shared/splash-shell.js`: the canvas and the bar, the status line, the High scores and Help dialogs, the scores file, the sound setting and the beeps, the frame loop, pausing when the keyboard leaves, the theme's colours, the pixel font (`splash-font.js`) and the Game and Help menus, with the look in `splash.css`, which each game's stylesheet imports. A game gives the shell its size, help, touch pad, and `newGame`, `newWave`, `respawn`, `update`, `draw` and `press`, and gets the PUDL instance back.
+
+Loading the shared modules at run time turned out to break PUDL's contract, which boots a mount once the applet's script has registered it, so a script that registered after its modules arrived registered too late and the window's menu was empty. The manifest gained `bundle`, scripts the packing tool writes in front of `src`, so the installed script is one file and registers as it loads; the built manifest leaves `bundle` out. `shared` still copies the folder beside the games, for the stylesheet the games import.
+
+Asteroids draws in lines on a screen of 640 by 480. With `crisp` the shell sizes the canvas to what it is shown at and scales the drawing, so the lines stay sharp at any size. The ship turns, thrusts and drifts with drag, wraps at the edges and has hyperspace with its one-in-six risk; rocks of three sizes break in two until they are dust; the big saucer shoots anywhere and the small one aims, better as the score climbs; the ship comes back when the middle is clear; the heartbeat quickens as a wave goes on. Its test (`tools/test-asteroids.js`, 18 checks) runs like Invaders'. A package's `icon` file became part of the manifest with these two games, shown in the launch menu (PUDL 0.64.0), the window's title bar and the taskbar. Both games are live on parkscomputing.com.
+
 ## Decisions for Paul
 
 1. The package shape and `pudlHost` as set out above.
