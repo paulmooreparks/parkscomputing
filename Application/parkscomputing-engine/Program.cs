@@ -19,6 +19,11 @@ using Microsoft.Extensions.Logging;
 namespace ParksComputing.Engine {
     public class Program {
         public static int Main(string[] args) {
+            // The site's language server (Lsp/SiteLanguageServer.cs), for
+            // editors: the protocol on stdin and stdout, and no web host.
+            if (ParksComputing.Engine.Lsp.SiteLanguageServer.Matches(args)) {
+                return ParksComputing.Engine.Lsp.SiteLanguageServer.Run(args);
+            }
             if (args.Length > 0 && args[0] == "account-bootstrap") {
                 using var bootstrapHost = CreateHostBuilder(Array.Empty<string>()).ConfigureLogging(logging => logging.ClearProviders()).Build();
                 return ParksComputing.Engine.Identity.StaffBootstrap.RunAsync(bootstrapHost.Services, args).GetAwaiter().GetResult();

@@ -1,0 +1,31 @@
+{
+  "name": "parkscomputing-site",
+  "displayName": "Parks Computing site",
+  "description": "Shortcode completion, hover and problems for the site's Markdown, from the site engine's own language server.",
+  "version": "0.1.0",
+  "publisher": "paulmooreparks",
+  "license": "Apache-2.0",
+  "private": true,
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Programming Languages", "Linters"],
+  "activationEvents": ["onLanguage:markdown"],
+  "main": "./extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Parks Computing site",
+      "properties": {
+        "parkscomputingSite.server": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "docker", "run", "-i", "--rm", "--entrypoint", "dotnet",
+            "-v", "${workspaceFolder}:/site:ro",
+            "parkscomputing-local:dev", "ParksComputing.Engine.dll", "lsp", "--root", "/site"
+          ],
+          "description": "The command that starts the site's language server, and its arguments. ${workspaceFolder} is the open folder, which should be the site's wwwroot. With the engine built locally it can be [\"dotnet\", \"path/to/ParksComputing.Engine.dll\", \"lsp\"]."
+        }
+      }
+    }
+  },
+  "dependencies": { "vscode-languageclient": "9.0.1" }
+}
