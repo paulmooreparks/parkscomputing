@@ -78,13 +78,9 @@ window.pcAppletAction = function (root, selector, label) {
    stylesheet, in the same commit, or readers keep the cached copy; the
    runtime appends it to both as ?v=. Loaded with defer after
    pudl-applets.js. */
-pudlApplets.define('sudoku', {
-    src: '/js/sudoku.js',
-    css: '/css/sudoku.css',
-    page: '/page/sudoku',
-    ver: '19',
-    actions: '/js/actions/sudoku.json'
-});
+/* Sudoku is an installed applet package (wwwroot/applets/sudoku, from the
+   pudl-sudoku repo), which /applets/registry.js defines; its page is still
+   content/sudoku.html, for the web-app manifest it links. */
 
 /* Conway's page is its article, so the links shared since 2015 keep
    working and the applet may keep its state in that address; the game
