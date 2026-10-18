@@ -290,8 +290,14 @@ public sealed class AnthropicProvider : IChatProvider {
             ["max_tokens"] = Math.Max(maxTokens ?? 8192, budget + 1024)
         };
         if (!string.IsNullOrWhiteSpace(request.System)) { body["system"] = request.System; }
-        if (budgeted) { body["thinking"] = new JsonObject { ["type"] = "enabled", ["budget_tokens"] = budget }; }
-        else if (request.Thinking) { body["thinking"] = new JsonObject { ["type"] = "adaptive" }; }
+        /* The thinking text is a summary the API returns only when asked
+           (display summarized; omitted is the default on the current
+           models, which give the block with its signature and no words).
+           With thinking off, disabled: on the current models thinking is
+           on unless told otherwise. */
+        if (budgeted) { body["thinking"] = new JsonObject { ["type"] = "enabled", ["budget_tokens"] = budget, ["display"] = "summarized" }; }
+        else if (request.Thinking) { body["thinking"] = new JsonObject { ["type"] = "adaptive", ["display"] = "summarized" }; }
+        else { body["thinking"] = new JsonObject { ["type"] = "disabled" }; }
         var tools = new JsonArray(request.Tools.Select(t => (JsonNode)new JsonObject {
             ["name"] = t.Name, ["description"] = t.Description, ["input_schema"] = t.Schema.DeepClone()
         }).ToArray());

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -255,9 +256,35 @@ public sealed class CodexProvider : IChatProvider {
             }
             case "item/permissions/requestApproval":
                 return new JsonObject { ["permissions"] = new JsonObject(), ["scope"] = "turn" };
-            case "item/tool/requestUserInput":
+            case "item/tool/requestUserInput": {
+                /* Codex asks the reader a question with choices: its approval
+                   of an MCP tool call comes this way (as GK Companion answers
+                   it). Each question becomes the chat's question card; the
+                   chosen label goes back under the question's own id. */
+                var answers = new JsonObject();
+                foreach (var qn in p["questions"] as JsonArray ?? new JsonArray()) {
+                    var qid = qn?["id"]?.GetValue<string>();
+                    var choices = qn?["options"] as JsonArray;
+                    if (qid is null || choices is null || choices.Count == 0 || qn?["isSecret"]?.GetValue<bool>() == true) { return null; }
+                    answers[qid] = new JsonObject { ["answers"] = new JsonArray() };
+                    if (turn.Cancelled) { continue; }
+                    var labels = choices.Select(o => o?["label"]?.GetValue<string>() ?? "").ToList();
+                    var options = labels.Select((label, i) => ("choice_" + i, label, Regex.IsMatch(label, "^(decline|cancel|reject|deny)$", RegexOptions.IgnoreCase) ? "reject_once" : "allow_once")).ToList();
+                    var title = ((qn["header"]?.GetValue<string>() ?? "") + " " + (qn["question"]?.GetValue<string>() ?? "")).Trim();
+                    var detail = string.Join("\n", choices.Select(o => (o?["label"]?.GetValue<string>() ?? "") + (o?["description"]?.GetValue<string>() is { Length: > 0 } d ? ": " + d : "")));
+                    var answer = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    var key = (p["itemId"]?.GetValue<string>() ?? "q") + ":" + qid;
+                    turn.Approvals[key] = answer;
+                    turn.Events.TryWrite(new AgentApproval(key, title.Length > 0 ? title : "Codex asks", new JsonObject { ["choices"] = detail }, options, answer));
+                    var chosen = await answer.Task;
+                    turn.Approvals.Remove(key);
+                    var at = options.FindIndex(o => o.Item1 == chosen);
+                    if (at >= 0) { answers[qid] = new JsonObject { ["answers"] = new JsonArray(labels[at]) }; }
+                }
+                return new JsonObject { ["answers"] = answers };
+            }
             case "mcpServer/elicitation/request":
-                return m.Method == "mcpServer/elicitation/request" ? new JsonObject { ["action"] = "decline", ["content"] = null } : null;
+                return new JsonObject { ["action"] = "decline", ["content"] = null };
             default:
                 return null;
         }

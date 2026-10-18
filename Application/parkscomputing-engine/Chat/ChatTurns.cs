@@ -284,7 +284,7 @@ public sealed class ChatTurns {
                        renewed well before it runs out. */
                     lock (live.Gate) {
                         if (live.AgentGrant is { } old && _clock.GetUtcNow() - old.Since > TimeSpan.FromHours(20)) { old.Revoke(); live.AgentGrant = null; }
-                        if (live.AgentGrant is null) { var (secret, revoke) = _tools.Grant(send.User, TimeSpan.FromHours(24)); live.AgentGrant = (secret, revoke, _clock.GetUtcNow()); }
+                        if (live.AgentGrant is null) { var (secret, revoke) = _tools.Grant(send.User, TimeSpan.FromHours(24), (home, id)); live.AgentGrant = (secret, revoke, _clock.GetUtcNow()); }
                         mcpSecret = live.AgentGrant.Value.Secret;
                     }
                     mcpUrl = _admin.PublicOrigin.TrimEnd('/') + McpSetup.Path;
@@ -432,6 +432,36 @@ public sealed class ChatTurns {
         });
     }
 
+    /// <summary>Runs an applet's action on the reader's desktop, through the
+    /// page watching the conversation, and gives what it made; null when no
+    /// page is watching, so the caller runs it where it can. The site's MCP
+    /// server routes an agent's (Codex's) applet_invoke here too, by the
+    /// conversation its grant belongs to.</summary>
+    public Task<(string? Output, string? Error)?> RunOnDesktopAsync(string home, string id, string action, JsonNode? input, CancellationToken cancel)
+        => RunOnDesktopAsync(LiveOf(home, id), action, input, null, cancel);
+
+    private async Task<(string? Output, string? Error)?> RunOnDesktopAsync(Live live, string action, JsonNode? rawInput, string? toolCallId, CancellationToken cancel) {
+        bool watched; lock (live.Gate) { watched = live.Subscribers.Count > 0; }
+        if (!watched) { return null; }
+        var tcs = new TaskCompletionSource<(string? Output, string? Error)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        string key;
+        lock (live.Gate) { key = "a" + (++live.ActionCount); live.Actions[key] = tcs; }
+        /* A model now and then writes the input as JSON text rather than an
+           object; the text is read so the action gets the object. */
+        JsonNode? input = rawInput?.DeepClone();
+        if (input is JsonValue v && v.TryGetValue<string>(out var inputText)) {
+            try { input = JsonNode.Parse(inputText); } catch (JsonException) { input = null; }
+        }
+        Publish(live, new JsonObject { ["type"] = "run_action", ["key"] = key, ["toolCallId"] = toolCallId, ["action"] = action, ["input"] = input ?? new JsonObject() });
+        try {
+            using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+            limit.CancelAfter(TimeSpan.FromMinutes(10));
+            using var reg = limit.Token.Register(() => tcs.TrySetResult((null, cancel.IsCancellationRequested ? "The reader stopped the reply." : "The desktop did not answer in time.")));
+            return await tcs.Task;
+        }
+        finally { lock (live.Gate) { live.Actions.Remove(key); } }
+    }
+
     private static void Append(ChatMessage m, string type, string text) {
         var last = m.Parts.LastOrDefault();
         if (last is not null && last.Type == type) { last.Text += text; }
@@ -521,26 +551,9 @@ public sealed class ChatTurns {
                page is watching: the site's action broker there opens the
                applet's window where the action needs one, which the server
                cannot. With no page watching, the server runs what it can. */
-            bool watched; lock (live.Gate) { watched = live.Subscribers.Count > 0; }
-            if (tool.Spec.Name == "applet_invoke" && watched && use.Input is JsonObject call && call["action"]?.GetValue<string>() is { Length: > 0 } action) {
-                var tcs = new TaskCompletionSource<(string? Output, string? Error)>(TaskCreationOptions.RunContinuationsAsynchronously);
-                string key;
-                lock (live.Gate) { key = "a" + (++live.ActionCount); live.Actions[key] = tcs; }
-                /* A model now and then writes the input as JSON text rather
-                   than an object; the text is read so the action gets the object. */
-                JsonNode? input = call["input"]?.DeepClone();
-                if (input is JsonValue v && v.TryGetValue<string>(out var inputText)) {
-                    try { input = JsonNode.Parse(inputText); } catch (JsonException) { input = null; }
-                }
-                Publish(live, new JsonObject { ["type"] = "run_action", ["key"] = key, ["toolCallId"] = use.Id, ["action"] = action, ["input"] = input ?? new JsonObject() });
-                try {
-                    using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancel);
-                    limit.CancelAfter(TimeSpan.FromMinutes(10));
-                    using var reg = limit.Token.Register(() => tcs.TrySetResult((null, cancel.IsCancellationRequested ? "The reader stopped the reply." : "The desktop did not answer in time.")));
-                    var (output, error) = await tcs.Task;
-                    return error is null ? Result("completed", output ?? "{}") : Result("failed", error);
-                }
-                finally { lock (live.Gate) { live.Actions.Remove(key); } }
+            if (tool.Spec.Name == "applet_invoke" && use.Input is JsonObject call && call["action"]?.GetValue<string>() is { Length: > 0 } action
+                && await RunOnDesktopAsync(live, action, call["input"], use.Id, cancel) is { } ran) {
+                return ran.Error is null ? Result("completed", ran.Output ?? "{}") : Result("failed", ran.Error);
             }
             var (text, failed) = await tools!.CallAsync(tool.Spec.Name, use.Input, cancel);
             return Result(failed ? "failed" : "completed", text);

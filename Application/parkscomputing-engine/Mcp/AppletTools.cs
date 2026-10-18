@@ -29,9 +29,11 @@ public sealed class AppletTools {
     private readonly AppletRunner _runner;
     private readonly McpInvocations _invocations;
     private readonly McpCaller _caller;
+    private readonly ParksComputing.Engine.Identity.ChatGrants _grants;
+    private readonly ParksComputing.Engine.Chat.ChatTurns _turns;
 
-    public AppletTools(AppletRunner runner, McpInvocations invocations, McpCaller caller) {
-        _runner = runner; _invocations = invocations; _caller = caller;
+    public AppletTools(AppletRunner runner, McpInvocations invocations, McpCaller caller, ParksComputing.Engine.Identity.ChatGrants grants, ParksComputing.Engine.Chat.ChatTurns turns) {
+        _runner = runner; _invocations = invocations; _caller = caller; _grants = grants; _turns = turns;
     }
 
     [McpServerTool(Name = "applet_discover", Title = "Discover applet actions", ReadOnly = true, Idempotent = true, OpenWorld = false)]
@@ -83,6 +85,24 @@ public sealed class AppletTools {
         }
         var invocationId = id ?? Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
         McpInvocations.Entry entry;
+        /* A call from an agent in the staff's chat (Codex, with the chat's
+           grant) runs on the reader's own desktop when a page is watching
+           that conversation, as the chat's own tool calls do, so a window
+           opens where the reader is looking. */
+        if (_grants.ConversationOf(_caller.TokenId) is { } conv
+            && await _turns.RunOnDesktopAsync(conv.Home, conv.Id, action, input is { } given ? JsonNode.Parse(given.GetRawText()) : null, cancel) is { } ran) {
+            JsonObject? output = null;
+            if (ran.Error is null) {
+                try { output = JsonNode.Parse(ran.Output ?? "{}") as JsonObject ?? new JsonObject { ["value"] = JsonNode.Parse(ran.Output ?? "{}") }; }
+                catch (System.Text.Json.JsonException) { output = new JsonObject { ["text"] = ran.Output }; }
+            }
+            entry = ran.Error is null
+                ? new McpInvocations.Entry(invocationId, _caller.TokenId, action, inputJson, "done", output, null, DateTime.UtcNow, Array.Empty<AppletRunner.Artifact>())
+                : new McpInvocations.Entry(invocationId, _caller.TokenId, action, inputJson, "failed", null, ran.Error, DateTime.UtcNow, Array.Empty<AppletRunner.Artifact>());
+            _invocations.Add(entry);
+            if (entry.Status == "failed") { throw new McpException(action + " failed: " + entry.Error + " (invocation " + invocationId + ")."); }
+            return entry.View();
+        }
         try {
             var outcome = await _runner.RunAsync(found.Manifest, found.Base, action, inputJson, invocationId, cancel);
             entry = new McpInvocations.Entry(invocationId, _caller.TokenId, action, inputJson, "done", outcome.Output, null, DateTime.UtcNow, outcome.Artifacts);

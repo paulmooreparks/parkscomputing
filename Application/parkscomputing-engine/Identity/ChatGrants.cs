@@ -22,12 +22,20 @@ public sealed class ChatGrants {
 
     public ChatGrants(TimeProvider clock) { _clock = clock; }
 
-    public string Create(IdentityUser user, string name, IReadOnlyList<string> capabilities, TimeSpan lifetime) {
+    /* The conversation a grant belongs to (its reader's home and the chat's
+       id), by the grant's id, so the site's MCP server can route an agent's
+       applet action to that conversation's desktop. */
+    private readonly ConcurrentDictionary<string, (string Home, string Id)> _conversations = new();
+
+    public string Create(IdentityUser user, string name, IReadOnlyList<string> capabilities, TimeSpan lifetime, (string Home, string Id)? conversation = null) {
         var secret = Prefix + Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
         var id = "chat:" + Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant();
         _grants[secret] = (new AccessTokenGrant(id, name, user, capabilities), _clock.GetUtcNow() + lifetime);
+        if (conversation is { } c) { _conversations[id] = c; }
         return secret;
     }
+
+    public (string Home, string Id)? ConversationOf(string tokenId) => _conversations.TryGetValue(tokenId, out var c) ? c : null;
 
     public AccessTokenGrant? Find(string secret) {
         if (!secret.StartsWith(Prefix, StringComparison.Ordinal) || !_grants.TryGetValue(secret, out var g)) { return null; }
@@ -35,5 +43,7 @@ public sealed class ChatGrants {
         return g.Grant;
     }
 
-    public void Revoke(string secret) => _grants.TryRemove(secret, out _);
+    public void Revoke(string secret) {
+        if (_grants.TryRemove(secret, out var g)) { _conversations.TryRemove(g.Grant.TokenId, out _); }
+    }
 }

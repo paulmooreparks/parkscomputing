@@ -184,6 +184,22 @@ public class ChatTests {
     }
 
     [TestMethod]
+    public async Task CodexsQuestionWithChoicesIsTheChatsQuestionAndTheLabelGoesBack() {
+        var events = System.Threading.Channels.Channel.CreateUnbounded<ProviderEvent>();
+        var turn = new CodexProvider.TurnState(events.Writer);
+        var asked = CodexProvider.Translate(turn, new CodexMessage("item/tool/requestUserInput",
+            (JsonObject)JsonNode.Parse("{\"threadId\":\"t1\",\"itemId\":\"i1\",\"questions\":[{\"id\":\"q1\",\"header\":\"Approve tool\",\"question\":\"Run parkscomputing.applet_invoke?\",\"options\":[{\"label\":\"Approve\",\"description\":\"Run it\"},{\"label\":\"Decline\",\"description\":\"Do not\"}]}]}")!, JsonValue.Create(3)));
+        Assert.IsTrue(events.Reader.TryRead(out var e) && e is AgentApproval);
+        var ap = (AgentApproval)e!;
+        StringAssert.Contains(ap.Title, "applet_invoke");
+        CollectionAssert.AreEqual(new[] { "choice_0", "choice_1" }, ap.Options.Select(o => o.Id).ToList());
+        Assert.AreEqual("reject_once", ap.Options[1].Kind);
+        ap.Answer.SetResult("choice_0");
+        var answer = (await asked)!;
+        Assert.AreEqual("Approve", answer["answers"]!["q1"]!["answers"]![0]!.GetValue<string>());
+    }
+
+    [TestMethod]
     public void CodexGetsTheNewestMessageAndOnFreshThreadsTheInstructionsAndHistory() {
         var messages = new List<ChatMessage> {
             new() { Role = "user", Parts = { ChatPart.TextPart("Hello") } },
@@ -246,6 +262,7 @@ public class ChatTests {
     public void AnAnthropicRequestSendsThinkingBackOnlyWhenThinkingIsOn() {
         var on = AnthropicProvider.Body(Conversation(true), null, 2048);
         Assert.AreEqual("adaptive", on["thinking"]!["type"]!.GetValue<string>());
+        Assert.AreEqual("summarized", on["thinking"]!["display"]!.GetValue<string>(), "the thinking text comes only when asked for");
         Assert.AreEqual("enabled", AnthropicProvider.Body(Conversation(true), null, 2048, "enabled")["thinking"]!["type"]!.GetValue<string>());
         Assert.IsTrue(AnthropicProvider.Body(Conversation(true), null, 2048, "enabled")["max_tokens"]!.GetValue<int>() > 2048);
         var assistant = on["messages"]![1]!["content"]!.AsArray();
@@ -256,7 +273,7 @@ public class ChatTests {
         Assert.AreEqual("Be brief.", on["system"]!.GetValue<string>());
 
         var off = AnthropicProvider.Body(Conversation(false), null, null);
-        Assert.IsNull(off["thinking"]);
+        Assert.AreEqual("disabled", off["thinking"]!["type"]!.GetValue<string>(), "the current models think unless told not to");
         Assert.AreEqual("text", off["messages"]![1]!["content"]![0]!["type"]!.GetValue<string>());
     }
 
