@@ -463,6 +463,17 @@ body.desktop { height: 100dvh; }
 .win-body .post-content { margin-bottom: 1.5rem; padding-top: 0; }
 
 
+/* An applet that fills its window (data-applet-fit="fill", which PUDL's
+   pudl-applets.js sets on a mount in a window the reader sizes) gets a
+   definite box to fill: the body becomes a column and the article's
+   wrappers pass the height down, so an installed package's own stylesheet
+   need know nothing of them. The site's own applets say the same under a
+   class of their own, which wins where it differs, such as hiding overflow. */
+.win-body:has([data-applet-fit="fill"]) { display: flex; flex-direction: column; overflow: auto; }
+.win-body:has([data-applet-fit="fill"]) .post-content { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; max-width: none; }
+.win-body:has([data-applet-fit="fill"]) .post-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.win-body:has([data-applet-fit="fill"]) [data-applet-fit="fill"] { flex: 1 1 auto; min-height: 0; }
+
 /* A window hosting an app page in a frame gives it the whole body. */
 .win-app-frame { display: block; width: 100%; height: 100%; border: 0; }
 .win-body:has(> .win-app-frame) { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
