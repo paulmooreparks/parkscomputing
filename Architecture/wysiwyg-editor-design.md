@@ -130,7 +130,9 @@ Checks: `Tools/test-visual-editor.js` (17, on the test instance, as a super-user
 
 The brochure editor does not have the visual view yet. Every one of padmajairam.com's 17 pages is HTML exported from WordPress, and the visual view edits Markdown (decision 2), so it waits on a choice between converting her pages to Markdown and giving the visual view HTML pages.
 
-Still to do: book chapters (the draft preview takes only an article at the top of `content/`), the brochure editor's visual view (above), and cleaning up the existing articles with shortcodes (decision 6).
+**The figure form and the formatting bar on the text (2026-10-18).** Pressing a figure in the visual view opened the page's lightbox. Now a picture in the editor never does (`data-no-lightbox`, set as the editor finishes the server's HTML), and a figure pressed opens a form in the Editor with the `{{figure}}` shortcode's settings: the picture's address, with Browse opening the standard Open dialog on the site's pictures, what it shows, its largest width and its caption. Insert offers the same form for a new figure. The form reads and writes the shortcode's call (`parseShortcode`, `buildFigure` in `editor.js`), with the server's quoting, and the visual view's host gained `figure(src)`. The formatting bar stays for a Markdown file in Text and Preview and works on the Markdown itself (`textFormat`): a mark wraps the selection, or comes off when it is already there; H2, H3 and the lists mark each selected line, and Paragraph takes the marks off; in Split it goes to whichever side has the keyboard. The visual editor test covers both (now 36 checks).
+
+Still to do: book chapters (the draft preview takes only an article at the top of `content/`), the brochure editor's visual view (above), cleaning up the existing articles with shortcodes (decision 6), and in the text view shortcode highlighting and completion, which need `Decoration`, `ViewPlugin`, `MatchDecorator`, `autocompletion` and `hoverTooltip` added to the vendored CodeMirror bundle's exports and the bundle rebuilt.
 
 ## Rules this follows
 
