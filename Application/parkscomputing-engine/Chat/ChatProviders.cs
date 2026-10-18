@@ -28,11 +28,25 @@ public sealed record Citation(JsonObject Value) : ProviderEvent;
 public sealed record ServerBlock(JsonObject Block) : ProviderEvent;
 public sealed record UsageReport(int? Input, int? Output) : ProviderEvent;
 public sealed record Finished(string StopReason) : ProviderEvent;
+/// <summary>A tool an agent provider (Codex) ran itself: first seen as it
+/// starts (Status in_progress), then as it ends (completed or failed,
+/// with its output). Kind is execute, edit, search or other.</summary>
+public sealed record AgentTool(string Id, string Title, string Kind, string Status, JsonNode? Input, string? Output) : ProviderEvent;
+/// <summary>An agent provider asks the reader before going on (Codex's
+/// approval to run a command or change files): the options are the
+/// decisions it takes, and Answer gets the chosen one, or cancel.</summary>
+public sealed record AgentApproval(string Id, string Title, JsonNode? Input, IReadOnlyList<(string Id, string Name, string Kind)> Options, TaskCompletionSource<string> Answer) : ProviderEvent;
 
 /// <summary>A tool the model may ask for: its name, what it does, and its input's JSON Schema.</summary>
 public sealed record ToolSpec(string Name, string Description, JsonNode Schema);
 
-public sealed record ProviderRequest(string Model, string? System, IReadOnlyList<ChatMessage> Messages, IReadOnlyList<ToolSpec> Tools, bool Thinking);
+/// <summary>What an agent provider (Codex) needs beyond the messages: the
+/// folder it works in, the thread it keeps for this conversation (and how
+/// to record a new one), and the site's MCP server with a grant, when the
+/// conversation has the site's tools.</summary>
+public sealed record AgentContext(string Cwd, string? ThreadId, Action<string> ThreadStarted, string? McpUrl, string? McpSecret);
+
+public sealed record ProviderRequest(string Model, string? System, IReadOnlyList<ChatMessage> Messages, IReadOnlyList<ToolSpec> Tools, bool Thinking, AgentContext? Agent = null);
 
 /// <summary>A refusal or failure the provider gave, said as it gave it.</summary>
 public sealed class ProviderException : Exception {
@@ -47,8 +61,9 @@ public interface IChatProvider {
 public static class ChatProviders {
     public const string ClientName = "chat";
 
-    public static IChatProvider For(ChatProviderConfig config, HttpClient http) => config.Kind.ToLowerInvariant() switch {
+    public static IChatProvider For(ChatProviderConfig config, HttpClient http, CodexHost? codex = null) => config.Kind.ToLowerInvariant() switch {
         "anthropic" => new AnthropicProvider(config, http),
+        "codex" => new CodexProvider(config, codex ?? throw new ProviderException("Codex is not set up on this server.")),
         _ => new OpenAiProvider(config, http)
     };
 

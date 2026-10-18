@@ -90,7 +90,7 @@ public sealed class ChatController : ControllerBase {
                 ["id"] = p.Id, ["name"] = p.Name, ["kind"] = p.Kind, ["baseUrl"] = p.BaseUrl, ["keyEnv"] = p.KeyEnv,
                 ["models"] = p.Models is null ? null : new JsonArray(p.Models.Select(m => (JsonNode)m).ToArray()),
                 ["maxTokens"] = p.MaxTokens, ["thinkingType"] = p.ThinkingType, ["thinkingBudget"] = p.ThinkingBudget,
-                ["webSearch"] = p.WebSearch, ["webSearchMaxUses"] = p.WebSearchMaxUses,
+                ["webSearch"] = p.WebSearch, ["webSearchMaxUses"] = p.WebSearchMaxUses, ["command"] = p.Command, ["sandbox"] = p.Sandbox,
                 ["hasKey"] = string.IsNullOrWhiteSpace(p.KeyEnv) ? null : !string.IsNullOrEmpty(p.Key)
             }).ToArray()),
             ["search"] = config.Search is null ? null : new JsonObject {
@@ -115,8 +115,13 @@ public sealed class ChatController : ControllerBase {
             p.Kind = (p.Kind ?? "openai").Trim().ToLowerInvariant(); p.BaseUrl = (p.BaseUrl ?? "").Trim(); p.KeyEnv = string.IsNullOrWhiteSpace(p.KeyEnv) ? null : p.KeyEnv!.Trim();
             if (!IdShape.IsMatch(p.Id)) { return BadRequest(new { error = "A provider's id is lower-case letters, digits and hyphens, starting with a letter: " + (p.Id.Length > 0 ? p.Id : "(empty)") }); }
             if (!seen.Add(p.Id)) { return BadRequest(new { error = "Two providers are called " + p.Id + "." }); }
-            if (p.Kind is not ("openai" or "anthropic")) { return BadRequest(new { error = p.Id + ": the kind is openai or anthropic." }); }
-            if (!Uri.TryCreate(p.BaseUrl, UriKind.Absolute, out var u) || (u.Scheme != "http" && u.Scheme != "https")) { return BadRequest(new { error = p.Id + ": the address must start with http:// or https://." }); }
+            if (p.Kind is not ("openai" or "anthropic" or "codex")) { return BadRequest(new { error = p.Id + ": the kind is openai, anthropic or codex." }); }
+            if (p.Kind == "codex") {
+                p.Command = string.IsNullOrWhiteSpace(p.Command) ? null : p.Command!.Trim();
+                p.Sandbox = string.IsNullOrWhiteSpace(p.Sandbox) ? null : p.Sandbox!.Trim().ToLowerInvariant();
+                if (p.Sandbox is not (null or "read-only" or "workspace-write" or "danger-full-access")) { return BadRequest(new { error = p.Id + ": the sandbox is read-only, workspace-write or danger-full-access." }); }
+            }
+            else if (!Uri.TryCreate(p.BaseUrl, UriKind.Absolute, out var u) || (u.Scheme != "http" && u.Scheme != "https")) { return BadRequest(new { error = p.Id + ": the address must start with http:// or https://." }); }
             if (p.KeyEnv is not null && !System.Text.RegularExpressions.Regex.IsMatch(p.KeyEnv, "^[A-Za-z_][A-Za-z0-9_]*$")) { return BadRequest(new { error = p.Id + ": the key's variable is a name such as ANTHROPIC_API_KEY." }); }
             p.Models = p.Models?.Select(m => m.Trim()).Where(m => m.Length > 0).ToList();
             if (p.Models is { Count: 0 }) { p.Models = null; }

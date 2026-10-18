@@ -44,11 +44,21 @@ WORKDIR /app/parkscomputing-engine
 RUN dotnet restore
 RUN dotnet publish -c Release -o out
 
+# The Codex CLI, for the staff's Chat (Chat/CodexHost.cs): the release's
+# Linux binary, pinned, which the chat runs as an app server. CODEX_HOME
+# (docker-compose.yml) says where its sign-in lives.
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS codex-fetch
+ARG CODEX_VERSION=rust-v0.163.0
+RUN curl -fsSL -o /tmp/codex.tar.gz "https://github.com/openai/codex/releases/download/${CODEX_VERSION}/codex-x86_64-unknown-linux-musl.tar.gz" \
+    && mkdir -p /codex && tar -xzf /tmp/codex.tar.gz -C /codex \
+    && mv /codex/codex-x86_64-unknown-linux-musl /codex/codex && chmod +x /codex/codex && rm /tmp/codex.tar.gz
+
 # Run command
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 EXPOSE 8080
 COPY --from=build-env /app/parkscomputing-engine/out .
+COPY --from=codex-fetch /codex/codex /app/codex/codex
 # Outside wwwroot, which the content volume covers; the edit origin serves
 # these to a signed-in admin only (Identity/SshController.cs).
 COPY --from=ssh-build /out/ /app/ssh/

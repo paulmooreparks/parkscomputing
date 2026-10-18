@@ -23,9 +23,10 @@ public sealed class ChatSelf {
     private readonly ChatStore _store;
     private readonly ChatSkills _skills;
     private readonly IHttpClientFactory _http;
+    private readonly CodexHost _codex;
 
-    public ChatSelf(ChatSettings settings, ChatStore store, ChatSkills skills, IHttpClientFactory http) {
-        _settings = settings; _store = store; _skills = skills; _http = http;
+    public ChatSelf(ChatSettings settings, ChatStore store, ChatSkills skills, IHttpClientFactory http, CodexHost codex) {
+        _settings = settings; _store = store; _skills = skills; _http = http; _codex = codex;
     }
 
     public static readonly string[] Topics = { "overview", "providers", "conversation", "conversations", "skills", "settings", "api" };
@@ -54,7 +55,7 @@ public sealed class ChatSelf {
                 try {
                     using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel);
                     timeout.CancelAfter(TimeSpan.FromSeconds(8));
-                    models = await ChatProviders.For(p, _http.CreateClient(ChatProviders.ClientName)).ModelsAsync(timeout.Token);
+                    models = await ChatProviders.For(p, _http.CreateClient(ChatProviders.ClientName), _codex).ModelsAsync(timeout.Token);
                 }
                 catch (Exception ex) when (ex is ProviderException or HttpRequestException or OperationCanceledException) { problem = "Its models could not be listed: " + ex.Message; }
             }

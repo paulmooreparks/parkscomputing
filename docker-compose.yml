@@ -52,6 +52,11 @@ services:
       # The staff's Chat (Architecture/chat-design.md): a provider's key is
       # named in /etc/chat.json and lives only here.
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # Codex (Chat/CodexHost.cs): its sign-in lives in the etc volume's
+      # codex folder (auth.json copied from a signed-in machine, or made
+      # from OPENAI_API_KEY at first start).
+      - CODEX_HOME=/app/etc/codex
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - EMAIL_FROM=${EMAIL_FROM}
       - EMAIL_REPLY_TO=${EMAIL_REPLY_TO}
     # Loopback only: the public reaches the site through the cloudflared

@@ -150,6 +150,59 @@ public class ChatTests {
         Assert.AreEqual("https://searx.example/search?q=a%20b&format=json", ChatSearch.Address(new ChatSearchConfig { Kind = "searxng", BaseUrl = "https://searx.example/" }, "a b", 7).AbsoluteUri);
     }
 
+    [TestMethod]
+    public async Task CodexsNotificationsBecomeTheChatsEvents() {
+        var events = System.Threading.Channels.Channel.CreateUnbounded<ProviderEvent>();
+        var turn = new CodexProvider.TurnState(events.Writer);
+        JsonObject P(string json) => (JsonObject)JsonNode.Parse(json)!;
+        await CodexProvider.Translate(turn, new CodexMessage("turn/started", P("{\"threadId\":\"t1\",\"turn\":{\"id\":\"u1\"}}"), null));
+        Assert.AreEqual("u1", turn.TurnId);
+        await CodexProvider.Translate(turn, new CodexMessage("item/reasoning/summaryTextDelta", P("{\"threadId\":\"t1\",\"itemId\":\"r1\",\"delta\":\"Think.\"}"), null));
+        await CodexProvider.Translate(turn, new CodexMessage("item/started", P("{\"threadId\":\"t1\",\"item\":{\"id\":\"c1\",\"type\":\"commandExecution\",\"command\":\"ls ~\",\"status\":\"inProgress\"}}"), null));
+        /* The approval, answered by the chat's question. */
+        var approval = CodexProvider.Translate(turn, new CodexMessage("item/commandExecution/requestApproval", P("{\"threadId\":\"t1\",\"itemId\":\"c1\",\"command\":\"ls ~\",\"reason\":\"to list it\"}"), JsonValue.Create(7)));
+        Assert.IsTrue(events.Reader.TryRead(out var thought) && thought is ThinkingDelta { Text: "Think." });
+        Assert.IsTrue(events.Reader.TryRead(out var started) && started is AgentTool { Title: "ls ~", Kind: "execute", Status: "in_progress" });
+        Assert.IsTrue(events.Reader.TryRead(out var asked) && asked is AgentApproval);
+        var ask = (AgentApproval)asked!;
+        StringAssert.Contains(ask.Title, "ls ~"); StringAssert.Contains(ask.Title, "to list it");
+        CollectionAssert.AreEqual(new[] { "accept", "decline", "cancel" }, ask.Options.Select(o => o.Id).ToList());
+        ask.Answer.SetResult("accept");
+        Assert.AreEqual("accept", (await approval)!["decision"]!.GetValue<string>());
+        await CodexProvider.Translate(turn, new CodexMessage("item/completed", P("{\"threadId\":\"t1\",\"item\":{\"id\":\"c1\",\"type\":\"commandExecution\",\"command\":\"ls ~\",\"status\":\"completed\",\"aggregatedOutput\":\"a.md\"}}"), null));
+        await CodexProvider.Translate(turn, new CodexMessage("item/agentMessage/delta", P("{\"threadId\":\"t1\",\"itemId\":\"m1\",\"delta\":\"One file.\"}"), null));
+        await CodexProvider.Translate(turn, new CodexMessage("item/completed", P("{\"threadId\":\"t1\",\"item\":{\"id\":\"m1\",\"type\":\"agentMessage\",\"text\":\"One file.\"}}"), null));
+        await CodexProvider.Translate(turn, new CodexMessage("thread/tokenUsage/updated", P("{\"threadId\":\"t1\",\"tokenUsage\":{\"last\":{\"inputTokens\":12,\"outputTokens\":3,\"totalTokens\":15}}}"), null));
+        await CodexProvider.Translate(turn, new CodexMessage("turn/completed", P("{\"threadId\":\"t1\",\"turn\":{\"id\":\"u1\",\"status\":\"completed\"}}"), null));
+        Assert.IsTrue(events.Reader.TryRead(out var done) && done is AgentTool { Status: "completed", Output: "a.md" });
+        Assert.IsTrue(events.Reader.TryRead(out var text) && text is TextDelta { Text: "One file." });
+        Assert.IsFalse(events.Reader.TryPeek(out var again) && again is TextDelta, "a message that streamed is not given again when it completes");
+        Assert.IsTrue(events.Reader.TryRead(out var usage) && usage is UsageReport { Input: 12, Output: 3 });
+        Assert.IsTrue(events.Reader.TryRead(out var fin) && fin is Finished { StopReason: "end_turn" });
+        Assert.IsNull(turn.Error);
+        Assert.AreEqual("turn", (await CodexProvider.Translate(turn, new CodexMessage("item/permissions/requestApproval", P("{\"threadId\":\"t1\"}"), JsonValue.Create(8))))!["scope"]!.GetValue<string>());
+    }
+
+    [TestMethod]
+    public void CodexGetsTheNewestMessageAndOnFreshThreadsTheInstructionsAndHistory() {
+        var messages = new List<ChatMessage> {
+            new() { Role = "user", Parts = { ChatPart.TextPart("Hello") } },
+            new() { Role = "assistant", Parts = { ChatPart.TextPart("Hi.") } },
+            new() { Role = "user", Parts = { ChatPart.TextPart("List my files"), new ChatPart { Type = "image", MediaType = "image/png", Data = "AAAA" } } }
+        };
+        var fresh = CodexProvider.Input(new ProviderRequest("gpt-5-codex", "Be brief.", messages, Array.Empty<ToolSpec>(), true), true);
+        StringAssert.Contains(fresh[0]!["text"]!.GetValue<string>(), "Instructions from the site:\nBe brief.");
+        StringAssert.Contains(fresh[0]!["text"]!.GetValue<string>(), "Reader: Hello\nAssistant: Hi.");
+        Assert.AreEqual("List my files", fresh[1]!["text"]!.GetValue<string>());
+        Assert.AreEqual("data:image/png;base64,AAAA", fresh[2]!["url"]!.GetValue<string>());
+        var resumed = CodexProvider.Input(new ProviderRequest("gpt-5-codex", "Be brief.", messages, Array.Empty<ToolSpec>(), true), false);
+        Assert.AreEqual(2, resumed.Count);
+        Assert.AreEqual("List my files", resumed[0]!["text"]!.GetValue<string>());
+        var env = CodexHost.ScrubbedEnvironment();
+        Assert.IsFalse(env.Keys.Any(k => k.Contains("KEY", StringComparison.OrdinalIgnoreCase) || k.Contains("SECRET", StringComparison.OrdinalIgnoreCase)), "no key or secret reaches Codex");
+        Assert.IsTrue(env.ContainsKey("CODEX_HOME"));
+    }
+
     private static ProviderRequest Conversation(bool thinking) {
         var messages = new List<ChatMessage> {
             new() { Role = "user", Parts = { ChatPart.TextPart("Read it"), new ChatPart { Type = "file", Name = "a.md", Text = "# A" }, new ChatPart { Type = "image", MediaType = "image/png", Data = "AAAA" } } },

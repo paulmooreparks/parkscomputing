@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
@@ -12,6 +13,10 @@ using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+using ParksComputing.Engine.Identity;
+using ParksComputing.Engine.Mcp;
 
 namespace ParksComputing.Engine.Chat;
 
@@ -47,6 +52,8 @@ public sealed class ChatTurns {
 
     private sealed class Question {
         public string Key = ""; public string ToolCallId = ""; public string Name = ""; public string Title = ""; public JsonNode? Input;
+        /* The choices, as the page shows them; the chat's own three unless an agent provider gave its own. */
+        public JsonArray? Options;
         public TaskCompletionSource<string> Answer = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
@@ -76,8 +83,11 @@ public sealed class ChatTurns {
     private readonly ChatSelf _self;
     private readonly ChatWeb _web;
     private readonly ChatSearch _search;
-    public ChatTurns(ChatStore store, ChatSettings settings, ChatTools tools, ChatSkills skills, ChatSelf self, ChatWeb web, ChatSearch search, IHttpClientFactory http, ILogger<ChatTurns> log, TimeProvider clock) {
-        _self = self; _web = web; _search = search;
+    private readonly CodexHost _codex;
+    private readonly ServerFiles _files;
+    private readonly AdminOptions _admin;
+    public ChatTurns(ChatStore store, ChatSettings settings, ChatTools tools, ChatSkills skills, ChatSelf self, ChatWeb web, ChatSearch search, CodexHost codex, ServerFiles files, IOptions<AdminOptions> admin, IHttpClientFactory http, ILogger<ChatTurns> log, TimeProvider clock) {
+        _self = self; _web = web; _search = search; _codex = codex; _files = files; _admin = admin.Value;
         _store = store; _settings = settings; _tools = tools; _skills = skills; _http = http; _log = log; _clock = clock;
     }
 
@@ -136,7 +146,7 @@ public sealed class ChatTurns {
 
     private static JsonNode QuestionJson(Question q) => new JsonObject {
         ["key"] = q.Key, ["toolCallId"] = q.ToolCallId, ["name"] = q.Name, ["title"] = q.Title, ["input"] = q.Input?.DeepClone(),
-        ["options"] = new JsonArray(
+        ["options"] = q.Options?.DeepClone() ?? new JsonArray(
             new JsonObject { ["optionId"] = "allow_once", ["name"] = "Allow", ["kind"] = "allow_once" },
             new JsonObject { ["optionId"] = "allow_always", ["name"] = "Allow in this chat", ["kind"] = "allow_always" },
             new JsonObject { ["optionId"] = "reject", ["name"] = "Don't allow", ["kind"] = "reject_once" })
@@ -246,15 +256,32 @@ public sealed class ChatTurns {
         var clock = Stopwatch.StartNew();
         int inputTokens = 0, outputTokens = 0; string? turnError = null; string stopReason = "end_turn";
         ChatTools.Session? tools = null;
+        Action? revokeGrant = null;
+        AgentContext? agent = null;
+        var isAgent = string.Equals(providerConfig.Kind, "codex", StringComparison.OrdinalIgnoreCase);
         try {
-            if (conv.Tools && send.ToolsAllowed && _tools.Available) {
+            if (isAgent) {
+                /* Codex runs its own tools and takes the site's over MCP, with
+                   a grant of its own, at the site's public address. */
+                string? mcpUrl = null, mcpSecret = null;
+                if (conv.Tools && send.ToolsAllowed && _tools.Available) {
+                    var (secret, revoke) = _tools.Grant(send.User);
+                    mcpSecret = secret; revokeGrant = revoke;
+                    mcpUrl = _admin.PublicOrigin.TrimEnd('/') + McpSetup.Path;
+                }
+                var cwd = _files.RootDir(ServerFiles.Home, home) ?? throw new ProviderException("The reader has no home folder on the server for Codex to work in.");
+                Directory.CreateDirectory(cwd);
+                conv.Threads.TryGetValue(providerConfig.Id, out var threadId);
+                agent = new AgentContext(cwd, threadId, id => { lock (live.Gate) { conv.Threads[providerConfig.Id] = id; } }, mcpUrl, mcpSecret);
+            }
+            else if (conv.Tools && send.ToolsAllowed && _tools.Available) {
                 try { tools = await _tools.OpenAsync(send.User, send.Host, cancel.Token); }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
                     _log.LogWarning(ex, "The chat could not reach the site's tools");
                     Publish(live, new JsonObject { ["type"] = "notice", ["text"] = "The site's tools could not be reached, so this reply has none: " + ex.Message });
                 }
             }
-            var provider = ChatProviders.For(providerConfig, _http.CreateClient(ChatProviders.ClientName));
+            var provider = ChatProviders.For(providerConfig, _http.CreateClient(ChatProviders.ClientName), _codex);
             /* The chat's own tool comes first, for every reader; the site's
                follow when the chat has them. */
             var specs = new List<ToolSpec> { _self.Spec, _web.Spec };
@@ -269,8 +296,40 @@ public sealed class ChatTurns {
                 lock (live.Gate) { live.Partial = reply; }
                 Publish(live, new JsonObject { ["type"] = "message_start", ["provider"] = providerConfig.Id, ["model"] = model });
                 try {
-                    await foreach (var e in provider.StreamAsync(new ProviderRequest(model, system, ForModel(home, conv), specs, conv.Thinking), cancel.Token)) {
+                    await foreach (var e in provider.StreamAsync(new ProviderRequest(model, system, ForModel(home, conv), specs, conv.Thinking, agent), cancel.Token)) {
                         switch (e) {
+                            case AgentTool at: {
+                                /* A step the agent ran itself: a row on the page, and a
+                                   part of the reply the page draws again later. */
+                                lock (live.Gate) {
+                                    var part = reply.Parts.FirstOrDefault(p => p.Type == "agent_tool" && p.Id == at.Id);
+                                    if (part is null) { part = new ChatPart { Type = "agent_tool", Id = at.Id, Name = at.Title, Input = at.Input }; reply.Parts.Add(part); }
+                                    part.Status = at.Status; if (at.Output is not null) { part.Text = at.Output; }
+                                }
+                                if (at.Status == "in_progress") {
+                                    Publish(live, new JsonObject { ["type"] = "tool_call", ["toolCallId"] = at.Id, ["name"] = at.Kind, ["title"] = at.Title, ["input"] = at.Input?.DeepClone(), ["readOnly"] = true });
+                                    Publish(live, new JsonObject { ["type"] = "tool_progress", ["toolCallId"] = at.Id, ["status"] = "in_progress" });
+                                } else {
+                                    Publish(live, new JsonObject { ["type"] = "tool_result", ["toolCallId"] = at.Id, ["status"] = at.Status, ["output"] = at.Output is { Length: > 4000 } longOutput ? longOutput[..4000] + "…" : at.Output ?? "" });
+                                }
+                                break;
+                            }
+                            case AgentApproval ap: {
+                                /* The agent asks before a command or a change: the same
+                                   question card as the chat's own tools, with its choices. */
+                                var q = new Question { ToolCallId = ap.Id, Name = "codex", Title = ap.Title, Input = ap.Input?.DeepClone(),
+                                    Options = new JsonArray(ap.Options.Select(o => (JsonNode)new JsonObject { ["optionId"] = o.Id, ["name"] = o.Name, ["kind"] = o.Kind }).ToArray()) };
+                                lock (live.Gate) { q.Key = "q" + (++live.QuestionCount); live.Questions[q.Key] = q; }
+                                var asked = QuestionJson(q).AsObject(); asked["type"] = "permission";
+                                Publish(live, asked);
+                                _ = q.Answer.Task.ContinueWith(t => {
+                                    lock (live.Gate) { live.Questions.Remove(q.Key); }
+                                    Publish(live, new JsonObject { ["type"] = "answered", ["key"] = q.Key });
+                                    var chosen = t.IsCompletedSuccessfully ? t.Result : "cancel";
+                                    ap.Answer.TrySetResult(ap.Options.Any(o => o.Id == chosen) ? chosen : "decline");
+                                }, TaskScheduler.Default);
+                                break;
+                            }
                             case TextDelta t:
                                 lock (live.Gate) { Append(reply, "text", t.Text); }
                                 Publish(live, new JsonObject { ["type"] = "text", ["text"] = t.Text });
@@ -342,6 +401,8 @@ public sealed class ChatTurns {
         finally {
             lock (live.Gate) { live.Cancel = null; live.Partial = null; }
             if (tools is not null) { try { await tools.DisposeAsync(); } catch (Exception ex) { _log.LogDebug(ex, "Closing the chat's tools"); } }
+            revokeGrant?.Invoke();
+            if (agent is not null) { try { await _store.SaveAsync(home, conv); } catch (Exception ex) { _log.LogDebug(ex, "Keeping the agent's thread"); } }
         }
         Publish(live, new JsonObject {
             ["type"] = "turn", ["stopReason"] = stopReason, ["seconds"] = Math.Round(clock.Elapsed.TotalSeconds, 1),

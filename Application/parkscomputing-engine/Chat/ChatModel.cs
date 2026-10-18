@@ -65,6 +65,9 @@ public sealed class Conversation {
     [JsonPropertyName("tools")] public bool Tools { get; set; } = true;
     /// <summary>Tools the reader allowed for the rest of this chat.</summary>
     [JsonPropertyName("allowed")] public List<string> Allowed { get; set; } = new();
+    /// <summary>What an agent provider keeps for this conversation: the
+    /// Codex thread's id, under the provider's id.</summary>
+    [JsonPropertyName("threads")] public Dictionary<string, string> Threads { get; set; } = new();
     [JsonPropertyName("created")] public DateTimeOffset Created { get; set; }
     [JsonPropertyName("updated")] public DateTimeOffset Updated { get; set; }
     [JsonPropertyName("messages")] public List<ChatMessage> Messages { get; set; } = new();
@@ -95,6 +98,13 @@ public sealed class ChatProviderConfig {
     [JsonPropertyName("webSearch")] public bool? WebSearch { get; set; }
     /// <summary>Anthropic: the most searches in one reply (5 by default).</summary>
     [JsonPropertyName("webSearchMaxUses")] public int? WebSearchMaxUses { get; set; }
+    /// <summary>Codex: the Codex CLI's path on the server (/app/codex/codex
+    /// unless given).</summary>
+    [JsonPropertyName("command")] public string? Command { get; set; }
+    /// <summary>Codex: its sandbox for commands, read-only, workspace-write
+    /// (the default) or danger-full-access, which a container without
+    /// user namespaces may need.</summary>
+    [JsonPropertyName("sandbox")] public string? Sandbox { get; set; }
 
     [JsonIgnore] public string Label => string.IsNullOrWhiteSpace(Name) ? Id : Name!;
     [JsonIgnore] public string? Key => string.IsNullOrWhiteSpace(KeyEnv) ? null : Environment.GetEnvironmentVariable(KeyEnv!);
@@ -165,7 +175,8 @@ public sealed class ChatSettings {
             ChatConfig config; string? error = null;
             try { config = JsonSerializer.Deserialize<ChatConfig>(File.ReadAllText(path), Json) ?? new ChatConfig(); }
             catch (JsonException ex) { config = new ChatConfig(); error = "/etc/" + FileName + " could not be read: " + ex.Message; }
-            config.Providers = config.Providers.Where(p => !string.IsNullOrWhiteSpace(p.Id) && !string.IsNullOrWhiteSpace(p.BaseUrl)).ToList();
+            /* A provider needs an id, and an address unless it is Codex, which is a command. */
+            config.Providers = config.Providers.Where(p => !string.IsNullOrWhiteSpace(p.Id) && (!string.IsNullOrWhiteSpace(p.BaseUrl) || string.Equals(p.Kind, "codex", StringComparison.OrdinalIgnoreCase))).ToList();
             _cached = (stamp, config, error);
             return (config, error);
         }
