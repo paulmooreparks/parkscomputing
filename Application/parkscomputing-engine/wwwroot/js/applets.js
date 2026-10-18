@@ -80,17 +80,11 @@ window.pcAppletAction = function (root, selector, label) {
    pudl-applets.js. */
 /* Sudoku is an installed applet package (wwwroot/applets/sudoku, from the
    pudl-sudoku repo), which /applets/registry.js defines; its page is still
-   content/sudoku.html, for the web-app manifest it links. */
-
-/* Conway's page is its article, so the links shared since 2015 keep
-   working and the applet may keep its state in that address; the game
-   alone lives at /page/conway. */
-pudlApplets.define('conway', {
-    src: '/js/conway.js',
-    css: '/css/conway.css',
-    page: '/page/conways-game-of-life',
-    ver: '7'
-});
+   content/sudoku.html, for the web-app manifest it links. Conway (pudl-
+   conway), Dice (pudl-dice), the Theme Studio and the Diff Viewer
+   (pudl-tools) are packages too. Conway's article keeps the address its
+   links have used since 2015 by naming itself as the mount's page
+   (data-applet-page); the game alone lives at /page/conway. */
 
 /* The Barcode Tool, the Barcode Scanner and the flash cards are installed
    applet packages (wwwroot/applets, from the pudl-barcodes repo), which
@@ -183,14 +177,6 @@ pudlApplets.define('settings', {
     ver: '20'
 });
 
-pudlApplets.define('dice', {
-   src: '/js/dice.js',
-   css: '/css/dice.css',
-   page: '/page/dice',
-   ver: '3',
-   actions: '/js/actions/dice.json'
-});
-
 /* Sight Reader loads OpenSheetMusicDisplay from js/vendor when it opens
    (Architecture/sight-reader-design.md). It opens the kind "score", a
    sample score's path under content/scores, which nothing else opens, so
@@ -204,19 +190,6 @@ pudlApplets.define('sight-reader', {
    actions: '/js/actions/sight-reader.json'
 });
 
-pudlApplets.define('theme-studio', {
-   src: '/js/theme-studio.js',
-   css: '/css/theme-studio.css',
-   page: '/page/theme-studio',
-   ver: '8'
-});
-
-pudlApplets.define('diff', {
-   src: '/js/diff.js',
-   css: '/css/diff.css',
-   page: '/page/diff',
-   ver: '5'
-});
 
 /* What an installed applet package gets from this site
    (Architecture/applet-packages-design.md): the kit's menu helpers
@@ -266,7 +239,10 @@ pudlApplets.define('diff', {
                     var F = x[0], FB = x[1];
                     return FB.pick(F, {
                         mode: 'open', title: o.title, host: o.host, start: o.start || '~', accept: o.accept || [], computer: true,
-                        check: o.check ? function (node) { return o.check(F.displayPath(node)); } : null
+                        check: function (node) {
+                            if (!F.isText(node)) { return node.name + ' isn\'t a text file.'; }
+                            return o.check ? o.check(F.displayPath(node)) : null;
+                        }
                     }).then(function (res) {
                         if (!res) { return null; }
                         if (res.file) { return res.file.text().then(function (text) { return { name: res.file.name, text: text }; }); }

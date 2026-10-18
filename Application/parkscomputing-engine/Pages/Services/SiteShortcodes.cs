@@ -327,13 +327,13 @@ public sealed class SiteShortcodes {
         };
 
         yield return new ShortcodeDef("code", ShortcodeKind.Block, "Code listing", "A file from the site, shown as a highlighted listing with Copy and Download, fetched as the page loads.",
-            "{{code:/js/conway.js}}", new[] {
+            "{{code:/js/applets.js}}", new[] {
                 new ShortcodeParam("src", "The file's path on the site.", true),
                 new ShortcodeParam("lang", "Its language for highlighting; taken from its extension unless given.") }) {
             Render = (c, ctx, at) => {
                 var src = Need(c, "src", 0, "a file's path");
                 if (!src.StartsWith('/') || src.StartsWith("//", StringComparison.Ordinal) || src.Contains("..", StringComparison.Ordinal)) {
-                    throw new ShortcodeProblem("code shows a file on this site, by its path from /, such as /js/conway.js.");
+                    throw new ShortcodeProblem("code shows a file on this site, by its path from /, such as /js/applets.js.");
                 }
                 var lang = c.Get("lang") ?? System.IO.Path.GetExtension(src.Split('?')[0]).TrimStart('.') switch {
                     "js" => "javascript", "cs" => "csharp", "ts" => "typescript", "py" => "python", "sh" => "bash", "ps1" => "powershell", "md" => "markdown", var e => e

@@ -144,6 +144,16 @@ The layout library changed shape. It had been the tool's own browser storage, wh
 
 Checks: in the collection, `tools/test-lookup.js` and `tools/test-scanner.js` (moved from this repo's `Tools/`) and `tools/test-tool.js`, the last two on a bare page that builds `pudlHost` from the kit with its files in memory; in this repo, `Tools/test-barcodes-package.js` (18, on the test instance and live): each page runs its package, the layouts move into the file and reach the scanner, the site's dialogs and lookup service, the flash cards' scans, and the tool's window, icon, menus and continuity under `pc-barcodes`. `test-applet-actions.js`, `test-mcp.js` (the barcode drawn on the server from the package's module), `test-applet-packages.js` and `test-sudoku-package.js` pass. Live on parkscomputing.com.
 
+**Step 6, Conway, Dice, the Theme Studio and the Diff Viewer (2026-10-18).** Conway is the repo `pudl-conway`, Dice `pudl-dice`, and the Theme Studio and the Diff Viewer are the collection `pudl-tools`, all Apache-2.0 and local under `C:\Users\paul\source\repos\`. Each moved with its icon, and the site's copies and `define()` calls are gone.
+
+Conway's registered page had been its 2015 article, so that the board links shared since then open there. A package's page is `/page/<name>`, so the article's mount now says `data-applet-page="/page/conways-game-of-life"`, which PUDL documents as overriding the registry's page, and the links still open their boards in the article. The article lists the game's source from `/applets/conway/conway.js`. Share's "Open this board" had used the site's private hand-off to reopen the window with a board. It now uses PUDL's documented requests: the manifest declares `handles: { board: { param: "init", extra: [...] } }`, the state's own keys, and the game asks `request('board', …)`, which reaches the game in front or opens one.
+
+The Theme Studio's preview frame had loaded `/pudl/pudl.css`, a path this site happens to use. Kit 0.3.0 adds `pudlHost.pudl`, where the host keeps its PUDL release (`/pudl/` here, `/static/pudl/` on PUDL Desktop); the studio passes it to its preview, which is now the package's own `preview.html`. The Diff Viewer opens files through `pudlHost.fs.open` and reads the paths its address keeps through `readText`. Its comparison, `textdiff.js`, had no other user on the site, so it moved into the collection as `packages/lib/textdiff.js` with the global `textDiff`, its checks with it. The site's `fs.open` now refuses a file that is not text, since it gives the applet text.
+
+Checks: `Tools/test-small-packages.js` (12, on the test instance and live): each page runs its package, the article opens a 2015-style link with its five live cells and lists the source, a board request reaches Conway in its window, Dice rolls, the preview loads the site's PUDL and takes the palette, and the Diff Viewer reads two paths and opens a file through the site's dialog. `test-applet-actions.js` and `test-mcp.js` (Dice's roll, now from its package) pass.
+
+Sight Reader is the last to move, and waits on where its sample scores live: the site lists them live from `content/scores` through its own listing API, which a package cannot call.
+
 ## Decisions for Paul
 
 1. The package shape and `pudlHost` as set out above.
