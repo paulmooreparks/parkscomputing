@@ -231,6 +231,18 @@ public class ChatTests {
     }
 
     [TestMethod]
+    public void AnOpenAiRequestLeavesOutAReplyWithNothingItCanCarry() {
+        var messages = new List<ChatMessage> {
+            new() { Role = "user", Parts = { ChatPart.TextPart("Open Sudoku") } },
+            new() { Role = "assistant", Parts = { new ChatPart { Type = "agent_tool", Id = "a1", Name = "ls", Status = "completed", Text = "a.md" } } },
+            new() { Role = "user", Parts = { ChatPart.TextPart("And?") } }
+        };
+        var body = OpenAiProvider.Body(new ProviderRequest("m", null, messages, Array.Empty<ToolSpec>(), false), null);
+        var roles = body["messages"]!.AsArray().Select(x => x!["role"]!.GetValue<string>()).ToList();
+        CollectionAssert.AreEqual(new[] { "user", "user" }, roles, "the agent's own steps are not a message this API takes, and content is never null");
+    }
+
+    [TestMethod]
     public void AnAnthropicRequestSendsThinkingBackOnlyWhenThinkingIsOn() {
         var on = AnthropicProvider.Body(Conversation(true), null, 2048);
         Assert.AreEqual("adaptive", on["thinking"]!["type"]!.GetValue<string>());

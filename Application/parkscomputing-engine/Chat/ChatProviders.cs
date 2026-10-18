@@ -138,11 +138,15 @@ public sealed class OpenAiProvider : IChatProvider {
         foreach (var m in request.Messages) {
             if (m.Role == "assistant") {
                 var text = string.Concat(m.Parts.Where(p => p.Type == "text").Select(p => p.Text));
-                var o = new JsonObject { ["role"] = "assistant", ["content"] = text.Length > 0 ? text : null };
                 var calls = m.Parts.Where(p => p.Type == "tool_use").Select(p => (JsonNode)new JsonObject {
                     ["id"] = p.Id, ["type"] = "function",
                     ["function"] = new JsonObject { ["name"] = p.Name, ["arguments"] = (p.Input ?? new JsonObject()).ToJsonString() }
                 }).ToArray();
+                /* A reply with nothing this API carries (an agent's own steps,
+                   a web search the provider ran) is left out: Ollama refuses a
+                   message whose content is null without tool calls. */
+                if (text.Length == 0 && calls.Length == 0) { continue; }
+                var o = new JsonObject { ["role"] = "assistant", ["content"] = text.Length > 0 ? text : null };
                 if (calls.Length > 0) { o["tool_calls"] = new JsonArray(calls); }
                 messages.Add(o);
                 continue;

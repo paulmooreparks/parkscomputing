@@ -33,7 +33,9 @@ namespace ParksComputing.Engine.Chat;
 /// uses it; its methods are quoted where they are called.
 /// </summary>
 public sealed class CodexHost : IAsyncDisposable {
-    public const string DefaultCommand = "/app/codex/codex";
+    /* The release package's layout: bin/codex with bin/codex-code-mode-host
+       beside it, which Codex needs to reach MCP tools. */
+    public const string DefaultCommand = "/app/codex/bin/codex";
     /* Codex's home is a volume of its own, never inside etc: the site lists
        etc for the super-user, keeps history of its files and syncs it, and
        Codex writes session databases there by the hundred of megabytes. */
