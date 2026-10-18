@@ -110,7 +110,7 @@ public sealed class ChatController : ControllerBase {
             ["providers"] = new JsonArray(config.Providers.Select(p => (JsonNode)new JsonObject {
                 ["id"] = p.Id, ["name"] = p.Name, ["kind"] = p.Kind, ["baseUrl"] = p.BaseUrl, ["keyEnv"] = p.KeyEnv,
                 ["models"] = p.Models is null ? null : new JsonArray(p.Models.Select(m => (JsonNode)m).ToArray()),
-                ["maxTokens"] = p.MaxTokens, ["thinkingBudget"] = p.ThinkingBudget,
+                ["maxTokens"] = p.MaxTokens, ["thinkingType"] = p.ThinkingType, ["thinkingBudget"] = p.ThinkingBudget,
                 ["hasKey"] = string.IsNullOrWhiteSpace(p.KeyEnv) ? null : !string.IsNullOrEmpty(p.Key)
             }).ToArray()),
             ["defaultProvider"] = config.DefaultProvider, ["defaultModel"] = config.DefaultModel,
@@ -144,6 +144,14 @@ public sealed class ChatController : ControllerBase {
         body.MaxToolRounds = Math.Clamp(body.MaxToolRounds, 1, 200);
         _settings.Write(body);
         return NoContent();
+    }
+
+    /// <summary>The skills the "/" menu offers: the reader's own and the site's.</summary>
+    [HttpGet("skills")]
+    public async Task<IActionResult> Skills([FromServices] ChatSkills skills) {
+        if (await ReaderAsync() is not { } me) { return NotFound(); }
+        Response.Headers.CacheControl = "no-store";
+        return Ok(skills.List(me.Home).Select(s => new { name = s.Name, description = s.Description, hint = s.Hint, source = s.Source }));
     }
 
     [HttpGet("conversations")]
@@ -252,6 +260,16 @@ public sealed class ChatController : ControllerBase {
         if (await ReaderAsync() is not { } me) { return NotFound(); }
         _turns.Unqueue(me.Home, id);
         return NoContent();
+    }
+
+    public sealed record ActionResult(string? Key, JsonNode? Output, string? Error);
+
+    /// <summary>What an action the page ran for the model produced (run_action).</summary>
+    [HttpPost("conversations/{id}/actions")]
+    [RequestSizeLimit(4 * 1024 * 1024)]
+    public async Task<IActionResult> ActionDone(string id, [FromBody] ActionResult body) {
+        if (await ReaderAsync() is not { } me) { return NotFound(); }
+        return _turns.ActionDone(me.Home, id, body.Key ?? "", body.Output?.ToJsonString(), body.Error) ? NoContent() : NotFound(new { error = "That action is not waited for." });
     }
 
     public sealed record AnswerRequest(string? Key, string? OptionId);

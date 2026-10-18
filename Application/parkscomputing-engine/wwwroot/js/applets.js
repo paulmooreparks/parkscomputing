@@ -221,6 +221,14 @@ pudlApplets.define('settings', {
         snapshot: window.pcSnapshot || null,
         /* The product lookup's proxy (Controllers/BarcodeProductsController.cs). */
         services: { 'barcode-products': '/api/barcode-products/', 'score-library': '/api/score-library/', 'chat': '/api/admin/chat/' },
+        /* The site's action broker (js/applet-actions.js), which runs an
+           applet's action here, opening its window where it needs one. */
+        actions: {
+            run: function (ref, input) {
+                var broker = window.pcActions ? Promise.resolve(window.pcActions) : loadScript(window.pcActionsSrc).then(function () { return window.pcActions; });
+                return broker.then(function (a) { return a.run(ref, input, { owner: { kind: 'chat' } }); });
+            }
+        },
         /* A request from the site's pages carries the token the server
            checks against forgery on anything but a read. */
         fetch: function (url, init) {
@@ -279,6 +287,28 @@ pudlApplets.define('settings', {
                 var off = null, gone = false;
                 siteFs().then(function (f) { if (!gone) { off = f.onChange(function () { fn(); }); } });
                 return function () { gone = true; if (off) { off(); } };
+            },
+            /* The files and pages whose names hold the words, the reader's
+               own first. */
+            find: function (query, limit) {
+                var words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean), max = limit || 40;
+                return fs().then(function (F) {
+                    var out = [];
+                    (function walk(n, depth) {
+                        if (out.length >= max || depth > 12) { return; }
+                        (n.children || []).forEach(function (c) {
+                            var r = F.realOf(c), kind = F.kindOf(c), name = c.name || '';
+                            if (name.charAt(0) === '.' && name !== '.config') { return; }
+                            var text = (name + ' ' + (c.title || '')).toLowerCase();
+                            if ((kind === 'file' || kind === 'page' || kind === 'script') && words.every(function (w) { return text.indexOf(w) >= 0; })) {
+                                out.push({ path: F.displayPath(c), name: c.title || name, kind: kind === 'page' ? 'page' : 'file' });
+                            }
+                            if (r.children && out.length < max) { walk(r, depth + 1); }
+                        });
+                    })(F.root(), 0);
+                    out.sort(function (a, b) { return (a.path.indexOf('~/') === 0 ? 0 : 1) - (b.path.indexOf('~/') === 0 ? 0 : 1) || a.path.localeCompare(b.path); });
+                    return out.slice(0, max);
+                });
             },
             readText: function (path) {
                 return fs().then(function (f) { var n = f.resolve(null, path); return n && !n.children ? f.read(n) : null; });

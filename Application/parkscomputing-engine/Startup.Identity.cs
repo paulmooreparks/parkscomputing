@@ -145,6 +145,7 @@ public partial class Startup {
         services.AddSingleton<ParksComputing.Engine.Chat.ChatSettings>();
         services.AddSingleton<ParksComputing.Engine.Chat.ChatStore>();
         services.AddSingleton<ParksComputing.Engine.Chat.ChatTools>();
+        services.AddSingleton<ParksComputing.Engine.Chat.ChatSkills>();
         services.AddSingleton<ParksComputing.Engine.Chat.ChatTurns>();
         services.AddHttpClient(ParksComputing.Engine.Chat.ChatProviders.ClientName, c => c.Timeout = TimeSpan.FromMinutes(15));
         services.AddHostedService<HistoryPruner>();

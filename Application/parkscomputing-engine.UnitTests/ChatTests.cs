@@ -107,8 +107,9 @@ public class ChatTests {
     [TestMethod]
     public void AnAnthropicRequestSendsThinkingBackOnlyWhenThinkingIsOn() {
         var on = AnthropicProvider.Body(Conversation(true), null, 2048);
-        Assert.AreEqual("enabled", on["thinking"]!["type"]!.GetValue<string>());
-        Assert.IsTrue(on["max_tokens"]!.GetValue<int>() > 2048);
+        Assert.AreEqual("adaptive", on["thinking"]!["type"]!.GetValue<string>());
+        Assert.AreEqual("enabled", AnthropicProvider.Body(Conversation(true), null, 2048, "enabled")["thinking"]!["type"]!.GetValue<string>());
+        Assert.IsTrue(AnthropicProvider.Body(Conversation(true), null, 2048, "enabled")["max_tokens"]!.GetValue<int>() > 2048);
         var assistant = on["messages"]![1]!["content"]!.AsArray();
         Assert.AreEqual("thinking", assistant[0]!["type"]!.GetValue<string>());
         Assert.AreEqual("sig", assistant[0]!["signature"]!.GetValue<string>());

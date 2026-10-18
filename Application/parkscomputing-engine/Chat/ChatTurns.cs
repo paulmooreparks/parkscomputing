@@ -37,7 +37,9 @@ public sealed class ChatTurns {
         "You are the assistant in the admin chat of parkscomputing.com, Paul Parks's site. Answer plainly and concisely, in Markdown. " +
         "When site tools are offered, they act as the site's super-user: ~ is the super-user's home folder on the server, /wwwroot is the live site " +
         "(pages are Markdown or HTML in /wwwroot/content) and /etc is the server's settings. Reading is free; any tool that changes something asks the " +
-        "reader first, so say what you mean to do before you do it. Mermaid diagrams in ```mermaid blocks are drawn for the reader.";
+        "reader first, so say what you mean to do before you do it. The site's applets publish actions (applet_discover lists them: rolling dice, solving a sudoku, " +
+        "drawing a barcode, starting a game such as Asteroids or Space Invaders at a level, opening a score); applet_invoke runs one, and an action that opens a window " +
+        "opens it on the reader's own desktop. Mermaid diagrams in ```mermaid blocks are drawn for the reader.";
 
     private sealed class Question {
         public string Key = ""; public string ToolCallId = ""; public string Name = ""; public string Title = ""; public JsonNode? Input;
@@ -52,20 +54,35 @@ public sealed class ChatTurns {
         public ChatMessage? Partial;
         public readonly LinkedList<ChatSend> Queue = new();
         public readonly Dictionary<string, Question> Questions = new();
+        /* Actions the page is running for the model, by key. */
+        public readonly Dictionary<string, TaskCompletionSource<(string? Output, string? Error)>> Actions = new();
         public CancellationTokenSource? Cancel;
-        public int QuestionCount;
+        public int QuestionCount, ActionCount;
     }
 
     private readonly ConcurrentDictionary<string, Live> _live = new();
     private readonly ChatStore _store;
     private readonly ChatSettings _settings;
     private readonly ChatTools _tools;
+    private readonly ChatSkills _skills;
     private readonly IHttpClientFactory _http;
     private readonly ILogger<ChatTurns> _log;
     private readonly TimeProvider _clock;
 
-    public ChatTurns(ChatStore store, ChatSettings settings, ChatTools tools, IHttpClientFactory http, ILogger<ChatTurns> log, TimeProvider clock) {
-        _store = store; _settings = settings; _tools = tools; _http = http; _log = log; _clock = clock;
+    public ChatTurns(ChatStore store, ChatSettings settings, ChatTools tools, ChatSkills skills, IHttpClientFactory http, ILogger<ChatTurns> log, TimeProvider clock) {
+        _store = store; _settings = settings; _tools = tools; _skills = skills; _http = http; _log = log; _clock = clock;
+    }
+
+    /// <summary>The conversation as the model reads it: a message that
+    /// starts with a skill's command carries the skill's instructions.</summary>
+    private IReadOnlyList<ChatMessage> ForModel(string home, Conversation conv) {
+        return conv.Messages.Select(m => {
+            if (m.Role != "user") { return m; }
+            var first = m.Parts.FirstOrDefault(p => p.Type == "text");
+            var expanded = first is null ? null : _skills.Expand(home, first.Text ?? "");
+            if (expanded is null) { return m; }
+            return new ChatMessage { Role = m.Role, At = m.At, Parts = m.Parts.Select(p => p == first ? ChatPart.TextPart(expanded) : p).ToList() };
+        }).ToList();
     }
 
     private Live LiveOf(string home, string id) => _live.GetOrAdd(home + "/" + id, _ => new Live());
@@ -155,6 +172,14 @@ public sealed class ChatTurns {
         PublishQueue(live);
     }
 
+    /// <summary>The page gives back what an action it ran for the model produced.</summary>
+    public bool ActionDone(string home, string id, string key, string? output, string? error) {
+        var live = LiveOf(home, id);
+        TaskCompletionSource<(string?, string?)>? tcs;
+        lock (live.Gate) { live.Actions.TryGetValue(key, out tcs); }
+        return tcs is not null && tcs.TrySetResult((output, error));
+    }
+
     public bool Answer(string home, string id, string key, string option) {
         var live = LiveOf(home, id);
         Question? q;
@@ -231,7 +256,7 @@ public sealed class ChatTurns {
                 lock (live.Gate) { live.Partial = reply; }
                 Publish(live, new JsonObject { ["type"] = "message_start", ["provider"] = providerConfig.Id, ["model"] = model });
                 try {
-                    await foreach (var e in provider.StreamAsync(new ProviderRequest(model, system, conv.Messages, specs, conv.Thinking), cancel.Token)) {
+                    await foreach (var e in provider.StreamAsync(new ProviderRequest(model, system, ForModel(home, conv), specs, conv.Thinking), cancel.Token)) {
                         switch (e) {
                             case TextDelta t:
                                 lock (live.Gate) { Append(reply, "text", t.Text); }
@@ -333,6 +358,31 @@ public sealed class ChatTurns {
         }
         Publish(live, new JsonObject { ["type"] = "tool_progress", ["toolCallId"] = use.Id, ["status"] = "in_progress" });
         try {
+            /* An applet's action runs on the reader's own desktop when a
+               page is watching: the site's action broker there opens the
+               applet's window where the action needs one, which the server
+               cannot. With no page watching, the server runs what it can. */
+            bool watched; lock (live.Gate) { watched = live.Subscribers.Count > 0; }
+            if (tool.Spec.Name == "applet_invoke" && watched && use.Input is JsonObject call && call["action"]?.GetValue<string>() is { Length: > 0 } action) {
+                var tcs = new TaskCompletionSource<(string? Output, string? Error)>(TaskCreationOptions.RunContinuationsAsynchronously);
+                string key;
+                lock (live.Gate) { key = "a" + (++live.ActionCount); live.Actions[key] = tcs; }
+                /* A model now and then writes the input as JSON text rather
+                   than an object; the text is read so the action gets the object. */
+                JsonNode? input = call["input"]?.DeepClone();
+                if (input is JsonValue v && v.TryGetValue<string>(out var inputText)) {
+                    try { input = JsonNode.Parse(inputText); } catch (JsonException) { input = null; }
+                }
+                Publish(live, new JsonObject { ["type"] = "run_action", ["key"] = key, ["toolCallId"] = use.Id, ["action"] = action, ["input"] = input ?? new JsonObject() });
+                try {
+                    using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+                    limit.CancelAfter(TimeSpan.FromMinutes(10));
+                    using var reg = limit.Token.Register(() => tcs.TrySetResult((null, cancel.IsCancellationRequested ? "The reader stopped the reply." : "The desktop did not answer in time.")));
+                    var (output, error) = await tcs.Task;
+                    return error is null ? Result("completed", output ?? "{}") : Result("failed", error);
+                }
+                finally { lock (live.Gate) { live.Actions.Remove(key); } }
+            }
             var (text, failed) = await tools!.CallAsync(tool.Spec.Name, use.Input, cancel);
             return Result(failed ? "failed" : "completed", text);
         }

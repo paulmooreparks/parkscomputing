@@ -72,14 +72,35 @@ A second message sent while the first chat was still being made had made another
 
 **The settings dialog** (File > Chat Settings…) has two tabs. Providers edits the server's `/etc/chat.json` through `GET` and `PUT settings`: each provider's id, name, kind, address, the name of its key's environment variable (and whether the server has a value for it), its models, its largest reply and thinking budget; the default provider and model; the tool rounds; the system prompt. The super-user alone may save it; other staff see it read-only. Preferences are the reader's own, kept by `pudlHost.config` as `~/.config/chat.json`: whether thoughts show, whether the list of chats shows, and whether Enter or Ctrl+Enter sends.
 
+## GK's code, adapted (Paul, 2026-10-18)
+
+The second version still fell short of GK Companion's: a margin round the window, Thinking as a drop-down, no `/` skills, no `@` mentions, no prompt history, and Claude 5 refusing the thinking request. Paul's instruction was to use GK's code and adapt it, and the applet now carries GK's composer code (app.js and skill-inputs.js) with the host's services in place of GK's own.
+
+**The window is flush.** The applet marks its mount `data-applet-flush`, and the site's stylesheet drops the window body's padding for a filling applet so marked (`pudl-site.css`, beside the fill rule). Other applets keep PUDL's padding.
+
+**Thinking is a PUDL switch** (`role="switch"`, `aria-checked`) in the composer bar, patched onto the conversation as before. Claude 5 takes `thinking: {type: "adaptive"}` and refuses `enabled` with a budget, so `AnthropicProvider` sends adaptive unless the provider is configured with `thinkingType: "enabled"`, which older models want; the budget then applies.
+
+**Skills** are folders holding `SKILL.md` with GK's front matter (`name`, `description`, `argument-hint`), in the reader's `~/skills` ("My Skills") or the site's `/etc/skills` ("Site Skills"). `ChatSkills` lists them for `GET skills`, and when a message starts with `/name`, `ChatTurns.ForModel` sends the model the skill's body with the typed command, so the expansion is the server's and the chat keeps the command the reader typed. The applet has GK's three ways in: the Skills button's menu with a filter, the `/` pop-up over the box as a word starting with `/` is typed (Up and Down choose, Enter or Tab inserts, Esc closes), and the parameter form over the box when a skill with an argument hint is chosen with nothing after it. The hint is read as GK reads it (`<required>`, `[optional]`, `a|b` for a choice, `--flag`, `--flag <value>`, quotes for a value with spaces, and a last parameter written as words standing for the box itself); the form assembles the command, marks missing required fields, and Esc drops back to typing it by hand.
+
+**`@` mentions.** A word starting with `@` offers the host's files and pages through `pudlHost.fs.find` (kit 0.5.0), grouped as Files and Pages; picking one puts `@path` in the box, and when the message goes the applet reads each mentioned file still in the text with `fs.readText` and attaches it as text. The site's `find` walks the page's file tree, the reader's own files first.
+
+**Prompt history.** Every sent text is kept in the reader's preferences (`history`, the last 200), Up and Down at the box's first and last line recall them as a shell does, and File > Prompt History… lists them with a filter, Forget All, and a press to put one back in the box.
+
+**Applet actions run on the reader's desktop.** When the model calls `applet_invoke` while a page is watching the conversation, `ChatTurns` does not run it on the server: it publishes a `run_action` event with the action's reference and input, the applet runs it through the host's action broker (`pudlHost.actions.run`, the site's `pcActions` with an owner of kind `chat`), and posts the output or error to `POST conversations/{id}/actions`, which completes the tool call. So "play Space Invaders" opens the game's window on the desktop the reader is looking at, a dice roll runs in the page, and the model sees the result. The server waits ten minutes for the desktop. With no page watching, the server runs the action itself as before (pure actions only). A model now and then writes the input as JSON text; the server reads it into the object the action expects. The system prompt tells the model the applets publish actions and that `applet_discover` lists them.
+
 ## Checks
 
-- `ChatTests` (6 unit tests): both stream parsers, both request bodies, and the grants.
+- `ChatTests` (6 unit tests): both stream parsers, both request bodies (Anthropic adaptive by default, enabled with a budget when configured), and the grants.
 - `AppletCatalogTests`: a package kept for an audience.
 - `Tools/test-chat.js`, on the test instance against a real provider:
   - hidden from readers, and present for staff;
   - a reply streamed with its thinking;
   - a read-only tool run without asking, and a writing tool that asks first and runs once allowed;
   - an attachment;
+  - the flush window and the Thinking switch;
+  - a skill in the menu, in the `/` pop-up, through its form, and expanded by the server;
+  - an `@` mention found, inserted and sent with the message;
+  - Up recalling the last two prompts;
+  - a dice roll run on the desktop through the page and its result given to the model;
   - the queue and Stop;
   - the conversation brought back by its address.

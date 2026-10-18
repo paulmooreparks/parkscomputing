@@ -77,7 +77,10 @@ public sealed class ChatProviderConfig {
     /// (GET models) where it has one.</summary>
     [JsonPropertyName("models")] public List<string>? Models { get; set; }
     [JsonPropertyName("maxTokens")] public int? MaxTokens { get; set; }
-    /// <summary>Anthropic: the thinking budget when thinking is on.</summary>
+    /// <summary>Anthropic: adaptive (the default, which the current models
+    /// take) or enabled, thinking with a budget, for the older ones.</summary>
+    [JsonPropertyName("thinkingType")] public string? ThinkingType { get; set; }
+    /// <summary>Anthropic: the thinking budget when thinkingType is enabled.</summary>
     [JsonPropertyName("thinkingBudget")] public int? ThinkingBudget { get; set; }
 
     [JsonIgnore] public string Label => string.IsNullOrWhiteSpace(Name) ? Id : Name!;

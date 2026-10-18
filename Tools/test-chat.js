@@ -18,6 +18,17 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
 
 (async () => {
     if (!LINK) { console.error('PC_SIGNIN_LINK is needed.'); process.exit(2); }
+    /* A skill and a file for the "/" and "@" checks, in the instance's home
+       folder when the test is told where that is. */
+    if (process.env.PC_HOME_DIR) {
+        const fs = require('fs'), path = require('path');
+        fs.mkdirSync(path.join(process.env.PC_HOME_DIR, 'skills', 'greet'), { recursive: true });
+        fs.writeFileSync(path.join(process.env.PC_HOME_DIR, 'skills', 'greet', 'SKILL.md'),
+            '---\nname: greet\ndescription: Greet someone warmly in one line.\nargument-hint: <name> [formal|casual]\n---\n' +
+            'Write one short friendly greeting for the person named in the arguments. Use the second argument as the tone when it is given. Reply with the greeting alone, and end it with the word SKILLOK.\n');
+        fs.mkdirSync(path.join(process.env.PC_HOME_DIR, 'notes'), { recursive: true });
+        fs.writeFileSync(path.join(process.env.PC_HOME_DIR, 'notes', 'zebra-facts.txt'), 'The word is giraffe.\n');
+    }
     const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
     const context = await browser.newContext({ viewport: { width: 1400, height: 950 } });
     const page = await context.newPage();
@@ -100,6 +111,71 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
     await ask('What word is in the attached file? Answer with the word alone.');
     await idle();
     log('an attached file reaches the model', /zebra/i.test(await lastReply()), await lastReply());
+
+    // GK Companion's shape: the window is flush, and Thinking is a switch.
+    log('the chat fills its window with no margin', await page.evaluate(() => document.querySelector('.pudl-chat').hasAttribute('data-applet-flush')));
+    const wasOn = await page.getAttribute('[data-role="thinking"]', 'aria-checked');
+    await page.click('[data-role="thinking"]');
+    const nowOn = await page.getAttribute('[data-role="thinking"]', 'aria-checked');
+    log('Thinking is an on/off switch', (await page.getAttribute('[data-role="thinking"]', 'role')) === 'switch' && wasOn !== nowOn, wasOn + ' -> ' + nowOn);
+    await page.click('[data-role="thinking"]');
+
+    // A skill: "/" in the box offers it, Enter opens its form, Enter sends.
+    await page.click('[data-role="skills-button"]');
+    const menuSkills = await page.$$eval('.skills-menu .skill-name', ss => ss.map(s => s.textContent));
+    log('the Skills menu lists the skills in ~/skills', menuSkills.some(s => /^\/greet/.test(s)), menuSkills.join());
+    await page.keyboard.press('Escape');
+    await page.fill('.chat-text', '');
+    await page.type('.chat-text', '/gre');
+    await page.waitForSelector('.slash-pop:not([hidden]) .skill-row', { timeout: 5000 }).catch(() => { });
+    const popSkills = await page.$$eval('.slash-pop .skill-name', ss => ss.map(s => s.textContent));
+    log('"/" in the box pops the matching skills up', popSkills.some(s => /^\/greet/.test(s)), popSkills.join());
+    await page.press('.chat-text', 'Enter');
+    await page.waitForSelector('.skill-form:not([hidden]) input', { timeout: 5000 }).catch(() => { });
+    const formLabels = await page.$$eval('.skill-form .skill-field label', ls => ls.map(l => l.textContent));
+    log('a skill with parameters opens a form over the box', formLabels.some(l => /name/.test(l)) && formLabels.some(l => /optional/.test(l)), formLabels.join());
+    await page.fill('.skill-form input', 'Paul');
+    await page.press('.skill-form input', 'Enter');
+    await page.waitForFunction(() => document.querySelector('.pudl-chat').classList.contains('is-working'), null, { timeout: 15000 }).catch(() => { });
+    await idle();
+    const sentSkill = await page.evaluate(() => [...document.querySelectorAll('.msg-you .msg-text')].pop().textContent);
+    log('the form sends the skill as a command', /^\/greet Paul/.test(sentSkill.trim()), sentSkill);
+    log('the server expands the skill for the model', /SKILLOK/.test(await lastReply()) && /Paul/.test(await lastReply()), await lastReply());
+
+    // "@" in the box offers the site's files, and the file goes with the message.
+    if (process.env.PC_HOME_DIR) {
+        await page.fill('.chat-text', '');
+        await page.type('.chat-text', '@zebra');
+        await page.waitForSelector('.slash-pop:not([hidden]) .mention-row', { timeout: 10000 }).catch(() => { });
+        const found = await page.$$eval('.slash-pop .mention-row .md-meta', ms => ms.map(m => m.textContent));
+        log('"@" in the box finds a file by part of its name', found.some(f => /zebra-facts/.test(f)), found.join());
+        await page.press('.chat-text', 'Enter');
+        const withMention = await page.inputValue('.chat-text');
+        log('Enter puts the mention in the box', /^@\S*zebra-facts\.txt /.test(withMention), withMention);
+        await page.type('.chat-text', 'What word is in the mentioned file? Answer with the word alone.');
+        await page.press('.chat-text', 'Enter');
+        await page.waitForFunction(() => document.querySelector('.pudl-chat').classList.contains('is-working'), null, { timeout: 15000 }).catch(() => { });
+        await idle();
+        log('the mentioned file reaches the model', /giraffe/i.test(await lastReply()), await lastReply());
+    }
+
+    // Up in the box recalls what was sent.
+    await page.fill('.chat-text', '');
+    await page.press('.chat-text', 'ArrowUp');
+    const recalled = await page.inputValue('.chat-text');
+    log('Up recalls the last prompt', recalled.length > 0 && !/^\/greet/.test(recalled), recalled);
+    await page.press('.chat-text', 'ArrowUp');
+    log('Up again recalls the one before', /^\/greet Paul/.test(await page.inputValue('.chat-text')), await page.inputValue('.chat-text'));
+    await page.fill('.chat-text', '');
+
+    // An applet's action runs on this desktop, through the page, and its result goes back.
+    await ask('Call the tool applet_invoke with action "parks.dice/roll@1" and input {"dice": 1, "sides": 6}. Then tell me the value it rolled, as a digit.');
+    const actCard = await page.waitForSelector('.question', { timeout: 120000 }).catch(() => null);
+    if (actCard) { await page.click('.question .btn-primary'); }
+    await idle(180000);
+    const actRows = await page.evaluate(() => [...document.querySelectorAll('.chat-tool')].map(t => t.querySelector('.tool-title').textContent + ':' + t.getAttribute('data-status')));
+    log('an applet action runs on the desktop and comes back done', actRows.some(r => /parks\.dice\/roll@1 \(on your desktop\):completed/.test(r)), actRows.join());
+    log('and the model gets its result', /[1-6]/.test(await lastReply()), await lastReply());
 
     // The queue, then Stop.
     await ask('Count slowly from 1 to 200, one number per line.');

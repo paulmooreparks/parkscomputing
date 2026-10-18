@@ -221,7 +221,10 @@ public sealed class AnthropicProvider : IChatProvider {
         return (node?["data"]?.AsArray() ?? new JsonArray()).Select(m => m?["id"]?.GetValue<string>()).Where(s => !string.IsNullOrEmpty(s)).Select(s => s!).ToList();
     }
 
-    public static JsonObject Body(ProviderRequest request, int? maxTokens, int? thinkingBudget) {
+    /// <summary>thinking as the model takes it: adaptive, which the current
+    /// models ask for, or enabled with a budget for the older ones; the
+    /// provider's thinkingType in /etc/chat.json says which.</summary>
+    public static JsonObject Body(ProviderRequest request, int? maxTokens, int? thinkingBudget, string? thinkingType = null) {
         var messages = new JsonArray();
         foreach (var m in request.Messages) {
             var content = new JsonArray();
@@ -245,13 +248,15 @@ public sealed class AnthropicProvider : IChatProvider {
             }
             if (content.Count > 0) { messages.Add(new JsonObject { ["role"] = m.Role, ["content"] = content }); }
         }
-        var budget = request.Thinking ? Math.Max(1024, thinkingBudget ?? 4096) : 0;
+        var budgeted = request.Thinking && string.Equals(thinkingType, "enabled", StringComparison.OrdinalIgnoreCase);
+        var budget = budgeted ? Math.Max(1024, thinkingBudget ?? 4096) : 0;
         var body = new JsonObject {
             ["model"] = request.Model, ["messages"] = messages, ["stream"] = true,
             ["max_tokens"] = Math.Max(maxTokens ?? 8192, budget + 1024)
         };
         if (!string.IsNullOrWhiteSpace(request.System)) { body["system"] = request.System; }
-        if (request.Thinking) { body["thinking"] = new JsonObject { ["type"] = "enabled", ["budget_tokens"] = budget }; }
+        if (budgeted) { body["thinking"] = new JsonObject { ["type"] = "enabled", ["budget_tokens"] = budget }; }
+        else if (request.Thinking) { body["thinking"] = new JsonObject { ["type"] = "adaptive" }; }
         if (request.Tools.Count > 0) {
             body["tools"] = new JsonArray(request.Tools.Select(t => (JsonNode)new JsonObject {
                 ["name"] = t.Name, ["description"] = t.Description, ["input_schema"] = t.Schema.DeepClone()
@@ -262,7 +267,7 @@ public sealed class AnthropicProvider : IChatProvider {
 
     public async IAsyncEnumerable<ProviderEvent> StreamAsync(ProviderRequest request, [EnumeratorCancellation] CancellationToken cancel) {
         var req = Request(HttpMethod.Post, "messages");
-        req.Content = new StringContent(Body(request, _config.MaxTokens, _config.ThinkingBudget).ToJsonString(), Encoding.UTF8, "application/json");
+        req.Content = new StringContent(Body(request, _config.MaxTokens, _config.ThinkingBudget, _config.ThinkingType).ToJsonString(), Encoding.UTF8, "application/json");
         using var r = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cancel);
         if (!r.IsSuccessStatusCode) { throw new ProviderException(await ChatProviders.ErrorOf(r, cancel)); }
         await using var body = await r.Content.ReadAsStreamAsync(cancel);
