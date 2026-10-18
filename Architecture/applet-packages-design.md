@@ -92,10 +92,12 @@ PUDLSplash is a public repo, Apache-2.0 to match PUDL Desktop, holding a collect
 - draws in PUDL's theme tokens and redraws on `pudl:theme-change`, so it looks at home in light and dark;
 - takes the keyboard, and on a touch screen draws its own controls;
 - pauses when its window loses focus or the page is hidden, and has Game and Help menus through `identity` and `menus()`;
-- keeps its high scores through `snapshot` when the host has it, and in `localStorage` otherwise;
+- keeps its high scores as a file in the reader's home directory, `~/.splash/scores.json`, through the host's `fs` service, so on parkscomputing.com they live wherever `~/` lives: this browser's storage for a guest, and the account once accounts have a home (see below); a host with no `fs` keeps them in `localStorage` under the applet's name;
 - publishes a few actions (`start`, `pause`, `scores`) so the Terminal and `/mcp` can reach it, which also makes the games the first packages to prove actions travel with an applet.
 
-The collection shares `splash-input.js` (keys and touch) and `splash-scores.js`. Both games open on parkscomputing.com at `/page/invaders` and `/page/asteroids`, in windows sized by their manifests, as soon as the engine's catalogue scanner lands and the packages are copied in.
+The collection shares `splash-input.js` (keys and touch) and `splash-scores.js`, which reads and writes the scores file and is the only place the games touch storage.
+
+**A home directory for accounts.** Paul's rule (2026-10-18): `~/` is this browser's storage for a guest and the account's own storage once the reader has one, and what a guest kept moves into the account when it is created. Today only the super-user has a server-backed home, through the admin mount; a signed-in member still has `/home/guest` in `localStorage`. The account half is engine work of its own, outside this design: a member's `/home/<name>` on the server, a copy of the guest home into it at sign-up or first sign-in, and the file service choosing the server home for a signed-in member. The games need nothing from it beyond `~/`, which is why they write there from the start. Both games open on parkscomputing.com at `/page/invaders` and `/page/asteroids`, in windows sized by their manifests, as soon as the engine's catalogue scanner lands and the packages are copied in.
 
 ## Order of work
 
