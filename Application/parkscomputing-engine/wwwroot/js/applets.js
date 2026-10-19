@@ -159,7 +159,10 @@ pudlApplets.define('terminal', {
     ver: '42',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
     actions: '/js/actions/terminal.json',
-    instances: 4
+    instances: 4,
+    /* A restored terminal window behind others starts once the windows in
+       view are ready (PUDL 0.66.0), since xterm and a session are heavy. */
+    start: 'idle'
 });
 
 /* Files and the editor use the same site filesystem as the terminal. */
@@ -179,7 +182,9 @@ pudlApplets.define('editor', {
     page: pcWorkspacePages + 'editor',
     ver: '32',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } },
-    actions: '/js/actions/editor.json'
+    actions: '/js/actions/editor.json',
+    /* CodeMirror and the documents load once the windows in view are ready. */
+    start: 'idle'
 });
 
 /* The admin desktop's Settings (Architecture/admin-and-identity-design.md,
