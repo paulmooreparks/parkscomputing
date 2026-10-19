@@ -103,6 +103,20 @@ public sealed class ChatController : ControllerBase {
         });
     }
 
+    /// <summary>Every model a saved provider lists, for the settings' model
+    /// checklist, whatever the settings narrow the chat's menu to. A
+    /// provider not saved yet is not asked, since asking needs its key from
+    /// the server's environment as the saved settings say.</summary>
+    [HttpGet("settings/models/{id}")]
+    public async Task<IActionResult> OfferedModels(string id, CancellationToken cancel) {
+        if (await ReaderAsync() is null) { return NotFound(); }
+        var (config, _) = _settings.Read();
+        if (config.Find(id) is not { } p) { return NotFound(new { error = "There is no saved provider called " + id + "." }); }
+        var (models, problem) = await _self.OfferedAsync(p, cancel);
+        Response.Headers.CacheControl = "no-store";
+        return Ok(new { id = p.Id, models, problem });
+    }
+
     private static readonly System.Text.RegularExpressions.Regex IdShape = new("^[a-z][a-z0-9-]{0,39}$");
 
     [HttpPut("settings")]

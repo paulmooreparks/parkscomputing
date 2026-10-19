@@ -57,19 +57,7 @@ public sealed class ChatSelf {
         foreach (var p in config.Providers) {
             IReadOnlyList<string> models = p.Models ?? new List<string>();
             string? problem = null;
-            if (models.Count == 0) {
-                var key = p.Id + "|" + p.Kind + "|" + p.BaseUrl + "|" + p.Command;
-                lock (_gate) { if (_models.TryGetValue(key, out var kept) && DateTimeOffset.UtcNow - kept.At < TimeSpan.FromMinutes(10)) { models = kept.Models; } }
-            }
-            if (models.Count == 0) {
-                try {
-                    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel);
-                    timeout.CancelAfter(TimeSpan.FromSeconds(8));
-                    models = await ChatProviders.For(p, _http.CreateClient(ChatProviders.ClientName), _codex).ModelsAsync(timeout.Token);
-                    if (models.Count > 0) { lock (_gate) { _models[p.Id + "|" + p.Kind + "|" + p.BaseUrl + "|" + p.Command] = (DateTimeOffset.UtcNow, models); } }
-                }
-                catch (Exception ex) when (ex is ProviderException or HttpRequestException or OperationCanceledException) { problem = "Its models could not be listed: " + ex.Message; }
-            }
+            if (models.Count == 0) { (models, problem) = await OfferedAsync(p, cancel); }
             if (!string.IsNullOrWhiteSpace(p.KeyEnv) && string.IsNullOrEmpty(p.Key)) { problem = "The server has no " + p.KeyEnv + " for its key."; }
             list.Add(new JsonObject {
                 ["id"] = p.Id, ["name"] = p.Label, ["kind"] = p.Kind,
@@ -81,6 +69,24 @@ public sealed class ChatSelf {
             ["defaultModel"] = config.DefaultModel, ["error"] = error,
             ["tools"] = toolsOffered, ["settings"] = "/etc/" + ChatSettings.FileName
         };
+    }
+
+    /// <summary>Every model the provider itself lists, whatever the settings
+    /// narrow it to, kept for ten minutes; or why it could not be asked.
+    /// The settings' model checklist is drawn from this.</summary>
+    public async Task<(IReadOnlyList<string> Models, string? Problem)> OfferedAsync(ChatProviderConfig p, CancellationToken cancel) {
+        var key = p.Id + "|" + p.Kind + "|" + p.BaseUrl + "|" + p.Command;
+        lock (_gate) { if (_models.TryGetValue(key, out var kept) && DateTimeOffset.UtcNow - kept.At < TimeSpan.FromMinutes(10)) { return (kept.Models, null); } }
+        try {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+            timeout.CancelAfter(TimeSpan.FromSeconds(8));
+            var models = await ChatProviders.For(p, _http.CreateClient(ChatProviders.ClientName), _codex).ModelsAsync(timeout.Token);
+            if (models.Count > 0) { lock (_gate) { _models[key] = (DateTimeOffset.UtcNow, models); } }
+            return (models, null);
+        }
+        catch (Exception ex) when (ex is ProviderException or HttpRequestException or OperationCanceledException) {
+            return (Array.Empty<string>(), "Its models could not be listed: " + ex.Message);
+        }
     }
 
     /// <summary>The answer to a chat_info call, as JSON text for the model.</summary>
