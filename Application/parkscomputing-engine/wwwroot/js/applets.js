@@ -167,7 +167,7 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: pcWorkspacePages + 'files',
-    ver: '25',
+    ver: '26',
     handles: { browse: { param: 'path' } },
     actions: '/js/actions/files.json'
 });

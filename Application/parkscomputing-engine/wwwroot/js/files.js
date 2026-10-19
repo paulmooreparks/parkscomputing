@@ -295,15 +295,19 @@
            returns an error message to keep the dialog open. */
         function prompt(title, text, value, okLabel, validate, withInput) {
             return new Promise(function (done) {
-                el.dlgTitle.textContent = title;
+                /* A delete is PUDL's danger confirmation: the warning glyph
+                   in the danger colour beside the title, and the button
+                   btn-danger alone, with the bin glyph. */
+                var danger = okLabel === 'Delete';
+                el.dlgTitle.innerHTML = (danger ? '<span class="glyph fm-dlg-warn" style="--glyph: var(--glyph-warning)" aria-hidden="true"></span>' : '') + esc(title);
                 el.dlgText.textContent = text || '';
                 el.dlgText.hidden = !text;
                 el.dlgInput.hidden = withInput === false;
                 el.dlgInput.value = value || '';
                 el.dlgError.hidden = true;
-                el.dlgOk.textContent = okLabel || 'OK';
-                el.dlgOk.classList.toggle('btn-danger', okLabel === 'Delete');
-                el.dlgOk.classList.toggle('btn-primary', okLabel !== 'Delete');
+                el.dlgOk.innerHTML = (danger ? '<span class="glyph" style="--glyph: var(--glyph-bin)" aria-hidden="true"></span>' : '') + esc(okLabel || 'OK');
+                el.dlgOk.classList.toggle('btn-danger', danger);
+                el.dlgOk.classList.toggle('btn-primary', !danger);
                 var finished = false;
                 function finish(v) { if (finished) { return; } finished = true; cleanup(); if (el.dialog.open) { el.dialog.close(); } done(v); }
                 function onSubmit(e) {

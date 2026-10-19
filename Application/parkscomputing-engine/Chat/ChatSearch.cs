@@ -52,7 +52,7 @@ public sealed class ChatSearch {
         using var request = new HttpRequestMessage(HttpMethod.Get, Address(search, query, count));
         request.Headers.TryAddWithoutValidation("Accept", "application/json");
         if (search.Kind == "brave") {
-            if (string.IsNullOrEmpty(search.Key)) { throw new InvalidOperationException("The server has no " + (search.KeyEnv ?? "key") + " for the Brave Search API."); }
+            if (string.IsNullOrEmpty(search.Key)) { throw new InvalidOperationException("The server has no " + (search.KeyVariable ?? "key") + " for the Brave Search API."); }
             request.Headers.TryAddWithoutValidation("X-Subscription-Token", search.Key);
         }
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel);

@@ -95,7 +95,7 @@ public sealed class ChatController : ControllerBase {
             }).ToArray()),
             ["search"] = config.Search is null ? null : new JsonObject {
                 ["kind"] = config.Search.Kind, ["baseUrl"] = config.Search.BaseUrl, ["keyEnv"] = config.Search.KeyEnv, ["count"] = config.Search.Count,
-                ["hasKey"] = string.IsNullOrWhiteSpace(config.Search.KeyEnv) ? null : !string.IsNullOrEmpty(config.Search.Key)
+                ["hasKey"] = config.Search.KeyVariable is null ? null : !string.IsNullOrEmpty(config.Search.Key)
             },
             ["defaultProvider"] = config.DefaultProvider, ["defaultModel"] = config.DefaultModel,
             ["system"] = config.System, ["maxToolRounds"] = config.MaxToolRounds,

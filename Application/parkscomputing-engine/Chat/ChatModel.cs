@@ -121,7 +121,11 @@ public sealed class ChatSearchConfig {
     [JsonPropertyName("keyEnv")] public string? KeyEnv { get; set; }
     [JsonPropertyName("count")] public int? Count { get; set; }
 
-    [JsonIgnore] public string? Key => string.IsNullOrWhiteSpace(KeyEnv) ? null : Environment.GetEnvironmentVariable(KeyEnv!);
+    /// <summary>The variable that holds the key: keyEnv, or for Brave
+    /// BRAVE_SEARCH_KEY when keyEnv is left empty, as the settings window's
+    /// placeholder says.</summary>
+    [JsonIgnore] public string? KeyVariable => !string.IsNullOrWhiteSpace(KeyEnv) ? KeyEnv : Kind == "brave" ? "BRAVE_SEARCH_KEY" : null;
+    [JsonIgnore] public string? Key => KeyVariable is { } v ? Environment.GetEnvironmentVariable(v) : null;
     [JsonIgnore] public bool Configured => Kind is "brave" or "searxng";
 }
 
