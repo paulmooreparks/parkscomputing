@@ -1,5 +1,7 @@
 # Proposal to PUDL: a dialog's actions stay in view
 
+Status: closed the same day by PUDL 0.65.0, which does this for every dialog from GK Companion's proposals (`pudl-dialog-pinned-actions.md`), with the line shown only while content is hidden beneath a band. The site took it as D69 in `pudl-adoption.md`.
+
 From parkscomputing.com, 2026-10-19. Paul asked for this to be proposed as PUDL's standard for dialogs, after using the Chat applet's settings window, whose Cancel and Save sit in a band of their own at the foot and never scroll away.
 
 ## The problem
