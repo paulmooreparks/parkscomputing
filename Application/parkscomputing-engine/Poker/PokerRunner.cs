@@ -275,8 +275,9 @@ public sealed class PokerRunner {
         table.Button = button; table.Hands = record.Number;
         await _store.SaveAsync(home, table);
         Publish(live, "changed");
-        /* Long enough to read the showdown. */
-        await Task.Delay(Math.Max(3000, table.PaceMs * 2), cancel);
+        /* The outcome stays on the table long enough to read: the winners,
+           the amounts and the hands shown. */
+        await Task.Delay(Math.Max(6000, table.PaceMs * 4), cancel);
     }
 
     /// <summary>A model's move: its answer, or a second try told why the
@@ -286,8 +287,12 @@ public sealed class PokerRunner {
         var table = live.Table;
         var s = table.At(seat);
         string? why = null; double seconds = 0;
+        /* The table's seconds are for the whole move, a second try included. */
+        var budget = TimeSpan.FromSeconds(table.TurnSeconds);
         for (var attempt = 0; attempt < 2; attempt++) {
-            var d = await _agent.DecideAsync(table, seat, hand, record, why, cancel);
+            var left = budget - TimeSpan.FromSeconds(seconds);
+            if (left < TimeSpan.FromSeconds(5)) { why ??= PokerAgent.TimedOut; break; }
+            var d = await _agent.DecideAsync(table, seat, hand, record, why, left, cancel);
             s.TokensIn += d.TokensIn; s.TokensOut += d.TokensOut; seconds += d.Seconds;
             why = d.Error;
             if (d.Move is { } move) {
@@ -302,7 +307,7 @@ public sealed class PokerRunner {
                 }
             }
             /* An answer that never came is not asked for again. */
-            if (d.Move is null && d.Error is not null && d.Error.StartsWith("No move within", StringComparison.Ordinal)) { break; }
+            if (d.Error == PokerAgent.TimedOut) { break; }
         }
         s.Faults++; s.LastError = why;
         var check = hand.Legal().Check;

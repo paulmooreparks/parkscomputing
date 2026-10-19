@@ -11,6 +11,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.Logging;
+
 using ParksComputing.Engine.Chat;
 
 namespace ParksComputing.Engine.Poker;
@@ -29,11 +31,15 @@ public sealed class PokerAgent {
 
     private const int SayMax = 200, NameMax = 24, BioMax = 400;
 
+    /// <summary>The error of a seat that ran out of time.</summary>
+    public const string TimedOut = "No move in the time allowed.";
+
     private readonly ChatSettings _settings;
     private readonly IHttpClientFactory _http;
     private readonly CodexHost _codex;
+    private readonly Microsoft.Extensions.Logging.ILogger<PokerAgent> _log;
 
-    public PokerAgent(ChatSettings settings, IHttpClientFactory http, CodexHost codex) { _settings = settings; _http = http; _codex = codex; }
+    public PokerAgent(ChatSettings settings, IHttpClientFactory http, CodexHost codex, Microsoft.Extensions.Logging.ILogger<PokerAgent> log) { _settings = settings; _http = http; _codex = codex; _log = log; }
 
     private static readonly ToolSpec ActTool = new("act",
         "Make your move. action is fold, check, call or raise. For raise, amount is the total you raise to on this street (a bet when nobody has bet), between the minimum and maximum you were given; leave it out otherwise. say is an optional short line to the table, at most 200 characters, which every player hears; it may be true or not.",
@@ -124,42 +130,66 @@ public sealed class PokerAgent {
                 "Call the introduce tool. If you cannot call tools, reply with only a JSON object: {\"name\": \"...\", \"bio\": \"...\"}.";
             var request = new ProviderRequest(s.Model ?? "", Rules, new List<ChatMessage> { new() { Role = "user", Parts = { ChatPart.TextPart(text) }, At = DateTimeOffset.UtcNow } },
                 new[] { IntroTool }, s.Thinking, AgentFor(config, table.Id, seat));
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel);
-            timeout.CancelAfter(TimeSpan.FromSeconds(Math.Max(30, table.TurnSeconds)));
-            var r = await AskAsync(provider, request, timeout.Token);
+            var r = await WithinAsync(provider, request, TimeSpan.FromSeconds(Math.Max(30, table.TurnSeconds)), cancel);
             var f = FieldsOf(r.ToolInput, r.Text.ToString());
             return new Intro(Clip(f?["name"]?.ToString(), NameMax), Clip(f?["bio"]?.ToString(), BioMax), r.In, r.Out, f is null ? "The model gave no name or bio." : null);
         }
-        catch (OperationCanceledException) when (!cancel.IsCancellationRequested) { return new Intro(null, null, 0, 0, "The model took too long to introduce itself."); }
-        catch (Exception ex) when (ex is ProviderException or HttpRequestException or InvalidOperationException) { return new Intro(null, null, 0, 0, ex.Message); }
+        catch (Exception ex) when (ex is TimeoutException || (ex is OperationCanceledException && !cancel.IsCancellationRequested)) { return new Intro(null, null, 0, 0, "The model took too long to introduce itself."); }
+        catch (Exception ex) when (!cancel.IsCancellationRequested && ex is not OperationCanceledException) { return new Intro(null, null, 0, 0, ex.Message); }
     }
 
-    /// <summary>Asks a model seat for its move. retryReason, when given,
-    /// says why its last answer was refused.</summary>
-    public async Task<Decision> DecideAsync(PokerTable table, int seat, HoldemHand hand, PokerHandRecord record, string? retryReason, CancellationToken cancel) {
+    /// <summary>A model's answer within the time it has. The request is
+    /// cancelled when the time is up, and the answer is also waited for
+    /// beside a clock of its own, so a provider whose stream does not stop
+    /// on cancellation still cannot hold the table: the seat moves on, and
+    /// the abandoned request finishes or fails unobserved.</summary>
+    private static Task<Reply> WithinAsync(IChatProvider provider, ProviderRequest request, TimeSpan limit, CancellationToken cancel) =>
+        Within(stop => AskAsync(provider, request, stop), limit, TimeSpan.FromSeconds(3), cancel);
+
+    /// <summary>work, given a token that is cancelled after limit; if work
+    /// has still not finished grace later, TimeoutException, and work is
+    /// left to end on its own with its result unobserved.</summary>
+    public static async Task<T> Within<T>(Func<CancellationToken, Task<T>> work, TimeSpan limit, TimeSpan grace, CancellationToken cancel) {
+        var stop = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+        stop.CancelAfter(limit);
+        var task = work(stop.Token);
+        _ = task.ContinueWith(t => { _ = t.Exception; stop.Dispose(); }, TaskScheduler.Default);
+        var done = await Task.WhenAny(task, Task.Delay(limit + grace, cancel));
+        if (done != task) {
+            cancel.ThrowIfCancellationRequested();
+            try { stop.Cancel(); } catch (ObjectDisposedException) { }
+            throw new TimeoutException();
+        }
+        return await task;
+    }
+
+    /// <summary>Asks a model seat for its move, within limit. retryReason,
+    /// when given, says why its last answer was refused.</summary>
+    public async Task<Decision> DecideAsync(PokerTable table, int seat, HoldemHand hand, PokerHandRecord record, string? retryReason, TimeSpan limit, CancellationToken cancel) {
         var s = table.At(seat);
         var clock = Stopwatch.StartNew();
+        Decision d;
         try {
             var (provider, config) = ProviderFor(s);
             var text = Situation(table, seat, hand, record);
             if (retryReason is not null) { text += "\n\nYour last answer could not be played: " + retryReason + " Choose again from the legal moves."; }
             var request = new ProviderRequest(s.Model ?? "", Rules, new List<ChatMessage> { new() { Role = "user", Parts = { ChatPart.TextPart(text) }, At = DateTimeOffset.UtcNow } },
                 new[] { ActTool }, s.Thinking, AgentFor(config, table.Id, seat));
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel);
-            timeout.CancelAfter(TimeSpan.FromSeconds(table.TurnSeconds));
-            var r = await AskAsync(provider, request, timeout.Token);
+            var r = await WithinAsync(provider, request, limit, cancel);
             var f = FieldsOf(r.ToolInput, r.Text.ToString());
             var reasoning = (r.Thinking.Length > 0 ? r.Thinking.ToString() : r.ToolInput is not null ? r.Text.ToString() : "").Trim();
             var move = MoveOf(f);
-            return new Decision(move, Clip(f?["say"]?.ToString(), SayMax), reasoning, r.In, r.Out, clock.Elapsed.TotalSeconds,
+            d = new Decision(move, Clip(f?["say"]?.ToString(), SayMax), reasoning, r.In, r.Out, clock.Elapsed.TotalSeconds,
                 move is null ? "The answer held no move (" + Clip(r.Text.ToString(), 120) + ")." : null);
         }
-        catch (OperationCanceledException) when (!cancel.IsCancellationRequested) {
-            return new Decision(null, null, "", 0, 0, clock.Elapsed.TotalSeconds, "No move within " + table.TurnSeconds + " seconds.");
+        catch (Exception ex) when (ex is TimeoutException || (ex is OperationCanceledException && !cancel.IsCancellationRequested)) {
+            d = new Decision(null, null, "", 0, 0, clock.Elapsed.TotalSeconds, TimedOut);
         }
-        catch (Exception ex) when (ex is ProviderException or HttpRequestException or InvalidOperationException) {
-            return new Decision(null, null, "", 0, 0, clock.Elapsed.TotalSeconds, ex.Message);
+        catch (Exception ex) when (!cancel.IsCancellationRequested && ex is not OperationCanceledException) {
+            d = new Decision(null, null, "", 0, 0, clock.Elapsed.TotalSeconds, ex.Message);
         }
+        _log.LogInformation("Poker table {Table} seat {Seat} ({Model}): {Seconds:0.0}s, {Outcome}", table.Id, seat, s.Model, d.Seconds, d.Error ?? d.Move?.Kind ?? "no move");
+        return d;
     }
 
     private static string Words(PokerAction a, PokerTable table) {

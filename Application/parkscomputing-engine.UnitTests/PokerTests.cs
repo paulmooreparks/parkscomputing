@@ -204,6 +204,15 @@ public class PokerTests {
     }
 
     [TestMethod]
+    public async System.Threading.Tasks.Task AModelThatIgnoresItsTimeLimitDoesNotHoldTheTable() {
+        var never = new System.Threading.Tasks.TaskCompletionSource<int>();
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        await Assert.ThrowsExceptionAsync<TimeoutException>(() => PokerAgent.Within(_ => never.Task, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100), default));
+        Assert.IsTrue(clock.ElapsedMilliseconds < 2000, "the table moved on in " + clock.ElapsedMilliseconds + "ms");
+        Assert.AreEqual(7, await PokerAgent.Within(_ => System.Threading.Tasks.Task.FromResult(7), TimeSpan.FromSeconds(5), TimeSpan.Zero, default));
+    }
+
+    [TestMethod]
     public void RandomLegalPlayNeverMakesOrLosesAChip() {
         var rnd = new Random(7);
         for (var game = 0; game < 2000; game++) {
