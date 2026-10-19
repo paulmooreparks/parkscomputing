@@ -201,6 +201,9 @@ public class PokerTests {
         var text = "I'll call here.\n{\"action\": \"call\"}";
         Assert.AreEqual(PokerMove.Call, PokerAgent.MoveOf(PokerAgent.FieldsOf(null, text)));
         Assert.IsNull(PokerAgent.MoveOf(PokerAgent.FieldsOf(null, "I think I'll fold.")), "words alone are not a move");
+        Assert.AreEqual("Kings on the flop.", PokerAgent.Spoken("\"Kings on the flop.\""));
+        Assert.AreEqual("Don't blink.", PokerAgent.Spoken("“Don't blink.”"));
+        Assert.IsNull(PokerAgent.Spoken("  \"\" "));
     }
 
     [TestMethod]

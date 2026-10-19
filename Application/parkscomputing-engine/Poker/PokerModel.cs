@@ -28,6 +28,11 @@ public sealed class PokerSeat {
     /// that declined is not asked again.</summary>
     [JsonPropertyName("introduced")] public bool Introduced { get; set; }
     [JsonPropertyName("stack")] public int Stack { get; set; }
+    /// <summary>The seat has left the table, taking its stack with it, and
+    /// is dealt no more hands.</summary>
+    [JsonPropertyName("left")] public bool Left { get; set; }
+    /// <summary>The hands the seat was dealt.</summary>
+    [JsonPropertyName("hands")] public int Hands { get; set; }
     [JsonPropertyName("tokensIn")] public long TokensIn { get; set; }
     [JsonPropertyName("tokensOut")] public long TokensOut { get; set; }
     [JsonPropertyName("moves")] public int Moves { get; set; }

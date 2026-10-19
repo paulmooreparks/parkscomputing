@@ -52,6 +52,8 @@ public sealed class PokerRunner {
         public DateTimeOffset ActingSince;
         public TaskCompletionSource<PokerMove>? PersonMove;
         public bool PauseAfterHand;
+        public bool EndAfterHand;
+        public readonly HashSet<int> Leaving = new();
         public string? Notice;
         public string? Introducing;
     }
@@ -133,6 +135,55 @@ public sealed class PokerRunner {
         Publish(live, "changed");
     }
 
+    /// <summary>Ends the game for good when the hand in progress ends, or
+    /// now when no hand is; on false, takes that back.</summary>
+    public async Task<string?> EndAsync(string home, string id, bool end) {
+        var live = LiveOf(home, id);
+        if (live is null) { return "There is no such table."; }
+        if (live.Table.Status == "finished") { return end ? null : "The game is already over."; }
+        if (live.Loop is { IsCompleted: false } && live.Hand is { Over: false }) { live.EndAfterHand = end; }
+        else if (end) {
+            live.Cancel?.Cancel();
+            Finish(live.Table, live, "The game is over.");
+            await _store.SaveAsync(home, live.Table);
+        }
+        Publish(live, "changed");
+        return null;
+    }
+
+    /// <summary>A seat leaves the table, taking its chips, when the hand in
+    /// progress ends, or now when no hand is; on false, it stays.</summary>
+    public async Task<string?> LeaveAsync(string home, string id, int seat, bool leave) {
+        var live = LiveOf(home, id);
+        if (live is null) { return "There is no such table."; }
+        var t = live.Table;
+        if (seat < 1 || seat > t.Seats.Count) { return "There is no such seat."; }
+        if (t.At(seat).Left) { return leave ? null : "That player has already left."; }
+        lock (live.Gate) { if (leave) { live.Leaving.Add(seat); } else { live.Leaving.Remove(seat); } }
+        if (!(live.Loop is { IsCompleted: false } && live.Hand is { Over: false })) {
+            ApplyLeaving(live);
+            await _store.SaveAsync(home, t);
+        }
+        Publish(live, "changed");
+        return null;
+    }
+
+    private static void ApplyLeaving(Live live) {
+        var t = live.Table;
+        lock (live.Gate) {
+            foreach (var n in live.Leaving) { t.At(n).Left = true; }
+            live.Leaving.Clear();
+        }
+        if (t.Status != "finished" && t.Seats.Count(s => !s.Left && s.Stack > 0) < 2) { Finish(t, live, null); }
+    }
+
+    /// <summary>The game is over: says who finished on top.</summary>
+    private static void Finish(PokerTable t, Live live, string? why) {
+        t.Status = "finished";
+        var top = t.Seats.Where(s => !s.Left).OrderByDescending(s => s.Stack).FirstOrDefault() ?? t.Seats.OrderByDescending(s => s.Stack).First();
+        live.Notice = (why is null ? "" : why + " ") + top.Label + " finished on top with " + top.Stack.ToString("N0") + ".";
+    }
+
     public async Task<bool> DeleteAsync(string home, string id) {
         if (_live.TryRemove((home, id), out var live)) { live.Cancel?.Cancel(); live.PersonMove?.TrySetCanceled(); }
         await Task.Yield();
@@ -171,14 +222,13 @@ public sealed class PokerRunner {
         try {
             await IntroduceAsync(home, live, cancel);
             while (!cancel.IsCancellationRequested && table.Status == "playing") {
-                var active = table.Seats.Select((s, i) => (Seat: i + 1, s.Stack)).Where(s => s.Stack > 0).ToList();
-                if (active.Count < 2) {
-                    table.Status = "finished";
-                    live.Notice = table.At(active.Single().Seat).Label + " has all the chips.";
-                    break;
-                }
+                ApplyLeaving(live);
+                if (table.Status == "finished") { break; }
+                var active = table.Seats.Select((s, i) => (Seat: i + 1, s.Stack, s.Left)).Where(s => s.Stack > 0 && !s.Left).Select(s => (s.Seat, s.Stack)).ToList();
                 if (!Watched(live)) { table.Status = "paused"; live.Notice = "Paused because nobody was watching."; break; }
                 await PlayHandAsync(home, live, active, cancel);
+                ApplyLeaving(live);
+                if (live.EndAfterHand) { live.EndAfterHand = false; Finish(table, live, "The game is over."); break; }
                 if (live.PauseAfterHand) { table.Status = "paused"; live.PauseAfterHand = false; break; }
             }
         }
@@ -271,7 +321,7 @@ public sealed class PokerRunner {
         record.Board = string.Join(" ", hand.Board);
         record.Pots = hand.Results.Select(r => new PokerPot { Amount = r.Amount, Winners = r.Winners.ToList(), Hand = r.Hand }).ToList();
         if (hand.Showdown) { record.Shown = hand.Players.Where(p => !p.Folded).Select(p => p.Seat).ToList(); }
-        lock (live.Gate) { foreach (var p in hand.Players) { table.At(p.Seat).Stack = p.Stack; record.Stacks[p.Seat] = p.Stack; } table.History.Add(record); }
+        lock (live.Gate) { foreach (var p in hand.Players) { table.At(p.Seat).Stack = p.Stack; table.At(p.Seat).Hands++; record.Stacks[p.Seat] = p.Stack; } table.History.Add(record); }
         table.Button = button; table.Hands = record.Number;
         await _store.SaveAsync(home, table);
         Publish(live, "changed");
@@ -339,7 +389,8 @@ public sealed class PokerRunner {
                 ["seat"] = n, ["kind"] = s.Kind, ["name"] = s.Label, ["bio"] = s.Bio, ["provider"] = s.Provider, ["model"] = s.Model, ["thinking"] = s.Thinking,
                 ["stack"] = p?.Stack ?? s.Stack, ["out"] = (p?.Stack ?? s.Stack) == 0 && p is null,
                 ["tokensIn"] = s.TokensIn, ["tokensOut"] = s.TokensOut, ["moves"] = s.Moves, ["faults"] = s.Faults,
-                ["averageSeconds"] = s.Moves > 0 ? Math.Round(s.Seconds / s.Moves, 1) : null, ["lastError"] = s.LastError
+                ["averageSeconds"] = s.Moves > 0 ? Math.Round(s.Seconds / s.Moves, 1) : null, ["lastError"] = s.LastError,
+                ["left"] = s.Left, ["leaving"] = live.Leaving.Contains(n), ["hands"] = s.Hands, ["net"] = (p?.Stack ?? s.Stack) - t.StartingStack
             };
             if (p is not null && hand is not null) {
                 o["inHand"] = true; o["folded"] = p.Folded; o["allIn"] = p.AllIn; o["bet"] = p.Street; o["total"] = p.Total;
@@ -355,7 +406,7 @@ public sealed class PokerRunner {
         }
         var view = new JsonObject {
             ["id"] = t.Id, ["title"] = t.Title, ["status"] = t.Status, ["notice"] = live.Notice ?? live.Introducing,
-            ["running"] = live.Loop is { IsCompleted: false }, ["pausing"] = live.PauseAfterHand,
+            ["running"] = live.Loop is { IsCompleted: false }, ["pausing"] = live.PauseAfterHand, ["ending"] = live.EndAfterHand,
             ["hands"] = t.Hands, ["startingStack"] = t.StartingStack, ["smallBlind"] = t.SmallBlind, ["bigBlind"] = t.BigBlind,
             ["paceMs"] = t.PaceMs, ["turnSeconds"] = t.TurnSeconds, ["reveal"] = t.Reveal, ["revealing"] = reveal, ["hasPerson"] = t.HasPerson,
             ["seats"] = seats

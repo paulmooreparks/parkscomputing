@@ -31,6 +31,8 @@ namespace ParksComputing.Engine.Poker;
 ///   DELETE tables/{id}
 ///   POST   tables/{id}/play        starts or resumes play
 ///   POST   tables/{id}/pause       pauses when the hand in progress ends
+///   POST   tables/{id}/end         { on } ends the game for good when the hand in progress ends
+///   POST   tables/{id}/seats/{n}/leave  { on } the seat leaves with its chips when the hand ends
 ///   POST   tables/{id}/move        { kind: fold|check|call|raise, to? } the person's move
 ///   GET    tables/{id}/events      a server-sent event at every change
 /// </summary>
@@ -156,6 +158,26 @@ public sealed class PokerController : ControllerBase {
         if (await HomeAsync() is not { } home || _runner.Table(home, id) is null) { return NotFound(); }
         await _runner.PauseAsync(home, id);
         return Ok(_runner.View(home, id));
+    }
+
+    public sealed record Choice(bool? On);
+
+    /// <summary>{ on: true } ends the game when the hand in progress ends
+    /// (or now, between hands); { on: false } takes that back.</summary>
+    [HttpPost("tables/{id}/end")]
+    public async Task<IActionResult> End(string id, [FromBody] Choice body) {
+        if (await HomeAsync() is not { } home || _runner.Table(home, id) is null) { return NotFound(); }
+        var why = await _runner.EndAsync(home, id, body.On != false);
+        return why is null ? Ok(_runner.View(home, id)) : Conflict(new { error = why });
+    }
+
+    /// <summary>{ on: true } a seat leaves with its chips when the hand in
+    /// progress ends (or now, between hands); { on: false } it stays.</summary>
+    [HttpPost("tables/{id}/seats/{seat:int}/leave")]
+    public async Task<IActionResult> Leave(string id, int seat, [FromBody] Choice body) {
+        if (await HomeAsync() is not { } home || _runner.Table(home, id) is null) { return NotFound(); }
+        var why = await _runner.LeaveAsync(home, id, seat, body.On != false);
+        return why is null ? Ok(_runner.View(home, id)) : Conflict(new { error = why });
     }
 
     public sealed record MoveRequest(string? Kind, int? To);

@@ -118,6 +118,13 @@ public sealed class PokerAgent {
         return s.Length > max ? s[..max].TrimEnd() + "…" : s;
     }
 
+    /// <summary>A line said at the table, without the quotation marks some
+    /// models wrap it in, since the table draws its own.</summary>
+    public static string? Spoken(string? s) {
+        var t = (s ?? "").Trim().Trim('"', '“', '”', '\'').Trim();
+        return Clip(t, SayMax);
+    }
+
     /// <summary>Asks a model seat for its name and bio (P9).</summary>
     public async Task<Intro> IntroduceAsync(PokerTable table, int seat, CancellationToken cancel) {
         var s = table.At(seat);
@@ -179,7 +186,7 @@ public sealed class PokerAgent {
             var f = FieldsOf(r.ToolInput, r.Text.ToString());
             var reasoning = (r.Thinking.Length > 0 ? r.Thinking.ToString() : r.ToolInput is not null ? r.Text.ToString() : "").Trim();
             var move = MoveOf(f);
-            d = new Decision(move, Clip(f?["say"]?.ToString(), SayMax), reasoning, r.In, r.Out, clock.Elapsed.TotalSeconds,
+            d = new Decision(move, Spoken(f?["say"]?.ToString()), reasoning, r.In, r.Out, clock.Elapsed.TotalSeconds,
                 move is null ? "The answer held no move (" + Clip(r.Text.ToString(), 120) + ")." : null);
         }
         catch (Exception ex) when (ex is TimeoutException || (ex is OperationCanceledException && !cancel.IsCancellationRequested)) {
