@@ -26,7 +26,9 @@ public sealed record Citation(JsonObject Value) : ProviderEvent;
 /// <summary>A block the provider ran itself (its web search's call and
 /// result), whole, as it must go back in later turns.</summary>
 public sealed record ServerBlock(JsonObject Block) : ProviderEvent;
-public sealed record UsageReport(int? Input, int? Output) : ProviderEvent;
+/// <summary>Tokens used: Input is every input token, CachedInput those of
+/// them read from the provider's cache.</summary>
+public sealed record UsageReport(int? Input, int? Output, int? CachedInput = null) : ProviderEvent;
 public sealed record Finished(string StopReason) : ProviderEvent;
 /// <summary>A tool an agent provider (Codex) ran itself: first seen as it
 /// starts (Status in_progress), then as it ends (completed or failed,
@@ -49,7 +51,11 @@ public sealed record ToolSpec(string Name, string Description, JsonNode Schema);
 /// conversation has the site's tools.</summary>
 public sealed record AgentContext(string Cwd, string? ThreadId, Action<string> ThreadStarted, string? McpUrl, string? McpSecret);
 
-public sealed record ProviderRequest(string Model, string? System, IReadOnlyList<ChatMessage> Messages, IReadOnlyList<ToolSpec> Tools, bool Thinking, AgentContext? Agent = null);
+/// <summary>A request to a provider. Cache asks a provider that caches
+/// only on request (Anthropic) to cache the prompt as it grows, which
+/// pays when the same prefix comes back, as a conversation's does each
+/// turn, and costs extra when it never does.</summary>
+public sealed record ProviderRequest(string Model, string? System, IReadOnlyList<ChatMessage> Messages, IReadOnlyList<ToolSpec> Tools, bool Thinking, AgentContext? Agent = null, bool Cache = false);
 
 /// <summary>A refusal or failure the provider gave, said as it gave it.</summary>
 public sealed class ProviderException : Exception {
@@ -197,7 +203,7 @@ public sealed class OpenAiProvider : IChatProvider {
             try { node = JsonNode.Parse(data); } catch (JsonException) { continue; }
             if (node?["error"] is JsonNode err) { throw new ProviderException(err["message"]?.GetValue<string>() ?? err.ToJsonString()); }
             if (node?["usage"] is JsonObject usage) {
-                yield return new UsageReport(usage["prompt_tokens"]?.GetValue<int>(), usage["completion_tokens"]?.GetValue<int>());
+                yield return new UsageReport(usage["prompt_tokens"]?.GetValue<int>(), usage["completion_tokens"]?.GetValue<int>(), usage["prompt_tokens_details"]?["cached_tokens"]?.GetValue<int>());
             }
             var choice = node?["choices"]?.AsArray().FirstOrDefault();
             if (choice is null) { continue; }
@@ -312,6 +318,11 @@ public sealed class AnthropicProvider : IChatProvider {
            when the question needs it, and cites what it found. */
         if (webSearchMaxUses is > 0) { tools.Add(new JsonObject { ["type"] = "web_search_20250305", ["name"] = "web_search", ["max_uses"] = webSearchMaxUses }); }
         if (tools.Count > 0) { body["tools"] = tools; }
+        /* Automatic prompt caching: the API puts the breakpoint on the last
+           block and moves it on as the conversation grows, so each turn
+           reads the turns before it from the cache, at a twentieth of the
+           input price on the current models. */
+        if (request.Cache) { body["cache_control"] = new JsonObject { ["type"] = "ephemeral" }; }
         return body;
     }
 
@@ -328,14 +339,21 @@ public sealed class AnthropicProvider : IChatProvider {
     /// <summary>The events in a Messages API stream.</summary>
     public static async IAsyncEnumerable<ProviderEvent> Parse(Stream body, [EnumeratorCancellation] CancellationToken cancel) {
         var blocks = new Dictionary<int, (string Type, string? Id, string? Name, StringBuilder Json)>();
-        string stop = "end_turn"; int? input = null;
+        string stop = "end_turn"; int? input = null, cached = null;
         await foreach (var (_, data) in ChatProviders.Sse(body, cancel)) {
             JsonNode? node;
             try { node = JsonNode.Parse(data); } catch (JsonException) { continue; }
             switch (node?["type"]?.GetValue<string>()) {
-                case "message_start":
-                    input = node["message"]?["usage"]?["input_tokens"]?.GetValue<int>();
+                case "message_start": {
+                    /* input_tokens counts only what came after the last
+                       cache breakpoint; what was written to or read from
+                       the cache is counted apart. */
+                    var u = node["message"]?["usage"];
+                    var written = u?["cache_creation_input_tokens"]?.GetValue<int>() ?? 0;
+                    cached = u?["cache_read_input_tokens"]?.GetValue<int>();
+                    if (u?["input_tokens"]?.GetValue<int>() is { } fresh) { input = fresh + written + (cached ?? 0); }
                     break;
+                }
                 case "content_block_start": {
                     var i = node["index"]!.GetValue<int>(); var b = node["content_block"];
                     var type = b?["type"]?.GetValue<string>() ?? "";
@@ -369,7 +387,7 @@ public sealed class AnthropicProvider : IChatProvider {
                 }
                 case "message_delta":
                     if (node["delta"]?["stop_reason"]?.GetValue<string>() is { Length: > 0 } s) { stop = s; }
-                    yield return new UsageReport(input, node["usage"]?["output_tokens"]?.GetValue<int>());
+                    yield return new UsageReport(input, node["usage"]?["output_tokens"]?.GetValue<int>(), cached);
                     break;
                 case "error":
                     throw new ProviderException(node["error"]?["message"]?.GetValue<string>() ?? "the provider stopped with an error");

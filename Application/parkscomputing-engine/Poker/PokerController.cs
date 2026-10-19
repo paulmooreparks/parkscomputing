@@ -31,6 +31,7 @@ namespace ParksComputing.Engine.Poker;
 ///   DELETE tables/{id}
 ///   POST   tables/{id}/play        starts or resumes play
 ///   POST   tables/{id}/pause       pauses when the hand in progress ends
+///   POST   tables/{id}/seats       { kind, provider?, model?, thinking?, name?, bio? } a player joins at the next hand
 ///   POST   tables/{id}/end         { on } ends the game for good when the hand in progress ends
 ///   POST   tables/{id}/seats/{n}/leave  { on } the seat leaves with its chips when the hand ends
 ///   POST   tables/{id}/move        { kind: fold|check|call|raise, to? } the person's move
@@ -92,7 +93,6 @@ public sealed class PokerController : ControllerBase {
         var seats = body.Seats ?? new List<SeatRequest>();
         if (seats.Count < 2 || seats.Count > PokerTable.MaxSeats) { return BadRequest(new { error = "A table has two to six seats." }); }
         if (seats.Count(s => s.Kind == "person") > 1) { return BadRequest(new { error = "Only you can sit at your table, so at most one seat is a person." }); }
-        var (config, _) = _settings.Read();
         var stack = Math.Clamp(body.StartingStack ?? 1000, 100, 1_000_000);
         var bb = Math.Clamp(body.BigBlind ?? Math.Max(2, stack / 50), 2, stack / 2);
         var sb = Math.Clamp(body.SmallBlind ?? bb / 2, 1, bb);
@@ -103,20 +103,39 @@ public sealed class PokerController : ControllerBase {
             PaceMs = Math.Clamp(body.PaceMs ?? 1500, 0, 30_000), TurnSeconds = Math.Clamp(body.TurnSeconds ?? 120, 15, 900)
         };
         foreach (var s in seats) {
-            if (s.Kind == "person") {
-                table.Seats.Add(new PokerSeat { Kind = "person", Name = Words(s.Name, 24) ?? "You", Bio = Words(s.Bio, 400), Stack = stack, Introduced = true });
-                continue;
-            }
-            var p = config.Find(s.Provider);
-            if (p is null) { return BadRequest(new { error = "There is no provider called " + (s.Provider ?? "(none)") + "." }); }
-            if (string.IsNullOrWhiteSpace(s.Model)) { return BadRequest(new { error = "Each model seat needs a model." }); }
-            table.Seats.Add(new PokerSeat {
-                Kind = "model", Provider = p.Id, Model = s.Model!.Trim(), Thinking = s.Thinking ?? false,
-                Name = Words(s.Name, 24) ?? "", Bio = Words(s.Bio, 400), Stack = stack
-            });
+            var (seat, why) = SeatFrom(s, stack);
+            if (seat is null) { return BadRequest(new { error = why }); }
+            table.Seats.Add(seat);
         }
         await _runner.CreateAsync(home, table);
         return Ok(_runner.View(home, table.Id));
+    }
+
+    /// <summary>A seat as the reader asked for it, with the chips it sits
+    /// down with, or why it cannot be.</summary>
+    private (PokerSeat? Seat, string? Why) SeatFrom(SeatRequest s, int stack) {
+        if (s.Kind == "person") {
+            return (new PokerSeat { Kind = "person", Name = Words(s.Name, 24) ?? "You", Bio = Words(s.Bio, 400), Stack = stack, BuyIn = stack, Introduced = true }, null);
+        }
+        var (config, _) = _settings.Read();
+        var p = config.Find(s.Provider);
+        if (p is null) { return (null, "There is no provider called " + (s.Provider ?? "(none)") + "."); }
+        if (string.IsNullOrWhiteSpace(s.Model)) { return (null, "Each model seat needs a model."); }
+        return (new PokerSeat {
+            Kind = "model", Provider = p.Id, Model = s.Model!.Trim(), Thinking = s.Thinking ?? false,
+            Name = Words(s.Name, 24) ?? "", Bio = Words(s.Bio, 400), Stack = stack, BuyIn = stack
+        }, null);
+    }
+
+    /// <summary>A new player, with the table's starting chips: seated now
+    /// between hands, or when the hand in progress ends.</summary>
+    [HttpPost("tables/{id}/seats")]
+    public async Task<IActionResult> AddSeat(string id, [FromBody] SeatRequest body) {
+        if (await HomeAsync() is not { } home || _runner.Table(home, id) is not { } table) { return NotFound(); }
+        var (seat, why) = SeatFrom(body, table.StartingStack);
+        if (seat is null) { return BadRequest(new { error = why }); }
+        why = await _runner.JoinAsync(home, id, seat);
+        return why is null ? Ok(_runner.View(home, id)) : Conflict(new { error = why });
     }
 
     [HttpGet("tables/{id}")]

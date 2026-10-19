@@ -25,6 +25,21 @@ public class ChatTests {
     private static Stream Body(string text) => new MemoryStream(Encoding.UTF8.GetBytes(text));
 
     [TestMethod]
+    public async Task AChatAsksClaudeToCacheAndCountsWhatCameFromTheCache() {
+        var messages = new List<ChatMessage> { new() { Role = "user", Parts = { ChatPart.TextPart("Hello") } } };
+        Assert.AreEqual("ephemeral", AnthropicProvider.Body(new ProviderRequest("m", null, messages, Array.Empty<ToolSpec>(), false, null, Cache: true), null, null)["cache_control"]?["type"]?.GetValue<string>());
+        Assert.IsNull(AnthropicProvider.Body(new ProviderRequest("m", null, messages, Array.Empty<ToolSpec>(), false), null, null)["cache_control"], "only when asked");
+        var sse = string.Join("\n\n", new[] {
+            "data: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":20,\"cache_creation_input_tokens\":100,\"cache_read_input_tokens\":3000}}}",
+            "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":7}}"
+        }) + "\n\n";
+        var usage = (await Read(AnthropicProvider.Parse(Body(sse), default))).OfType<UsageReport>().Single();
+        Assert.AreEqual(3120, usage.Input, "every input token, cached or not");
+        Assert.AreEqual(3000, usage.CachedInput);
+        Assert.AreEqual(7, usage.Output);
+    }
+
+    [TestMethod]
     public async Task AnOpenAiStreamGivesTextThinkingToolsAndUsage() {
         var sse = string.Join("\n\n", new[] {
             "data: {\"choices\":[{\"delta\":{\"reasoning\":\"Let me \"}}]}",

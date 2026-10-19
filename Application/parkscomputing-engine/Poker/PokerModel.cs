@@ -31,6 +31,10 @@ public sealed class PokerSeat {
     /// <summary>The seat has left the table, taking its stack with it, and
     /// is dealt no more hands.</summary>
     [JsonPropertyName("left")] public bool Left { get; set; }
+    /// <summary>The chips the seat sat down with, from which its gain or
+    /// loss is counted; 0 in tables saved before players could join late,
+    /// meaning the table's starting stack.</summary>
+    [JsonPropertyName("buyIn")] public int BuyIn { get; set; }
     /// <summary>The hands the seat was dealt.</summary>
     [JsonPropertyName("hands")] public int Hands { get; set; }
     [JsonPropertyName("tokensIn")] public long TokensIn { get; set; }
@@ -84,6 +88,8 @@ public sealed class PokerHandRecord {
 
 public sealed class PokerTable {
     public const int MaxSeats = 6;
+    /// <summary>Every player a table has seated, those who left included.</summary>
+    public const int MaxSeatsEver = 24;
     public const int HistoryKept = 200;
 
     [JsonPropertyName("id")] public string Id { get; set; } = "";

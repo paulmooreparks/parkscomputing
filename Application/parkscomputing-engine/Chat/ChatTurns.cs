@@ -269,7 +269,7 @@ public sealed class ChatTurns {
         using var cancel = new CancellationTokenSource();
         lock (live.Gate) { live.Cancel = cancel; }
         var clock = Stopwatch.StartNew();
-        int inputTokens = 0, outputTokens = 0; string? turnError = null; string stopReason = "end_turn";
+        int inputTokens = 0, outputTokens = 0, cachedTokens = 0; string? turnError = null; string stopReason = "end_turn";
         ChatTools.Session? tools = null;
         AgentContext? agent = null;
         var isAgent = string.Equals(providerConfig.Kind, "codex", StringComparison.OrdinalIgnoreCase);
@@ -316,7 +316,7 @@ public sealed class ChatTurns {
                 lock (live.Gate) { live.Partial = reply; }
                 Publish(live, new JsonObject { ["type"] = "message_start", ["provider"] = providerConfig.Id, ["model"] = model });
                 try {
-                    await foreach (var e in provider.StreamAsync(new ProviderRequest(model, system, ForModel(home, conv), specs, conv.Thinking, agent), cancel.Token)) {
+                    await foreach (var e in provider.StreamAsync(new ProviderRequest(model, system, ForModel(home, conv), specs, conv.Thinking, agent, Cache: true), cancel.Token)) {
                         switch (e) {
                             case AgentTool at: {
                                 /* A step the agent ran itself: a row on the page, and a
@@ -393,6 +393,7 @@ public sealed class ChatTurns {
                             case UsageReport u:
                                 if (u.Input is { } i) { inputTokens += i; }
                                 if (u.Output is { } o) { outputTokens += o; }
+                                if (u.CachedInput is { } c2) { cachedTokens += c2; }
                                 break;
                             case Finished f:
                                 reply.Stop = f.StopReason;
@@ -428,7 +429,7 @@ public sealed class ChatTurns {
         }
         Publish(live, new JsonObject {
             ["type"] = "turn", ["stopReason"] = stopReason, ["seconds"] = Math.Round(clock.Elapsed.TotalSeconds, 1),
-            ["usage"] = new JsonObject { ["input"] = inputTokens, ["output"] = outputTokens }, ["error"] = turnError
+            ["usage"] = new JsonObject { ["input"] = inputTokens, ["output"] = outputTokens, ["cached"] = cachedTokens }, ["error"] = turnError
         });
     }
 

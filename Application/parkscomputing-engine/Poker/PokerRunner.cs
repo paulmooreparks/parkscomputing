@@ -54,6 +54,8 @@ public sealed class PokerRunner {
         public bool PauseAfterHand;
         public bool EndAfterHand;
         public readonly HashSet<int> Leaving = new();
+        /// <summary>Players to seat when the hand in progress ends.</summary>
+        public readonly List<PokerSeat> Joining = new();
         public string? Notice;
         public string? Introducing;
     }
@@ -168,9 +170,35 @@ public sealed class PokerRunner {
         return null;
     }
 
+    /// <summary>A new player, seated now between hands, or when the hand
+    /// in progress ends. Null, or why not.</summary>
+    public async Task<string?> JoinAsync(string home, string id, PokerSeat seat) {
+        var live = LiveOf(home, id);
+        if (live is null) { return "There is no such table."; }
+        var t = live.Table;
+        if (t.Status == "finished") { return "The game is over."; }
+        lock (live.Gate) {
+            var seated = t.Seats.Where(s => !s.Left).Concat(live.Joining).ToList();
+            if (seated.Count >= PokerTable.MaxSeats) { return "The table has six players already."; }
+            if (seat.IsPerson && seated.Any(s => s.IsPerson)) { return "You are already at the table."; }
+            if (t.Seats.Count + live.Joining.Count >= PokerTable.MaxSeatsEver) { return "This table has had as many players as it can keep."; }
+            live.Joining.Add(seat);
+        }
+        if (!(live.Loop is { IsCompleted: false } && live.Hand is { Over: false })) {
+            ApplyLeaving(live);
+            await _store.SaveAsync(home, t);
+        }
+        Publish(live, "changed");
+        return null;
+    }
+
+    /// <summary>Between hands: seats the players waiting to join, then lets
+    /// go of those leaving.</summary>
     private static void ApplyLeaving(Live live) {
         var t = live.Table;
         lock (live.Gate) {
+            t.Seats.AddRange(live.Joining);
+            live.Joining.Clear();
             foreach (var n in live.Leaving) { t.At(n).Left = true; }
             live.Leaving.Clear();
         }
@@ -224,6 +252,8 @@ public sealed class PokerRunner {
             while (!cancel.IsCancellationRequested && table.Status == "playing") {
                 ApplyLeaving(live);
                 if (table.Status == "finished") { break; }
+                /* A model that has just joined introduces itself before its first hand. */
+                await IntroduceAsync(home, live, cancel);
                 var active = table.Seats.Select((s, i) => (Seat: i + 1, s.Stack, s.Left)).Where(s => s.Stack > 0 && !s.Left).Select(s => (s.Seat, s.Stack)).ToList();
                 if (!Watched(live)) { table.Status = "paused"; live.Notice = "Paused because nobody was watching."; break; }
                 await PlayHandAsync(home, live, active, cancel);
@@ -390,7 +420,7 @@ public sealed class PokerRunner {
                 ["stack"] = p?.Stack ?? s.Stack, ["out"] = (p?.Stack ?? s.Stack) == 0 && p is null,
                 ["tokensIn"] = s.TokensIn, ["tokensOut"] = s.TokensOut, ["moves"] = s.Moves, ["faults"] = s.Faults,
                 ["averageSeconds"] = s.Moves > 0 ? Math.Round(s.Seconds / s.Moves, 1) : null, ["lastError"] = s.LastError,
-                ["left"] = s.Left, ["leaving"] = live.Leaving.Contains(n), ["hands"] = s.Hands, ["net"] = (p?.Stack ?? s.Stack) - t.StartingStack
+                ["left"] = s.Left, ["leaving"] = live.Leaving.Contains(n), ["hands"] = s.Hands, ["net"] = (p?.Stack ?? s.Stack) - (s.BuyIn > 0 ? s.BuyIn : t.StartingStack)
             };
             if (p is not null && hand is not null) {
                 o["inHand"] = true; o["folded"] = p.Folded; o["allIn"] = p.AllIn; o["bet"] = p.Street; o["total"] = p.Total;
@@ -407,6 +437,9 @@ public sealed class PokerRunner {
         var view = new JsonObject {
             ["id"] = t.Id, ["title"] = t.Title, ["status"] = t.Status, ["notice"] = live.Notice ?? live.Introducing,
             ["running"] = live.Loop is { IsCompleted: false }, ["pausing"] = live.PauseAfterHand, ["ending"] = live.EndAfterHand,
+            ["joining"] = new JsonArray(live.Joining.Select(j => (JsonNode)new JsonObject { ["name"] = j.Label, ["kind"] = j.Kind, ["model"] = j.Model }).ToArray()),
+            ["canAdd"] = t.Status != "finished" && t.Seats.Count(s => !s.Left) + live.Joining.Count < PokerTable.MaxSeats && t.Seats.Count + live.Joining.Count < PokerTable.MaxSeatsEver,
+            ["personSeated"] = t.Seats.Any(s => s.IsPerson && !s.Left) || live.Joining.Any(s => s.IsPerson),
             ["hands"] = t.Hands, ["startingStack"] = t.StartingStack, ["smallBlind"] = t.SmallBlind, ["bigBlind"] = t.BigBlind,
             ["paceMs"] = t.PaceMs, ["turnSeconds"] = t.TurnSeconds, ["reveal"] = t.Reveal, ["revealing"] = reveal, ["hasPerson"] = t.HasPerson,
             ["seats"] = seats
