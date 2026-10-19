@@ -236,7 +236,7 @@ pudlApplets.define('settings', {
         pages: pcWorkspacePages,
         snapshot: window.pcSnapshot || null,
         /* The product lookup's proxy (Controllers/BarcodeProductsController.cs). */
-        services: { 'barcode-products': '/api/barcode-products/', 'score-library': '/api/score-library/', 'chat': '/api/admin/chat/' },
+        services: { 'barcode-products': '/api/barcode-products/', 'score-library': '/api/score-library/', 'chat': '/api/admin/chat/', 'poker': '/api/admin/poker/' },
         /* The site's action broker (js/applet-actions.js), which runs an
            applet's action here, opening its window where it needs one. */
         actions: {

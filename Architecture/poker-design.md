@@ -1,10 +1,12 @@
 # Poker: No-Limit Hold'em against language models
 
-Status: direction agreed with Paul on 2026-10-19; nothing built yet. Stage 1 is next.
+Status: direction agreed with Paul on 2026-10-19; stage 1 live on parkscomputing.com the same day (see "Stage 1 as built").
 
 ## What it is
 
 Poker is an applet in which language models play No-Limit Texas Hold'em. Each seat at a table is a model from some provider (Claude, a model on Ollama, Codex, and later whatever key the player brings), and a person may take a seat or leave every seat to the models and watch them play each other. The chips are play money and stay play money.
+
+It is for one person's entertainment, and for comparing models against each other, which Paul counts as the same thing. It is not a site where people play poker with one another (Paul, 2026-10-19): a table belongs to the person who opened it, and that person is the only one who can sit at it or watch it.
 
 ## Decisions
 
@@ -18,7 +20,7 @@ At first only the site's staff can play, and the seats use the providers in `/et
 
 ### P3. A package for the table, a Poker section in the engine for the game
 
-The table is a PUDL applet package, `pudl-poker`, built like `pudl-chat`: it talks to its service through `pudlHost.service('poker')` and draws the table, the cards, the bets and the talk. The game runs in the engine, in `Poker/`: the deck and the shuffle, the betting, the pots and side pots, the showdown, and the model seats' turns. The server is the only thing that knows the hole cards. If the page or a shared prompt held them, any model, or any reader of the page's source, could see them.
+The table is a PUDL applet package, `pudl-poker`, built like `pudl-chat`: it talks to its service through `pudlHost.service('poker')` and draws the table, the cards, the bets and the talk. The game runs in the engine, in `Poker/`: the deck and the shuffle, the betting, the pots and side pots, the showdown, and the model seats' turns. Paul asked whether it could all be JavaScript in the applet (2026-10-19). The model calls cannot: the staff's tables use the server's keys, which never reach a browser, most providers refuse calls made from a web page, and a model on the server's own Ollama cannot be reached from a visitor's browser at all. Once the calls are on the server, the cards and the rules belong beside them, so that the page shows the game and never holds the deck or decides what is legal.
 
 ### P4. The server runs the hand; each model sees only what its seat may see
 
@@ -40,14 +42,25 @@ After each hand, each model seat may update a short note on each opponent (for e
 
 ### P8. A person in a seat
 
-A person seated at the table gets the same legal moves the engine gives a model, as buttons and a raise amount, and the table waits for them without a time limit. Stage 1 allows one person per table, the person who opened it.
+A person seated at the table gets the same legal moves the engine gives a model, as buttons and a raise amount, and the table waits for them without a time limit. Only the person who opened the table can sit at it (Paul, 2026-10-19), so a table has at most one person.
+
+### P9. Every seat may have a bio
+
+Each seat may have a short bio of its player, shown beside the seat (Paul, 2026-10-19). When a table opens, each model seat is asked to write its own: a name to play under and a few sentences about itself as a player, which every other seat will read. The model chooses what to say, true or not, and the request says that the bio may be part of its game. A person writes their own bio, or leaves it empty. Bios are optional, and a model that declines, or whose answer is not usable, plays under its model's name. Every seat's bio goes into every model's requests with the betting, so a model can use what it said about itself and read what the others said. Paul wants to see what the models do with this and whether they make the persona part of their strategy, so the hand history keeps the bios beside the play.
 
 ## Stages
 
-1. **The game and a staff table.** The rules engine with its hand evaluator and side pots, under unit tests; the table runner with model seats from `/etc/chat.json`; one optional person seat; watching (P6); table talk (P5); the package's table view; staff only. Each seat shows its token use.
-2. **Sessions.** Opponent notes (P7); a persona per seat (a name and a style, such as tight and aggressive); hand history with replay; a table's results over a session.
-3. **The public, with their own keys.** Key storage (below), sign-up gating, the provider list for public seats, limits on tables and hands so one person cannot load the server, and the words on the page saying that model calls are billed to the player's own key.
-4. **More than one person at a table**, if wanted (open question 1).
+1. **The game and a staff table.** The rules engine with its hand evaluator and side pots, under unit tests; the table runner with model seats from `/etc/chat.json`; one optional person seat; bios (P9); watching (P6); table talk (P5); the package's table view; staff only. Each seat shows its token use.
+2. **Sessions and comparison.** Opponent notes (P7); hand history with replay; each seat's results over a session (chips won, hands played, how often it put money in, how often it raised), so models can be compared.
+3. **The public, with their own keys.** Key storage (below), sign-up gating, the provider list for public seats, limits on tables and hands so one person cannot load the server, and the words on the page saying that model calls are billed to the player's own key. A public player's tables live in their home folder, which means building the member half of the home directory first (Paul, 2026-10-19: "maybe the home folder").
+
+## Stage 1 as built
+
+The engine's part is in `Poker/`. `PokerCards.cs` has the cards, the shuffled deck and the hand evaluator; `HoldemHand.cs` is one hand's rules, from the blinds to the pots; `PokerAgent.cs` writes a model's request (`Situation`) and reads its answer from the `act` tool or from a JSON object in its text, which is how Codex answers; `PokerRunner.cs` runs a table; `PokerModel.cs` keeps a table in `~/.poker/<id>.json`; `PokerController.cs` is the API at `/api/admin/poker/`, which `Identity/EditOriginGate.cs` lists among the server's tools, as it does the chat's. The unit tests in `PokerTests.cs` cover the evaluator, the order of play heads up and three-handed, minimum raises, a short all-in that does not reopen the betting, side pots, a split pot's odd chip, and 2,000 hands of random legal play that never make or lose a chip, as well as a model's request holding no other seat's cards.
+
+The table is the package `pudl-poker` (local repository, like the other packages). The page reads the whole table again after each event, so what a viewer sees is always the one view the server computes. A table plays only while it is "playing" and watched: a minute with no page open pauses it after the hand, since every model move is a paid call. A pause asked for takes effect when the hand in progress ends. A table is saved between hands, so a hand cut short by a restart of the server is lost and the stacks are as they were before it. Each model seat has a time limit for a move (120 seconds unless the table says otherwise); an answer that cannot be played is sent back once with the reason, and after a second failure, or no answer in time, the table checks or folds for the seat and says so in the log.
+
+Codex can take a seat, working in an empty folder of its own under the server's temporary folder, but it is slow, because each move starts a new Codex thread.
 
 ## Keeping a player's keys (stage 3)
 
@@ -55,9 +68,10 @@ A key is stored encrypted, shown back only as its last four characters, and used
 
 Public seats may use only providers on a fixed list, each at its own published address. A player cannot enter an address of their own, because the server would then make requests to wherever they pointed it, including the server's own network.
 
+Paul agreed to envelope encryption on 2026-10-19.
+
+Public seats may use Anthropic, OpenAI, Google Gemini, OpenRouter (one key reaches many models) and Ollama's cloud (Paul, 2026-10-19). Codex stays with the staff, because it runs a program on the server.
+
 ## Open questions
 
-1. **More than one person at a table.** Paul said people may sit in. Does that mean only the person who opened the table, or friends joining the same table from their own browsers? The second needs seat invitations and the table pushed live to several people. Stage 1 assumes only the opener.
-2. **Envelope encryption for stored keys** (above): recommended, for Paul to confirm before stage 3.
-3. **Which providers for public seats.** I suggest Anthropic, OpenAI, Google Gemini, OpenRouter (one key reaches many models) and Ollama's cloud. Codex is out for the public, because it runs a program on the server.
-4. **Where a public player's tables live.** The member half of the home directory is not built (Paul left it that way on 2026-10-18), so stage 3 either builds it or keeps tables in the database.
+None at present. Whether the home folder really is the right place for a public player's tables is to be settled when stage 3 begins.

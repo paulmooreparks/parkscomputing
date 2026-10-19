@@ -156,6 +156,11 @@ public partial class Startup {
         /* A reply may think for a long while (a model playing a hard Sudoku
            took twelve minutes on one reply), so a provider gets an hour. */
         services.AddHttpClient(ParksComputing.Engine.Chat.ChatProviders.ClientName, c => c.Timeout = TimeSpan.FromMinutes(60));
+        /* Poker's tables, with model seats through the chat's providers
+           (Architecture/poker-design.md). */
+        services.AddSingleton<ParksComputing.Engine.Poker.PokerStore>();
+        services.AddSingleton<ParksComputing.Engine.Poker.PokerAgent>();
+        services.AddSingleton<ParksComputing.Engine.Poker.PokerRunner>();
         services.AddHostedService<HistoryPruner>();
         services.AddMemoryCache();
         services.AddSingleton<PreviewDrafts>();
