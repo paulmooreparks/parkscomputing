@@ -234,6 +234,13 @@ public sealed class OpenAiProvider : IChatProvider {
 public sealed class AnthropicProvider : IChatProvider {
     public const string Version = "2023-06-01";
     private readonly ChatProviderConfig _config; private readonly HttpClient _http;
+
+    /// <summary>The largest reply when the provider's maxTokens is not set.
+    /// Thinking is counted in it, so it has room for a long think before the
+    /// answer (8,192 ran out during a Sudoku game); the reply is streamed, so
+    /// a large limit costs nothing until it is used.</summary>
+    public const int DefaultMaxTokens = 32000;
+
     public AnthropicProvider(ChatProviderConfig config, HttpClient http) { _config = config; _http = http; }
 
     private HttpRequestMessage Request(HttpMethod method, string path) {
@@ -287,7 +294,7 @@ public sealed class AnthropicProvider : IChatProvider {
         var budget = budgeted ? Math.Max(1024, thinkingBudget ?? 4096) : 0;
         var body = new JsonObject {
             ["model"] = request.Model, ["messages"] = messages, ["stream"] = true,
-            ["max_tokens"] = Math.Max(maxTokens ?? 8192, budget + 1024)
+            ["max_tokens"] = Math.Max(maxTokens ?? DefaultMaxTokens, budget + 1024)
         };
         if (!string.IsNullOrWhiteSpace(request.System)) { body["system"] = request.System; }
         /* The thinking text is a summary the API returns only when asked
