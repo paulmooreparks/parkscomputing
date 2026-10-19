@@ -119,12 +119,12 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
     await idle();
     log('an attached file reaches the model', /zebra/i.test(await lastReply()), await lastReply());
 
-    // GK Companion's shape: the window is flush, and Thinking is a switch.
+    // GK Companion's shape: the window is flush, and Thinking is a latching button.
     log('the chat fills its window with no margin', await page.evaluate(() => document.querySelector('.pudl-chat').hasAttribute('data-applet-flush')));
-    const wasOn = await page.getAttribute('[data-role="thinking"]', 'aria-checked');
+    const wasOn = await page.getAttribute('[data-role="thinking"]', 'aria-pressed');
     await page.click('[data-role="thinking"]');
-    const nowOn = await page.getAttribute('[data-role="thinking"]', 'aria-checked');
-    log('Thinking is an on/off switch', (await page.getAttribute('[data-role="thinking"]', 'role')) === 'switch' && wasOn !== nowOn, wasOn + ' -> ' + nowOn);
+    const nowOn = await page.getAttribute('[data-role="thinking"]', 'aria-pressed');
+    log('Thinking is a latching button', /Thinking/.test(await page.textContent('[data-role="thinking"]')) && wasOn !== nowOn, wasOn + ' -> ' + nowOn);
     await page.click('[data-role="thinking"]');
 
     // A skill: "/" in the box offers it, Enter opens its form, Enter sends.

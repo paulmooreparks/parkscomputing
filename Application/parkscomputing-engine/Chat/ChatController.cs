@@ -161,7 +161,7 @@ public sealed class ChatController : ControllerBase {
         return Ok(_store.List(me.Home).Select(s => new { id = s.Id, title = s.Title, provider = s.Provider, model = s.Model, updated = s.Updated, working = _turns.Working(me.Home, s.Id) }));
     }
 
-    public sealed record NewRequest(string? Provider, string? Model);
+    public sealed record NewRequest(string? Provider, string? Model, bool? Thinking, bool? Tools);
 
     [HttpPost("conversations")]
     public async Task<IActionResult> Create([FromBody] NewRequest body) {
@@ -173,6 +173,9 @@ public sealed class ChatController : ControllerBase {
             Id = ChatStore.NewId(), Created = now, Updated = now, Provider = provider?.Id ?? "",
             Model = !string.IsNullOrWhiteSpace(body.Model) ? body.Model! : (provider is not null && provider.Id == config.DefaultProvider ? config.DefaultModel : null) ?? provider?.Models?.FirstOrDefault() ?? ""
         };
+        // The switches as the reader set them before the first message.
+        if (body.Thinking is { } th) { c.Thinking = th; }
+        if (body.Tools is { } tl) { c.Tools = tl; }
         await _store.SaveAsync(me.Home, c);
         return Ok(c);
     }
