@@ -56,12 +56,14 @@ function diff(a, b) {
     log('the test article is written through the admin mount', !wrote, wrote);
 
     await page.goto(BASE + '/page/editor?file=' + FILE, { waitUntil: 'load' });
-    await page.waitForSelector('[data-role="views"]:not([hidden]) [data-view="visual"]:not([disabled])', { timeout: 30000 });
+    await page.waitForSelector('.pc-editor [data-command="view-visual"]:not([disabled]):not([hidden])', { timeout: 30000 });
     /* The Editor's text, as CodeMirror shows it: the test article is short
        enough that every line is drawn. */
     const cmText = () => page.evaluate(() => [...document.querySelectorAll('.cm-content .cm-line')].map(l => l.textContent).join('\n'));
+    /* An Editor command run as pressing it would, wherever the toolbar has folded it. */
+    const runCmd = id => page.evaluate(id => window.pudlCommands.run(id, undefined, document.querySelector('.pc-editor')), id);
 
-    await page.click('[data-view="visual"]');
+    await page.click('.pc-editor [data-command="view-visual"]');
     const frame = await (await page.waitForSelector('iframe.ed-preview')).contentFrame();
     await frame.waitForSelector('.pc-visual', { timeout: 30000 });
     await page.waitForTimeout(1500);
@@ -73,29 +75,42 @@ function diff(a, b) {
         return h ? Math.round(h.getBoundingClientRect().top - label.getBoundingClientRect().bottom) : null;
     });
     log('a heading that opens a note sits close under its label', lead !== null && lead < 24, lead);
-    /* The toolbar is one line when it has room for everything on it, and
-       the formatting wraps as a group when it hasn't. The Classic page's
-       column is too narrow for one line, so the check widens the Editor. */
-    const rows = await page.evaluate(async () => {
-        const bar = document.querySelector('[data-role="format"]').parentElement;
-        const box = bar.closest('.pc-editor');
-        box.style.width = '1700px'; box.style.maxWidth = 'none';
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-        const mid = s => { const r = document.querySelector(s).getBoundingClientRect(); return Math.round(r.top + r.height / 2); };
-        const wide = [mid('[data-role="format"] [data-fmt="bold"]'), mid('[data-role="views"]'), mid('[data-action="undo"]'),
-            Math.round(document.querySelector('[data-role="insert"]').getBoundingClientRect().height), Math.round(document.querySelector('[data-action="save"]').getBoundingClientRect().height)];
+    /* The toolbar is PUDL's (0.68.0): one row whose groups fold as the room
+       runs out, Format first. Widened, nothing folds into a menu; at the
+       Classic page's width, Format has folded and the File group has not. */
+    const folds = await page.evaluate(async () => {
+        const box = document.querySelector('.pc-editor');
+        const stages = () => Object.fromEntries([...box.querySelectorAll('.toolbar-group')].map(g => [g.getAttribute('data-toolbar-group'), +(g.getAttribute('data-toolbar-stage') || 1)]));
+        const settle = () => new Promise(r => setTimeout(r, 400));
+        /* Groups on one row share a middle, give or take their own heights. */
+        const rows = () => {
+            const mids = [...box.querySelectorAll('.toolbar-group')].filter(g => g.getClientRects().length).map(g => { const r = g.getBoundingClientRect(); return { mid: (r.top + r.bottom) / 2, h: r.height, top: Math.round(r.top) }; });
+            const n = mids.filter((m, i) => !mids.slice(0, i).some(o => Math.abs(o.mid - m.mid) < Math.max(o.h, m.h) / 2)).length;
+            return n === 1 ? 1 : n + ' ' + JSON.stringify(mids);
+        };
+        box.style.width = '1900px'; box.style.maxWidth = 'none';
+        await settle();
+        const wide = { stages: stages(), rows: rows() };
+        box.style.width = '720px';
+        await settle();
+        const narrow = { stages: stages(), rows: rows() };
         box.style.width = ''; box.style.maxWidth = '';
-        return wide;
+        await settle();
+        return { wide, narrow };
     });
-    log('with room, the formatting shares the toolbar\'s line', rows[0] === rows[1] && rows[1] === rows[2], JSON.stringify(rows));
-    log('Insert is as tall as the buttons beside it', Math.abs(rows[3] - rows[4]) <= 2, JSON.stringify(rows));
+    log('with room, no group folds into a menu, on one row', Object.values(folds.wide.stages).every(s => s <= 2) && folds.wide.rows === 1, JSON.stringify(folds.wide));
+    log('narrow, Format folds into a menu before File and stays on one row', folds.narrow.stages.Format >= 3 && folds.narrow.stages.File <= 2 && folds.narrow.rows === 1, JSON.stringify(folds.narrow));
     const sorted = await page.evaluate(async () => {
-        const s = document.querySelector('[data-role="insert"]'); s.dispatchEvent(new Event('focus'));
-        for (let i = 0; i < 50 && s.options.length < 2; i++) { await new Promise(r => setTimeout(r, 100)); }
-        const t = [...s.options].slice(1).map(o => o.textContent);
+        let ins = null;
+        for (let i = 0; i < 50; i++) {
+            ins = window.pudlCommands.list(document.querySelector('.pc-editor')).find(c => c.id === 'insert');
+            if (ins && ins.items && ins.items.length > 1) { break; }
+            await new Promise(r => setTimeout(r, 100));
+        }
+        const t = (ins && ins.items || []).map(o => o.label);
         return { t, ok: t.length > 1 && t.every((x, i) => i === 0 || t[i - 1].localeCompare(x, undefined, { sensitivity: 'base' }) <= 0) };
     });
-    log('the Insert list is in alphabetical order', sorted.ok, JSON.stringify(sorted.t));
+    log('the Insert menu is in alphabetical order', sorted.ok, JSON.stringify(sorted.t));
     let base = await cmText();
     log('the Editor\'s text can be read', base === SOURCE, JSON.stringify(base && base.slice(0, 80)));
 
@@ -135,10 +150,12 @@ function diff(a, b) {
         const s = getSelection(); s.removeAllRanges(); s.addRange(r);
     });
     await page.waitForTimeout(300);
-    await page.click('[data-fmt="bold"]');
+    /* Bold as the toolbar runs it; at this width the Format group is a
+       menu, and its row runs the same command. */
+    await page.evaluate(() => window.pudlCommands.run('bold', undefined, document.querySelector('.pc-editor')));
     await page.waitForTimeout(1500);
     now = await cmText(); d = diff(base, now);
-    log('Bold from the toolbar writes **…**', now.includes('The **first** paragraph'), JSON.stringify(d));
+    log('Bold from the toolbar\'s command writes **…**', now.includes('The **first** paragraph'), JSON.stringify(d));
     base = now;
 
     // A figure pressed in the page opens its form, not the lightbox.
@@ -166,7 +183,7 @@ function diff(a, b) {
     base = now;
 
     // Split: the text on the left, the page on the right, each following the other.
-    await page.click('[data-view="split"]');
+    await page.click('.pc-editor [data-command="view-split"]');
     const frame2 = await (await page.waitForSelector('iframe.ed-preview')).contentFrame();
     await frame2.waitForSelector('.pc-visual', { timeout: 30000 });
     await page.waitForTimeout(1500);
@@ -180,7 +197,7 @@ function diff(a, b) {
     // Each tab keeps its own view: another file in front shows its text,
     // and the article comes back in Split.
     await page.evaluate(() => pudlHost.fs.writeText('~/visual-editor-other.txt', 'Another file.\n'));
-    await page.click('[data-action="open"]');
+    await runCmd('open');
     await page.waitForSelector('dialog[open] [data-pick="input"]', { timeout: 10000 });
     await page.fill('dialog[open] [data-pick="input"]', '~/visual-editor-other.txt');
     await page.click('dialog[open] [data-pick="ok"]');
@@ -188,23 +205,23 @@ function diff(a, b) {
     log('another tab in front shows its text, with no page', await page.isHidden('iframe.ed-preview'));
     await page.click('[data-role="tabs"] [data-tab][title*="visual-editor-test"]');
     await page.waitForTimeout(2500);
-    log('the article comes back in the view it was in', (await page.getAttribute('[data-view="split"]', 'aria-pressed')) === 'true' && await page.isVisible('iframe.ed-preview'), await page.getAttribute('[data-view="split"]', 'aria-pressed'));
+    log('the article comes back in the view it was in', (await page.getAttribute('.pc-editor [data-command="view-split"]', 'aria-pressed')) === 'true' && await page.isVisible('iframe.ed-preview'), await page.getAttribute('.pc-editor [data-command="view-split"]', 'aria-pressed'));
 
     // Preview is no longer a view: it opens the page on the site.
-    log('the views are Text, Visual and Split', (await page.$$eval('[data-role="views"] [data-view]', bs => bs.map(b => b.getAttribute('data-view')).join())) === 'text,visual,split');
-    const previewLink = page.locator('[data-role="view"]');
-    log('Preview is a link to the page on the site', (await previewLink.textContent()) === 'Preview' && /\/page\/visual-editor-test$/.test(await previewLink.getAttribute('href')), await previewLink.getAttribute('href'));
-    const [tab] = await Promise.all([page.context().waitForEvent('page', { timeout: 10000 }).catch(() => null), previewLink.click()]);
+    log('the views are Text, Visual and Split', (await page.$$eval('.pc-editor [data-command-choice="ed-view"] [data-command]', bs => bs.map(b => b.getAttribute('data-command')).join())) === 'view-text,view-visual,view-split');
+    const previewBtn = page.locator('.pc-editor [data-command="preview"]');
+    log('Preview is a command of its own', /Preview/.test(await previewBtn.getAttribute('aria-label') || await previewBtn.textContent()));
+    const [tab] = await Promise.all([page.context().waitForEvent('page', { timeout: 10000 }).catch(() => null), previewBtn.click()]);
     /* The test instance's public origin may not resolve here, so the new
-       tab is checked for being there; the link above says where it goes. */
+       tab is checked for being there, not for where it went. */
     log('on a page of its own it opens the page in a new tab', !!tab, 'no new tab');
     if (tab) { await tab.close(); }
     log('and says the unsaved text is not on the site yet', /save to see your changes/.test(await page.textContent('[data-role="message"]')), await page.textContent('[data-role="message"]'));
-    await page.click('[data-view="text"]');
+    await page.click('.pc-editor [data-command="view-text"]');
     log('Text hides the page', await page.isHidden('iframe.ed-preview'));
 
     // The formatting bar on the Markdown itself, in Text.
-    log('the formatting bar stays for a Markdown file in Text', await page.isVisible('[data-role="format"]'));
+    log('the formatting commands stay for a Markdown file in Text', await page.evaluate(() => { const b = window.pudlCommands.list(document.querySelector('.pc-editor')).find(c => c.id === 'bold'); return !!b && !b.hidden; }));
     /* The cursor goes to the line by number, through Go to line, since a
        long line wraps and a click lands where the mouse is. */
     const lineNo = (await cmText()).split('\n').findIndex(l => /^The last paragraph\./.test(l)) + 1;
@@ -218,31 +235,29 @@ function diff(a, b) {
     await page.keyboard.press('Shift+End');
     await page.waitForTimeout(200);
     const beforeBold = await cmText(), selected = await page.evaluate(() => String(getSelection()).slice(0, 60));
-    await page.click('[data-fmt="bold"]');
+    await runCmd('bold');
     await page.waitForTimeout(300);
     now = await cmText();
-    log('Bold wraps the chosen text', /^\*\*The last paragraph\..*\*\*$/m.test(now), 'selected ' + JSON.stringify(selected) + ' change ' + JSON.stringify(diff(beforeBold, now)) + ' active ' + (await page.evaluate(() => document.activeElement.className + '/' + (document.querySelector('[data-role="format"]').hidden))));
-    await page.click('[data-fmt="bold"]');
+    log('Bold wraps the chosen text', /^\*\*The last paragraph\..*\*\*$/m.test(now), 'selected ' + JSON.stringify(selected) + ' change ' + JSON.stringify(diff(beforeBold, now)) + ' active ' + (await page.evaluate(() => document.activeElement.className)));
+    await runCmd('bold');
     await page.waitForTimeout(300);
     now = await cmText();
     log('and again takes it off', !/\*\*The last/.test(now) && /^The last paragraph\./m.test(now), now.split('\n').find(l => /last paragraph/.test(l)));
-    await page.click('[data-fmt="h2"]');
+    await runCmd('h2');
     await page.waitForTimeout(300);
     now = await cmText();
     log('H2 marks the line', /^## The last paragraph\./m.test(now), now.split('\n').find(l => /last paragraph/.test(l)));
-    await page.click('[data-fmt="paragraph"]');
+    await runCmd('paragraph');
     await page.waitForTimeout(300);
     now = await cmText();
     log('Paragraph takes the mark off', /^The last paragraph\./m.test(now), now.split('\n').find(l => /last paragraph/.test(l)));
-    await page.click('[data-fmt="bullets"]');
+    await runCmd('bullets');
     await page.waitForTimeout(300);
     now = await cmText();
     log('Bulleted list marks the line', /^- The last paragraph\./m.test(now), now.split('\n').find(l => /last paragraph/.test(l)));
-    await page.click('[data-fmt="paragraph"]');
+    await runCmd('paragraph');
     await page.waitForTimeout(300);
-    await page.focus('[data-role="insert"]');
-    await page.waitForFunction(() => document.querySelector('[data-role="insert"]').options.length > 2, null, { timeout: 10000 });
-    await page.selectOption('[data-role="insert"]', 'figure');
+    await runCmd('insert-figure');
     await page.waitForSelector('[data-role="figure"][open]', { timeout: 5000 });
     log('Insert a figure in Text opens the form, empty', (await page.inputValue('[data-role="figure-src"]')) === '' && (await page.textContent('[data-role="figure-ok"]')) === 'Insert');
     await page.fill('[data-role="figure-src"]', '/images/new.png');

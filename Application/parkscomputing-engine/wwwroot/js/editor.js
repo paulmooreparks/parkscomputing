@@ -172,52 +172,10 @@
         root.classList.add('pc-editor');
         if (opts.fit === 'fill') { root.classList.add('pc-editor-fill'); }
         root.innerHTML =
-            '<div class="ed-toolbar" role="toolbar" aria-label="Editor">' +
-              '<button type="button" class="icon-btn" data-action="explorer" aria-label="Show the files" title="Show the files" aria-pressed="false"><span class="glyph" style="--glyph: var(--glyph-folder)" aria-hidden="true"></span></button>' +
-              '<button type="button" class="btn btn-sm" data-action="new">New</button>' +
-              '<button type="button" class="btn btn-sm" data-action="open">Open&#8230;</button>' +
-              '<button type="button" class="btn btn-sm btn-primary" data-action="save">Save</button>' +
-              '<button type="button" class="btn btn-sm" data-action="save-as">Save as&#8230;</button>' +
-              '<span class="ed-sep"></span>' +
-              '<button type="button" class="icon-btn" data-action="undo" aria-label="Undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5L2.5 6.5l3 3"/><path d="M2.5 6.5h7a4 4 0 0 1 0 8H7"/></svg></button>' +
-              '<button type="button" class="icon-btn" data-action="redo" aria-label="Redo" title="Redo (Ctrl+Y)"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 3.5l3 3-3 3"/><path d="M13.5 6.5h-7a4 4 0 0 0 0 8H9"/></svg></button>' +
-              '<button type="button" class="icon-btn" data-action="find" aria-label="Find and replace" title="Find and replace (Ctrl+F)"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></button>' +
-              '<label class="check ed-wrap"><input type="checkbox" data-role="wrap" checked /> Wrap lines</label>' +
-              /* The visual view's formatting (js/editor-visual.js), on the
-                 same line when there is room, and as one group on the next
-                 when there isn't. */
-              '<div class="ed-format" role="toolbar" aria-label="Formatting" data-role="format" hidden>' +
-                '<span class="ed-sep"></span>' +
-                '<button type="button" class="icon-btn" data-fmt="bold" aria-label="Bold" title="Bold (Ctrl+B)"><span class="glyph" style="--glyph: var(--glyph-bold)" aria-hidden="true"></span></button>' +
-                '<button type="button" class="icon-btn" data-fmt="italic" aria-label="Italic" title="Italic (Ctrl+I)"><span class="glyph" style="--glyph: var(--glyph-italic)" aria-hidden="true"></span></button>' +
-                '<button type="button" class="icon-btn" data-fmt="strike" aria-label="Strike through" title="Strike through"><span class="glyph" style="--glyph: var(--glyph-strike)" aria-hidden="true"></span></button>' +
-                '<button type="button" class="icon-btn" data-fmt="code" aria-label="Code" title="Code (Ctrl+`)"><span class="glyph" style="--glyph: var(--glyph-code)" aria-hidden="true"></span></button>' +
-                '<button type="button" class="icon-btn" data-fmt="link" aria-label="Link" title="Link (Ctrl+K)"><span class="glyph" style="--glyph: var(--glyph-link)" aria-hidden="true"></span></button>' +
-                '<span class="ed-sep"></span>' +
-                '<button type="button" class="icon-btn" data-fmt="paragraph" aria-label="Paragraph" title="Paragraph (Ctrl+Alt+0)"><span class="glyph" style="--glyph: var(--glyph-paragraph)" aria-hidden="true"></span></button>' +
-                '<button type="button" class="btn btn-sm" data-fmt="h2" title="Heading (Ctrl+Alt+2)">H2</button>' +
-                '<button type="button" class="btn btn-sm" data-fmt="h3" title="Subheading (Ctrl+Alt+3)">H3</button>' +
-                '<button type="button" class="icon-btn" data-fmt="bullets" aria-label="Bulleted list" title="Bulleted list"><span class="glyph" style="--glyph: var(--glyph-list)" aria-hidden="true"></span></button>' +
-                '<button type="button" class="icon-btn" data-fmt="numbers" aria-label="Numbered list" title="Numbered list"><span class="glyph" style="--glyph: var(--glyph-list-numbered)" aria-hidden="true"></span></button>' +
-                '<span class="ed-sep"></span>' +
-                '<label class="visually-hidden" for="ed-insert-' + n + '">Insert a shortcode</label>' +
-                '<span class="form-select-wrap ed-insert"><select class="form-select" id="ed-insert-' + n + '" data-role="insert"><option value="">Insert…</option></select></span>' +
-              '</div>' +
-              '<span class="ed-spacer"></span>' +
-              /* On the edit origin: a site page's source, and a file's place
-                 on the public site, which Preview opens. */
-              '<button type="button" class="btn btn-sm" data-action="source" hidden>Edit the source</button>' +
-              /* How a Markdown article is shown (Architecture/wysiwyg-editor-design.md):
-                 its text, the page itself to edit, or both side by side.
-                 Each tab keeps its own. */
-              '<div class="seg ed-views" role="group" aria-label="View" data-role="views" hidden>' +
-                '<button type="button" data-view="text" aria-pressed="true">Text</button>' +
-                '<button type="button" data-view="visual" aria-pressed="false">Visual</button>' +
-                '<button type="button" data-view="split" aria-pressed="false">Split</button>' +
-              '</div>' +
-              '<a class="ed-view" data-role="view" target="_blank" rel="noopener" title="Open this page on the site" hidden>Preview</a>' +
-              '<span class="ed-readonly" data-role="readonly" hidden><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Read-only</span>' +
-            '</div>' +
+            /* The toolbar is PUDL's, drawn here from the Editor's command
+               table and toolbars() (PUDL 0.68.0), folding its groups as the
+               window narrows. */
+            '<div class="ed-toolbar-slot" data-toolbar-slot></div>' +
             '<div class="tablist doc-tabs ed-tabs" role="tablist" aria-label="Open files" data-role="tabs"></div>' +
             /* PUDL's splitter divides the Explorer from the work. */
             '<div class="ed-panes split" data-role="panes">' +
@@ -233,6 +191,7 @@
               '</div>' +
             '</div>' +
             '<div class="ed-status" data-role="status-bar">' +
+              '<span class="ed-readonly" data-role="readonly" hidden><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>Read-only</span>' +
               '<span data-role="where"></span><span data-role="lang"></span><span data-role="pos"></span>' +
               '<span class="ed-message" data-role="message" role="status" aria-live="polite"></span>' +
             '</div>' +
@@ -281,18 +240,22 @@
             tabs: q('[data-role="tabs"]'), surface: q('[data-role="surface"]'), where: q('[data-role="where"]'),
             panes: q('[data-role="panes"]'), preview: q('[data-role="preview"]'),
             lang: q('[data-role="lang"]'), pos: q('[data-role="pos"]'), message: q('[data-role="message"]'),
-            readonly: q('[data-role="readonly"]'), wrap: q('[data-role="wrap"]'),
+            readonly: q('[data-role="readonly"]'),
             dialog: q('[data-role="dialog"]'), dlgForm: q('[data-role="dialog-form"]'), dlgTitle: q('[data-role="dialog-title"]'),
             dlgText: q('[data-role="dialog-text"]'), dlgInput: q('[data-role="dialog-input"]'), dlgError: q('[data-role="dialog-error"]'),
             dlgActions: q('[data-role="dialog-actions"]'),
-            explorer: q('[data-role="explorer"]'), explorerBtn: q('[data-action="explorer"]'), explorerSplit: q('[data-role="explorer-split"]'),
-            views: q('[data-role="views"]'), format: q('[data-role="format"]'), insert: q('[data-role="insert"]'),
+            explorer: q('[data-role="explorer"]'), explorerSplit: q('[data-role="explorer-split"]'),
             figure: q('[data-role="figure"]'), figForm: q('[data-role="figure-form"]'), figTitle: q('[data-role="figure-title"]'),
             figSrc: q('[data-role="figure-src"]'), figAlt: q('[data-role="figure-alt"]'), figWidth: q('[data-role="figure-width"]'),
             figCaption: q('[data-role="figure-caption"]'), figError: q('[data-role="figure-error"]'), figOk: q('[data-role="figure-ok"]'),
             figRemove: q('[data-action="figure-remove"]'), figCancel: q('[data-action="figure-cancel"]'), figBrowse: q('[data-action="figure-browse"]')
         };
         var FB = null, explorer = null;
+        /* What the toolbar's commands show (the command table below): lines
+           wrapped, the Markdown views offered, the formatting offered, a
+           site page's source to open, and the file's address on the site. */
+        var wrapOn = true, viewsOffered = false, formatOffered = false, sourceOffered = false, siteUrl = null;
+        function commandsChanged() { if (opts.commandsChanged) { opts.commandsChanged(); } }
 
         var CM = null, F = null, view = null, destroyed = false, unsubscribe = null;
         var tabs = [], active = -1, untitled = 0;
@@ -445,7 +408,7 @@
                         CM.closeBracketsKeymap, CM.defaultKeymap, CM.searchKeymap, CM.historyKeymap, CM.lintKeymap, [CM.indentWithTab])),
                     CM.search({ top: true }),
                     makeTheme(CM),
-                    wrapComp.of(el.wrap.checked ? CM.EditorView.lineWrapping : []),
+                    wrapComp.of(wrapOn ? CM.EditorView.lineWrapping : []),
                     langComp.of(langExtension(tab.lang)),
                     lintComp.of(lintExtension(tab)),
                     roComp.of([CM.EditorState.readOnly.of(!!tab.readOnly), CM.EditorView.editable.of(!tab.readOnly)]),
@@ -484,18 +447,12 @@
             el.lang.textContent = t ? LANG_NAMES[t.lang] : '';
             showFormat(viewMode);
             el.readonly.hidden = !(t && t.readOnly);
-            q('[data-action="save"]').disabled = !t || t.readOnly;
-            q('[data-action="save"]').textContent = t && t.readOnly ? 'Save' : 'Save';
-            q('[data-action="save-as"]').textContent = t && t.readOnly ? 'Save a copy to ~…' : 'Save as…';
-            q('[data-action="save-as"]').disabled = !t;
             var node = t && t.path && F ? F.resolve(F.home(), t.path) : null;
-            q('[data-action="source"]').hidden = !(F && F.mounted && node && t.readOnly && F.sourceOf(node));
-            var page = !!(F && F.mounted && node && previewable(node)), md = page && /\.md$/i.test(F.realOf(node).rel);
-            el.views.hidden = !md;
-            var url = node && F.mounted ? F.publicUrl(node) : null;
-            var viewLink = q('[data-role="view"]');
-            viewLink.hidden = !url;
-            if (url) { viewLink.href = url; } else { viewLink.removeAttribute('href'); }
+            sourceOffered = !!(F && F.mounted && node && t.readOnly && F.sourceOf(node));
+            var page = !!(F && F.mounted && node && previewable(node));
+            viewsOffered = page && /\.md$/i.test(F.realOf(node).rel);
+            siteUrl = node && F.mounted ? F.publicUrl(node) : null;
+            commandsChanged();
             keep();
         }
 
@@ -896,10 +853,7 @@
         var settings = Object.assign({}, SETTINGS), unConfig = null;
         function applySettings(s) {
             settings = Object.assign({}, SETTINGS, s);
-            if (el.wrap.checked !== !!settings.wrap) {
-                el.wrap.checked = !!settings.wrap;
-                if (view) { view.dispatch({ effects: wrapComp.reconfigure(el.wrap.checked ? CM.EditorView.lineWrapping : []) }); }
-            }
+            if (wrapOn !== !!settings.wrap) { setWrap(!!settings.wrap, false); }
             if (explorer && typeof settings.explorer === 'boolean' && el.explorer.hidden === settings.explorer) { showExplorer(settings.explorer); }
             if (explorerSplit) { explorerSplit.set(typeof settings.explorerWidth === 'number' ? settings.explorerWidth : null); }
             if (view && keyComp) {
@@ -925,9 +879,21 @@
             el.explorer.hidden = !on;
             el.explorerSplit.hidden = !on;
             if (on && window.pudlSplit) { window.pudlSplit.refresh(); }
-            el.explorerBtn.setAttribute('aria-pressed', String(on));
-            el.explorerBtn.setAttribute('aria-label', on ? 'Hide the files' : 'Show the files');
-            el.explorerBtn.title = on ? 'Hide the files' : 'Show the files';
+            commandsChanged();
+        }
+        function toggleExplorer() {
+            if (!explorer) { return; }
+            var on = el.explorer.hidden;
+            showExplorer(on);
+            saveSetting({ explorer: on });
+        }
+        /* Wrap lines, as the toolbar, the View menu or a key switches it,
+           kept with the settings when the reader changes it. */
+        function setWrap(on, keepIt) {
+            wrapOn = !!on;
+            if (view) { view.dispatch({ effects: wrapComp.reconfigure(wrapOn ? CM.EditorView.lineWrapping : []) }); }
+            if (keepIt) { saveSetting({ wrap: wrapOn }); }
+            commandsChanged();
         }
 
         /* The Explorer marks the file in front and opens its way to it. */
@@ -984,9 +950,7 @@
             if (mode !== 'visual' && mode !== 'split') { mode = 'text'; }
             if (mode !== 'text' && !canEditVisually()) { mode = 'text'; }
             viewMode = mode;
-            Array.prototype.forEach.call(el.views.querySelectorAll('[data-view]'), function (b) {
-                b.setAttribute('aria-pressed', String(b.getAttribute('data-view') === mode));
-            });
+            commandsChanged();
             root.classList.toggle('ed-previewing', mode !== 'text');
             root.classList.toggle('ed-visual-only', mode === 'visual');
             showFormat(mode);
@@ -1104,26 +1068,21 @@
             }, 300);
         }
 
-        el.views.addEventListener('click', function (e) {
-            var b = e.target.closest('[data-view]');
-            if (b && !b.disabled) { setView(b.getAttribute('data-view')); }
-        });
-        el.format.addEventListener('mousedown', function (e) { if (e.target.closest('[data-fmt]')) { e.preventDefault(); } });
-        /* The formatting bar is there for a Markdown file in any view, and
+        /* The formatting is offered for a Markdown file in any view, and
            in Visual and Split whatever the file. */
         function showFormat(mode) {
             var t = current();
-            el.format.hidden = !(mode === 'visual' || mode === 'split' || (t && t.lang === 'markdown' && !t.readOnly));
+            var on = !!(mode === 'visual' || mode === 'split' || (t && t.lang === 'markdown' && !t.readOnly));
+            if (on !== formatOffered) { formatOffered = on; commandsChanged(); }
         }
         /* The formatting goes to the page in Visual, to the text in Text and
            Preview, and in Split to whichever has the keyboard, the text when
-           it does and the page otherwise. */
+           it does and the page otherwise. A toolbar button keeps the
+           keyboard where it was, so Split can still tell. */
         function formatsThePage() { return viewMode === 'visual' || (viewMode === 'split' && !!visual.api && !(view && view.hasFocus)); }
-        el.format.addEventListener('click', function (e) {
-            var b = e.target.closest('[data-fmt]');
-            if (!b) { return; }
-            if (formatsThePage()) { visual.api.run(b.getAttribute('data-fmt')); } else { textFormat(b.getAttribute('data-fmt')); }
-        });
+        function applyFormat(name) {
+            if (formatsThePage()) { visual.api.run(name); } else { textFormat(name); }
+        }
 
         /* The same formatting on the Markdown itself: a mark wraps the
            selection, or is taken off it when it is there; a heading or a
@@ -1185,32 +1144,26 @@
             if (shortcodes) { return Promise.resolve(shortcodes); }
             if (!shortcodesLoading) {
                 shortcodesLoading = fetch('/api/admin/editor/shortcodes', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
-                    .then(function (r) { return r.ok ? r.json() : { shortcodes: [] }; })
+                    /* The body is read either way: a refusal left unread (a
+                       visitor not signed in) stays open in the browser. */
+                    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return r.ok ? b : { shortcodes: [] }; }); })
                     .then(function (b) { shortcodes = (b.shortcodes || []).map(function (s) { s.params = s.params || []; return s; }); return shortcodes; })
                     .catch(function () { shortcodes = []; return shortcodes; });
             }
             return shortcodesLoading;
         }
-        var insertFilled = false;
-        async function fillInsert() {
-            if (insertFilled) { return; }
-            insertFilled = true;
-            await loadShortcodes();
-            shortcodes.filter(function (s) { return s.name !== 'column'; }).sort(function (a, b) {
+        /* The Insert menu's items, one command a shortcode, in order of
+           their titles; until the table has loaded, one saying so. */
+        function insertItems() {
+            if (!shortcodes) { return [{ id: 'insert-loading', label: 'Loading the shortcodes…', disabled: true }]; }
+            return shortcodes.filter(function (s) { return s.name !== 'column'; }).sort(function (a, b) {
                 return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
-            }).forEach(function (s) {
-                var o = document.createElement('option');
-                o.value = s.name;
-                o.textContent = s.title;
-                o.title = s.description;
-                el.insert.appendChild(o);
+            }).map(function (s) {
+                return { id: 'insert-' + s.name, label: s.title, run: function () { insertShortcode(s.name); } };
             });
         }
-        el.insert.addEventListener('focus', fillInsert);
-        el.insert.addEventListener('pointerdown', fillInsert);
-        el.insert.addEventListener('change', function () {
-            var s = (shortcodes || []).find(function (x) { return x.name === el.insert.value; });
-            el.insert.value = '';
+        function insertShortcode(name) {
+            var s = (shortcodes || []).find(function (x) { return x.name === name; });
             if (!s) { return; }
             /* A figure is asked for as a form; the rest go in as their
                examples, into the page or into the text. */
@@ -1220,7 +1173,7 @@
                 if (formatsThePage()) { visual.api.insertShortcode(s.name === 'figure' ? 'block' : s.kind, src); }
                 else { insertText(s.kind === 'inline' ? src : '\n' + src + '\n'); }
             });
-        });
+        }
 
         /* === Changes made elsewhere ======================================= */
 
@@ -1561,19 +1514,17 @@
         function previewNote() {
             if (current() && current().modified) { say('Preview shows the page as it is on the site; save to see your changes there.'); }
         }
+        /* Preview: the file's page on the site, in a window in the window
+           view and in a new tab otherwise. */
         function preview() {
-            var link = q('[data-role="view"]');
-            if (link.hidden || !link.href) { return; }
+            if (!siteUrl) { return; }
+            var href = new URL(siteUrl, location.href).href;
             previewNote();
-            if (!inWindowView(link.href)) { window.open(link.href, '_blank', 'noopener'); }
+            if (!inWindowView(href)) { window.open(href, '_blank', 'noopener'); }
         }
-        function viewOnSite(e) {
-            var link = e.target.closest('[data-role="view"]');
-            if (!link || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) { return false; }
-            previewNote();
-            if (!inWindowView(link.href)) { return false; }
-            e.preventDefault();
-            return true;
+        function openSource() {
+            var cur = current(), node = cur && F.resolve(F.home(), cur.path), src = node && F.sourceOf(node);
+            if (src) { openPath(F.displayPath(src)); }
         }
         function inWindowView(href) {
             if (!window.pudlWindows || !document.querySelector('[data-win-layer]')) { return false; }
@@ -1591,33 +1542,8 @@
         }
 
         root.addEventListener('click', function (e) {
-            if (viewOnSite(e)) { return; }
-            var tabBtn = e.target.closest('[data-tab]');
-            if (tabBtn) { activate(+tabBtn.getAttribute('data-tab')); view.focus(); return; }
-            var a = e.target.closest('[data-action]');
-            if (!a || !CM) { return; }
-            switch (a.getAttribute('data-action')) {
-                case 'new': newTab(); break;
-                case 'open': openDialog(); break;
-                case 'save': save(); break;
-                case 'save-as': saveAs(); break;
-                case 'undo': CM.undo(view); view.focus(); break;
-                case 'redo': CM.redo(view); view.focus(); break;
-                case 'find': CM.openSearchPanel(view); break;
-                case 'source': {
-                    var cur = current(), node = cur && F.resolve(F.home(), cur.path), src = node && F.sourceOf(node);
-                    if (src) { openPath(F.displayPath(src)); }
-                    break;
-                }
-                case 'preview': preview(); break;
-                case 'explorer': {
-                    if (!explorer) { break; }
-                    var on = el.explorer.hidden;
-                    showExplorer(on);
-                    saveSetting({ explorer: on });
-                    break;
-                }
-            }
+            var tabBtn = e.target.closest('.ed-tabs [data-tab]');
+            if (tabBtn) { activate(+tabBtn.getAttribute('data-tab')); view.focus(); }
         });
         /* === Commands and their keys ===================================== */
 
@@ -1633,8 +1559,8 @@
             'redo': function () { CM.redo(view); },
             'find': function () { CM.openSearchPanel(view); },
             'go-to-line': goToLine,
-            'toggle-files': function () { el.explorerBtn.click(); },
-            'toggle-wrap': function () { el.wrap.click(); },
+            'toggle-files': toggleExplorer,
+            'toggle-wrap': function () { setWrap(!wrapOn, true); },
             'preview': preview,
             'insert-timestamp': function () { insertText(now()); },
             'insert-date': function () { insertText(now('date')); },
@@ -1739,54 +1665,79 @@
             }
         }
 
-        function menus() {
-            var ready = !!(CM && view), tab = current();
-            /* Each item shows the key bound to its command, or failing one,
-               CodeMirror's own key for it. */
-            function keyed(item, name, builtIn) {
-                var key = ready ? shortcutFor(name) || (builtIn && keyLabel(builtIn)) : null;
-                if (key) { item.shortcut = key; }
-                return item;
+        /* === The command table and the toolbar (PUDL 0.68.0) ===============
+           Every command the toolbar, the menus, the keys and an agent reach,
+           once, by the names ~/.config/editor.json binds keys to. A command's
+           shortcut is the key bound to it, or failing one, CodeMirror's own;
+           CodeMirror answers its keys in the text first, so PUDL answers a
+           key only where CodeMirror did not. */
+        var FORMATS = [
+            ['bold', 'Bold', 'bold', 'Mod-b'], ['italic', 'Italic', 'italic', 'Mod-i'], ['strike', 'Strike Through', 'strike'],
+            ['code', 'Code', 'code', 'Mod-`'], ['link', 'Link…', 'link', 'Mod-k'],
+            ['paragraph', 'Paragraph', 'paragraph', 'Mod-Alt-0'], ['h2', 'Heading', 'heading-2', 'Mod-Alt-2'], ['h3', 'Subheading', 'heading-3', 'Mod-Alt-3'],
+            ['bullets', 'Bulleted List', 'list'], ['numbers', 'Numbered List', 'list-numbered']
+        ];
+        function commandTable() {
+            var ready = !!(CM && view), tab = current(), editable = !!(tab && !tab.readOnly);
+            function key(name, builtIn) { return function () { return (ready && shortcutFor(name)) || (builtIn ? keyLabel(builtIn) : undefined); }; }
+            function cmd(id, label, glyph, run, more) {
+                return Object.assign({ id: id, label: label, glyph: glyph || undefined, shortcut: key(id, more && more.builtIn),
+                    disabled: function () { return !ready; }, run: run }, more || {});
             }
-            function action(name, label, builtIn) { return keyed(window.pcAppletAction(root, '[data-action="' + name + '"]', label), name, builtIn); }
-            function command(name, label, disabled, builtIn) {
-                return keyed({ label: label, disabled: !ready || !!disabled, run: function () { COMMANDS[name](); } }, name, builtIn);
-            }
-            var editable = !!(tab && !tab.readOnly);
-            var file = [action('new', 'New document'), action('open', 'Open…'),
-                action('save', 'Save'), action('save-as', 'Save as…'), '-',
-                command('close-document', 'Close document', !tab)];
-            var viewItems = [
-                keyed({ label: 'Show the files', disabled: !ready, checked: !el.explorer.hidden,
-                    run: function () { el.explorerBtn.click(); } }, 'toggle-files'),
-                keyed({ label: 'Wrap lines', disabled: !ready, checked: el.wrap.checked,
-                    run: function () { el.wrap.click(); } }, 'toggle-wrap')
+            var table = [
+                cmd('toggle-files', 'Files', 'panel', toggleExplorer, { checked: function () { return !el.explorer.hidden; } }),
+                cmd('new', 'New', 'file', function () { newTab(); }),
+                cmd('open', 'Open…', 'folder', function () { openDialog(); }),
+                cmd('save', 'Save', 'save', function () { save(); }, { disabled: function () { var t = current(); return !ready || !t || t.readOnly; }, reason: 'This file is read-only.' }),
+                cmd('save-as', 'Save As…', null, function () { saveAs(); }, { label: function () { var t = current(); return t && t.readOnly ? 'Save a Copy to ~…' : 'Save As…'; }, disabled: function () { return !ready || !current(); } }),
+                cmd('close-document', 'Close Document', null, function () { COMMANDS['close-document'](); }, { disabled: function () { return !ready || !current(); } }),
+                cmd('undo', 'Undo', 'undo', function () { CM.undo(view); }, { builtIn: 'Mod-z' }),
+                cmd('redo', 'Redo', 'redo', function () { CM.redo(view); }, { builtIn: 'Mod-y' }),
+                cmd('find', 'Find and Replace…', 'search', function () { CM.openSearchPanel(view); }, { builtIn: 'Mod-f' }),
+                cmd('go-to-line', 'Go to Line…', null, goToLine, { builtIn: 'Mod-Alt-g' }),
+                cmd('toggle-wrap', 'Wrap Lines', 'wrap', function () { setWrap(!wrapOn, true); }, { checked: function () { return wrapOn; } }),
+                cmd('insert-timestamp', 'Insert Date and Time', null, COMMANDS['insert-timestamp'], { disabled: function () { return !ready || !editable; } }),
+                cmd('insert-date', 'Insert Date', null, COMMANDS['insert-date'], { disabled: function () { return !ready || !editable; } }),
+                cmd('stamp-modified', 'Update Last-Modified', null, stampModified, { disabled: function () { return !ready || !editable; } }),
+                cmd('key-bindings', 'Key Bindings…', null, editKeys),
+                cmd('insert', 'Insert', 'plus', null, { items: insertItems, hidden: function () { return !formatOffered; }, shortcut: undefined }),
+                cmd('source', 'Edit the Source', 'code', openSource, { hidden: function () { return !sourceOffered; } }),
+                cmd('preview', 'Preview', 'new-window', preview, { hidden: function () { return !siteUrl; } })
             ];
-            if (!el.views.hidden) {
-                viewItems.push('-');
-                [['text', 'Text'], ['visual', 'Visual'], ['split', 'Split']].forEach(function (v) {
-                    viewItems.push({ label: v[1], radio: 'ed-view', checked: viewMode === v[0], disabled: !ready, run: function () { setView(v[0]); } });
-                });
-            }
-            if (!q('[data-role="view"]').hidden) {
-                viewItems.push('-', command('preview', 'Preview on the site'));
-            }
-            return { titles: [
-                { label: 'Editor', items: window.pcAppletIdentity(root) },
-                { id: 'file', label: 'File', items: file },
-                { id: 'edit', label: 'Edit', items: [action('undo', 'Undo', 'Mod-z'), action('redo', 'Redo', 'Mod-y'), '-',
-                    action('find', 'Find and replace…', 'Mod-f'), '-',
-                    command('insert-timestamp', 'Insert date and time', !editable),
-                    command('insert-date', 'Insert date', !editable),
-                    command('stamp-modified', 'Update last-modified', !editable), '-',
-                    command('key-bindings', 'Key bindings…')] }
-            ], into: { view: viewItems, go: [command('go-to-line', 'Go to line…', false, 'Mod-Alt-g')] } };
+            FORMATS.forEach(function (f) {
+                table.push(cmd(f[0], f[1], f[2], function () { applyFormat(f[0]); }, {
+                    shortcut: f[3] ? keyLabel(f[3]) : undefined, hidden: function () { return !formatOffered; }
+                }));
+            });
+            [['text', 'Text'], ['visual', 'Visual'], ['split', 'Split']].forEach(function (v) {
+                table.push({ id: 'view-' + v[0], label: v[1], choice: 'ed-view', choiceLabel: 'View', value: v[0],
+                    checked: function () { return viewMode === v[0]; },
+                    hidden: function () { return !viewsOffered; }, disabled: function () { return !ready; },
+                    run: function () { setView(v[0]); } });
+            });
+            return table;
         }
 
-        el.wrap.addEventListener('change', function () {
-            if (view) { view.dispatch({ effects: wrapComp.reconfigure(el.wrap.checked ? CM.EditorView.lineWrapping : []) }); }
-            saveSetting({ wrap: el.wrap.checked });
-        });
+        /* The toolbar: what is used most stays named longest, and the view
+           switch and Preview keep to the end of the row. */
+        function toolbars() {
+            return [{ label: 'Editor', groups: [
+                { label: 'File', glyph: 'file', priority: 3, items: ['toggle-files', 'new', 'open', 'save', 'save-as'] },
+                { label: 'Edit', glyph: 'undo', priority: 2, items: ['undo', 'redo', 'find', 'toggle-wrap'] },
+                { label: 'Format', glyph: 'bold', priority: 1, items: ['bold', 'italic', 'strike', 'code', 'link', 'paragraph', 'h2', 'h3', 'bullets', 'numbers', 'insert'] },
+                { label: 'View', glyph: 'new-window', priority: 4, end: true, items: ['source', { choice: 'ed-view' }, 'preview'] }
+            ] }];
+        }
+
+        /* The menus name the same commands. */
+        function menus() {
+            var t = commandTable(), rows = function (ids) { return window.pcCommandRows(t, ids); };
+            return { titles: [
+                { label: 'Editor', items: window.pcAppletIdentity(root) },
+                { id: 'file', label: 'File', items: rows(['new', 'open', 'save', 'save-as', '-', 'close-document']) },
+                { id: 'edit', label: 'Edit', items: rows(['undo', 'redo', '-', 'find', '-', 'insert-timestamp', 'insert-date', 'stamp-modified', '-', 'key-bindings']) }
+            ], into: { view: rows(['toggle-files', 'toggle-wrap', '-', 'view-text', 'view-visual', 'view-split', '-', 'preview']), go: rows(['go-to-line']) } };
+        }
 
         /* === Start ======================================================== */
 
@@ -1801,7 +1752,9 @@
                 unConfig = config.onChange('editor', applySettings);
             }
             if (destroyed) { return; }
-            el.wrap.checked = !!settings.wrap;
+            wrapOn = !!settings.wrap;
+            /* The shortcodes for the Insert menu, which draws again once they are here. */
+            loadShortcodes().then(commandsChanged);
             setupExplorer();
             setupExplorerSplit();
             wrapComp = new CM.Compartment(); langComp = new CM.Compartment(); lintComp = new CM.Compartment(); roComp = new CM.Compartment();
@@ -1819,7 +1772,7 @@
             if (restored && restored.text) { say(restored.text, restored.error); }
             /* The view showing before the reload comes back, which asks the
                server for the page, so it is not waited for. */
-            if (restored && restored.view && restored.view !== 'text' && !el.views.hidden) { setView(restored.view); }
+            if (restored && restored.view && restored.view !== 'text' && viewsOffered) { setView(restored.view); }
             /* The keyboard goes back where it was: into the text, unless the
                search panel had it, which opening it did. */
             if (snap && snap.focused) { if (!view.dom.contains(document.activeElement)) { view.focus(); } }
@@ -1833,6 +1786,8 @@
             state: function () { return stateString() || null; },
             setState: takeFile,
             menus: menus,
+            commandTable: commandTable,
+            toolbars: toolbars,
             destroy: function () {
                 /* The session as the Editor closes, for when it opens again. */
                 keepSession();

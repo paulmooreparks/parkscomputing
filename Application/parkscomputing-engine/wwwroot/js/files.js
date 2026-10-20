@@ -55,7 +55,6 @@
     }
 
     function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-    function homeGlyph() { return '<span class="glyph" style="--glyph: var(--glyph-home)" aria-hidden="true"></span>'; }
 
     var uid = 0;
 
@@ -66,7 +65,12 @@
         var mounted = !!document.querySelector('meta[name="pc-fs-mount"]');
         root.classList.add('pc-files');
         if (opts.fit === 'fill') { root.classList.add('pc-files-fill'); }
-        root.innerHTML = '<p class="fm-loading">Loading…</p>';
+        /* The toolbar's place first: PUDL draws the toolbar from the command
+           table as the applet starts (PUDL 0.68.0), before the files have
+           loaded and the rest is built. */
+        root.innerHTML = '<div class="fm-toolbar-slot" data-toolbar-slot></div><div class="fm-shell" data-role="shell"><p class="fm-loading">Loading…</p></div>';
+        var shell = root.querySelector('[data-role="shell"]');
+        function commandsChanged() { if (opts.commandsChanged) { opts.commandsChanged(); } if (window.pudlMenubar) { window.pudlMenubar.refresh(); } }
 
         var F = null, FB = null, b = null, el = null, destroyed = false;
         /* A folder handed over or in the address comes first; then, after
@@ -83,22 +87,8 @@
         }
 
         function build() {
-            root.innerHTML =
-                '<div class="fm-toolbar">' +
-                  '<button type="button" class="icon-btn" data-action="up" aria-label="Up one folder" title="Up one folder"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3.5"/><path d="M4 7.5l4-4 4 4"/></svg></button>' +
-                  '<button type="button" class="icon-btn" data-action="home" aria-label="Your home directory" title="Your home directory">' + homeGlyph() + '</button>' +
-                  FB.markup.pathBar() +
-                  '<span class="fm-spacer"></span>' +
-                  '<span class="fm-home-tools" data-role="home-tools">' +
-                    '<button type="button" class="btn btn-sm" data-action="new-file">New file</button>' +
-                    '<button type="button" class="btn btn-sm" data-action="new-folder">New folder</button>' +
-                    '<button type="button" class="btn btn-sm" data-action="upload">Upload&#8230;</button>' +
-                  '</span>' +
-                  '<div class="menu">' +
-                    '<button type="button" class="btn btn-sm menu-btn" popovertarget="fm-menu-' + n + '" data-role="menu-btn">Actions</button>' +
-                    '<nav class="menu-panel" id="fm-menu-' + n + '" popover aria-label="Actions" data-role="menu"></nav>' +
-                  '</div>' +
-                '</div>' +
+            shell.innerHTML =
+                '<div class="fm-pathrow">' + FB.markup.pathBar() + '</div>' +
                 FB.markup.body({ drop: true, hint: mounted ? 'Drop files here to upload them' : 'Drop text files here to upload them' }) +
                 '<div class="fm-detail" data-role="detail" aria-live="polite"></div>' +
                 '<p class="fm-status" data-role="status" role="status" aria-live="polite"></p>' +
@@ -120,7 +110,7 @@
                   '<h3 class="dialog-title" id="fm-help-title-' + n + '">Files quick help</h3>' +
                   '<div class="dialog-body">' +
                     '<p>Browse the site in <code>/site</code>, or choose the home button to manage your own files in <code>~</code>. Select an entry to see its details; double-click or press Enter to open it.</p>' +
-                    '<p>The Files menu and the Actions button offer commands for the current selection and folder. In your home directory you can create files and folders, upload text files, rename, move, and delete. Download saves a copy to your computer.</p>' +
+                    '<p>The toolbar and the Folder menu offer commands for the current selection and folder. In your home directory you can create files and folders, upload text files, rename, move, and delete. Download saves a copy to your computer.</p>' +
                     '<p>Use View &gt; Files &gt; Show hidden files to reveal names starting with a dot. With the list focused, Backspace goes up a folder, F2 renames a selected personal file, and Delete asks before deleting it.</p>' +
                     '<p>On the public parkscomputing.com site, your personal file contents are never sent to the parkscomputing.com servers. Files keeps your data in this browser&apos;s local storage. Upload imports a text file into that local storage. Other browsers and devices do not share it; clearing site data removes it. Download important files for safekeeping.</p>' +
                     (mounted ? '<p>You are using the admin site. Its mounted home and server folders are server-backed; changes there are sent to the server.</p>' : '') +
@@ -131,11 +121,11 @@
                 '<input type="file" multiple hidden data-role="file-input"' + (mounted ? '' : ' accept=".txt,.md,.json,.cells,.sudoku,.csv,.xfer,.sh,text/*"') + ' />';
             var q = function (sel) { return root.querySelector(sel); };
             el = {
-                helpDialog: q('[data-role="help-dialog"]'), detail: q('[data-role="detail"]'), status: q('[data-role="status"]'), homeTools: q('[data-role="home-tools"]'),
-                menu: q('[data-role="menu"]'), fileInput: q('[data-role="file-input"]'), main: q('[data-fb="main"]'),
+                helpDialog: q('[data-role="help-dialog"]'), detail: q('[data-role="detail"]'), status: q('[data-role="status"]'),
+                fileInput: q('[data-role="file-input"]'), main: q('[data-fb="main"]'),
                 dialog: q('[data-role="dialog"]'), dlgForm: q('[data-role="dialog-form"]'), dlgTitle: q('[data-role="dialog-title"]'),
                 dlgText: q('[data-role="dialog-text"]'), dlgInput: q('[data-role="dialog-input"]'), dlgError: q('[data-role="dialog-error"]'),
-                dlgOk: q('[data-role="dialog-ok"]'), dlgCancel: q('[data-role="dialog-cancel"]'), up: q('[data-action="up"]')
+                dlgOk: q('[data-role="dialog-ok"]'), dlgCancel: q('[data-role="dialog-cancel"]')
             };
         }
 
@@ -177,12 +167,9 @@
            call after it covers that one. */
         function afterRender() {
             if (!b) { return; }
-            var home = inHome(cwd());
-            el.homeTools.hidden = !home;
-            el.main.classList.toggle('fm-can-drop', home);
-            el.up.disabled = !cwd().parent;
+            el.main.classList.toggle('fm-can-drop', inHome(cwd()));
             renderDetail();
-            renderMenu();
+            commandsChanged();
         }
 
         function renderDetail() {
@@ -207,48 +194,58 @@
                 (r.tags && r.tags.length ? '<span class="fm-d-tags">' + r.tags.map(function (t) { return '<span class="chip">' + esc(t) + '</span>'; }).join(' ') + '</span>' : '');
         }
 
-        /* The actions menu offers only what applies: changing ~ is not on
-           offer outside it. */
-        function actionItems() {
-            if (!b || !F) { return []; }
-            var items = [], c = b.selected(), home = inHome(cwd()), shell = canOpen('shell');
-            if (c) {
-                var kind = F.kindOf(c), r = F.realOf(c), editable = canOpen('open', kind);
-                items.push(['open', kind === 'dir' ? 'Open folder' : kind === 'app' ? 'Launch' : kind === 'link' ? 'Open link in a new tab' : (kind === 'file' || kind === 'script') && editable ? 'Open in the editor' : 'Open']);
-                if (kind !== 'dir' && kind !== 'link' && kind !== 'app' && editable) { items.push(['edit', r.home ? 'Edit' : 'View in the editor']); }
-                if ((kind === 'script' || kind === 'app') && shell) { items.push(['run', 'Run in the terminal']); }
-                if (kind !== 'dir') { items.push(['download', 'Download']); }
-                if (r.home && !r.special) {
-                    items.push(['sep']);
-                    items.push(['rename', 'Rename…']);
-                    items.push(['move', 'Move to…']);
-                    items.push(['delete', 'Delete…']);
-                }
-                if (!r.home && kind === 'page') { items.push(['copy', 'Copy to ~']); }
+        /* === The command table and the toolbar (PUDL 0.68.0) ===============
+           Every command the toolbar, the menus and an agent reach, once. A
+           command offers itself only where it applies, as the Actions menu
+           did: changing ~ is not on offer outside it, and what acts on the
+           selection waits for one. Delete and F2 stay with the list's own
+           keys (onKey), so a key typed in a dialog never deletes a file. */
+        function sel() {
+            var c = b && F ? b.selected() : null, kind = c ? F.kindOf(c) : null, r = c ? F.realOf(c) : null;
+            return { c: c, kind: kind, r: r, editable: !!c && canOpen('open', kind) };
+        }
+        function here() { return !!(b && F) && inHome(cwd()); }
+        function commandTable() {
+            var ready = function () { return !!(b && F); };
+            function cmd(id, label, glyph, more) {
+                return Object.assign({ id: id, label: label, glyph: glyph || undefined,
+                    disabled: function () { return !ready(); }, run: function () { if (b) { return act(id); } } }, more || {});
             }
-            if (home) {
-                items.push(['sep']);
-                items.push(['new-file', 'New file…']);
-                items.push(['new-folder', 'New folder…']);
-                items.push(['upload', 'Upload…']);
-            }
-            if (shell) {
-                items.push(['sep']);
-                items.push(['terminal', 'New terminal window here']);
-            }
-            items.push(['sep']);
-            items.push(['hidden', showHidden ? 'Hide hidden files' : 'Show hidden files']);
-            return items;
+            function owned() { var s = sel(); return !!s.c && s.r.home && !s.r.special; }
+            return [
+                cmd('up', 'Up One Folder', 'arrow-up', { disabled: function () { return !ready() || !cwd().parent; } }),
+                cmd('home', 'Home', 'home'),
+                cmd('new-file', 'New File…', 'file', { hidden: function () { return !here(); } }),
+                cmd('new-folder', 'New Folder…', 'folder', { hidden: function () { return !here(); } }),
+                cmd('upload', 'Upload…', 'upload', { hidden: function () { return !here(); } }),
+                cmd('open', 'Open', 'open', {
+                    label: function () { var s = sel(); return !s.c ? 'Open' : s.kind === 'dir' ? 'Open Folder' : s.kind === 'app' ? 'Launch' : s.kind === 'link' ? 'Open Link in a New Tab' : (s.kind === 'file' || s.kind === 'script') && s.editable ? 'Open in the Editor' : 'Open'; },
+                    hidden: function () { return !sel().c; } }),
+                cmd('edit', 'Edit', 'pencil', {
+                    label: function () { var s = sel(); return s.r && !s.r.home ? 'View in the Editor' : 'Edit'; },
+                    hidden: function () { var s = sel(); return !(s.c && s.kind !== 'dir' && s.kind !== 'link' && s.kind !== 'app' && s.editable); } }),
+                cmd('run', 'Run in the Terminal', 'terminal', { hidden: function () { var s = sel(); return !(s.c && (s.kind === 'script' || s.kind === 'app') && canOpen('shell')); } }),
+                cmd('download', 'Download', 'download', { hidden: function () { var s = sel(); return !(s.c && s.kind !== 'dir'); } }),
+                cmd('copy', 'Copy to ~', 'copy', { hidden: function () { var s = sel(); return !(s.c && !s.r.home && s.kind === 'page'); } }),
+                cmd('rename', 'Rename…', 'rename', { hidden: function () { return !owned(); } }),
+                cmd('move', 'Move To…', 'move', { hidden: function () { return !owned(); } }),
+                cmd('delete', 'Delete…', 'bin', { danger: true, hidden: function () { return !owned(); } }),
+                cmd('terminal', 'New Terminal Window Here', 'terminal', { hidden: function () { return !canOpen('shell'); } }),
+                cmd('hidden', 'Show Hidden Files', 'eye', { checked: function () { return showHidden; } }),
+                { id: 'help', label: 'Files Quick Help', glyph: 'info', disabled: function () { return !ready(); }, run: function () { if (el) { el.helpDialog.showModal(); } } },
+                { id: 'guide', label: 'Files Guide', run: function () { if (inWindows()) { window.pudlWindows.open('files-guide'); } else { location.assign('/page/files-guide'); } } }
+            ];
         }
 
-        function renderMenu() {
-            var items = actionItems(), html = '';
-            items.forEach(function (it, i) {
-                if (it[0] === 'sep') { if (html && i < items.length - 1 && items[i + 1][0] !== 'sep') { html += '<div class="menu-sep" role="separator"></div>'; } return; }
-                html += '<button type="button" class="menu-action" data-action="' + it[0] + '">' + esc(it[1]) + '</button>';
-            });
-            el.menu.innerHTML = html;
-            if (window.pudlMenubar) { window.pudlMenubar.refresh(); }
+        /* Going places first; making things where things can be made; what
+           acts on the selection, which folds first; and the view at the end. */
+        function toolbars() {
+            return [{ label: 'Files', groups: [
+                { label: 'Go', glyph: 'home', priority: 4, items: ['up', 'home'] },
+                { label: 'New', glyph: 'plus', priority: 2, items: ['new-file', 'new-folder', 'upload'] },
+                { label: 'Selected', glyph: 'file', priority: 1, items: ['open', 'edit', 'run', 'download', 'copy', 'rename', 'move', 'delete'] },
+                { label: 'View', glyph: 'eye', priority: 3, end: true, items: ['hidden', 'terminal', 'help'] }
+            ] }];
         }
 
         /* === Opening things ============================================== */
@@ -456,7 +453,7 @@
                 if (inWindows()) { e.preventDefault(); window.pudlWindows.open('files-guide'); }
                 return;
             }
-            if (el.menu.contains(a) && el.menu.matches(':popover-open')) { el.menu.hidePopover(); }
+            /* Only the help dialog's own buttons are left with data-action. */
             act(a.getAttribute('data-action'));
         }
 
@@ -472,48 +469,15 @@
 
         var showHidden = false, unConfig = null;
 
-        /* Files' commands, for PUDL's window menu (0.32.0). On its own page
-           its Actions menu already holds them, so it offers them only in a
-           window, and PUDL adds no Commands button above it there. */
-        function commands() {
-            var list = [{ label: 'Show hidden files', run: function () { act('hidden'); }, checked: showHidden }];
-            if (canOpen('shell')) { list.push({ label: 'New terminal window here', run: function () { act('terminal'); } }); }
-            return list;
-        }
-        /* Both menu surfaces use the same availability rules and actions. */
-        function menuCommand(action, label) {
-            return { label: label, run: function () { if (b) { return act(action); } } };
-        }
-
+        /* The menus name the same commands as the toolbar. */
         function menus() {
-            var files = [menuCommand('up', 'Up one folder'), menuCommand('home', 'Your home directory')];
-            files[0].disabled = !b || !cwd().parent;
-            files[1].disabled = !b;
-            var file = [], view = [];
-            actionItems().forEach(function (it) {
-                if (it[0] === 'terminal') {
-                    // Its own group, after one separator, never two.
-                    if (file.length && file[file.length - 1] !== '-') { file.push('-'); }
-                    file.push(menuCommand(it[0], it[1]));
-                } else if (it[0] === 'hidden') {
-                    var hidden = menuCommand('hidden', 'Show hidden files');
-                    hidden.checked = showHidden;
-                    view.push(hidden);
-                } else if (it[0] === 'sep') {
-                    if (file.length && file[file.length - 1] !== '-') { file.push('-'); }
-                } else {
-                    file.push(menuCommand(it[0], it[1]));
-                }
-            });
-            if (file[file.length - 1] === '-') { file.pop(); }
+            var t = commandTable(), rows = function (ids) { return window.pcCommandRows(t, ids); };
             return { titles: [{ label: 'Files', items: window.pcAppletIdentity(root) },
-                { id: 'folder', label: 'Folder', items: file }], into: { go: files, view: view, help: [
-                { label: 'Files quick help', disabled: !b, run: function () { if (el) { el.helpDialog.showModal(); } } },
-                { label: 'Files guide', run: function () { if (inWindows()) { window.pudlWindows.open('files-guide'); } else { location.assign('/page/files-guide'); } } }
-            ] } };
+                { id: 'folder', label: 'Folder', items: rows(['open', 'edit', 'run', 'download', '-', 'rename', 'move', 'delete', 'copy', '-', 'new-file', 'new-folder', 'upload', '-', 'terminal']) }],
+                into: { go: rows(['up', 'home']), view: rows(['hidden']), help: rows(['help', 'guide']) } };
         }
 
-        function setHidden(on) { showHidden = !!on; if (b) { b.showHidden(showHidden); renderMenu(); } }
+        function setHidden(on) { showHidden = !!on; if (b) { b.showHidden(showHidden); commandsChanged(); } }
 
         var boot = Promise.all([loadSiteFs().then(function (api) { F = api; return F.load(); }), loadBrowser()]).then(async function (got) {
             if (destroyed) { return; }
@@ -539,7 +503,7 @@
                 draggable: true,
                 onUpload: uploadFiles,
                 onOpen: openEntry,
-                onSelect: function () { renderDetail(); renderMenu(); },
+                onSelect: function () { renderDetail(); commandsChanged(); },
                 onNavigate: announce,
                 onRender: afterRender,
                 onKey: onKey,
@@ -567,7 +531,8 @@
             state: function () { return b && F ? stateString() : null; },
             /* A folder handed over, by a browse request or a preset. */
             setState: function (s) { var p = pathFrom(s); if (b && p) { Promise.resolve(b.goPath(F.upgradePath(p))).then(function (went) { if (went) { b.focusList(); } }); } },
-            commands: root.closest('.win') ? commands : undefined,
+            commandTable: commandTable,
+            toolbars: toolbars,
             menus: menus,
             destroy: function () {
                 destroyed = true;

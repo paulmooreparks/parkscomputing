@@ -24,7 +24,8 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
   await page.waitForSelector('.cm-content');
   await page.evaluate(async () => { const F = window.pcSiteFs; await F.load(); await F.write(F.home(), '~/dialog-src.txt', 'from the dialog test\n', false); });
 
-  const action = a => page.evaluate(a => document.querySelector('[data-action="' + a + '"]').click(), a);
+  /* The Editor's commands, run as pressing them would (PUDL 0.68.0's command table). */
+  const action = a => page.evaluate(a => { window.pudlCommands.run(a, undefined, document.querySelector('.pc-editor')); }, a);
   const dlg = '.fb-picker[open]';
   const state = () => page.evaluate(() => {
     const d = document.querySelector('.fb-picker[open]');

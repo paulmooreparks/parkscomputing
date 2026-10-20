@@ -40,7 +40,7 @@ const log = (n, ok, x) => console.log((ok ? 'PASS ' : 'FAIL ') + n + (x !== unde
   await page.goto(BASE + '/page/editor?file=~/long.md', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => document.querySelector('[data-role="where"]')?.textContent === '~/long.md');
   // A scratch tab with text, then back to the long file.
-  await page.click('[data-action="new"]');
+  await page.click('.pc-editor [data-command="new"]');
   await page.keyboard.type('scratch notes');
   await page.click('[data-tab="0"]');
   await page.click('.cm-content');

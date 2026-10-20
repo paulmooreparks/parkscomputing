@@ -86,7 +86,7 @@ const log = (n, ok, x) => console.log((ok ? 'PASS ' : 'FAIL ') + n + (x !== unde
   // 3b. Switching views takes the Editor's work along, and moves it.
   await page.goto(BASE + '/?open=editor', { waitUntil: 'networkidle' });
   await page.waitForSelector('.win[data-win="editor"] .cm-content');
-  await page.click('.win[data-win="editor"] [data-action="new"]');
+  await page.click('.win[data-win="editor"] [data-command="new"]');
   await page.keyboard.type('carried across views');
   await page.waitForTimeout(900);
   await page.goto(BASE + '/page/editor', { waitUntil: 'networkidle' });
