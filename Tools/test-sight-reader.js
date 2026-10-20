@@ -926,28 +926,34 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.setViewportSize({ width: 1300, height: 900 });
   await open('/page/sight-reader?score=simple/Ode to Joy.musicxml');
   await options(() => pick('keyboard', 'letters'));
-  /* The bars are set in their own dialog, from the toolbar's Bars… */
+  /* The bars are set on the toolbar, in a group that never folds (1.2.0). */
+  log('the bar numbers are on the toolbar', await page.isVisible('.sr-toolbar [data-bar="from"]') && await page.isVisible('.sr-toolbar [data-bar="to"]'));
+  log('Whole Piece is not there while no bars are set', !(await page.isVisible('.sr-toolbar [data-command="clear-bars"]')));
   await srCmd('bars');
-  await page.waitForSelector('[data-role="bars"][open]');
-  log('Bars… opens the bars dialog with the first bar ready to type in', await page.evaluate(() => document.activeElement.getAttribute('data-bar')) === 'from');
+  log('Bars to Practise… puts the keyboard in the first bar', await page.evaluate(() => document.activeElement.getAttribute('data-bar')) === 'from');
   await page.fill('[data-bar="from"]', '2');
   await page.fill('[data-bar="to"]', '3');
   await page.press('[data-bar="to"]', 'Enter');
   await page.waitForTimeout(600);
   i = await info();
   log('a first and last bar start the practice at the first bar, counting only those', i.pos === 'Bar 2 · 1 of 8', i.pos);
-  log('Enter closes the dialog, and the toolbar says which bars', !(await page.isVisible('[data-role="bars"]')) && (await page.evaluate(() => window.pudlCommands.list(document.querySelector('.pc-sight-reader')).find(c => c.id === 'bars').label)) === 'Bars 2 to 3…');
-  await srCmd('bars');
-  await page.waitForSelector('[data-role="bars"][open]');
+  log('Enter gives the keyboard back to the music', await page.evaluate(() => document.activeElement.classList.contains('pc-sight-reader')));
+  await page.focus('[data-bar="from"]');
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('12');
+  await page.keyboard.press('ArrowLeft');
+  log('Left in a bar box stays in it, rather than moving along the toolbar', await page.evaluate(() => document.activeElement.getAttribute('data-bar')) === 'from');
   await page.keyboard.press('Control+A');
   await page.keyboard.type('2');
   await page.keyboard.press('Tab');
   log('Tab from the first bar goes to the last bar', await page.evaluate(() => document.activeElement.getAttribute('data-bar')) === 'to');
+  await page.keyboard.press('Shift+Tab');
+  log('and Shift+Tab goes back', await page.evaluate(() => document.activeElement.getAttribute('data-bar')) === 'from');
+  await page.keyboard.press('Tab');
   await page.keyboard.press('Control+A');
   await page.keyboard.type('3');
-  await page.keyboard.press('Tab');
-  log('and on to Loop, then Whole Piece', await page.evaluate(() => document.activeElement.hasAttribute('data-loop')) && (await page.keyboard.press('Tab'), await page.evaluate(() => document.activeElement.getAttribute('data-sr'))) === 'clear-bars');
-  await page.click('[data-sr="close-bars"]');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
   await page.focus('.pc-sight-reader');
   await type('gfedccd');
   await type('e');
@@ -965,16 +971,13 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(600);
-  const back = await page.evaluate(() => ({ from: document.querySelector('[data-bar="from"]').value, to: document.querySelector('[data-bar="to"]').value, loop: document.querySelector('[data-loop]').checked }));
+  const back = await page.evaluate(() => ({ from: document.querySelector('[data-bar="from"]').value, to: document.querySelector('[data-bar="to"]').value, loop: document.querySelector('.sr-toolbar [data-command="loop"]').getAttribute('aria-pressed') === 'true' }));
   log('the bars and the loop come back after a reload', back.from === '2' && back.to === '3' && back.loop, JSON.stringify(back));
-  await srCmd('bars');
-  await page.waitForSelector('[data-role="bars"][open]');
-  log('Whole Piece is there to use while bars are set', !(await page.isDisabled('[data-sr="clear-bars"]')));
-  await page.click('[data-sr="clear-bars"]');
+  log('Whole Piece is there to use while bars are set', await page.isVisible('.sr-toolbar [data-command="clear-bars"]'));
+  await page.click('.sr-toolbar [data-command="clear-bars"]');
   await page.waitForTimeout(500);
   const emptied = await page.evaluate(() => document.querySelector('[data-bar="from"]').value + document.querySelector('[data-bar="to"]').value);
-  log('Whole Piece empties both bars and is then disabled', emptied === '' && await page.isDisabled('[data-sr="clear-bars"]'), emptied);
-  await page.click('[data-sr="close-bars"]');
+  log('Whole Piece empties both bars and is then gone', emptied === '' && !(await page.isVisible('.sr-toolbar [data-command="clear-bars"]')), emptied);
   log('clearing practises the whole piece again', (await info()).pos.startsWith('Bar 1 · 1 of 62'), (await info()).pos);
 
   // 14. Installable: a manifest of its own, which the browser accepts, and

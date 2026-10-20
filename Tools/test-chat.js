@@ -135,8 +135,19 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
     await runCmd('thinking');
 
     // A skill: "/" in the box offers it, Enter opens its form, Enter sends.
-    const menuSkills = (await cmd('skills')).items.map(i => i.label || '');
+    /* The Skills menu is a panel the chat draws (1.3.1): Down on its button
+       opens it with the keyboard in its filter, which narrows the list. */
+    await page.focus('.pudl-chat [data-command="skills"]');
+    await page.keyboard.press('ArrowDown');
+    await page.waitForTimeout(300);
+    const menuSkills = await page.$$eval('[popover]:popover-open .skill-name', ss => ss.map(s => s.textContent));
     log('the Skills menu lists the skills in ~/skills', menuSkills.some(s => /^\/greet/.test(s)), menuSkills.join());
+    const filterHasKeys = await page.evaluate(() => document.activeElement && document.activeElement.matches('[popover]:popover-open .md-filter'));
+    await page.keyboard.type('zzz');
+    await page.waitForTimeout(200);
+    const narrowed = await page.$$eval('[popover]:popover-open .skill-name', ss => ss.filter(s => s.getClientRects().length).length);
+    log('its filter has the keyboard and narrows the list', filterHasKeys && narrowed === 0, 'focused ' + filterHasKeys + ', left ' + narrowed);
+    await page.keyboard.press('Escape');
     await page.fill('.chat-text', '');
     await page.type('.chat-text', '/gre');
     await page.waitForSelector('.slash-pop:not([hidden]) .skill-row', { timeout: 5000 }).catch(() => { });
