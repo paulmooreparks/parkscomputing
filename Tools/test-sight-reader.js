@@ -329,6 +329,8 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.click('.sr-top [data-command="restart"]');
   i = await info();
   log('pressing it starts again from the top, with nothing marked', i.pos === 'Bar 1 · 1 of 4' && i.green === 0 && i.tally === '', JSON.stringify(i));
+  /* The toolbar draws again on the next frame. */
+  await page.waitForTimeout(200);
   log('and it is no longer highlighted', await page.evaluate(() => !document.querySelector('.sr-top [data-command="restart"]').classList.contains('btn-primary')));
   await type('ceg');
   log('the keyboard works straight away, with no click first', (await info()).pos === 'Bar 1 · 2 of 4', (await info()).pos);
