@@ -469,12 +469,12 @@
 
         var showHidden = false, unConfig = null;
 
-        /* The menus name the same commands as the toolbar. */
+        /* The menus list the toolbar's commands by id, which PUDL (0.68.1)
+           looks up in the command table. */
         function menus() {
-            var t = commandTable(), rows = function (ids) { return window.pcCommandRows(t, ids); };
             return { titles: [{ label: 'Files', items: window.pcAppletIdentity(root) },
-                { id: 'folder', label: 'Folder', items: rows(['open', 'edit', 'run', 'download', '-', 'rename', 'move', 'delete', 'copy', '-', 'new-file', 'new-folder', 'upload', '-', 'terminal']) }],
-                into: { go: rows(['up', 'home']), view: rows(['hidden']), help: rows(['help', 'guide']) } };
+                { id: 'folder', label: 'Folder', items: ['open', 'edit', 'run', 'download', '-', 'rename', 'move', 'delete', 'copy', '-', 'new-file', 'new-folder', 'upload', '-', 'terminal'] }],
+                into: { go: ['up', 'home'], view: ['hidden'], help: ['help', 'guide'] } };
         }
 
         function setHidden(on) { showHidden = !!on; if (b) { b.showHidden(showHidden); commandsChanged(); } }

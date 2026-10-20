@@ -328,24 +328,35 @@
         code: function (s, d) { return PM.toggleMark(schema.marks.code)(s, d); },
         link: link,
         paragraph: function (s, d) { return setBlock(schema.nodes.paragraph)(s, d); },
-        h2: function (s, d) { return setBlock(schema.nodes.heading, { level: 2 })(s, d); },
-        h3: function (s, d) { return setBlock(schema.nodes.heading, { level: 3 })(s, d); },
-        h4: function (s, d) { return setBlock(schema.nodes.heading, { level: 4 })(s, d); },
         bullets: function (s, d) { return toggleList(schema.nodes.bullet_list)(s, d); },
         numbers: function (s, d) { return toggleList(schema.nodes.ordered_list)(s, d); },
         undo: PM.undo, redo: PM.redo
     };
+    /* The six heading levels, h1 to h6, on Ctrl+1 to Ctrl+6 as in the
+       Editor's paragraph style menu; Paragraph is Ctrl+0. */
+    var STYLE_KEYS = { 'Mod-0': COMMANDS.paragraph };
+    [1, 2, 3, 4, 5, 6].forEach(function (n) {
+        COMMANDS['h' + n] = function (s, d) { return setBlock(schema.nodes.heading, { level: n })(s, d); };
+        STYLE_KEYS['Mod-' + n] = COMMANDS['h' + n];
+    });
+
+    /* The paragraph style of the block the cursor is in: h1 to h6 for a
+       heading, paragraph for anything else. */
+    function block() {
+        if (!view) { return null; }
+        var p = view.state.selection.$from.parent;
+        return p.type === schema.nodes.heading ? 'h' + p.attrs.level : 'paragraph';
+    }
 
     function keys() {
-        return PM.keymap({
+        return PM.keymap(Object.assign({
             'Mod-b': COMMANDS.bold, 'Mod-i': COMMANDS.italic, 'Mod-`': COMMANDS.code, 'Mod-k': COMMANDS.link,
-            'Mod-Alt-0': COMMANDS.paragraph, 'Mod-Alt-2': COMMANDS.h2, 'Mod-Alt-3': COMMANDS.h3, 'Mod-Alt-4': COMMANDS.h4,
             'Mod-z': PM.undo, 'Mod-y': PM.redo, 'Mod-Shift-z': PM.redo,
             'Enter': PM.splitListItem(schema.nodes.list_item),
             'Tab': PM.sinkListItem(schema.nodes.list_item),
             'Shift-Tab': PM.liftListItem(schema.nodes.list_item),
             'Shift-Enter': function (s, d) { if (d) { d(s.tr.replaceSelectionWith(schema.nodes.hard_break.create()).scrollIntoView()); } return true; }
-        });
+        }, STYLE_KEYS));
     }
 
     /* === Writing back =================================================== */
@@ -437,6 +448,7 @@
             dispatchTransaction: function (tr) {
                 view.updateState(view.state.apply(tr));
                 if (tr.docChanged) { emit(false); }
+                if ((tr.docChanged || tr.selectionSet) && host.moved) { host.moved(); }
             }
         });
         view.dom.classList.add('pc-visual');
@@ -484,7 +496,7 @@
     }
 
     var api = {
-        attach: attach, load: load, run: run, insertShortcode: insertShortcode,
+        attach: attach, load: load, run: run, insertShortcode: insertShortcode, block: block,
         active: function (name) {
             if (!view) { return false; }
             var marks = { bold: 'strong', italic: 'em', strike: 'strike', code: 'code', link: 'link' };

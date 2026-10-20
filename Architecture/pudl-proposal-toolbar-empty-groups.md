@@ -1,6 +1,6 @@
 # Proposal to PUDL: a toolbar group with nothing to show leaves the row
 
-Status: proposed 2026-10-20. The site carries a workaround in `wwwroot/js/applets.js`, marked `PUDL WORKAROUND`, and deletes it on the upgrade that does this. Recorded as D72 in `pudl-adoption.md`.
+Status: closed the same day by PUDL 0.68.1, which the site took as D73 in `pudl-adoption.md`, deleting its workaround.
 
 From parkscomputing.com, 2026-10-20, after moving the Editor and Files to PUDL 0.68.0's folding toolbars.
 

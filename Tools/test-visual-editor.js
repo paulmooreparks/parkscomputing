@@ -158,6 +158,24 @@ function diff(a, b) {
     log('Bold from the toolbar\'s command writes **…**', now.includes('The **first** paragraph'), JSON.stringify(d));
     base = now;
 
+    // The paragraph style's keys in the page: Ctrl+3 makes a third-level
+    // heading, the style menu says so, and Ctrl+0 makes it a paragraph again.
+    const styleNow = () => page.evaluate(() => { const s = window.pudlCommands.list(document.querySelector('.pc-editor')).find(c => c.id === 'style'); return s ? s.current : null; });
+    /* At the line's start, since its middle may be the status badge. */
+    await frame.click('.pc-visual > p >> nth=-1', { position: { x: 4, y: 6 } });
+    await page.waitForTimeout(300);
+    const caretIn = await frame.evaluate(() => { const n = getSelection().anchorNode; return n ? (n.nodeType === 3 ? n.parentElement : n).closest('.pc-visual > *').textContent.slice(0, 30) : null; });
+    await page.keyboard.press('Control+3');
+    await page.waitForTimeout(1500);
+    now = await cmText();
+    log('Ctrl+3 in the page makes the paragraph a third-level heading', /^### The last paragraph\./m.test(now) && await frame.isVisible('.pc-visual > h3'), now.split('\n').find(l => /last paragraph/.test(l)) + ' / page: ' + await frame.evaluate(() => [...document.querySelectorAll('.pc-visual > *')].map(e => e.tagName).join(',')) + ' / diff ' + JSON.stringify(diff(base, now)) + ' / caret in ' + caretIn);
+    log('and the paragraph style says Heading 3', (await styleNow()) === 'Heading 3', await styleNow());
+    await page.keyboard.press('Control+0');
+    await page.waitForTimeout(1500);
+    now = await cmText();
+    log('Ctrl+0 in the page makes it a paragraph again', /^The last paragraph\./m.test(now) && (await styleNow()) === 'Paragraph', now.split('\n').find(l => /last paragraph/.test(l)) + ' / ' + await styleNow());
+    base = now;
+
     // A figure pressed in the page opens its form, not the lightbox.
     await frame.click('.pc-visual .sc-figure img');
     await page.waitForSelector('[data-role="figure"][open]', { timeout: 5000 });
@@ -251,6 +269,21 @@ function diff(a, b) {
     await page.waitForTimeout(300);
     now = await cmText();
     log('Paragraph takes the mark off', /^The last paragraph\./m.test(now), now.split('\n').find(l => /last paragraph/.test(l)));
+    // The same keys in the text, which the browser must not take for itself.
+    await page.keyboard.press('Control+1');
+    await page.waitForTimeout(300);
+    now = await cmText();
+    log('Ctrl+1 in the text makes the line a first-level heading', /^# The last paragraph\./m.test(now) && (await styleNow()) === 'Heading 1', now.split('\n').find(l => /last paragraph/.test(l)) + ' / ' + await styleNow());
+    await page.keyboard.press('Control+6');
+    await page.waitForTimeout(300);
+    now = await cmText();
+    log('Ctrl+6 changes it to a sixth-level heading', /^###### The last paragraph\./m.test(now), now.split('\n').find(l => /last paragraph/.test(l)));
+    await page.keyboard.press('Control+0');
+    await page.waitForTimeout(300);
+    now = await cmText();
+    log('Ctrl+0 makes it a paragraph again', /^The last paragraph\./m.test(now) && (await styleNow()) === 'Paragraph', now.split('\n').find(l => /last paragraph/.test(l)));
+    const styles = await page.evaluate(() => { const s = window.pudlCommands.list(document.querySelector('.pc-editor')).find(c => c.id === 'style'); return s.items.map(i => i.label + ' ' + i.shortcut).join(', '); });
+    log('the paragraph style menu lists Paragraph and six heading levels with their keys', styles === 'Paragraph Ctrl+0, Heading 1 Ctrl+1, Heading 2 Ctrl+2, Heading 3 Ctrl+3, Heading 4 Ctrl+4, Heading 5 Ctrl+5, Heading 6 Ctrl+6', styles);
     await runCmd('bullets');
     await page.waitForTimeout(300);
     now = await cmText();

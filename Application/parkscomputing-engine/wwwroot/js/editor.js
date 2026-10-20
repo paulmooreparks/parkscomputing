@@ -417,7 +417,8 @@
                         if (u.docChanged && tabs[active] === tab) { markModified(tab); }
                         /* In Split, the page follows the text. */
                         if (u.docChanged && tabs[active] === tab && visual.api && !visual.fromVisual) { reloadVisual(articleNode()); }
-                        if (u.selectionSet || u.docChanged) { showPos(); }
+                        /* The paragraph style shows the line the cursor is on. */
+                        if (u.selectionSet || u.docChanged) { showPos(); if (tab.lang === 'markdown') { commandsChanged(); } }
                         if (tabs[active] === tab && (u.selectionSet || u.docChanged ||
                             CM.searchPanelOpen(u.state) !== CM.searchPanelOpen(u.startState))) { keep(); }
                     })
@@ -1032,6 +1033,8 @@
                     return ask(title, '', value, [['cancel', 'Cancel'], ['ok', 'OK', true]], null, true).then(function (v) { return v === 'cancel' ? null : v; });
                 },
                 figure: figureDialog,
+                /* The cursor moved in the page, so the paragraph style shows where. */
+                moved: commandsChanged,
                 say: function (text, isError) { say(text, isError); }
             };
         }
@@ -1073,7 +1076,7 @@
         function showFormat(mode) {
             var t = current();
             var on = !!(mode === 'visual' || mode === 'split' || (t && t.lang === 'markdown' && !t.readOnly));
-            if (on !== formatOffered) { formatOffered = on; commandsChanged(); }
+            if (on !== formatOffered) { formatOffered = on; commandsChanged(); if (window.pudlMenubar) { window.pudlMenubar.refresh(); } }
         }
         /* The formatting goes to the page in Visual, to the text in Text and
            Preview, and in Split to whichever has the keyboard, the text when
@@ -1117,7 +1120,7 @@
                 return;
             }
             var first = state.doc.lineAt(sel.from), last = state.doc.lineAt(sel.to), changes = [];
-            var prefix = name === 'h2' ? '## ' : name === 'h3' ? '### ' : name === 'bullets' ? '- ' : null;
+            var level = /^h([1-6])$/.exec(name), prefix = level ? '#'.repeat(+level[1]) + ' ' : name === 'bullets' ? '- ' : null;
             var every = true;
             for (var n = first.number; n <= last.number; n++) {
                 var line = state.doc.line(n), m = /^(\s*)(#{1,6}\s+|[-*+]\s+|\d+[.)]\s+)?/.exec(line.text), marked = m[2] || '';
@@ -1128,7 +1131,9 @@
             for (var n2 = first.number; n2 <= last.number; n2++) {
                 var ln = state.doc.line(n2), mm = /^(\s*)(#{1,6}\s+|[-*+]\s+|\d+[.)]\s+)?/.exec(ln.text);
                 var indent = mm[1], old = mm[2] || '', put = '';
-                if (name === 'paragraph' || every) { put = ''; }
+                /* A list already on every line comes off; a heading level
+                   chosen again stays, as a paragraph style does. */
+                if (name === 'paragraph' || (every && !level)) { put = ''; }
                 else if (name === 'numbers') { put = (k++) + '. '; }
                 else { put = prefix; }
                 if (old !== put) { changes.push({ from: ln.from + indent.length, to: ln.from + indent.length + old.length, insert: put }); }
@@ -1674,9 +1679,18 @@
         var FORMATS = [
             ['bold', 'Bold', 'bold', 'Mod-b'], ['italic', 'Italic', 'italic', 'Mod-i'], ['strike', 'Strike Through', 'strike'],
             ['code', 'Code', 'code', 'Mod-`'], ['link', 'Link…', 'link', 'Mod-k'],
-            ['paragraph', 'Paragraph', 'paragraph', 'Mod-Alt-0'], ['h2', 'Heading', 'heading-2', 'Mod-Alt-2'], ['h3', 'Subheading', 'heading-3', 'Mod-Alt-3'],
             ['bullets', 'Bulleted List', 'list'], ['numbers', 'Numbered List', 'list-numbered']
         ];
+        /* The paragraph style, as GK Companion's Editor has it: one menu that
+           shows the style of the line the cursor is in, holding Paragraph
+           (Ctrl+0) and the six heading levels (Ctrl+1 to Ctrl+6). */
+        var STYLES = [['paragraph', 'Paragraph', 'Mod-0']].concat([1, 2, 3, 4, 5, 6].map(function (n) { return ['h' + n, 'Heading ' + n, 'Mod-' + n]; }));
+        function blockStyle() {
+            if (formatsThePage()) { return visual.api && visual.api.block ? visual.api.block() : null; }
+            if (!view) { return null; }
+            var m = /^\s{0,3}(#{1,6})(\s|$)/.exec(view.state.doc.lineAt(view.state.selection.main.head).text);
+            return m ? 'h' + m[1].length : 'paragraph';
+        }
         function commandTable() {
             var ready = !!(CM && view), tab = current(), editable = !!(tab && !tab.readOnly);
             function key(name, builtIn) { return function () { return (ready && shortcutFor(name)) || (builtIn ? keyLabel(builtIn) : undefined); }; }
@@ -1709,6 +1723,18 @@
                     shortcut: f[3] ? keyLabel(f[3]) : undefined, hidden: function () { return !formatOffered; }
                 }));
             });
+            /* The style menu has no glyph, so the style's name stays on the
+               row when the other formatting folds to glyphs. Each level is
+               hidden where there is nothing to format, so its key does
+               nothing there either. */
+            var unformatted = function () { return !formatOffered; }, noEdit = function () { return !ready || !editable; };
+            table.push({ id: 'style', label: 'Paragraph Style', hidden: unformatted, disabled: noEdit,
+                current: function () { var s = blockStyle(), f = STYLES.find(function (x) { return x[0] === s; }); return f ? f[1] : null; },
+                items: STYLES.map(function (s) {
+                    return { id: s[0], label: s[1], shortcut: keyLabel(s[2]), choice: 'ed-style', value: s[0],
+                        checked: function () { return blockStyle() === s[0]; }, hidden: unformatted, disabled: noEdit,
+                        run: function () { applyFormat(s[0]); } };
+                }) });
             [['text', 'Text'], ['visual', 'Visual'], ['split', 'Split']].forEach(function (v) {
                 table.push({ id: 'view-' + v[0], label: v[1], choice: 'ed-view', choiceLabel: 'View', value: v[0],
                     checked: function () { return viewMode === v[0]; },
@@ -1724,19 +1750,22 @@
             return [{ label: 'Editor', groups: [
                 { label: 'File', glyph: 'file', priority: 3, items: ['toggle-files', 'new', 'open', 'save', 'save-as'] },
                 { label: 'Edit', glyph: 'undo', priority: 2, items: ['undo', 'redo', 'find', 'toggle-wrap'] },
-                { label: 'Format', glyph: 'bold', priority: 1, items: ['bold', 'italic', 'strike', 'code', 'link', 'paragraph', 'h2', 'h3', 'bullets', 'numbers', 'insert'] },
+                { label: 'Format', glyph: 'bold', priority: 1, items: ['style', 'bold', 'italic', 'strike', 'code', 'link', 'bullets', 'numbers', 'insert'] },
                 { label: 'View', glyph: 'new-window', priority: 4, end: true, items: ['source', { choice: 'ed-view' }, 'preview'] }
             ] }];
         }
 
-        /* The menus name the same commands. */
+        /* The menus list the same commands by id, which PUDL (0.68.1) looks
+           up in the command table. */
         function menus() {
-            var t = commandTable(), rows = function (ids) { return window.pcCommandRows(t, ids); };
-            return { titles: [
+            var titles = [
                 { label: 'Editor', items: window.pcAppletIdentity(root) },
-                { id: 'file', label: 'File', items: rows(['new', 'open', 'save', 'save-as', '-', 'close-document']) },
-                { id: 'edit', label: 'Edit', items: rows(['undo', 'redo', '-', 'find', '-', 'insert-timestamp', 'insert-date', 'stamp-modified', '-', 'key-bindings']) }
-            ], into: { view: rows(['toggle-files', 'toggle-wrap', '-', 'view-text', 'view-visual', 'view-split', '-', 'preview']), go: rows(['go-to-line']) } };
+                { id: 'file', label: 'File', items: ['new', 'open', 'save', 'save-as', '-', 'close-document'] },
+                { id: 'edit', label: 'Edit', items: ['undo', 'redo', '-', 'find', '-', 'insert-timestamp', 'insert-date', 'stamp-modified', '-', 'key-bindings'] }
+            ];
+            /* Format, as GK Companion's Editor has it, where there is formatting to do. */
+            if (formatOffered) { titles.push({ id: 'format', label: 'Format', items: ['bold', 'italic', 'strike', 'code', '-', 'style', '-', 'bullets', 'numbers', '-', 'link', 'insert'] }); }
+            return { titles: titles, into: { view: ['toggle-files', 'toggle-wrap', '-', 'view-text', 'view-visual', 'view-split', '-', 'preview'], go: ['go-to-line'] } };
         }
 
         /* === Start ======================================================== */

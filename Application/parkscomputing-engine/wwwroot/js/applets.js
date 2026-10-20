@@ -67,46 +67,6 @@ window.pcAppletIdentity = function (root, entries) {
 };
 
 /* Surface controls and menus share the same availability and action. */
-/* PUDL WORKAROUND (PUDL 0.68.0's command preview): an applet's menus() may
-   name commands of its command table by id, as the toolbar does, but
-   PUDL's menu bar does not look ids up yet, so this turns a list of ids
-   and '-' into the rows menus() returns: each command's words, key and
-   state read now, a hidden command left out, and no separator doubled or
-   at an end. Delete it when PUDL's menu bar takes ids. */
-window.pcCommandRows = function (table, ids) {
-    function val(c, f) { var v = c[f]; return typeof v === 'function' && f !== 'run' ? v.call(c) : v; }
-    var byId = {};
-    (table || []).forEach(function (c) { if (c && c.id) { byId[c.id] = c; } });
-    var rows = [];
-    (ids || []).forEach(function (id) {
-        if (id === '-') { if (rows.length && rows[rows.length - 1] !== '-') { rows.push('-'); } return; }
-        if (typeof id !== 'string') { rows.push(id); return; }
-        var c = byId[id];
-        if (!c || val(c, 'hidden')) { return; }
-        var row = { label: val(c, 'label'), disabled: !!val(c, 'disabled'), danger: !!val(c, 'danger'),
-            run: function () { if (!val(c, 'disabled') && c.run) { return c.run(val(c, 'value')); } } };
-        var key = val(c, 'shortcut'), checked = val(c, 'checked'), choice = val(c, 'choice');
-        if (key) { row.shortcut = key; }
-        if (checked != null) { row.checked = !!checked; }
-        if (choice) { row.radio = choice; }
-        rows.push(row);
-    });
-    if (rows[rows.length - 1] === '-') { rows.pop(); }
-    return rows;
-};
-/* PUDL WORKAROUND (PUDL 0.68.0's toolbar preview): a toolbar group whose
-   commands are all hidden still shows its name, and still takes a place
-   in the folding. After each drawing of the commands, a group with no
-   command left to show is hidden whole, and shown again when one comes
-   back. Delete it when PUDL's toolbar does this itself. */
-document.addEventListener('pudl:commands-change', function () {
-    document.querySelectorAll('[data-toolbar-slot] .toolbar-group').forEach(function (g) {
-        var shown = Array.prototype.some.call(g.querySelectorAll('[data-command]'), function (c) {
-            return !c.hidden && !c.closest('.toolbar-fold') && !(c.parentElement && c.parentElement.closest('[data-command-choice][hidden]'));
-        });
-        if (g.hidden === shown) { g.hidden = !shown; }
-    });
-});
 window.pcAppletAction = function (root, selector, label) {
     var button = root.querySelector(selector);
     return { label: label, disabled: !button || button.disabled, run: function () {
@@ -195,7 +155,7 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: pcWorkspacePages + 'files',
-    ver: '28',
+    ver: '29',
     handles: { browse: { param: 'path' } },
     actions: '/js/actions/files.json'
 });
@@ -205,7 +165,7 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
-    ver: '35',
+    ver: '36',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } },
     actions: '/js/actions/editor.json',
     /* CodeMirror and the documents load once the windows in view are ready. */
