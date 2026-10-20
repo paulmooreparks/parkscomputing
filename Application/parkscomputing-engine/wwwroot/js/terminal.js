@@ -856,16 +856,15 @@
     });
     /* === Applets' actions ===================================================
        The actions applets publish (Architecture/applet-platform-design.md,
-       P2), through the action broker, js/applet-actions.js, which loads the
-       first time it is asked for. The terminal grants an action everything
-       on the broker's list, because its reader could do all of it by hand. */
-    var actionsReady = null;
+       P2), through PUDL's action broker (pudl-actions.js, PUDL 0.68.0), which
+       the page loads after this script. The terminal holds every capability
+       (grant "all"), because its reader could do all of it by hand. */
     function actionBroker() {
-        if (!actionsReady) {
-            actionsReady = (window.pcActions ? Promise.resolve() : loadScript(window.pcActionsSrc || beside('applet-actions.js')))
-                .then(function () { return window.pcActions; }, function (err) { actionsReady = null; throw err; });
-        }
-        return actionsReady;
+        if (window.pudlApplets && window.pudlApplets.invoke) { return Promise.resolve(window.pudlApplets); }
+        return new Promise(function (resolve, reject) {
+            var late = setTimeout(function () { reject(new Error('this page has no action broker')); }, 10000);
+            document.addEventListener('pudl:actions-ready', function () { clearTimeout(late); resolve(window.pudlApplets); }, { once: true });
+        });
     }
 
     function invocationId() {
@@ -879,7 +878,7 @@
        so it can be cancelled before the broker answers. */
     async function runAction(ref, input, io, waitForEnd) {
         var A = await actionBroker(), id = invocationId(), stop = false;
-        var started = A.invoke(ref, input, { id: id, owner: { kind: 'terminal' } });
+        var started = A.invoke(ref, input, { id: id, owner: { kind: 'terminal' }, grant: 'all' });
         var ended = started.then(function (v) { return waitForEnd && (v.status === 'running' || v.status === 'waiting') ? A.wait(v.id) : v; });
         for (;;) {
             var tick = new Promise(function (resolve) { setTimeout(resolve, 200); });

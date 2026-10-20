@@ -20,8 +20,8 @@ namespace ParksComputing.Engine.Mcp;
 /// Runs applets' pure actions on the server, for MCP
 /// (Architecture/applet-platform-design.md, P3). An action runs from the same
 /// files the page's broker uses: its manifest and module in wwwroot/js/actions,
-/// the shared rules in wwwroot/js/applet-actions-core.js and the schema
-/// library in wwwroot/js/vendor/cfworker-json-schema-4.1.1, so input and
+/// PUDL's shared rules, wwwroot/pudl/pudl-actions-core.js, and the schema
+/// library in wwwroot/pudl/vendor/cfworker-json-schema-4.1.1, so input and
 /// output are checked as the page checks them. Each run has an engine of its
 /// own (Jint), with no access to .NET but the four functions
 /// Mcp/AppletRunner.js documents, and limits on time, memory, statements and
@@ -42,6 +42,8 @@ public sealed class AppletRunner {
 
     private readonly string _root;
     private readonly string _js;
+    /// <summary>PUDL's copy in the web root, whose shared rules and schema library the page's broker uses too.</summary>
+    private readonly string _pudl;
     private readonly Pages.Services.AppletCatalog? _catalog;
     private readonly ILogger<AppletRunner> _log;
     /// <summary>Where the site's own manifests' modules live, relative to the web root.</summary>
@@ -56,6 +58,7 @@ public sealed class AppletRunner {
     public AppletRunner(IWebHostEnvironment env, ILogger<AppletRunner> log, Pages.Services.AppletCatalog? catalog = null) {
         _root = Path.GetFullPath(env.WebRootPath);
         _js = Path.Combine(_root, "js");
+        _pudl = Path.Combine(_root, "pudl");
         _catalog = catalog;
         _log = log;
     }
@@ -127,7 +130,7 @@ public sealed class AppletRunner {
     public sealed class ActionFailed : Exception { public ActionFailed(string message) : base(message) { } }
 
     private Outcome Run(JsonObject manifest, string moduleBase, string reference, string inputJson, string invocationId, CancellationToken cancel) {
-        var schemaDir = Path.Combine(_js, "vendor", "cfworker-json-schema-4.1.1");
+        var schemaDir = Path.Combine(_pudl, "vendor", "cfworker-json-schema-4.1.1");
         using var engine = new Jint.Engine(o => o
             .LimitMemory(MemoryLimit)
             .TimeoutInterval(Timeout)
@@ -143,7 +146,7 @@ public sealed class AppletRunner {
         try {
             engine.Execute(_host.Value, "AppletRunner.js");
             engine.SetValue("__schemaLib", engine.Modules.Import("./index.js"));
-            engine.Execute(File.ReadAllText(Path.Combine(_js, "applet-actions-core.js")), "applet-actions-core.js");
+            engine.Execute(File.ReadAllText(Path.Combine(_pudl, "pudl-actions-core.js")), "pudl-actions-core.js");
             var result = engine.Invoke("__runAction", manifest.ToJsonString(), reference, inputJson, invocationId).UnwrapIfPromise(Timeout);
             var parsed = JsonNode.Parse(result.AsString())!.AsObject();
             var artifacts = (parsed["artifacts"] as JsonArray ?? new JsonArray()).OfType<JsonObject>()

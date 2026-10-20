@@ -1,5 +1,6 @@
 /* Browser checks for the actions applets publish (Architecture/applet-platform-design.md,
-   P2): the broker (js/applet-actions.js) and its manifests (js/actions), from
+   P2): PUDL's broker (pudl-actions.js) with the site's capabilities
+   (js/site-actions.js) and its manifests (js/actions), from
    the Terminal's applets command, from Lua and the shell, and from the page.
 
      PLAYWRIGHT_MODULE=... CHROMIUM_PATH=... UI_SITE=http://localhost:8102 node Tools/test-applet-actions.js
@@ -98,7 +99,7 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
   out = await run('applets run parks.files/write@1 path=/site/x.txt text=no');
   log('files write outside ~ fails', /applets: parks\.files\/write@1 failed/.test(out), out);
   // A folder's listing can be longer than the screen, so it is read from the broker itself.
-  v = await page.evaluate(() => window.pcActions.run('parks.files/list@1', { path: '/site/bin' })).catch(e => null);
+  v = await page.evaluate(() => window.pudlApplets.run('parks.files/list@1', { path: '/site/bin' }, { grant: 'all' })).catch(e => null);
   log('files list gives a folder\'s entries', v && v.entries.length > 0 && v.entries.every(e => e.path.indexOf('/site/bin/') === 0), JSON.stringify(v).slice(0, 200));
 
   // Lua and the shell.
@@ -113,13 +114,15 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
 
   // From the page: grants, replay, validation of output, and questions.
   const r = await page.evaluate(async () => {
-    const A = window.pcActions, res = {};
+    const A = window.pudlApplets, res = {};
     try { await A.invoke('parks.files/write@1', { path: '~/g.txt', text: 'x' }, { grant: ['files.read'] }); res.grant = 'ran'; } catch (e) { res.grant = e.message; }
-    const a = await A.invoke('parks.files/write@1', { path: '~/once.txt', text: 'a', append: true }, { id: 'once-1' });
-    const b = await A.invoke('parks.files/write@1', { path: '~/once.txt', text: 'a', append: true }, { id: 'once-1' });
+    /* A caller that passes no grant holds artifact.create alone (PUDL 0.68.0). */
+    try { await A.invoke('parks.files/read@1', { path: '~/act.txt' }); res.none = 'ran'; } catch (e) { res.none = e.message; }
+    const a = await A.invoke('parks.files/write@1', { path: '~/once.txt', text: 'a', append: true }, { id: 'once-1', grant: 'all' });
+    const b = await A.invoke('parks.files/write@1', { path: '~/once.txt', text: 'a', append: true }, { id: 'once-1', grant: 'all' });
     const F = window.pcSiteFs;
     res.once = { same: a.id === b.id, text: F.readHome(F.resolve(F.home(), '~/once.txt')) };
-    try { await A.invoke('parks.files/write@1', { path: '~/once.txt', text: 'b' }, { id: 'once-1' }); res.reuse = 'ran'; } catch (e) { res.reuse = e.message; }
+    try { await A.invoke('parks.files/write@1', { path: '~/once.txt', text: 'b' }, { id: 'once-1', grant: 'all' }); res.reuse = 'ran'; } catch (e) { res.reuse = e.message; }
     /* A handler whose output its schema refuses fails. */
     A.provide('parks.dice', { 'roll@1': function () { return { output: { values: [0], total: 0 } }; } });
     const bad = await A.invoke('parks.dice/roll@1', {});
@@ -127,23 +130,24 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
     return res;
   });
   log('a caller without a capability cannot run the action', /needs files\.write, which this caller was not granted/.test(r.grant), r.grant);
+  log('a caller with no grant cannot read files', /needs files\.read, which this caller was not granted/.test(r.none), r.none);
   log('the same id runs a once action one time', r.once.same && r.once.text === 'a', JSON.stringify(r.once));
   log('an id reused for a different call is refused', /was a different call/.test(r.reuse), r.reuse);
   log('output the schema refuses fails the invocation', /^failed: invalid output from parks\.dice\/roll@1/.test(r.bad), r.bad);
 
-  const asked = page.evaluate(() => window.pcActions.run('parks.page/ask@1', { title: 'Pick one', body: 'For the test.', fields: [{ name: 'colour', type: 'choice', choices: ['red', 'green'], required: true }, { name: 'sure', type: 'boolean' }] }));
-  await page.waitForSelector('dialog.pc-ask[open]');
-  await page.selectOption('dialog.pc-ask select', 'green');
-  await page.check('dialog.pc-ask input[type="checkbox"]');
-  await page.click('dialog.pc-ask button[type="submit"]');
+  const asked = page.evaluate(() => window.pudlApplets.run('parks.page/ask@1', { title: 'Pick one', body: 'For the test.', fields: [{ name: 'colour', type: 'choice', choices: ['red', 'green'], required: true }, { name: 'sure', type: 'boolean' }] }, { grant: 'all' }));
+  await page.waitForSelector('dialog.applet-ask[open]');
+  await page.selectOption('dialog.applet-ask select', 'green');
+  await page.check('dialog.applet-ask input[type="checkbox"]');
+  await page.click('dialog.applet-ask button[type="submit"]');
   const answer = await asked;
   log('a question is answered by the person in a dialog', answer && answer.response && answer.response.colour === 'green' && answer.response.sure === true, JSON.stringify(answer));
-  const declined = page.evaluate(() => window.pcActions.invoke('parks.page/ask@1', { title: 'Again?' }).then(v => window.pcActions.wait(v.id)));
-  await page.waitForSelector('dialog.pc-ask[open]');
-  await page.click('dialog.pc-ask [data-ask="cancel"]');
+  const declined = page.evaluate(() => window.pudlApplets.invoke('parks.page/ask@1', { title: 'Again?' }, { grant: 'all' }).then(v => window.pudlApplets.wait(v.id)));
+  await page.waitForSelector('dialog.applet-ask[open]');
+  await page.click('dialog.applet-ask [data-ask="cancel"]');
   const d = await declined;
   log('a question declined cancels the invocation', d.status === 'cancelled', JSON.stringify(d));
-  const shown = await page.evaluate(() => window.pcActions.run('parks.page/notify@1', { text: 'From an action', kind: 'positive' }));
+  const shown = await page.evaluate(() => window.pudlApplets.run('parks.page/notify@1', { text: 'From an action', kind: 'positive' }, { grant: 'all' }));
   log('a notice shows on the page', shown.shown === true && await page.isVisible('.toast:has-text("From an action")'), JSON.stringify(shown));
 
   // A window action, from the classic view: a new tab, never this one.

@@ -54,7 +54,7 @@ internal sealed class SiteAccessToken {
 /// <summary>
 /// The capabilities a token can be given: a closed list. The first five are
 /// the server's own tools; the last four are what applets' actions may need
-/// (js/applet-actions.js keeps the same names), which matter once applet
+/// (the page's action broker, PUDL's pudl-actions.js, uses the same names), which matter once applet
 /// actions run over MCP.
 /// </summary>
 public static class TokenCapabilities {

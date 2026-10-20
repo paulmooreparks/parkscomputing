@@ -1,39 +1,24 @@
 
-/* PUDL WORKAROUND (Architecture/pudl-proposal-applet-actions.md): an
-   applet's define() may point to a manifest of the actions it publishes,
-   actions: '/js/actions/x.json', which the action broker
-   (js/applet-actions.js, Architecture/applet-platform-design.md, P2) reads.
-   PUDL keeps its definitions to itself, so this notes each applet's
-   manifest, stamped with its ver, and its handles and page for the broker,
-   before PUDL's own define() sees it. Delete it when PUDL keeps actions
-   and gives the broker a way to read them. A manifest or its module
-   changing bumps the applet's ver, like its script. */
-window.pcAppletActions = [];
-(function () {
-    var define = pudlApplets.define;
-    pudlApplets.define = function (name, cfg) {
-        if (cfg && cfg.actions) {
-            window.pcAppletActions.push({ applet: name, manifest: cfg.actions + (cfg.ver ? '?v=' + encodeURIComponent(cfg.ver) : ''), handles: cfg.handles || null, page: cfg.page || null });
-        }
-        return define.apply(this, arguments);
-    };
-})();
-/* The broker loads when something asks for it: the Terminal's applets
-   command, a script, and later the desktop's MCP queue. Raise its v on every
-   change. The page's own actions, a notice and a question for the person at
-   it, belong to no applet. */
-window.pcActionsSrc = '/js/applet-actions.js?v=4';
-window.pcAppletActions.push({ applet: null, manifest: '/js/actions/page.json?v=1', handles: null, page: null });
+/* Applet actions are PUDL's (pudl-actions.js, 0.68.0): an applet's define()
+   names its manifest with actions: '/js/actions/x.json', and PUDL's broker
+   reads it from pudlApplets.definitions(), stamped with the applet's ver,
+   so a manifest or its module changing bumps the applet's ver, like its
+   script. The site's capabilities and the page's own actions are in
+   js/site-actions.js. */
+
 /* The applets' action manifests, read once for whoever lists them (the
-   chat's @ menu): each as { id, title, description, manifest, actions }. */
+   chat's @ menu): each as { id, title, description, manifest, actions },
+   with the manifest's address, which the chat gives the model. */
 var appletManifests = (function () {
     var loaded = null;
     return function () {
         if (loaded) { return loaded; }
-        loaded = Promise.all(window.pcAppletActions.filter(function (e) { return e.applet; }).map(function (e) {
-            return fetch(e.manifest, { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+        var defs = pudlApplets.definitions ? pudlApplets.definitions() : {};
+        loaded = Promise.all(Object.keys(defs).filter(function (n) { return defs[n].actions; }).map(function (n) {
+            var d = defs[n], url = d.actions + (d.ver ? (d.actions.indexOf('?') < 0 ? '?' : '&') + 'v=' + encodeURIComponent(d.ver) : '');
+            return fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
                 if (!m || !m.actions) { return null; }
-                return { id: m.id || e.applet, title: m.title || e.applet, description: m.description || '', manifest: e.manifest,
+                return { id: m.id || n, title: m.title || n, description: m.description || '', manifest: url,
                     actions: (m.actions || []).map(function (a) { return { ref: a.ref, title: a.title || a.ref, description: a.description || '' }; }) };
             }, function () { return null; });
         })).then(function (list) { return list.filter(Boolean).sort(function (a, b) { return a.title.localeCompare(b.title); }); });
@@ -156,7 +141,7 @@ pudlApplets.define('terminal', {
     src: '/js/terminal.js',
     css: '/css/terminal.css',
     page: pcWorkspacePages + 'terminal',
-    ver: '42',
+    ver: '43',
     handles: { shell: { param: 'cwd', extra: ['run'], reuse: false } },
     actions: '/js/actions/terminal.json',
     instances: 4,
@@ -170,7 +155,7 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: pcWorkspacePages + 'files',
-    ver: '26',
+    ver: '27',
     handles: { browse: { param: 'path' } },
     actions: '/js/actions/files.json'
 });
@@ -242,12 +227,14 @@ pudlApplets.define('settings', {
         snapshot: window.pcSnapshot || null,
         /* The product lookup's proxy (Controllers/BarcodeProductsController.cs). */
         services: { 'barcode-products': '/api/barcode-products/', 'score-library': '/api/score-library/', 'chat': '/api/admin/chat/', 'poker': '/api/admin/poker/' },
-        /* The site's action broker (js/applet-actions.js), which runs an
-           applet's action here, opening its window where it needs one. */
+        /* PUDL's action broker, which runs an applet's action here,
+           opening its window where it needs one. The chat acts for the
+           person at the page, whose server already asks them before a
+           tool that writes, so it holds every capability. */
         actions: {
             run: function (ref, input) {
-                var broker = window.pcActions ? Promise.resolve(window.pcActions) : loadScript(window.pcActionsSrc).then(function () { return window.pcActions; });
-                return broker.then(function (a) { return a.run(ref, input, { owner: { kind: 'chat' } }); });
+                if (!pudlApplets.run) { return Promise.reject(new Error('the page has no action broker')); }
+                return pudlApplets.run(ref, input, { owner: { kind: 'chat' }, grant: 'all' });
             }
         },
         /* A request from the site's pages carries the token the server

@@ -67,9 +67,9 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
 
   // Its action, through the broker.
   const ran = await page.evaluate(async () => {
-    await new Promise(r => { const s = document.createElement('script'); s.src = window.pcActionsSrc; s.onload = r; document.head.appendChild(s); });
-    const cat = await window.pcActions.catalog();
-    const out = await window.pcActions.invoke('example.hello/greet@1', { name: 'Ada' });
+    /* PUDL's broker (pudl-actions.js, 0.68.0), which the page loads. */
+    const cat = await window.pudlApplets.catalog();
+    const out = await window.pudlApplets.invoke('example.hello/greet@1', { name: 'Ada' });
     return { listed: cat.some(m => m.id === 'example.hello'), output: out && out.output };
   }).catch(e => ({ error: String(e) }));
   log('the package\'s actions are in the broker\'s catalogue', ran.listed === true, JSON.stringify(ran));

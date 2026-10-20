@@ -1,5 +1,5 @@
 /* The server's host for applet actions (Mcp/AppletRunner.cs), run in Jint
-   before the shared rules (wwwroot/js/applet-actions-core.js), the schema
+   before the shared rules (PUDL's wwwroot/pudl/pudl-actions-core.js), the schema
    library (@cfworker/json-schema) and an action's own module. It gives
    them the little of a browser they use, and nothing else: there is no
    document, fetch, network or file system, and the engine has no access
@@ -51,9 +51,14 @@
     };
 
     var provided = {};
-    global.pcActions = { provide: function (id, handlers) { provided[id] = handlers; } };
-    /* A packaged applet's module uses the host-neutral name. */
-    global.pudlActions = global.pcActions;
+    /* A module hands its handlers to pudlApplets.provide, as on a page, or
+       to the name PUDL keeps until 1.0, pudlActions. */
+    global.pudlApplets = { provide: function (id, handlers) { provided[id] = handlers; } };
+    global.pudlActions = global.pudlApplets;
+
+    /* The site's capabilities: PUDL's starting list and the site's own,
+       which js/site-actions.js adds on a page. */
+    var SITE_CAPABILITIES = ['files.read', 'files.write'];
 
     /* A script beside the module runs as a page's script would, in the
        global scope. */
@@ -65,9 +70,9 @@
        throws why not. The caller has already checked that the action is
        pure and needs nothing but artifact.create. */
     global.__runAction = async function (manifestJson, ref, inputJson, invocationId) {
-        var C = global.pcActionsCore, lib = global.__schemaLib;
+        var C = global.pudlActionsCore, lib = global.__schemaLib;
         var m = JSON.parse(manifestJson);
-        var entries = C.checkManifest(lib, m, {}, function () { return true; });
+        var entries = C.checkManifest(lib, m, {}, function () { return true; }, C.CAPABILITIES.concat(SITE_CAPABILITIES));
         var e = entries.filter(function (x) { return x.action.ref === ref; })[0];
         if (!e) { throw new Error('there is no action ' + ref); }
         var input = C.asJSON(JSON.parse(inputJson), 'the input');

@@ -1,10 +1,10 @@
 /* The page's own actions (js/actions/page.json): a notice for the person at
    the page, and a question only they can answer, which the action broker
-   (js/applet-actions.js) puts to them as a dialog. */
+   (PUDL's pudl-actions.js) puts to them as a dialog. */
 (function () {
     'use strict';
 
-    window.pcActions.provide('parks.page', {
+    window.pudlApplets.provide('parks.page', {
         'notify@1': async function (input, ctx) {
             await ctx.notify(input.text, input.kind || 'info');
             return { output: { shown: true } };

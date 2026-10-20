@@ -3,7 +3,9 @@ https://github.com/cfworker/cfworker/tree/main/packages/json-schema
 
 The files in this folder are the package's dist/esm build, unchanged, as
 published to npm (registry.npmjs.org/@cfworker/json-schema/-/json-schema-4.1.1.tgz).
-The site's action broker (js/applet-actions.js) loads index.js as an ES module.
+PUDL's action broker (dist/pudl-actions.js) loads index.js as an ES module.
+It checks schemas without compiling them to code, so it works under a
+content security policy that forbids eval.
 
 The package's package.json gives its licence as MIT and its author as
 Jeremy Danyow; the package itself carries no licence file, so the MIT
