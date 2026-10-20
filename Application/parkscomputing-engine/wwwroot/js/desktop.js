@@ -14,7 +14,8 @@
     /* The window parameters, which the remembered arrangement keeps: c.{key}
        is a book window's chapter (js/books.js). */
     function isWinParam(key) {
-        return key === 'open' || key === 'top' || key === 'min' || key.indexOf('p.') === 0 || key.indexOf('c.') === 0;
+        /* grid= keeps the snapped windows' moved splitters (PUDL 0.67.0). */
+        return key === 'open' || key === 'top' || key === 'min' || key === 'grid' || key.indexOf('p.') === 0 || key.indexOf('c.') === 0;
     }
 
     /* The go palette's form carries the desktop's state to /go, so the new
