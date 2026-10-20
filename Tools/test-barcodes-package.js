@@ -23,14 +23,24 @@ const file = list => JSON.stringify({ format: 'pc-barcode-layouts', version: 1, 
   const errors = [], scripts = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('request', r => { const p = new URL(r.url()).pathname; if (/barcode|flashcards/.test(p) && /\.js$/.test(p)) { scripts.push(p); } });
-  const menu = () => page.textContent('[data-applet="barcodes"] [data-role="layout-menu"]');
+  /* The toolbar's Layout menu (a PUDL command, 1.1.0), opened and read
+     with its headings, then closed. */
+  const menu = async () => {
+    await page.click('[data-applet="barcodes"] [data-command="layout"]');
+    await page.waitForTimeout(200);
+    const text = await page.evaluate(() => { const p = [...document.querySelectorAll('[popover]')].find(x => x.matches(':popover-open')); return p ? p.textContent : ''; });
+    await page.keyboard.press('Escape');
+    return text;
+  };
+  /* Whether the Layout menu offers a layout by that name, as an agent reads it. */
+  const offers = name => page.waitForFunction(n => { const c = window.pudlCommands && window.pudlCommands.list(document.querySelector('[data-applet="barcodes"]')).find(x => x.id === 'layout'); return !!c && !!c.items && c.items.some(i => i.label === n); }, name, { timeout: 30000 });
   const notice = () => page.textContent('[data-applet="barcodes"] [data-role="notice-text"]');
 
   // The tool, and the layouts this browser kept before.
   await page.goto(BASE + '/page/barcodes', { waitUntil: 'networkidle' });
   await page.evaluate(l => { localStorage.removeItem('pc-barcode-layouts-moved'); localStorage.setItem('pc-barcode-layouts', l); }, file([SHELF]));
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForFunction(() => /My shelf label/.test((document.querySelector('[data-applet="barcodes"] [data-role="layout-menu"]') || {}).textContent || ''), null, { timeout: 30000 });
+  await offers('My shelf label');
   log('the page runs the package\'s script, not the site\'s old one', scripts.includes('/applets/barcodes/barcode-tool.js') && !scripts.some(s => s.startsWith('/js/barcode')), scripts.join());
   log('the layouts this browser kept move into ~/barcode-layouts.json', /my-shelf/.test(await page.evaluate(() => pudlHost.fs.readText('~/barcode-layouts.json'))));
   log('and move once, the browser\'s copy kept aside', await page.evaluate(() => localStorage.getItem('pc-barcode-layouts') === null && !!localStorage.getItem('pc-barcode-layouts-moved')));
@@ -38,12 +48,12 @@ const file = list => JSON.stringify({ format: 'pc-barcode-layouts', version: 1, 
 
   // A change to the file, as the Editor or the Terminal would make it.
   await page.evaluate(l => pudlHost.fs.writeText('~/barcode-layouts.json', l), file([SHELF, OTHER]));
-  await page.waitForFunction(() => /Another label/.test(document.querySelector('[data-applet="barcodes"] [data-role="layout-menu"]').textContent), null, { timeout: 5000 }).catch(() => { });
+  await offers('Another label').catch(() => { });
   log('a change to the file reaches the tool', /Another label/.test(await menu()), await menu());
 
   // Save as, through the site's dialog.
   await page.fill('[data-applet="barcodes"] [data-role="data"]', '400638133393');
-  await page.click('[data-applet="barcodes"] [data-action="svg"]');
+  await page.click('[data-applet="barcodes"] [data-command="svg"]');
   await page.waitForSelector('dialog[open] [data-pick="input"]', { timeout: 10000 });
   await page.fill('dialog[open] [data-pick="input"]', 'test-barcode.svg');
   await page.click('dialog[open] [data-pick="ok"]');
