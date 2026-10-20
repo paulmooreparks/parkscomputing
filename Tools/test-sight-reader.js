@@ -165,9 +165,12 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
     await page.getByRole('menuitem', { name: item, exact: true }).click();
     await page.waitForTimeout(300);
   };
+  /* A command of the applet's (its PUDL command table), run as pressing it
+     would, wherever the toolbar has folded it. */
+  const srCmd = id => page.evaluate(id => window.pudlCommands.run(id, undefined, document.querySelector('.pc-sight-reader')), id);
   /* The Options dialog: opens it, runs what is asked of it, and closes it. */
   const options = async fn => {
-    await page.click('.sr-top [data-sr="options"]');
+    await page.click('.sr-top [data-command="options"]');
     await page.waitForSelector('.sr-options', { state: 'visible' });
     await fn();
     await page.click('[data-sr="close-options"]');
@@ -208,7 +211,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   const ring = () => page.evaluate(() => { const r = document.querySelector('.pc-sight-reader'); return { focused: document.activeElement === r, outline: getComputedStyle(r).outlineStyle }; });
   let rg = await ring();
   log('after a refresh the applet has the keyboard and shows no ring', rg.focused && rg.outline === 'none', JSON.stringify(rg));
-  await page.focus('[data-sr="choose"]');
+  await page.focus('.sr-top [data-command="choose"]');
   await page.keyboard.press('Shift+Tab');
   rg = await ring();
   log('tabbing into it shows the ring', rg.focused && rg.outline !== 'none', JSON.stringify(rg));
@@ -226,7 +229,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('any key goes on, and the step counts as missed', i.pos !== posBefore && /1 missed/.test(i.tally), i.pos + ' / ' + i.tally);
 
   // 2b. Options: two cards of segmented controls and switches.
-  await page.click('.sr-top [data-sr="options"]');
+  await page.click('.sr-top [data-command="options"]');
   const opt2 = await page.evaluate(() => ({ cards: document.querySelectorAll('.sr-options .card').length, segs: document.querySelectorAll('.sr-options .seg').length, switches: document.querySelectorAll('.sr-options .switch').length, helps: document.querySelectorAll('.sr-options .form-help').length, selects: document.querySelectorAll('.sr-options select').length, counts: /\d+ notes/.test(document.querySelector('.sr-options').textContent) }));
   log('Options is two cards: the instrument as a select, the rest segmented controls and switches, with no paragraphs or counts', opt2.cards === 2 && opt2.segs === 2 && opt2.switches === 2 && opt2.helps === 0 && opt2.selects === 1 && !opt2.counts, JSON.stringify(opt2));
   log('Name sharps and flats is on by default', (await page.getAttribute('[data-opt="accidentals"]', 'aria-checked')) === 'true');
@@ -241,7 +244,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.focus('.pc-sight-reader');
 
   // 2c. Help: how to use it, in tabs, with the clefs as one.
-  await page.click('.sr-top [data-sr="help"]');
+  await page.click('.sr-top [data-command="help"]');
   await page.waitForSelector('.sr-help', { state: 'visible' });
   const tabsAt = () => page.evaluate(() => [...document.querySelectorAll('.sr-help [role="tab"]')].map(t => t.textContent + (t.getAttribute('aria-selected') === 'true' ? '*' : '')).join());
   log('Help opens on Getting started, with Answering and Clefs beside it', (await tabsAt()) === 'Getting started*,Answering,Clefs', await tabsAt());
@@ -292,7 +295,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.goto(BASE + '/page/sight-reader', { waitUntil: 'networkidle' });
   await page.waitForTimeout(500);
   log('with no score, the page offers to choose one', await page.isVisible('.sr-empty'));
-  log('and the Restart button waits for a score', await page.isDisabled('[data-sr="restart"]'));
+  log('and the Restart button waits for a score', await page.isDisabled('.sr-top [data-command="restart"]'));
   await page.setInputFiles('.sr-file', fixture);
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(500);
@@ -320,12 +323,13 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('finishing says how it went', /^Finished: 4 of 4 right first time/.test(i.fb), i.fb);
   await type('c');
   log('a key after the end changes nothing', (await info()).fb === i.fb);
-  const restartState = await page.evaluate(() => { const b = document.querySelector('[data-sr="restart"]'); return { disabled: b.disabled, primary: b.classList.contains('btn-primary') }; });
+  await page.waitForTimeout(200);
+  const restartState = await page.evaluate(() => { const b = document.querySelector('.sr-top [data-command="restart"]'); return { disabled: b.disabled, primary: b.classList.contains('btn-primary') }; });
   log('at the end the Restart button is the highlighted one', !restartState.disabled && restartState.primary, JSON.stringify(restartState));
-  await page.click('[data-sr="restart"]');
+  await page.click('.sr-top [data-command="restart"]');
   i = await info();
   log('pressing it starts again from the top, with nothing marked', i.pos === 'Bar 1 · 1 of 4' && i.green === 0 && i.tally === '', JSON.stringify(i));
-  log('and it is no longer highlighted', await page.evaluate(() => !document.querySelector('[data-sr="restart"]').classList.contains('btn-primary')));
+  log('and it is no longer highlighted', await page.evaluate(() => !document.querySelector('.sr-top [data-command="restart"]').classList.contains('btn-primary')));
   await type('ceg');
   log('the keyboard works straight away, with no click first', (await info()).pos === 'Bar 1 · 2 of 4', (await info()).pos);
 
@@ -336,7 +340,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.focus('.pc-sight-reader');
   await type('ceg');
   log('and the quiz works again after it', (await info()).pos === 'Bar 1 · 2 of 4');
-  await menu('Practice', 'Show the answer');
+  await menu('Practice', 'Show the Answer');
   i = await info();
   log('Show the answer, from the menu, shows it and marks the step missed', /^The answer is D/.test(i.fb) && /1 missed/.test(i.tally), i.fb + ' / ' + i.tally);
 
@@ -403,7 +407,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForTimeout(800);
   i = await info();
   log('a piano score on two staves has two steps', i.pos === 'Bar 1 · 1 of 2', i.pos);
-  await page.click('.sr-top [data-sr="read"]');
+  await page.click('.sr-top [data-command="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
   let staves = await staffList();
   log('Read lists the staves top to bottom, named, with the clefs each uses in order', staves === 'Piano, upper (Treble)+2 | Piano, lower (Bass, Treble)+2', staves);
@@ -428,7 +432,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   fs.writeFileSync(unnamed, PIANO.replace('<part-name>Piano</part-name>', '<part-name></part-name>'));
   await page.setInputFiles('.sr-file', unnamed);
   await page.waitForTimeout(800);
-  await page.click('.sr-top [data-sr="read"]');
+  await page.click('.sr-top [data-command="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
   staves = await staffList();
   log('with no part names, the staves are their clefs', staves === 'Treble+2 | Bass, Treble+2', staves);
@@ -436,7 +440,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
 
   // 6d2. A real song, where a hand moves between clefs many times.
   await openSong('Schumann - Fruhlingsnacht.mxl');
-  await page.click('.sr-top [data-sr="read"]');
+  await page.click('.sr-top [data-command="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
   const song = await page.evaluate(() => [...document.querySelectorAll('[data-staff]')].map(b => ({ label: b.parentElement.textContent.trim(), notes: +b.getAttribute('data-notes') })));
   /* 1,499 notes in all, what reading the score's XML note by note gives with
@@ -450,7 +454,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForTimeout(800);
   i = await info();
   log('a score with a voice and a piano has one step asking for two notes', i.pos === 'Bar 1 · 1 of 1' && /interval/.test(i.fb), JSON.stringify(i));
-  await page.click('.sr-top [data-sr="read"]');
+  await page.click('.sr-top [data-command="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
   staves = await staffList();
   log('Read lists each instrument\'s staff with its clef', staves === 'Voice (Treble)+1 | Piano (Treble)+1', staves);
@@ -466,15 +470,15 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   // 6f. Read: the button, the line under the toolbar, Only and All, and the filter.
   await page.setInputFiles('.sr-file', partsFile);
   await page.waitForTimeout(800);
-  const readState = () => page.evaluate(() => ({ disabled: document.querySelector('.sr-top [data-sr="read"]').disabled, title: document.querySelector('.sr-top [data-sr="read"]').title, line: document.querySelector('[data-role="reading"]').hidden ? '' : document.querySelector('[data-role="reading-text"]').textContent }));
+  const readState = () => page.evaluate(() => ({ disabled: document.querySelector('.sr-top [data-command="read"]').disabled, line: document.querySelector('[data-role="reading"]').hidden ? '' : document.querySelector('[data-role="reading-text"]').textContent }));
   let rs = await readState();
   log('Read is there for a score with more than one staff, and says nothing while all of it is read', !rs.disabled && rs.line === '', JSON.stringify(rs));
-  await page.click('.sr-top [data-sr="read"]');
+  await page.click('.sr-top [data-command="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
   log('the staves list has no filter box when it is short', (await page.locator('[data-staff-filter]').count()) === 0);
   await page.click('[data-only="1"]');
   rs = await readState();
-  log('Only reads one staff alone, and the line and the button say which', rs.line === 'Reading Piano (Treble).' && /now Piano \(Treble\)/.test(rs.title), JSON.stringify(rs));
+  log('Only reads one staff alone, and the line says which', rs.line === 'Reading Piano (Treble).', JSON.stringify(rs));
   log('the dialog says so too', /reading Piano \(Treble\)/.test(await page.textContent('[data-role="read-summary"]')));
   await page.click('[data-sr="staves-all"]');
   rs = await readState();
@@ -492,7 +496,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
     names.map((n, k) => '<part id="P' + k + '"><measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>whole</type></note></measure></part>').join('') + '</score-partwise>');
   await page.setInputFiles('.sr-file', many);
   await page.waitForTimeout(900);
-  await page.click('.sr-top [data-sr="read"]');
+  await page.click('.sr-top [data-command="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
   log('with more than eight staves a filter box appears', (await page.locator('[data-staff-filter]').count()) === 1);
   await page.fill('[data-staff-filter]', 'violin');
@@ -506,41 +510,41 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
   await page.waitForTimeout(500);
   await options(() => pick('keyboard', 'piano'));
-  await page.selectOption('[data-play-speed]', '1.5');
+  await srCmd('speed-150');
   const startPos = (await info()).pos;
   const tonesBefore = (await page.evaluate(() => window.__tones)).length;
-  await page.click('.sr-top [data-sr="play"]');
+  await page.click('.sr-top [data-command="play"]');
   await page.waitForTimeout(1600);
   await page.waitForSelector('.sr-piano .sr-playing', { timeout: 3000 }).catch(() => {});
-  const playingNow = await page.evaluate(() => ({ playOff: document.querySelector('[data-sr="play"]').disabled, stopOn: !document.querySelector('[data-sr="stop"]').disabled, lit: document.querySelectorAll('.sr-piano .sr-playing').length, tones: window.__tones.length }));
+  const playingNow = await page.evaluate(() => ({ playOff: document.querySelector('.sr-top [data-command="play"]').disabled, stopOn: !document.querySelector('.sr-top [data-command="stop"]').disabled, lit: document.querySelectorAll('.sr-piano .sr-playing').length, tones: window.__tones.length }));
   log('Play sounds the notes in turn and lights them in blue, and only Stop can be pressed', playingNow.playOff && playingNow.stopOn && playingNow.lit >= 1 && playingNow.tones - tonesBefore >= 3, JSON.stringify(playingNow));
   /* Ode to Joy opens E E: the second E lights again after going out, so the
      lights are watched for a moment with the key's state sampled often. */
-  await page.click('.sr-top [data-sr="stop"]');
-  await page.click('.sr-top [data-sr="play"]');
+  await page.click('.sr-top [data-command="stop"]');
+  await page.click('.sr-top [data-command="play"]');
   const blink = await page.evaluate(() => new Promise(done => { const seen = []; const t0 = performance.now(); const tick = () => { seen.push(document.querySelectorAll('.sr-piano .sr-playing').length); if (performance.now() - t0 < 900) { requestAnimationFrame(tick); } else { done(seen); } }; tick(); }));
   const offs = blink.reduce((n, v, k) => n + (k && blink[k - 1] > 0 && v === 0 ? 1 : 0), 0);
   log('a note played again goes out and comes back on, so the repeat shows', offs >= 1 && blink.some(v => v > 0), 'went out ' + offs + ' times');
-  await page.click('.sr-top [data-sr="stop"]');
+  await page.click('.sr-top [data-command="stop"]');
   await page.waitForTimeout(300);
-  const stopped = await page.evaluate(() => ({ playOn: !document.querySelector('[data-sr="play"]').disabled, stopOff: document.querySelector('[data-sr="stop"]').disabled, lit: document.querySelectorAll('.sr-playing').length }));
+  const stopped = await page.evaluate(() => ({ playOn: !document.querySelector('.sr-top [data-command="play"]').disabled, stopOff: document.querySelector('.sr-top [data-command="stop"]').disabled, lit: document.querySelectorAll('.sr-playing').length }));
   i = await info();
   log('Stop clears the lights and leaves the quiz where it was', stopped.playOn && stopped.stopOff && stopped.lit === 0 && i.pos === startPos && i.tally === '', JSON.stringify(stopped) + ' ' + i.pos);
-  await page.click('.sr-top [data-sr="play"]');
+  await page.click('.sr-top [data-command="play"]');
   await page.waitForTimeout(600);
   await page.focus('.pc-sight-reader');
   await type('e');
   i = await info();
-  log('a key pressed while it plays stops it, and is not taken as an answer', !(await page.isDisabled('[data-sr="play"]')) && i.pos === startPos, i.pos);
+  log('a key pressed while it plays stops it, and is not taken as an answer', !(await page.isDisabled('.sr-top [data-command="play"]')) && i.pos === startPos, i.pos);
   await options(() => pick('keyboard', 'guitar'));
-  await page.click('.sr-top [data-sr="play"]');
+  await page.click('.sr-top [data-command="play"]');
   await page.waitForTimeout(500);
-  const sizes = await page.evaluate(() => ['play', 'stop', 'options'].map(n => Math.round(document.querySelector('.sr-top [data-sr="' + n + '"]').getBoundingClientRect().height)));
+  const sizes = await page.evaluate(() => ['play', 'stop', 'options'].map(n => Math.round(document.querySelector('.sr-top [data-command="' + n + '"]').getBoundingClientRect().height)));
   log('Play and Stop are the height of the other toolbar buttons', sizes[0] === sizes[2] && sizes[1] === sizes[2], JSON.stringify(sizes));
   log('on a fingerboard every place the note lies is lit', (await page.evaluate(() => document.querySelectorAll('.sr-fingerboard .sr-playing').length)) >= 2);
-  await page.click('.sr-top [data-sr="stop"]');
+  await page.click('.sr-top [data-command="stop"]');
   await options(() => pick('keyboard', 'letters'));
-  await page.selectOption('[data-play-speed]', '1');
+  await srCmd('speed-100');
 
   // 6h. A score chosen while the page is still starting stands.
   await newTab();
@@ -567,7 +571,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
 
   // 8. The sample chooser, from the Scores button.
   await open('/page/sight-reader');
-  await page.click('.sr-top [data-sr="choose"]');
+  await page.click('.sr-top [data-command="choose"]');
   await page.waitForSelector('.sr-pick');
   const groups = await page.evaluate(() => [...document.querySelectorAll('.sr-group-name')].map(h => h.textContent));
   const levels = ['simple', 'beginner', 'intermediate', 'advanced'], at = groups.map(g => levels.indexOf(g));
@@ -582,19 +586,19 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   log('a score in both the package and the library is listed once', new Set(pickNames).size === pickNames.length, pickNames.length + " " + new Set(pickNames).size);
   await page.keyboard.press('Escape');
   await page.route('**/applets/sight-reader/scores/index.json*', route => route.fulfill({ contentType: 'application/json', body: '{"files":[]}' }));
-  await page.click('.sr-top [data-sr="choose"]');
+  await page.click('.sr-top [data-command="choose"]');
   await page.waitForSelector('.sr-pick');
   const inLibrary = await page.evaluate(() => fetch('/api/score-library/index.json').then(r => r.json()).then(l => l.files.filter(f => /\.(mxl|musicxml|xml)$/i.test(f.name) && !/^licenses(\/|$)/i.test(f.folder)).length));
   log('the site\'s library alone fills the chooser with what it lists', (await picks()) === inLibrary && inLibrary > 0, (await picks()) + ' of ' + inLibrary);
   await page.keyboard.press('Escape');
   await page.unroute('**/applets/sight-reader/scores/index.json*');
   await page.route('**/api/score-library/**', route => route.fulfill({ status: 404, body: '' }));
-  await page.click('.sr-top [data-sr="choose"]');
+  await page.click('.sr-top [data-command="choose"]');
   await page.waitForSelector('.sr-pick');
   log('and the package\'s own scores fill it on a host without one', (await picks()) > 30, await picks());
   await page.keyboard.press('Escape');
   await page.unroute('**/api/score-library/**');
-  await page.click('.sr-top [data-sr="choose"]');
+  await page.click('.sr-top [data-command="choose"]');
   await page.waitForSelector('.sr-pick');
   await page.click('.sr-pick[data-sr-name="Twinkle Twinkle Little Star"]');
   await page.waitForSelector('.sr-sheet svg', { timeout: 30000 });
@@ -729,7 +733,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   // The piano with sharps and flats named: black keys, and enharmonic spellings.
   await page.setInputFiles('.sr-file', accFile);
   await page.waitForTimeout(800);
-  await page.click('.sr-top [data-sr="options"]');
+  await page.click('.sr-top [data-command="options"]');
   await setSwitch('accidentals', true);
   await page.click('[data-sr="close-options"]');
   await page.focus('.pc-sight-reader');
@@ -746,7 +750,7 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.click(key(2 + 12));
   i = await info();
   log('and the D key is right for a C double sharp, which is the same pitch', /^Finished/.test(i.fb), i.fb);
-  await page.click('.sr-top [data-sr="options"]');
+  await page.click('.sr-top [data-command="options"]');
   await setSwitch('accidentals', false);
   await page.click('[data-sr="close-options"]');
   await page.focus('.pc-sight-reader');
@@ -758,21 +762,21 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   // The keyboard follows the register of the notes.
   await page.setInputFiles('.sr-file', pianoFile);
   await page.waitForTimeout(800);
-  await page.click('.sr-top [data-sr="read"]');
+  await page.click('.sr-top [data-command="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
   await setStaff(0, false);
   await page.waitForTimeout(400);
   await page.click('[data-sr="close-read"]');
   i = await info();
   log('with only the lower staff chosen the keyboard is centred on its register: C3 in view', (await visible(48)) && i.pos === 'Bar 1 · 1 of 2', i.pos);
-  await page.click('.sr-top [data-sr="read"]');
+  await page.click('.sr-top [data-command="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
   await setStaff(0, true);
   await setStaff(1, false);
   await page.click('[data-sr="close-read"]');
   await page.waitForTimeout(400);
   log('and with only the upper staff it moves to the treble: E5 in view', await visible(76));
-  await page.click('.sr-top [data-sr="read"]');
+  await page.click('.sr-top [data-command="read"]');
   await page.waitForSelector('.sr-read', { state: 'visible' });
   await setStaff(1, true);
   await page.click('[data-sr="close-read"]');
@@ -920,13 +924,19 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.setViewportSize({ width: 1300, height: 900 });
   await open('/page/sight-reader?score=simple/Ode to Joy.musicxml');
   await options(() => pick('keyboard', 'letters'));
+  /* The bars are set in their own dialog, from the toolbar's Bars… */
+  await srCmd('bars');
+  await page.waitForSelector('[data-role="bars"][open]');
+  log('Bars… opens the bars dialog with the first bar ready to type in', await page.evaluate(() => document.activeElement.getAttribute('data-bar')) === 'from');
   await page.fill('[data-bar="from"]', '2');
   await page.fill('[data-bar="to"]', '3');
   await page.press('[data-bar="to"]', 'Enter');
   await page.waitForTimeout(600);
   i = await info();
   log('a first and last bar start the practice at the first bar, counting only those', i.pos === 'Bar 2 · 1 of 8', i.pos);
-  await page.focus('[data-bar="from"]');
+  log('Enter closes the dialog, and the toolbar says which bars', !(await page.isVisible('[data-role="bars"]')) && (await page.evaluate(() => window.pudlCommands.list(document.querySelector('.pc-sight-reader')).find(c => c.id === 'bars').label)) === 'Bars 2 to 3…');
+  await srCmd('bars');
+  await page.waitForSelector('[data-role="bars"][open]');
   await page.keyboard.press('Control+A');
   await page.keyboard.type('2');
   await page.keyboard.press('Tab');
@@ -934,13 +944,16 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.keyboard.press('Control+A');
   await page.keyboard.type('3');
   await page.keyboard.press('Tab');
-  log('and on to Clear, then Loop', await page.evaluate(() => document.activeElement.getAttribute('data-sr')) === 'clear-bars' && (await page.keyboard.press('Tab'), await page.evaluate(() => document.activeElement.hasAttribute('data-loop'))));
+  log('and on to Loop, then Whole Piece', await page.evaluate(() => document.activeElement.hasAttribute('data-loop')) && (await page.keyboard.press('Tab'), await page.evaluate(() => document.activeElement.getAttribute('data-sr'))) === 'clear-bars');
+  await page.click('[data-sr="close-bars"]');
   await page.focus('.pc-sight-reader');
   await type('gfedccd');
   await type('e');
   i = await info();
   log('after the last bar the practice ends', /^Finished: 8 of 8/.test(i.fb) && i.pos.startsWith('Bar 3'), i.fb + ' / ' + i.pos);
-  await page.check('[data-loop]');
+  await srCmd('loop');
+  await page.waitForTimeout(200);
+  log('Loop is a latching button on the toolbar', (await page.getAttribute('.sr-top [data-command="loop"]', 'aria-pressed')) === 'true');
   await menu('Practice', 'Restart');
   await page.focus('.pc-sight-reader');
   await type('gfedccde');
@@ -952,11 +965,14 @@ const PARTS = `<?xml version="1.0" encoding="UTF-8"?>
   await page.waitForTimeout(600);
   const back = await page.evaluate(() => ({ from: document.querySelector('[data-bar="from"]').value, to: document.querySelector('[data-bar="to"]').value, loop: document.querySelector('[data-loop]').checked }));
   log('the bars and the loop come back after a reload', back.from === '2' && back.to === '3' && back.loop, JSON.stringify(back));
-  log('Clear is there to use while bars are set', !(await page.isDisabled('[data-sr="clear-bars"]')));
+  await srCmd('bars');
+  await page.waitForSelector('[data-role="bars"][open]');
+  log('Whole Piece is there to use while bars are set', !(await page.isDisabled('[data-sr="clear-bars"]')));
   await page.click('[data-sr="clear-bars"]');
   await page.waitForTimeout(500);
   const emptied = await page.evaluate(() => document.querySelector('[data-bar="from"]').value + document.querySelector('[data-bar="to"]').value);
-  log('Clear empties both bars and is then disabled', emptied === '' && await page.isDisabled('[data-sr="clear-bars"]'), emptied);
+  log('Whole Piece empties both bars and is then disabled', emptied === '' && await page.isDisabled('[data-sr="clear-bars"]'), emptied);
+  await page.click('[data-sr="close-bars"]');
   log('clearing practises the whole piece again', (await info()).pos.startsWith('Bar 1 · 1 of 62'), (await info()).pos);
 
   // 14. Installable: a manifest of its own, which the browser accepts, and
