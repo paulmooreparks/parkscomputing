@@ -87,7 +87,7 @@ namespace ParksComputing.Engine.UnitTests {
         public void ThemeIsAButtonCarryingItsArguments() {
             var r = SiteCommands.Render("theme", new Dictionary<string, string> { ["value"] = "dark" }, desktop: false);
             Assert.AreEqual("button", r.Tag);
-            Assert.AreEqual("theme", Attrs(r)["data-command"]);
+            Assert.AreEqual("theme", Attrs(r)["data-site-command"]);
             Assert.AreEqual("{\"value\":\"dark\"}", Attrs(r)["data-args"]);
             StringAssert.Contains(r.Open(), "data-args=\"{&quot;value&quot;:&quot;dark&quot;}\"");
             StringAssert.Contains(r.Open(), "type=\"button\"");
@@ -164,7 +164,7 @@ namespace ParksComputing.Engine.UnitTests {
         public void AnUnknownCommandIsAButtonForAScriptToDefine() {
             var r = SiteCommands.Render("notes.new", new Dictionary<string, string> { ["folder"] = "inbox" }, desktop: false);
             Assert.AreEqual("button", r.Tag);
-            Assert.AreEqual("notes.new", Attrs(r)["data-command"]);
+            Assert.AreEqual("notes.new", Attrs(r)["data-site-command"]);
         }
     }
 }

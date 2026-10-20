@@ -61,18 +61,23 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
     log('the staff\'s Applets menu has Chat', /Chat/.test(staffMenu));
 
     await page.goto(BASE + '/page/chat', { waitUntil: 'networkidle' });
-    await page.waitForSelector('[data-applet="chat"] [data-role="provider"] option', { state: 'attached', timeout: 30000 });
-    const options = await page.$$eval('[data-role="provider"] option', os => os.map(o => o.textContent));
+    /* The composer's controls are PUDL's toolbar (Chat 1.3.0), drawn from
+       the chat's commands, which the test reads and runs by id wherever
+       the toolbar has folded them. */
+    const cmd = id => page.evaluate(id => window.pudlCommands.list(document.querySelector('.pudl-chat')).find(c => c.id === id) || null, id);
+    const runCmd = id => page.evaluate(id => window.pudlCommands.run(id, undefined, document.querySelector('.pudl-chat')), id);
+    await page.waitForFunction(() => { const c = window.pudlCommands && window.pudlCommands.list(document.querySelector('.pudl-chat')).find(c => c.id === 'provider'); return c && c.items && c.items.length; }, null, { timeout: 30000 });
+    const options = (await cmd('provider')).items.map(i => i.label);
     log('the providers come from /etc/chat.json', options.includes('Ollama') && options.includes('Claude'), options.join());
-    const toolsOffered = await page.evaluate(() => document.querySelector('[data-role="tools-wrap"]').hidden === false);
-    log('the super-user is offered the site\'s tools', toolsOffered);
+    log('the super-user is offered the site\'s tools', !(await cmd('tools')).hidden);
 
     // The provider chosen before the first message is the one the chat takes.
-    await page.selectOption('[data-role="provider"]', 'anthropic');
+    await runCmd('provider-anthropic');
     await page.fill('.chat-text', 'x');
-    log('a chosen provider stays chosen until the chat is made', (await page.inputValue('[data-role="provider"]')) === 'anthropic' && /claude/.test(await page.textContent('[data-role="model-name"]')), await page.inputValue('[data-role="provider"]') + ' ' + await page.textContent('[data-role="model-name"]'));
+    const chosen = (await cmd('provider')).items.find(i => i.checked), chosenModel = (await cmd('model')).current;
+    log('a chosen provider stays chosen until the chat is made', chosen && chosen.value === 'anthropic' && /claude/.test(chosenModel), (chosen && chosen.value) + ' ' + chosenModel);
     await page.fill('.chat-text', '');
-    await page.selectOption('[data-role="provider"]', 'ollama');
+    await runCmd('provider-ollama');
 
     // A reply, streamed, with its thinking.
     await page.click('[data-act="new"]');
@@ -121,17 +126,17 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
 
     // GK Companion's shape: the window is flush, and Thinking is a latching button.
     log('the chat fills its window with no margin', await page.evaluate(() => document.querySelector('.pudl-chat').hasAttribute('data-applet-flush')));
-    const wasOn = await page.getAttribute('[data-role="thinking"]', 'aria-pressed');
-    await page.click('[data-role="thinking"]');
-    const nowOn = await page.getAttribute('[data-role="thinking"]', 'aria-pressed');
-    log('Thinking is a latching button', /Thinking/.test(await page.textContent('[data-role="thinking"]')) && wasOn !== nowOn, wasOn + ' -> ' + nowOn);
-    await page.click('[data-role="thinking"]');
+    const thinkingBtn = '.pudl-chat [data-command="thinking"]';
+    const wasOn = await page.getAttribute(thinkingBtn, 'aria-pressed');
+    await runCmd('thinking');
+    await page.waitForTimeout(200);
+    const nowOn = await page.getAttribute(thinkingBtn, 'aria-pressed');
+    log('Thinking is a latching button', /Thinking/.test(await page.getAttribute(thinkingBtn, 'aria-label')) && wasOn !== nowOn, wasOn + ' -> ' + nowOn);
+    await runCmd('thinking');
 
     // A skill: "/" in the box offers it, Enter opens its form, Enter sends.
-    await page.click('[data-role="skills-button"]');
-    const menuSkills = await page.$$eval('.skills-menu .skill-name', ss => ss.map(s => s.textContent));
+    const menuSkills = (await cmd('skills')).items.map(i => i.label || '');
     log('the Skills menu lists the skills in ~/skills', menuSkills.some(s => /^\/greet/.test(s)), menuSkills.join());
-    await page.keyboard.press('Escape');
     await page.fill('.chat-text', '');
     await page.type('.chat-text', '/gre');
     await page.waitForSelector('.slash-pop:not([hidden]) .skill-row', { timeout: 5000 }).catch(() => { });
@@ -209,8 +214,8 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
     await page.fill('.chat-text', 'Then say queued-ok.');
     await page.click('[data-role="send"]');
     await page.waitForSelector('[data-role="queue"]:not([hidden])', { timeout: 10000 }).catch(() => { });
-    log('a message sent during a reply waits in the queue', /queued-ok/.test(await page.textContent('[data-role="queue-words"]')), await page.textContent('[data-role="queue"]'));
-    await page.click('[data-act="stop"]');
+    log('a message sent during a reply waits in the queue', /queued-ok/.test(await page.textContent('[data-role="queue"]')) && !(await cmd('drop-queued')).hidden, await page.textContent('[data-role="queue"]'));
+    await page.click('.pudl-chat [data-command="stop"]');
     await idle(60000);
     log('Stop ends the reply and empties the queue', /You stopped the reply/.test(await page.evaluate(() => [...document.querySelectorAll('.turn-row')].pop().textContent)) && await page.isHidden('[data-role="queue"]'), await page.textContent('[data-role="status"]'));
 

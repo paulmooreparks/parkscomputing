@@ -59,7 +59,7 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
     // The chat's model starts a game and makes one move, and knows itself.
     await page.locator('.menubar-title', { hasText: /^Applets$/ }).first().click();
     await page.locator('[role="menuitem"]', { hasText: /^Chat$/ }).first().click();
-    await page.waitForSelector('.pudl-chat [data-role="provider"] option', { state: 'attached', timeout: 30000 });
+    await page.waitForFunction(() => { const c = window.pudlCommands && document.querySelector('.pudl-chat') && window.pudlCommands.list(document.querySelector('.pudl-chat')).find(c => c.id === 'provider'); return c && c.items && c.items.length; }, null, { timeout: 30000 });
     const idle = (ms) => page.waitForFunction(() => !document.querySelector('.pudl-chat').classList.contains('is-working'), null, { timeout: ms || 180000 });
     const lastReply = () => page.evaluate(() => { const r = [...document.querySelectorAll('.chat-reply .msg-text')].pop(); return r ? r.textContent : ''; });
     async function ask(text) {
@@ -103,7 +103,7 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
         await page.waitForTimeout(1000);
     }
     const stillWorking = await page.evaluate(() => document.querySelector('.pudl-chat').classList.contains('is-working'));
-    if (stillWorking) { await page.screenshot({ path: 'sudoku-play-stuck.png' }); await page.click('.pudl-chat [data-act="stop"]').catch(() => { }); await idle(60000).catch(() => { }); }
+    if (stillWorking) { await page.screenshot({ path: 'sudoku-play-stuck.png' }); await page.click('.pudl-chat [data-command="stop"]').catch(() => { }); await idle(60000).catch(() => { }); }
     log('the model\'s game ends within five minutes', !stillWorking, await lastReply());
     const playRows = await page.evaluate(() => [...document.querySelectorAll('.chat-tool')].map(t => t.querySelector('.tool-title').textContent + ':' + t.getAttribute('data-status')));
     log('the model opens a game through the chat', (await page.locator('[data-applet="sudoku"]').count()) === 1 && playRows.some(r => /new@1 \(on your desktop\):completed/.test(r)), playRows.join());

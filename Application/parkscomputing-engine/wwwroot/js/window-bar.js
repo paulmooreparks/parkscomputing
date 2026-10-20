@@ -34,7 +34,7 @@
             /* View's Hide the article list keeps its words and is ticked
                while the list is hidden, as every other on-and-off command in
                the menus is; the button's label says what pressing it will do. */
-            document.querySelectorAll('[data-command="sidebar"]').forEach(function (command) {
+            document.querySelectorAll('[data-site-command="sidebar"]').forEach(function (command) {
                 command.setAttribute('aria-checked', hidden ? 'true' : 'false');
                 command.disabled = button.disabled;
             });

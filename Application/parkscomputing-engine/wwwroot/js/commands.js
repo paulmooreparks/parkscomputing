@@ -1,6 +1,6 @@
 /* The site's commands, on both sites (Architecture/site-menu-design.md).
    sitenav.xfer's menu names a command and its parameters, and the server
-   writes it into the menu as a link or a button carrying data-command and
+   writes it into the menu as a link or a button carrying data-site-command and
    data-args (Pages/Services/SiteCommands.cs). PUDL's menu bar presses that
    element for the reader, so the click reaches the handler here, as any
    click would.
@@ -26,8 +26,8 @@
     function desktop() { return !!(window.pudlWindows && document.querySelector('[data-win-layer]')); }
 
     function sync() {
-        document.querySelectorAll('[data-command]').forEach(function (el) {
-            var d = defs[el.getAttribute('data-command')];
+        document.querySelectorAll('[data-site-command]').forEach(function (el) {
+            var d = defs[el.getAttribute('data-site-command')];
             if (d && d.checked) { el.setAttribute('aria-checked', d.checked(argsOf(el)) ? 'true' : 'false'); }
         });
     }
@@ -46,11 +46,11 @@
     }
 
     document.addEventListener('click', function (e) {
-        var el = e.target.closest && e.target.closest('[data-command]');
+        var el = e.target.closest && e.target.closest('[data-site-command]');
         if (!el) { return; }
         /* A link opened in a new tab or window is the browser's. */
         if (el.tagName === 'A' && (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey)) { return; }
-        if (run(el.getAttribute('data-command'), argsOf(el), el, e) || el.tagName !== 'A') { e.preventDefault(); }
+        if (run(el.getAttribute('data-site-command'), argsOf(el), el, e) || el.tagName !== 'A') { e.preventDefault(); }
     });
 
     /* === The site's commands ============================================ */

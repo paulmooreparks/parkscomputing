@@ -29,7 +29,7 @@ So `when "beta superuser"` shows an entry only to the super-user on beta. Paul a
 
 ## Commands
 
-Each command decides how it stands in the page (`Pages/Services/SiteCommands.cs`), on both sites. Where what it does has an address it is a link, which works without script and which PUDL's menu bar follows as a click would. Where it has none it is a button. Both carry `data-command` and `data-args`, and `js/commands.js` carries the command out, or for a link declines and lets the address be followed.
+Each command decides how it stands in the page (`Pages/Services/SiteCommands.cs`), on both sites. Where what it does has an address it is a link, which works without script and which PUDL's menu bar follows as a click would. Where it has none it is a button. Both carry `data-site-command` and `data-args`, and `js/commands.js` carries the command out, or for a link declines and lets the address be followed. The attribute was `data-command` until 2026-10-20, when PUDL 0.68.0 took `data-command` for its own command controls: the site's click handler was claiming every PUDL toolbar button, cancelling the click that opens a toolbar menu, and running the site's `find`, `open`, `edit` or `run` as well whenever an applet's command had the same name.
 
 | Command | Arguments | In the page | What it does |
 |---|---|---|---|

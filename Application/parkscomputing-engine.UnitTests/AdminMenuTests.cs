@@ -43,7 +43,7 @@ namespace ParksComputing.Engine.UnitTests {
             StringAssert.Contains(html, "<a href=\"/admin/files\" data-win-open=\"files\">Files</a>");
             StringAssert.Contains(html, "<a href=\"/admin/terminal\" data-win-request=\"shell\">New terminal</a>");
             StringAssert.Contains(html, "<button type=\"submit\" form=\"admin-signout\">Sign out</button>");
-            StringAssert.Contains(html, "data-command=\"theme\"");
+            StringAssert.Contains(html, "data-site-command=\"theme\"");
             StringAssert.Contains(html, "data-menubar-windows");
         }
 
@@ -76,7 +76,7 @@ namespace ParksComputing.Engine.UnitTests {
             var html = Html(m);
             StringAssert.Contains(html, "<img src=\"/x.png\" alt=\"\" /> Mine");
             StringAssert.Contains(html, "<li>-</li>");
-            StringAssert.Contains(html, "data-command=\"run\"");
+            StringAssert.Contains(html, "data-site-command=\"run\"");
         }
 
         [TestMethod]

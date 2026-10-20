@@ -45,7 +45,7 @@ public static class SiteCommands {
         var attrs = new List<KeyValuePair<string, string?>>();
         void Add(string k, string? v) => attrs.Add(new(k, v));
         void Data() {
-            Add("data-command", command);
+            Add("data-site-command", command);
             if (args.Count > 0) { Add("data-args", JsonSerializer.Serialize(args)); }
         }
 

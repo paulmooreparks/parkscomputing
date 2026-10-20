@@ -15,5 +15,5 @@
 @if (source is not null)
 {
     <a class="post-edit" href="/page/editor?file=@Uri.EscapeDataString(source)" rel="nofollow"
-       data-command="edit" data-args="@System.Text.Json.JsonSerializer.Serialize(new { path = source })">Edit</a>
+       data-site-command="edit" data-args="@System.Text.Json.JsonSerializer.Serialize(new { path = source })">Edit</a>
 }
