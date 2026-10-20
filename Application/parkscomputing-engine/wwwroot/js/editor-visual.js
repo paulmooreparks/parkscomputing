@@ -452,6 +452,15 @@
             }
         });
         view.dom.classList.add('pc-visual');
+        /* The Editor's own keys (Ctrl+S, Ctrl+O and the rest) are heard in
+           the Editor's page, which a key pressed in this frame never
+           reaches. A key with Ctrl, Alt or Cmd that the page here did not
+           take goes to the Editor, and the browser does nothing with it
+           when the Editor runs a command for it. */
+        document.addEventListener('keydown', function (e) {
+            if (e.defaultPrevented || e.isComposing || !(e.ctrlKey || e.metaKey || e.altKey) || !host.key) { return; }
+            if (host.key(e)) { e.preventDefault(); }
+        });
         return api;
     }
 

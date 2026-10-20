@@ -1035,6 +1035,15 @@
                 figure: figureDialog,
                 /* The cursor moved in the page, so the paragraph style shows where. */
                 moved: commandsChanged,
+                /* A key pressed in the page that the page did not take: it is
+                   pressed again on the Editor, whose commands answer their
+                   keys there (PUDL's, while focus is in the Editor, as the
+                   frame is), and says whether one did. */
+                key: function (e) {
+                    var again = new KeyboardEvent('keydown', { key: e.key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, shiftKey: e.shiftKey, bubbles: true, cancelable: true });
+                    root.dispatchEvent(again);
+                    return again.defaultPrevented;
+                },
                 say: function (text, isError) { say(text, isError); }
             };
         }
