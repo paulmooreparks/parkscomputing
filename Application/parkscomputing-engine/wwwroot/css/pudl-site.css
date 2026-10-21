@@ -68,7 +68,8 @@ body.desktop .site-header { position: static; flex: none; }
 .topbar { position: relative; justify-content: flex-start; padding-block: 6px; --tb-pad-y: 6px; }
 .topbar .site-menubar { flex: 0 1 auto; }
 .view-seg { flex: none; }
-/* The view selector retains PUDL's track and segment colors. */
+/* The view selector keeps PUDL's segmented control as it is: raised keys,
+   the chosen one pressed in (PUDL 0.72.0). */
 .view-seg a { display: inline-flex; align-items: center; gap: 6px; }
 
 /* The classic view's category tabs (PUDL 0.37.0's .topbar-tabs, from
