@@ -22,7 +22,7 @@
     function loadCodeMirror() {
         if (window.CM && window.CM.EditorView) { return Promise.resolve(window.CM); }
         if (!cmReady) {
-            cmReady = loadScript(beside('vendor/codemirror-6.43/codemirror.js?v=3'))
+            cmReady = loadScript(beside('vendor/codemirror-6.43/codemirror.js?v=4'))
                 .then(function () { return window.CM; })
                 .catch(function (err) { cmReady = null; throw err; });
         }
@@ -139,7 +139,8 @@
                 '.cm-searchMatch': { backgroundColor: 'color-mix(in srgb, var(--warn) 30%, transparent)' },
                 '.cm-searchMatch.cm-searchMatch-selected': { backgroundColor: 'color-mix(in srgb, var(--warn) 55%, transparent)' },
                 '.cm-panels': { backgroundColor: 'var(--surface)', color: 'var(--text)', borderColor: 'var(--border)' },
-                '.cm-panels input, .cm-panels button': { font: 'inherit', fontSize: '13px' },
+                /* CodeMirror's own panels (Go to Line); the find bar is PUDL's. */
+                '.cm-panels input:not(.form-input), .cm-panels button:not(.btn):not(.icon-btn)': { font: 'inherit', fontSize: '13px' },
                 '.cm-tooltip': { backgroundColor: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' },
                 '.cm-diagnostic-error': { borderLeftColor: 'var(--syntax-error)' },
                 '.cm-lintRange-error': { backgroundImage: 'none', textDecoration: 'underline wavy var(--syntax-error)' },
@@ -186,8 +187,12 @@
               '<div class="ed-work split-pane">' +
                 '<div class="code-surface ed-surface" data-role="surface"></div>' +
                 /* The preview is the public site's own page for the draft, so
-                   an article's scripts run there and never here (A11). */
-                '<iframe class="ed-preview" data-role="preview" title="Preview of the unsaved page" hidden></iframe>' +
+                   an article's scripts run there and never here (A11). The
+                   page's find bar sits over it (openFind). */
+                '<div class="ed-page">' +
+                  '<div class="ed-find-place" data-role="find-place" hidden></div>' +
+                  '<iframe class="ed-preview" data-role="preview" title="Preview of the unsaved page" hidden></iframe>' +
+                '</div>' +
               '</div>' +
             '</div>' +
             '<div class="ed-status" data-role="status-bar">' +
@@ -238,7 +243,7 @@
         var q = function (sel) { return root.querySelector(sel); };
         var el = {
             tabs: q('[data-role="tabs"]'), surface: q('[data-role="surface"]'), where: q('[data-role="where"]'),
-            panes: q('[data-role="panes"]'), preview: q('[data-role="preview"]'),
+            panes: q('[data-role="panes"]'), preview: q('[data-role="preview"]'), findPlace: q('[data-role="find-place"]'),
             lang: q('[data-role="lang"]'), pos: q('[data-role="pos"]'), message: q('[data-role="message"]'),
             readonly: q('[data-role="readonly"]'),
             dialog: q('[data-role="dialog"]'), dlgForm: q('[data-role="dialog-form"]'), dlgTitle: q('[data-role="dialog-title"]'),
@@ -406,7 +411,7 @@
                     keyComp.of(keyBindings()),
                     CM.keymap.of([].concat(
                         CM.closeBracketsKeymap, CM.defaultKeymap, CM.searchKeymap, CM.historyKeymap, CM.lintKeymap, [CM.indentWithTab])),
-                    CM.search({ top: true }),
+                    CM.search({ top: true, createPanel: findPanel }),
                     makeTheme(CM),
                     wrapComp.of(wrapOn ? CM.EditorView.lineWrapping : []),
                     langComp.of(langExtension(tab.lang)),
@@ -957,8 +962,15 @@
             showFormat(mode);
             detachVisual();
             if (mode === 'text') {
+                /* Emptying the frame loads a blank page into it, whose load
+                   must not be taken for the page to edit: that put "this page
+                   has no article body to edit" on the status line. */
+                visual.gen++;
+                el.preview.onload = null;
                 el.preview.hidden = true;
                 el.preview.removeAttribute('src');
+                closePageFind(false);
+                say('');
                 keep();
                 return;
             }
@@ -1009,6 +1021,8 @@
                 if (gen !== visual.gen) { return; }
                 visual.front = model.front;
                 visual.api = win.pcVisualEditor.attach(visualHost(model, node));
+                /* A find bar open over the page searches the page made again. */
+                if (!el.findPlace.hidden && lastFind) { pageFind.set(lastFind); visualFind.refresh(); }
                 say(viewMode === 'split'
                     ? 'Edit the text or the page; each follows the other. Double-click a block the page draws to change its Markdown.'
                     : 'Edit the page as it will look. Double-click a block the page draws to change its Markdown.');
@@ -1033,8 +1047,9 @@
                     return ask(title, '', value, [['cancel', 'Cancel'], ['ok', 'OK', true]], null, true).then(function (v) { return v === 'cancel' ? null : v; });
                 },
                 figure: figureDialog,
-                /* The cursor moved in the page, so the paragraph style shows where. */
-                moved: commandsChanged,
+                /* The cursor moved in the page, so the paragraph style shows
+                   where, and an open find bar counts again. */
+                moved: function () { commandsChanged(); if (visualFind && !el.findPlace.hidden) { visualFind.refresh(); } },
                 /* A key pressed in the page that the page did not take: it is
                    pressed again on the Editor, whose commands answer their
                    keys there (PUDL's, while focus is in the Editor, as the
@@ -1046,6 +1061,177 @@
                 },
                 say: function (text, isError) { say(text, isError); }
             };
+        }
+
+        /* === Find and replace ===========================================
+           One find bar for the text and the page, in PUDL's parts: the two
+           fields sunken, the buttons raised, Match Case, Whole Word and
+           Regular Expression as latching buttons (as Chat's Thinking is),
+           the count of matches, and Close. In the text the bar is
+           CodeMirror's search panel (search({ createPanel })), so CodeMirror
+           highlights the matches and keeps the query with the tab; on the
+           page it sits over the frame and drives the visual editor's own
+           search (js/editor-visual.js). The query carries over when the view
+           changes. Enter finds the next match and Shift+Enter the one
+           before; in the Replace field Enter replaces it and Ctrl+Enter
+           replaces them all; Escape closes the bar. */
+        var lastFind = null, visualFind = null;
+        var FIND_OPTS = [['caseSensitive', 'Aa', 'Match Case'], ['wholeWord', 'W', 'Whole Word'], ['regexp', '.*', 'Regular Expression']];
+        function findBar(driver) {
+            var dom = document.createElement('div');
+            dom.className = 'ed-find';
+            dom.setAttribute('role', 'search');
+            dom.setAttribute('aria-label', 'Find and replace');
+            var g = function (name) { return '<span class="glyph" style="--glyph: var(--glyph-' + name + ')" aria-hidden="true"></span>'; };
+            /* The grid inside the bar, so the bar's own width can set it out
+               (a container query in css/editor.css). */
+            dom.innerHTML = '<div class="ed-find-grid">' +
+                '<div class="ed-find-row">' +
+                  '<input class="form-input ed-find-field" type="text" data-find="search" placeholder="Find" aria-label="Find" autocomplete="off" spellcheck="false" main-field="true" />' +
+                  '<span class="ed-find-tools">' +
+                    '<span class="ed-find-count" data-find="count" aria-live="polite"></span>' +
+                    '<button type="button" class="btn btn-sm" data-find="prev" aria-label="Previous Match" title="Previous match (Shift+Enter)">' + g('arrow-up') + '</button>' +
+                    '<button type="button" class="btn btn-sm" data-find="next" aria-label="Next Match" title="Next match (Enter)">' + g('arrow-down') + '</button>' +
+                    '<span class="ed-find-opts" role="group" aria-label="Options">' + FIND_OPTS.map(function (o) {
+                        return '<button type="button" class="btn btn-sm ed-find-opt" data-opt="' + o[0] + '" aria-pressed="false" aria-label="' + o[2] + '" title="' + o[2] + '">' + o[1] + '</button>';
+                    }).join('') + '</span>' +
+                    '<button type="button" class="icon-btn ed-find-close" data-find="close" aria-label="Close" title="Close (Escape)">' + g('close') + '</button>' +
+                  '</span>' +
+                '</div>' +
+                '<div class="ed-find-row" data-find="replace-row">' +
+                  '<input class="form-input ed-find-field" type="text" data-find="replace" placeholder="Replace with" aria-label="Replace with" autocomplete="off" spellcheck="false" />' +
+                  '<span class="ed-find-tools">' +
+                    '<button type="button" class="btn btn-sm" data-find="replace-one" title="Replace this match (Enter)">Replace</button>' +
+                    '<button type="button" class="btn btn-sm" data-find="replace-all" title="Replace every match (Ctrl+Enter)">Replace All</button>' +
+                  '</span>' +
+                '</div>' +
+            '</div>';
+            var f = function (k) { return dom.querySelector('[data-find="' + k + '"]'); };
+            var search = f('search'), replace = f('replace');
+            var opt = function (k) { return dom.querySelector('[data-opt="' + k + '"]'); };
+            function query() {
+                var q = { search: search.value, replace: replace.value };
+                FIND_OPTS.forEach(function (o) { q[o[0]] = opt(o[0]).getAttribute('aria-pressed') === 'true'; });
+                return q;
+            }
+            function show(q) {
+                if (!q) { return; }
+                if (search.value !== (q.search || '')) { search.value = q.search || ''; }
+                if (replace.value !== (q.replace || '')) { replace.value = q.replace || ''; }
+                FIND_OPTS.forEach(function (o) { opt(o[0]).setAttribute('aria-pressed', String(!!q[o[0]])); });
+            }
+            function refresh() {
+                var c = driver.count(), count = f('count');
+                count.textContent = !search.value ? '' : c.error ? 'Not a valid expression' : !c.total ? 'No matches'
+                    : c.at ? c.at + ' of ' + (c.total >= 1000 ? '1000+' : c.total) : (c.total >= 1000 ? '1000+' : c.total) + (c.total === 1 ? ' match' : ' matches');
+                count.classList.toggle('ed-find-none', !!search.value && (!!c.error || !c.total));
+                f('prev').disabled = f('next').disabled = !c.total;
+                f('replace-row').hidden = driver.readOnly();
+                f('replace-one').disabled = f('replace-all').disabled = !c.total;
+            }
+            function apply() { var q = query(); lastFind = q; driver.set(q); refresh(); }
+            search.addEventListener('input', apply);
+            replace.addEventListener('input', apply);
+            /* A press on a button leaves the keyboard in the field. */
+            dom.addEventListener('mousedown', function (e) { if (e.target.closest('button')) { e.preventDefault(); } });
+            dom.addEventListener('click', function (e) {
+                var b = e.target.closest('button');
+                if (!b || b.disabled) { return; }
+                if (b.hasAttribute('data-opt')) { b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')); apply(); return; }
+                switch (b.getAttribute('data-find')) {
+                    case 'prev': driver.prev(); break;
+                    case 'next': driver.next(); break;
+                    case 'replace-one': driver.replace(); break;
+                    case 'replace-all': driver.replaceAll(); break;
+                    case 'close': driver.close(); return;
+                }
+                refresh();
+            });
+            dom.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); driver.close(); return; }
+                if (e.key !== 'Enter' || e.isComposing) { return; }
+                e.preventDefault(); e.stopPropagation();
+                if (e.target === replace) { if (e.ctrlKey || e.metaKey) { driver.replaceAll(); } else { driver.replace(); } }
+                else if (e.shiftKey) { driver.prev(); } else { driver.next(); }
+                refresh();
+            });
+            return { dom: dom, show: show, refresh: refresh, focus: function () { search.focus(); search.select(); } };
+        }
+
+        /* The text's search, which is CodeMirror's. */
+        function textFind(v) {
+            return {
+                set: function (q) { v.dispatch({ effects: CM.setSearchQuery.of(new CM.SearchQuery(q)) }); },
+                next: function () { CM.findNext(v); },
+                prev: function () { CM.findPrevious(v); },
+                replace: function () { CM.replaceNext(v); },
+                replaceAll: function () { CM.replaceAll(v); },
+                close: function () { CM.closeSearchPanel(v); v.focus(); },
+                readOnly: function () { return v.state.readOnly; },
+                count: function () {
+                    var q = CM.getSearchQuery(v.state);
+                    if (!q.search) { return { total: 0 }; }
+                    if (!q.valid) { return { total: 0, error: true }; }
+                    var sel = v.state.selection.main, total = 0, at = 0, cur = q.getCursor(v.state);
+                    for (var r = cur.next(); !r.done && total < 1000; r = cur.next()) {
+                        total++;
+                        if (r.value.from === sel.from && r.value.to === sel.to) { at = total; }
+                    }
+                    return { total: total, at: at };
+                }
+            };
+        }
+        /* CodeMirror's search panel, made as the find bar. */
+        function findPanel(v) {
+            var bar = findBar(textFind(v)), shown = null;
+            return {
+                dom: bar.dom, top: true,
+                /* As CodeMirror's own panel does, the bar takes the keyboard
+                   when it first appears; openSearchPanel focuses it after. */
+                mount: function () { shown = CM.getSearchQuery(v.state); bar.show(shown); bar.refresh(); bar.focus(); },
+                update: function (u) {
+                    var q = CM.getSearchQuery(u.state);
+                    if (q !== shown) { shown = q; bar.show(q); }
+                    bar.refresh();
+                }
+            };
+        }
+
+        /* The page's search, which the visual editor keeps. */
+        function pageSearch() { return visual.api && visual.api.search ? visual.api.search : null; }
+        var pageFind = {
+            set: function (q) { var s = pageSearch(); if (s) { s.set(q); } },
+            next: function () { var s = pageSearch(); if (s) { s.next(); } },
+            prev: function () { var s = pageSearch(); if (s) { s.prev(); } },
+            replace: function () { var s = pageSearch(); if (s) { s.replace(); } },
+            replaceAll: function () { var s = pageSearch(); if (s) { s.replaceAll(); } },
+            close: function () { closePageFind(true); },
+            readOnly: function () { var t = current(); return !t || !!t.readOnly; },
+            count: function () { var s = pageSearch(); return s ? s.count() : { total: 0 }; }
+        };
+        function openPageFind() {
+            if (!visualFind) { visualFind = findBar(pageFind); el.findPlace.appendChild(visualFind.dom); }
+            el.findPlace.hidden = false;
+            var q = lastFind || (view ? CM.getSearchQuery(view.state) : null);
+            if (q && q.search) { visualFind.show(q); pageFind.set(q); }
+            visualFind.refresh();
+            visualFind.focus();
+        }
+        function closePageFind(back) {
+            el.findPlace.hidden = true;
+            var s = pageSearch();
+            if (s) { s.set(null); }
+            if (back && visual.api) { visual.api.focus(); }
+        }
+        /* Find in whichever the reader is working in: the page in Visual, or
+           in Split while the text does not have the keyboard; else the text. */
+        function openFind() {
+            if (formatsThePage() && pageSearch()) { openPageFind(); return; }
+            if (!view) { return; }
+            if (lastFind && !CM.getSearchQuery(view.state).search) {
+                view.dispatch({ effects: CM.setSearchQuery.of(new CM.SearchQuery(lastFind)) });
+            }
+            CM.openSearchPanel(view);
         }
 
         /* The page's edit, as text: the least change that turns the text into
@@ -1571,7 +1757,7 @@
             'close-document': function () { if (current()) { closeTab(active); } },
             'undo': function () { CM.undo(view); },
             'redo': function () { CM.redo(view); },
-            'find': function () { CM.openSearchPanel(view); },
+            'find': openFind,
             'go-to-line': goToLine,
             'toggle-files': toggleExplorer,
             'toggle-wrap': function () { setWrap(!wrapOn, true); },
@@ -1716,7 +1902,7 @@
                 cmd('close-document', 'Close Document', null, function () { COMMANDS['close-document'](); }, { disabled: function () { return !ready || !current(); } }),
                 cmd('undo', 'Undo', 'undo', function () { CM.undo(view); }, { builtIn: 'Mod-z' }),
                 cmd('redo', 'Redo', 'redo', function () { CM.redo(view); }, { builtIn: 'Mod-y' }),
-                cmd('find', 'Find and Replace…', 'search', function () { CM.openSearchPanel(view); }, { builtIn: 'Mod-f' }),
+                cmd('find', 'Find and Replace…', 'search', openFind, { builtIn: 'Mod-f' }),
                 cmd('go-to-line', 'Go to Line…', null, goToLine, { builtIn: 'Mod-Alt-g' }),
                 cmd('toggle-wrap', 'Wrap Lines', 'wrap', function () { setWrap(!wrapOn, true); }, { checked: function () { return wrapOn; } }),
                 cmd('insert-timestamp', 'Insert Date and Time', null, COMMANDS['insert-timestamp'], { disabled: function () { return !ready || !editable; } }),

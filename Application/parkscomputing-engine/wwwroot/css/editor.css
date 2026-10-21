@@ -37,11 +37,43 @@
 .pc-editor .ed-surface .cm-editor { height: 100%; }
 /* The preview, beside the text on a wide screen and under it on a narrow
    one: the public page, flat, for reading. */
+.pc-editor .ed-page { flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.pc-editor .ed-page:has(> .ed-preview[hidden]) { display: none; }
 .pc-editor .ed-preview {
   flex: 1 1 0; min-width: 0; min-height: 0;
   border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg);
 }
 .pc-editor .ed-preview[hidden] { display: none; }
+
+/* The find bar, in the text (CodeMirror's search panel) and over the page:
+   the two fields sunken, the buttons raised, Match Case, Whole Word and
+   Regular Expression latching, the count between, and Close at the end. */
+.pc-editor .ed-find-place { flex: none; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.pc-editor .ed-find-place[hidden] { display: none; }
+/* Two columns shared by both rows, so the Find and Replace fields line up:
+   the fields take what room there is, each row's buttons sit beside them. */
+.pc-editor .ed-find {
+  container: ed-find / inline-size;
+  padding: var(--space-2) var(--space-3); background: var(--surface);
+  font: var(--text-sm) / 1.4 var(--font); color: var(--text);
+}
+.pc-editor .ed-find-grid { display: grid; grid-template-columns: minmax(7rem, 1fr) auto; align-items: center; gap: var(--space-2) var(--space-3); }
+/* A narrow bar, such as the page's in Split, puts each row's buttons under
+   its field. */
+@container ed-find (max-width: 520px) {
+  .pc-editor .ed-find-grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); }
+  .pc-editor .ed-find-tools { flex-wrap: wrap; margin-bottom: var(--space-1); }
+}
+.pc-editor .ed-find-row { display: contents; }
+.pc-editor .ed-find-row[hidden] { display: none; }
+.pc-editor .ed-find-field { width: 100%; min-width: 0; height: 28px; padding-block: 2px; font-size: var(--text-sm); }
+.pc-editor .ed-find-tools { display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
+.pc-editor .ed-find-count { min-width: 6.5em; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.pc-editor .ed-find-count.ed-find-none { color: var(--danger); }
+.pc-editor .ed-find-opts { display: inline-flex; gap: 4px; }
+.pc-editor .ed-find-opt { min-width: 2.4em; font-family: var(--mono); justify-content: center; }
+.pc-editor .ed-find-close { margin-inline-start: auto; }
+.pc-editor .ed-surface .cm-panels-top { border-bottom: 1px solid var(--border); }
 @media (max-width: 800px) { .pc-editor.ed-previewing .ed-work { flex-direction: column; } }
 /* Visual alone: the page fills the work, and the text waits behind it. */
 .pc-editor.ed-visual-only .ed-surface { display: none; }

@@ -304,6 +304,52 @@ function diff(a, b) {
     now = await cmText();
     log('and writes the figure into the text', now.includes('{{figure:/images/new.png alt="A new picture" width=600px}}'), JSON.stringify(now.split('\n').filter(l => /figure/.test(l))));
 
+    // Find and replace, in the text and on the page.
+    const findState = sel => page.evaluate(sel => { const b = document.querySelector(sel); if (!b || !b.getClientRects().length) { return null; } return { count: b.querySelector('[data-find="count"]').textContent, focused: document.activeElement === b.querySelector('[data-find="search"]') }; }, sel);
+    const TEXT_FIND = '.pc-editor .ed-surface .ed-find', PAGE_FIND = '.pc-editor .ed-find-place .ed-find';
+    await page.click('.cm-content');
+    await page.keyboard.press('Control+f');
+    await page.waitForTimeout(300);
+    log('Ctrl+F in the text opens the find bar with the keyboard in it', !!(await findState(TEXT_FIND)) && (await findState(TEXT_FIND)).focused, JSON.stringify(await findState(TEXT_FIND)));
+    await page.keyboard.type('Inside');
+    await page.waitForTimeout(200);
+    log('typing counts the matches', (await findState(TEXT_FIND)).count === '2 matches', (await findState(TEXT_FIND)).count);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    log('Enter goes to the first match', (await findState(TEXT_FIND)).count === '1 of 2', (await findState(TEXT_FIND)).count);
+    await page.fill(TEXT_FIND + ' [data-find="replace"]', 'Within');
+    await page.press(TEXT_FIND + ' [data-find="replace"]', 'Enter');
+    await page.waitForTimeout(300);
+    log('Enter in Replace replaces it', /^Within the tip\./m.test(await cmText()), (await cmText()).split('\n').find(l => /the tip\./.test(l)));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    log('Escape closes the bar and gives the keyboard back to the text', !(await findState(TEXT_FIND)) && await page.evaluate(() => !!document.activeElement.closest('.cm-content')));
+    await page.click('.pc-editor [data-command="view-visual"]');
+    const frame3 = await (await page.waitForSelector('iframe.ed-preview')).contentFrame();
+    await frame3.waitForSelector('.pc-visual', { timeout: 30000 });
+    await page.waitForTimeout(1500);
+    await frame3.click('.pc-visual h1');
+    await page.keyboard.press('Control+f');
+    await page.waitForTimeout(400);
+    log('Ctrl+F on the page opens the find bar over it, with the keyboard in it', !!(await findState(PAGE_FIND)) && (await findState(PAGE_FIND)).focused, JSON.stringify(await findState(PAGE_FIND)));
+    await page.keyboard.press('Control+a');
+    await page.keyboard.type('typed as text');
+    await page.waitForTimeout(300);
+    log('the page marks its matches and counts them', (await findState(PAGE_FIND)).count === '1 match' && (await frame3.evaluate(() => document.querySelectorAll('.pm-search-match').length)) === 1, (await findState(PAGE_FIND)).count);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    log('Enter makes it the match in hand', (await findState(PAGE_FIND)).count === '1 of 1' && (await frame3.evaluate(() => (document.querySelector('.pm-search-current') || {}).textContent)) === 'typed as text');
+    await page.fill(PAGE_FIND + ' [data-find="replace"]', 'written as text');
+    await page.press(PAGE_FIND + ' [data-find="replace"]', 'Enter');
+    await page.waitForTimeout(2000);
+    log('Replace on the page writes the change into the text', /^A paragraph written as text\./m.test(await cmText()), (await cmText()).split('\n').find(l => /as text/.test(l)));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    log('Escape closes the page\'s bar and its marks go', !(await findState(PAGE_FIND)) && (await frame3.evaluate(() => document.querySelectorAll('.pm-search-match').length)) === 0);
+    await page.click('.pc-editor [data-command="view-text"]');
+    await page.waitForTimeout(500);
+    log('going back to the text leaves no message about the page', !/could not be edited/.test(await page.textContent('[data-role="message"]')), await page.textContent('[data-role="message"]'));
+
     // Shortcodes in the text: marked, completed and explained.
     log('a shortcode in the text is marked as one, its name and arguments apart', (await page.locator('.cm-shortcode-name').count()) >= 2 && (await page.locator('.cm-shortcode-args').count()) >= 1, (await page.locator('.cm-shortcode-name').count()) + '/' + (await page.locator('.cm-shortcode-args').count()));
     await page.click('.cm-content');

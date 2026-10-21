@@ -340,6 +340,102 @@
         STYLE_KEYS['Mod-' + n] = COMMANDS['h' + n];
     });
 
+    /* === Find and replace ================================================
+       The Editor's find bar (js/editor.js) asks the page through
+       api.search. Each text block is searched as the text it shows, a
+       shortcode or other inline object standing for one character that no
+       word matches; every match is marked, the one the selection holds
+       more strongly, and a replacement keeps the marks of the text it
+       replaces. A source block's Markdown is not searched. */
+    var searchKey = new PM.PluginKey('search'), lastQuery = null;
+    function searchRegExp(q) {
+        if (!q || !q.search) { return null; }
+        var body = q.regexp ? q.search : q.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (q.wholeWord) { body = '\\b(?:' + body + ')\\b'; }
+        try { return new RegExp(body, 'g' + (q.caseSensitive ? '' : 'i') + 'u'); } catch (err) { return false; }
+    }
+    function matchesIn(doc, q) {
+        var re = searchRegExp(q), out = [];
+        if (!re) { return re === false ? { error: true, list: out } : { list: out }; }
+        doc.descendants(function (node, pos) {
+            if (!node.isTextblock) { return true; }
+            var text = '';
+            node.forEach(function (child) { text += child.isText ? child.text : '￼'.repeat(child.nodeSize); });
+            re.lastIndex = 0;
+            for (var m = re.exec(text); m && out.length < 1000; m = re.exec(text)) {
+                if (!m[0].length) { re.lastIndex++; continue; }
+                out.push({ from: pos + 1 + m.index, to: pos + 1 + m.index + m[0].length, text: m[0] });
+            }
+            return false;
+        });
+        return { list: out };
+    }
+    function searchDecorations(state, q) {
+        var found = matchesIn(state.doc, q), sel = state.selection;
+        if (!found.list.length) { return PM.DecorationSet.empty; }
+        return PM.DecorationSet.create(state.doc, found.list.map(function (m) {
+            var here = m.from === sel.from && m.to === sel.to;
+            return PM.Decoration.inline(m.from, m.to, { class: here ? 'pm-search-match pm-search-current' : 'pm-search-match' });
+        }));
+    }
+    var searchPlugin = new PM.Plugin({
+        key: searchKey,
+        state: {
+            init: function (config, state) { return { q: lastQuery, deco: searchDecorations(state, lastQuery) }; },
+            apply: function (tr, old, before, state) {
+                var meta = tr.getMeta(searchKey), q = meta ? meta.q : old.q;
+                return meta || tr.docChanged || tr.selectionSet ? { q: q, deco: searchDecorations(state, q) } : old;
+            }
+        },
+        props: { decorations: function (state) { return searchKey.getState(state).deco; } }
+    });
+    function found() { return view ? matchesIn(view.state.doc, lastQuery) : { list: [] }; }
+    function selectMatch(m) {
+        view.dispatch(view.state.tr.setSelection(PM.TextSelection.create(view.state.doc, m.from, m.to)).scrollIntoView());
+    }
+    function step(forward) {
+        var list = found().list, sel = view.state.selection;
+        if (!list.length) { return; }
+        var m = forward ? list.find(function (x) { return x.from >= sel.to && !(x.from === sel.from && x.to === sel.to); }) || list[0]
+            : list.slice().reverse().find(function (x) { return x.to <= sel.from; }) || list[list.length - 1];
+        selectMatch(m);
+    }
+    /* What a match is replaced with: the replacement as it stands, or for a
+       regular expression with its $1 and $& filled from the match. */
+    function replacement(m) {
+        var text = lastQuery.replace || '';
+        if (!lastQuery.regexp) { return text; }
+        var re = searchRegExp(lastQuery);
+        re.lastIndex = 0;
+        return m.text.replace(re, text);
+    }
+    var search = {
+        set: function (q) {
+            lastQuery = q && q.search ? q : null;
+            if (view) { view.dispatch(view.state.tr.setMeta(searchKey, { q: lastQuery })); }
+        },
+        next: function () { if (view) { step(true); } },
+        prev: function () { if (view) { step(false); } },
+        replace: function () {
+            if (!view || !lastQuery) { return; }
+            var sel = view.state.selection, m = found().list.find(function (x) { return x.from === sel.from && x.to === sel.to; });
+            if (!m) { step(true); return; }
+            view.dispatch(view.state.tr.insertText(replacement(m), m.from, m.to));
+            step(true);
+        },
+        replaceAll: function () {
+            if (!view || !lastQuery) { return; }
+            var list = found().list, tr = view.state.tr;
+            for (var i = list.length - 1; i >= 0; i--) { tr.insertText(replacement(list[i]), list[i].from, list[i].to); }
+            if (list.length) { view.dispatch(tr); }
+        },
+        count: function () {
+            var f = found(), sel = view ? view.state.selection : null, at = 0;
+            f.list.forEach(function (m, i) { if (sel && m.from === sel.from && m.to === sel.to) { at = i + 1; } });
+            return { total: f.list.length, at: at, error: !!f.error };
+        }
+    };
+
     /* The paragraph style of the block the cursor is in: h1 to h6 for a
        heading, paragraph for anything else. */
     function block() {
@@ -423,7 +519,7 @@
     function stateOf(m) {
         return PM.EditorState.create({
             doc: docOf(m),
-            plugins: [PM.history(), keys(), PM.keymap(PM.baseKeymap), PM.dropCursor(), PM.gapCursor()]
+            plugins: [PM.history(), keys(), PM.keymap(PM.baseKeymap), PM.dropCursor(), PM.gapCursor(), searchPlugin]
         });
     }
 
@@ -505,7 +601,7 @@
     }
 
     var api = {
-        attach: attach, load: load, run: run, insertShortcode: insertShortcode, block: block,
+        attach: attach, load: load, run: run, insertShortcode: insertShortcode, block: block, search: search,
         active: function (name) {
             if (!view) { return false; }
             var marks = { bold: 'strong', italic: 'em', strike: 'strike', code: 'code', link: 'link' };

@@ -24,8 +24,8 @@ const log = (n, ok, x) => console.log((ok ? 'PASS ' : 'FAIL ') + n + (x !== unde
       front: document.querySelector('[data-tab][aria-selected="true"]')?.textContent,
       pos: document.querySelector('[data-role="pos"]')?.textContent,
       top: scroller ? scroller.scrollTop : null,
-      search: !!document.querySelector('.cm-search'),
-      query: document.querySelector('.cm-search input[name="search"]')?.value,
+      search: !!document.querySelector('.pc-editor .ed-surface .ed-find'),
+      query: document.querySelector('.pc-editor .ed-surface .ed-find [data-find="search"]')?.value,
       text: document.querySelector('.cm-content')?.innerText || '',
       focused: !!document.activeElement?.closest?.('.cm-editor')
     };

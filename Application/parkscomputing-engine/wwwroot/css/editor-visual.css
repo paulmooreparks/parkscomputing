@@ -21,3 +21,8 @@
 .pc-visual .pm-container[data-shortcode]:hover { outline: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
 /* The page's lightbox and links don't act on a page being edited. */
 .pc-visual-editing .pc-visual img { cursor: text; }
+/* The find bar's matches, as the text marks them: every match tinted, the
+   one in hand more strongly and outlined, so it shows without the page
+   having the keyboard. */
+.pc-visual .pm-search-match { background: color-mix(in srgb, var(--warn) 30%, transparent); border-radius: 2px; }
+.pc-visual .pm-search-match.pm-search-current { background: color-mix(in srgb, var(--warn) 55%, transparent); outline: 1px solid var(--warn); }

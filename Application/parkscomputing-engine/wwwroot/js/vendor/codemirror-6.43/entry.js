@@ -10,7 +10,8 @@ export {
 export { defaultKeymap, history, historyField, historyKeymap, indentWithTab, undo, redo } from '@codemirror/commands';
 export {
     searchKeymap, highlightSelectionMatches, openSearchPanel, search,
-    searchPanelOpen, getSearchQuery, setSearchQuery, SearchQuery
+    searchPanelOpen, getSearchQuery, setSearchQuery, SearchQuery,
+    closeSearchPanel, findNext, findPrevious, replaceNext, replaceAll
 } from '@codemirror/search';
 export {
     bracketMatching, indentOnInput, syntaxHighlighting, HighlightStyle, StreamLanguage,
