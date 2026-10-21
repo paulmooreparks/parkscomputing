@@ -71,9 +71,9 @@ public sealed class ChatController : ControllerBase {
 
     [HttpGet("providers")]
     public async Task<IActionResult> Providers(CancellationToken cancel) {
-        if (await ReaderAsync() is null) { return NotFound(); }
+        if (await ReaderAsync() is not { } me) { return NotFound(); }
         var (config, error) = _settings.Read();
-        return Ok(await _self.ProvidersAsync(config, error, _tools.Available && await ToolsAllowedAsync(), cancel));
+        return Ok(await _self.ProvidersAsync(config.VisibleTo(me.User), error, _tools.Available && await ToolsAllowedAsync(), cancel));
     }
 
     /// <summary>The settings as the dialog edits them: every provider with
@@ -91,7 +91,10 @@ public sealed class ChatController : ControllerBase {
                 ["models"] = p.Models is null ? null : new JsonArray(p.Models.Select(m => (JsonNode)m).ToArray()),
                 ["maxTokens"] = p.MaxTokens, ["thinkingType"] = p.ThinkingType, ["thinkingBudget"] = p.ThinkingBudget,
                 ["webSearch"] = p.WebSearch, ["webSearchMaxUses"] = p.WebSearchMaxUses, ["command"] = p.Command, ["sandbox"] = p.Sandbox,
-                ["hasKey"] = string.IsNullOrWhiteSpace(p.KeyEnv) ? null : !string.IsNullOrEmpty(p.Key)
+                ["users"] = p.Users is null ? null : new JsonArray(p.Users.Select(u => (JsonNode)u).ToArray()),
+                ["hasKey"] = string.IsNullOrWhiteSpace(p.KeyEnv) ? null : !string.IsNullOrEmpty(p.Key),
+                /* Claude without a key uses the plan's sign-in token; whether the server has it. */
+                ["hasToken"] = p.Kind == "claude" && string.IsNullOrWhiteSpace(p.KeyEnv) ? !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(ClaudeHost.TokenVariable)) : null
             }).ToArray()),
             ["search"] = config.Search is null ? null : new JsonObject {
                 ["kind"] = config.Search.Kind, ["baseUrl"] = config.Search.BaseUrl, ["keyEnv"] = config.Search.KeyEnv, ["count"] = config.Search.Count,
@@ -129,11 +132,16 @@ public sealed class ChatController : ControllerBase {
             p.Kind = (p.Kind ?? "openai").Trim().ToLowerInvariant(); p.BaseUrl = (p.BaseUrl ?? "").Trim(); p.KeyEnv = string.IsNullOrWhiteSpace(p.KeyEnv) ? null : p.KeyEnv!.Trim();
             if (!IdShape.IsMatch(p.Id)) { return BadRequest(new { error = "A provider's id is lower-case letters, digits and hyphens, starting with a letter: " + (p.Id.Length > 0 ? p.Id : "(empty)") }); }
             if (!seen.Add(p.Id)) { return BadRequest(new { error = "Two providers are called " + p.Id + "." }); }
-            if (p.Kind is not ("openai" or "anthropic" or "codex")) { return BadRequest(new { error = p.Id + ": the kind is openai, anthropic or codex." }); }
+            if (p.Kind is not ("openai" or "anthropic" or "codex" or "claude")) { return BadRequest(new { error = p.Id + ": the kind is openai, anthropic, codex or claude." }); }
+            p.Users = p.Users?.Select(u => u.Trim()).Where(u => u.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (p.Users is { Count: 0 }) { p.Users = null; }
             if (p.Kind == "codex") {
                 p.Command = string.IsNullOrWhiteSpace(p.Command) ? null : p.Command!.Trim();
                 p.Sandbox = string.IsNullOrWhiteSpace(p.Sandbox) ? null : p.Sandbox!.Trim().ToLowerInvariant();
                 if (p.Sandbox is not (null or "read-only" or "workspace-write" or "danger-full-access")) { return BadRequest(new { error = p.Id + ": the sandbox is read-only, workspace-write or danger-full-access." }); }
+            }
+            else if (p.Kind == "claude") {
+                p.Command = string.IsNullOrWhiteSpace(p.Command) ? null : p.Command!.Trim(); p.Sandbox = null; p.BaseUrl = "";
             }
             else if (!Uri.TryCreate(p.BaseUrl, UriKind.Absolute, out var u) || (u.Scheme != "http" && u.Scheme != "https")) { return BadRequest(new { error = p.Id + ": the address must start with http:// or https://." }); }
             if (p.KeyEnv is not null && !System.Text.RegularExpressions.Regex.IsMatch(p.KeyEnv, "^[A-Za-z_][A-Za-z0-9_]*$")) { return BadRequest(new { error = p.Id + ": the key's variable is a name such as ANTHROPIC_API_KEY." }); }
@@ -180,7 +188,7 @@ public sealed class ChatController : ControllerBase {
     [HttpPost("conversations")]
     public async Task<IActionResult> Create([FromBody] NewRequest body) {
         if (await ReaderAsync() is not { } me) { return NotFound(); }
-        var (config, _) = _settings.Read();
+        var config = _settings.Read().Config.VisibleTo(me.User);
         var provider = config.Find(body.Provider) ?? config.Find(config.DefaultProvider) ?? config.Providers.FirstOrDefault();
         var now = DateTimeOffset.UtcNow;
         var c = new Conversation {
@@ -218,7 +226,7 @@ public sealed class ChatController : ControllerBase {
         if (_turns.Working(me.Home, id)) { return Conflict(new { error = "Wait for the reply to finish." }); }
         if (body.Title is { } t && t.Trim().Length > 0) { c.Title = t.Trim().Length > 120 ? t.Trim()[..120] : t.Trim(); }
         if (body.Provider is { } p) {
-            var (config, _) = _settings.Read();
+            var config = _settings.Read().Config.VisibleTo(me.User);
             if (config.Find(p) is null) { return BadRequest(new { error = "There is no provider called " + p + "." }); }
             c.Provider = config.Find(p)!.Id;
         }

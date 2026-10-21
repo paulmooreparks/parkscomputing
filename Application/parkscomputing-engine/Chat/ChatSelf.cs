@@ -24,9 +24,10 @@ public sealed class ChatSelf {
     private readonly ChatSkills _skills;
     private readonly IHttpClientFactory _http;
     private readonly CodexHost _codex;
+    private readonly ClaudeHost _claude;
 
-    public ChatSelf(ChatSettings settings, ChatStore store, ChatSkills skills, IHttpClientFactory http, CodexHost codex) {
-        _settings = settings; _store = store; _skills = skills; _http = http; _codex = codex;
+    public ChatSelf(ChatSettings settings, ChatStore store, ChatSkills skills, IHttpClientFactory http, CodexHost codex, ClaudeHost claude) {
+        _settings = settings; _store = store; _skills = skills; _http = http; _codex = codex; _claude = claude;
     }
 
     public static readonly string[] Topics = { "overview", "providers", "conversation", "conversations", "skills", "settings", "api" };
@@ -80,7 +81,7 @@ public sealed class ChatSelf {
         try {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel);
             timeout.CancelAfter(TimeSpan.FromSeconds(8));
-            var models = await ChatProviders.For(p, _http.CreateClient(ChatProviders.ClientName), _codex).ModelsAsync(timeout.Token);
+            var models = await ChatProviders.For(p, _http.CreateClient(ChatProviders.ClientName), _codex, _claude).ModelsAsync(timeout.Token);
             if (models.Count > 0) { lock (_gate) { _models[key] = (DateTimeOffset.UtcNow, models); } }
             return (models, null);
         }
@@ -90,9 +91,10 @@ public sealed class ChatSelf {
     }
 
     /// <summary>The answer to a chat_info call, as JSON text for the model.</summary>
-    public async Task<string> RunAsync(JsonNode? input, string home, Conversation conv, bool toolsOffered, bool canEditSettings, CancellationToken cancel) {
+    public async Task<string> RunAsync(JsonNode? input, string home, Microsoft.AspNetCore.Identity.IdentityUser reader, Conversation conv, bool toolsOffered, bool canEditSettings, CancellationToken cancel) {
         var topic = input is JsonObject o && o["topic"]?.GetValue<string>() is { Length: > 0 } t && Topics.Contains(t) ? t : "overview";
-        var (config, error) = _settings.Read();
+        var (everything, error) = _settings.Read();
+        var config = everything.VisibleTo(reader);
         var all = topic == "overview";
         var answer = new JsonObject();
         if (all || topic == "conversation") {

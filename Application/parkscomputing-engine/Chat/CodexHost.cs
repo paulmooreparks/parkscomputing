@@ -100,14 +100,22 @@ public sealed class CodexHost : IAsyncDisposable {
     /// that looks like a secret, since Codex runs commands and reads files
     /// for the model.</summary>
     public static Dictionary<string, string> ScrubbedEnvironment() {
+        var env = WithoutSecrets();
+        env["CODEX_HOME"] = Home;
+        env.TryAdd("HOME", Home);
+        return env;
+    }
+
+    /// <summary>The server's environment without anything whose name looks
+    /// like a secret (a key, token, password or connection string), for an
+    /// agent that runs commands: Codex, and Claude (ClaudeHost).</summary>
+    public static Dictionary<string, string> WithoutSecrets() {
         var env = new Dictionary<string, string>();
         foreach (System.Collections.DictionaryEntry e in Environment.GetEnvironmentVariables()) {
             var name = e.Key?.ToString() ?? ""; var upper = name.ToUpperInvariant();
             if (SecretWords.Any(w => upper.Contains(w))) { continue; }
             if (e.Value is string v) { env[name] = v; }
         }
-        env["CODEX_HOME"] = Home;
-        env.TryAdd("HOME", Home);
         return env;
     }
 

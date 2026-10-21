@@ -1,0 +1,8 @@
+{
+  "name": "parkscomputing-claude-agent",
+  "private": true,
+  "description": "The Claude Agent ACP adapter the chat's claude provider runs (Architecture/chat-design.md, \"Claude on the operator's plan\"). Pinned to a published release; the lockfile pins the rest.",
+  "dependencies": {
+    "@agentclientprotocol/claude-agent-acp": "0.87.0"
+  }
+}

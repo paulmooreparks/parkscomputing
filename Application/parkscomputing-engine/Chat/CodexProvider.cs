@@ -130,20 +130,7 @@ public sealed class CodexProvider : IChatProvider {
     public static JsonArray Input(ProviderRequest request, bool fresh) {
         var items = new JsonArray();
         var last = request.Messages.LastOrDefault(m => m.Role == "user");
-        if (fresh) {
-            var sb = new StringBuilder();
-            if (!string.IsNullOrWhiteSpace(request.System)) { sb.Append("Instructions from the site:\n").Append(request.System).Append("\n\n"); }
-            var earlier = request.Messages.Where(m => m != last && m.Parts.Any(p => p.Type == "text")).ToList();
-            if (earlier.Count > 0) {
-                sb.Append("Earlier in this conversation (with another model):\n");
-                foreach (var m in earlier) {
-                    var text = string.Join("\n", m.Parts.Where(p => p.Type == "text").Select(p => p.Text));
-                    if (text.Length > 0) { sb.Append(m.Role == "user" ? "Reader: " : "Assistant: ").Append(text.Length > 4000 ? text[..4000] + "…" : text).Append('\n'); }
-                }
-                sb.Append('\n');
-            }
-            if (sb.Length > 0) { items.Add(new JsonObject { ["type"] = "text", ["text"] = sb.ToString() }); }
-        }
+        if (fresh && Preamble(request, last) is { } preamble) { items.Add(new JsonObject { ["type"] = "text", ["text"] = preamble }); }
         foreach (var p in last?.Parts ?? new List<ChatPart>()) {
             switch (p.Type) {
                 case "text" when !string.IsNullOrEmpty(p.Text): items.Add(new JsonObject { ["type"] = "text", ["text"] = p.Text }); break;
@@ -153,6 +140,25 @@ public sealed class CodexProvider : IChatProvider {
         }
         if (items.Count == 0) { items.Add(new JsonObject { ["type"] = "text", ["text"] = "(The reader sent nothing but attachments.)" }); }
         return items;
+    }
+
+    /// <summary>What an agent's fresh session hears before the newest
+    /// message: the site's instructions, and the conversation's earlier
+    /// messages when it began with another provider; null when there is
+    /// neither. Codex and Claude both begin this way.</summary>
+    public static string? Preamble(ProviderRequest request, ChatMessage? last) {
+        var sb = new StringBuilder();
+        if (!string.IsNullOrWhiteSpace(request.System)) { sb.Append("Instructions from the site:\n").Append(request.System).Append("\n\n"); }
+        var earlier = request.Messages.Where(m => m != last && m.Parts.Any(p => p.Type == "text")).ToList();
+        if (earlier.Count > 0) {
+            sb.Append("Earlier in this conversation (with another model):\n");
+            foreach (var m in earlier) {
+                var text = string.Join("\n", m.Parts.Where(p => p.Type == "text").Select(p => p.Text));
+                if (text.Length > 0) { sb.Append(m.Role == "user" ? "Reader: " : "Assistant: ").Append(text.Length > 4000 ? text[..4000] + "…" : text).Append('\n'); }
+            }
+            sb.Append('\n');
+        }
+        return sb.Length > 0 ? sb.ToString() : null;
     }
 
     /// <summary>Codex's notifications and requests for the thread, as the

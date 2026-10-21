@@ -150,6 +150,7 @@ public partial class Startup {
         services.AddSingleton<ParksComputing.Engine.Chat.ChatWeb>();
         services.AddSingleton<ParksComputing.Engine.Chat.ChatSearch>();
         services.AddSingleton<ParksComputing.Engine.Chat.CodexHost>();
+        services.AddSingleton<ParksComputing.Engine.Chat.ClaudeHost>();
         services.AddHttpClient(ParksComputing.Engine.Chat.ChatWeb.ClientName, c => { c.Timeout = TimeSpan.FromSeconds(40); c.DefaultRequestHeaders.UserAgent.ParseAdd("parkscomputing-chat/1.0 (+https://parkscomputing.com)"); })
             .ConfigurePrimaryHttpMessageHandler(() => new System.Net.Http.SocketsHttpHandler { AllowAutoRedirect = true, MaxAutomaticRedirections = 5, UseCookies = false });
         services.AddSingleton<ParksComputing.Engine.Chat.ChatTurns>();

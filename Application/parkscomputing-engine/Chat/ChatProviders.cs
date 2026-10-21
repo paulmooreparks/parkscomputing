@@ -30,7 +30,7 @@ public sealed record ServerBlock(JsonObject Block) : ProviderEvent;
 /// them read from the provider's cache.</summary>
 public sealed record UsageReport(int? Input, int? Output, int? CachedInput = null) : ProviderEvent;
 public sealed record Finished(string StopReason) : ProviderEvent;
-/// <summary>A tool an agent provider (Codex) ran itself: first seen as it
+/// <summary>A tool an agent provider (Codex, Claude) ran itself: first seen as it
 /// starts (Status in_progress), then as it ends (completed or failed,
 /// with its output). Kind is execute, edit, search or other.</summary>
 public sealed record AgentTool(string Id, string Title, string Kind, string Status, JsonNode? Input, string? Output) : ProviderEvent;
@@ -70,9 +70,10 @@ public interface IChatProvider {
 public static class ChatProviders {
     public const string ClientName = "chat";
 
-    public static IChatProvider For(ChatProviderConfig config, HttpClient http, CodexHost? codex = null) => config.Kind.ToLowerInvariant() switch {
+    public static IChatProvider For(ChatProviderConfig config, HttpClient http, CodexHost? codex = null, ClaudeHost? claude = null) => config.Kind.ToLowerInvariant() switch {
         "anthropic" => new AnthropicProvider(config, http),
         "codex" => new CodexProvider(config, codex ?? throw new ProviderException("Codex is not set up on this server.")),
+        "claude" => new ClaudeProvider(config, claude ?? throw new ProviderException("Claude is offered in the chat alone.")),
         _ => new OpenAiProvider(config, http)
     };
 

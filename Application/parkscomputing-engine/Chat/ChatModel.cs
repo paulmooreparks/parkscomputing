@@ -99,14 +99,25 @@ public sealed class ChatProviderConfig {
     /// <summary>Anthropic: the most searches in one reply (5 by default).</summary>
     [JsonPropertyName("webSearchMaxUses")] public int? WebSearchMaxUses { get; set; }
     /// <summary>Codex: the Codex CLI's path on the server (/app/codex/codex
-    /// unless given).</summary>
+    /// unless given). Claude: the Node.js that runs the adapter
+    /// (/usr/local/bin/node unless given).</summary>
     [JsonPropertyName("command")] public string? Command { get; set; }
     /// <summary>Codex: its sandbox for commands, read-only, workspace-write
     /// (the default) or danger-full-access, which a container without
     /// user namespaces may need.</summary>
     [JsonPropertyName("sandbox")] public string? Sandbox { get; set; }
+    /// <summary>The accounts that may use the provider, by email address or
+    /// user name; every one of the staff when there are none. A provider
+    /// that bills one person's own plan (claude) lists that person, so that
+    /// another admin never draws on it.</summary>
+    [JsonPropertyName("users")] public List<string>? Users { get; set; }
 
     [JsonIgnore] public string Label => string.IsNullOrWhiteSpace(Name) ? Id : Name!;
+    /// <summary>Codex and Claude run on the server and need no address.</summary>
+    [JsonIgnore] public bool IsAgent => Kind.ToLowerInvariant() is "codex" or "claude";
+
+    public bool AllowedFor(Microsoft.AspNetCore.Identity.IdentityUser user) =>
+        Users is not { Count: > 0 } || Users.Any(u => string.Equals(u, user.Email, StringComparison.OrdinalIgnoreCase) || string.Equals(u, user.UserName, StringComparison.OrdinalIgnoreCase));
     [JsonIgnore] public string? Key => string.IsNullOrWhiteSpace(KeyEnv) ? null : Environment.GetEnvironmentVariable(KeyEnv!);
     [JsonIgnore] public bool SearchesTheWeb => string.Equals(Kind, "anthropic", StringComparison.OrdinalIgnoreCase) && WebSearch != false;
 }
@@ -138,6 +149,17 @@ public sealed class ChatConfig {
     [JsonPropertyName("search")] public ChatSearchConfig? Search { get; set; }
 
     public ChatProviderConfig? Find(string? id) => Providers.FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>The settings as one reader sees them: only the providers
+    /// they may use, and a default among those.</summary>
+    public ChatConfig VisibleTo(Microsoft.AspNetCore.Identity.IdentityUser user) {
+        var providers = Providers.Where(p => p.AllowedFor(user)).ToList();
+        var keepDefault = providers.Any(p => string.Equals(p.Id, DefaultProvider, StringComparison.OrdinalIgnoreCase));
+        return new ChatConfig {
+            Providers = providers, DefaultProvider = keepDefault ? DefaultProvider : providers.FirstOrDefault()?.Id,
+            DefaultModel = keepDefault ? DefaultModel : null, System = System, MaxToolRounds = MaxToolRounds, Search = Search
+        };
+    }
 }
 
 /// <summary>
@@ -179,8 +201,8 @@ public sealed class ChatSettings {
             ChatConfig config; string? error = null;
             try { config = JsonSerializer.Deserialize<ChatConfig>(File.ReadAllText(path), Json) ?? new ChatConfig(); }
             catch (JsonException ex) { config = new ChatConfig(); error = "/etc/" + FileName + " could not be read: " + ex.Message; }
-            /* A provider needs an id, and an address unless it is Codex, which is a command. */
-            config.Providers = config.Providers.Where(p => !string.IsNullOrWhiteSpace(p.Id) && (!string.IsNullOrWhiteSpace(p.BaseUrl) || string.Equals(p.Kind, "codex", StringComparison.OrdinalIgnoreCase))).ToList();
+            /* A provider needs an id, and an address unless it is an agent (Codex, Claude), which is a command. */
+            config.Providers = config.Providers.Where(p => !string.IsNullOrWhiteSpace(p.Id) && (!string.IsNullOrWhiteSpace(p.BaseUrl) || p.IsAgent)).ToList();
             _cached = (stamp, config, error);
             return (config, error);
         }

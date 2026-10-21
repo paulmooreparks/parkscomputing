@@ -58,6 +58,11 @@ services:
       # outside etc, which the site lists, keeps history of, and syncs.
       - CODEX_HOME=/app/codex-home
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # Claude on Paul's own plan (Chat/ClaudeHost.cs): the token from
+      # "claude setup-token", which only the claude provider's adapter gets.
+      # Its home, with the sessions a chat reopens, is a volume like Codex's.
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}
+      - CLAUDE_CONFIG_DIR=/app/claude-home
       # The chat's own web search for models without one (Chat/ChatSearch.cs):
       # the Brave Search API key, named as keyEnv under "search" in /etc/chat.json.
       - BRAVE_SEARCH_KEY=${BRAVE_SEARCH_KEY:-}
@@ -81,6 +86,8 @@ services:
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\etc:/app/etc
       # Codex's home: local, not synced, since it churns (Chat/CodexHost.cs).
       - C:\Users\paul\.config\docker-sites\parkscomputing-codex:/app/codex-home
+      # Claude's home: local and not synced, as Codex's (Chat/ClaudeHost.cs).
+      - C:\Users\paul\.config\docker-sites\parkscomputing-claude:/app/claude-home
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\history:/app/history
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\config:/app/config:ro
     depends_on:

@@ -91,10 +91,11 @@ public sealed class ChatTurns {
     private readonly ChatWeb _web;
     private readonly ChatSearch _search;
     private readonly CodexHost _codex;
+    private readonly ClaudeHost _claude;
     private readonly ServerFiles _files;
     private readonly AdminOptions _admin;
-    public ChatTurns(ChatStore store, ChatSettings settings, ChatTools tools, ChatSkills skills, ChatSelf self, ChatWeb web, ChatSearch search, CodexHost codex, ServerFiles files, IOptions<AdminOptions> admin, IHttpClientFactory http, ILogger<ChatTurns> log, TimeProvider clock) {
-        _self = self; _web = web; _search = search; _codex = codex; _files = files; _admin = admin.Value;
+    public ChatTurns(ChatStore store, ChatSettings settings, ChatTools tools, ChatSkills skills, ChatSelf self, ChatWeb web, ChatSearch search, CodexHost codex, ClaudeHost claude, ServerFiles files, IOptions<AdminOptions> admin, IHttpClientFactory http, ILogger<ChatTurns> log, TimeProvider clock) {
+        _self = self; _web = web; _search = search; _codex = codex; _claude = claude; _files = files; _admin = admin.Value;
         _store = store; _settings = settings; _tools = tools; _skills = skills; _http = http; _log = log; _clock = clock;
     }
 
@@ -247,6 +248,10 @@ public sealed class ChatTurns {
         if (conv is null) { return; }
         var (config, configError) = _settings.Read();
         var providerConfig = config.Find(conv.Provider);
+        /* A provider kept for other accounts (one person's own Claude plan)
+           is not this reader's, whatever the conversation says. */
+        string? refused = null;
+        if (providerConfig is not null && !providerConfig.AllowedFor(send.User)) { refused = providerConfig.Label + " is not offered to you; choose another provider."; providerConfig = null; }
 
         var user = new ChatMessage { Role = "user", At = _clock.GetUtcNow() };
         if (!string.IsNullOrWhiteSpace(send.Text)) { user.Parts.Add(ChatPart.TextPart(send.Text)); }
@@ -261,7 +266,7 @@ public sealed class ChatTurns {
         Publish(live, new JsonObject { ["type"] = "user_message", ["message"] = ToJson(user) });
 
         if (providerConfig is null) {
-            var why = configError ?? ("There is no provider called " + (conv.Provider.Length > 0 ? conv.Provider : "(none)") + " in /etc/chat.json.");
+            var why = refused ?? configError ?? ("There is no provider called " + (conv.Provider.Length > 0 ? conv.Provider : "(none)") + " in /etc/chat.json.");
             Publish(live, new JsonObject { ["type"] = "turn", ["stopReason"] = "error", ["error"] = why });
             return;
         }
@@ -272,16 +277,17 @@ public sealed class ChatTurns {
         int inputTokens = 0, outputTokens = 0, cachedTokens = 0; string? turnError = null; string stopReason = "end_turn";
         ChatTools.Session? tools = null;
         AgentContext? agent = null;
-        var isAgent = string.Equals(providerConfig.Kind, "codex", StringComparison.OrdinalIgnoreCase);
+        var isAgent = providerConfig.IsAgent;
         try {
             if (isAgent) {
-                /* Codex runs its own tools and takes the site's over MCP, with
-                   a grant of its own, at the site's public address. */
+                /* An agent (Codex, Claude) runs its own tools and takes the
+                   site's over MCP, with a grant of its own, at the site's
+                   public address. */
                 string? mcpUrl = null, mcpSecret = null;
                 if (conv.Tools && send.ToolsAllowed && _tools.Available) {
-                    /* Codex keeps its connection to the site's MCP server across
-                       turns, so the grant lives with the conversation and is
-                       renewed well before it runs out. */
+                    /* The agent keeps its connection to the site's MCP server
+                       across turns, so the grant lives with the conversation and
+                       is renewed well before it runs out. */
                     lock (live.Gate) {
                         if (live.AgentGrant is { } old && _clock.GetUtcNow() - old.Since > TimeSpan.FromHours(20)) { old.Revoke(); live.AgentGrant = null; }
                         if (live.AgentGrant is null) { var (secret, revoke) = _tools.Grant(send.User, TimeSpan.FromHours(24), (home, id)); live.AgentGrant = (secret, revoke, _clock.GetUtcNow()); }
@@ -289,7 +295,7 @@ public sealed class ChatTurns {
                     }
                     mcpUrl = _admin.PublicOrigin.TrimEnd('/') + McpSetup.Path;
                 }
-                var cwd = _files.RootDir(ServerFiles.Home, home) ?? throw new ProviderException("The reader has no home folder on the server for Codex to work in.");
+                var cwd = _files.RootDir(ServerFiles.Home, home) ?? throw new ProviderException("The reader has no home folder on the server for " + providerConfig.Label + " to work in.");
                 Directory.CreateDirectory(cwd);
                 conv.Threads.TryGetValue(providerConfig.Id, out var threadId);
                 agent = new AgentContext(cwd, threadId, id => { lock (live.Gate) { conv.Threads[providerConfig.Id] = id; } }, mcpUrl, mcpSecret);
@@ -301,7 +307,7 @@ public sealed class ChatTurns {
                     Publish(live, new JsonObject { ["type"] = "notice", ["text"] = "The site's tools could not be reached, so this reply has none: " + ex.Message });
                 }
             }
-            var provider = ChatProviders.For(providerConfig, _http.CreateClient(ChatProviders.ClientName), _codex);
+            var provider = ChatProviders.For(providerConfig, _http.CreateClient(ChatProviders.ClientName), _codex, _claude);
             /* The chat's own tool comes first, for every reader; the site's
                follow when the chat has them. */
             var specs = new List<ToolSpec> { _self.Spec, _web.Spec };
@@ -324,6 +330,8 @@ public sealed class ChatTurns {
                                 lock (live.Gate) {
                                     var part = reply.Parts.FirstOrDefault(p => p.Type == "agent_tool" && p.Id == at.Id);
                                     if (part is null) { part = new ChatPart { Type = "agent_tool", Id = at.Id, Name = at.Title, Input = at.Input }; reply.Parts.Add(part); }
+                                    /* An agent may name the step better as it goes (Claude's Terminal becomes its command). */
+                                    part.Name = at.Title; if (at.Input is not null) { part.Input = at.Input; }
                                     part.Status = at.Status; if (at.Output is not null) { part.Text = at.Output; }
                                 }
                                 if (at.Status == "in_progress") {
@@ -340,7 +348,7 @@ public sealed class ChatTurns {
                             case AgentApproval ap: {
                                 /* The agent asks before a command or a change: the same
                                    question card as the chat's own tools, with its choices. */
-                                var q = new Question { ToolCallId = ap.Id, Name = "codex", Title = ap.Title, Input = ap.Input?.DeepClone(),
+                                var q = new Question { ToolCallId = ap.Id, Name = providerConfig.Kind.ToLowerInvariant(), Title = ap.Title, Input = ap.Input?.DeepClone(),
                                     Options = new JsonArray(ap.Options.Select(o => (JsonNode)new JsonObject { ["optionId"] = o.Id, ["name"] = o.Name, ["kind"] = o.Kind }).ToArray()) };
                                 lock (live.Gate) { q.Key = "q" + (++live.QuestionCount); live.Questions[q.Key] = q; }
                                 var asked = QuestionJson(q).AsObject(); asked["type"] = "permission";
@@ -512,7 +520,7 @@ public sealed class ChatTurns {
         if (cancel.IsCancellationRequested) { return Result("rejected", "The reader stopped the reply before this ran."); }
         if (use.Name == ChatSelf.ToolName) {
             Publish(live, new JsonObject { ["type"] = "tool_progress", ["toolCallId"] = use.Id, ["status"] = "in_progress" });
-            try { return Result("completed", await _self.RunAsync(use.Input, home, conv, send.ToolsAllowed && _tools.Available, send.ToolsAllowed, cancel)); }
+            try { return Result("completed", await _self.RunAsync(use.Input, home, send.User, conv, send.ToolsAllowed && _tools.Available, send.ToolsAllowed, cancel)); }
             catch (Exception ex) when (ex is not OperationCanceledException) { return Result("failed", ex.Message); }
         }
         if (use.Name == ChatWeb.ToolName) {

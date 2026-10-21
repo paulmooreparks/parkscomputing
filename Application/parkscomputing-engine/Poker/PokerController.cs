@@ -63,9 +63,13 @@ public sealed class PokerController : ControllerBase {
 
     [HttpGet("providers")]
     public async Task<IActionResult> Providers(CancellationToken cancel) {
-        if (await HomeAsync() is null) { return NotFound(); }
+        if (await HomeAsync() is null || await _users.GetUserAsync(User) is not { } me) { return NotFound(); }
         var (config, error) = _settings.Read();
-        return Ok(await _self.ProvidersAsync(config, error, false, cancel));
+        /* A seat plays through the providers the reader may use, except
+           Claude on the operator's plan, which is for the chat alone. */
+        var seats = config.VisibleTo(me);
+        seats.Providers.RemoveAll(p => string.Equals(p.Kind, "claude", StringComparison.OrdinalIgnoreCase));
+        return Ok(await _self.ProvidersAsync(seats, error, false, cancel));
     }
 
     [HttpGet("tables")]
