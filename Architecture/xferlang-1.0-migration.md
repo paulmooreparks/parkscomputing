@@ -120,3 +120,5 @@ Production is the `parkscomputing` service in `docker-compose.yml`, container `p
 4. Check the same things as on beta, on parkscomputing.com.
 
 To roll back, put the 0.x files back and start the previous image. The two syntaxes cannot coexist, so the files and the image always move together.
+
+parkscomputing.com moved to XferLang 1.0 on 2026-10-21, after Paul tried the change on beta. The previous image is `parkscomputing-local:prev-20261021-155922`, and the 0.x files are in the ignored `.local/xfer-0x-backup-20261021-155922`. Both live files matched the tested fixtures' originals, and their conversions matched the fixtures byte for byte. padmajairam.com was left on 0.x, since it has its own image and beta and 1.0 has not been tried there.
