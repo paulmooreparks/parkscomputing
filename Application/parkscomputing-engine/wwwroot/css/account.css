@@ -41,13 +41,9 @@
 .win-body [data-applet="account"] { width: min(720px, 100%); box-sizing: border-box; }
 .win-body [data-applet="account"] .settings-panel { margin: 0; }
 
-/* A reader's picture, round. In the top bar it is the account's item in
-   the status area (css/pudl-site.css). */
-.account-avatar { display: block; width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
-.account-avatar-placeholder { color: var(--text); }
+/* A reader's picture is PUDL's avatar (0.74.0, Identity/AccountMenu.cs). */
 .account-picture { display: flex; align-items: center; gap: var(--space-4); }
 .account-picture .card-desc { margin: 0; }
-.account-avatar-large { width: 72px; height: 72px; flex: none; }
 
 /* Sign in and Create account: PUDL's dialog, with room for a form. */
 .account-dialog { width: min(30rem, calc(100vw - 2rem)); max-width: none; max-height: calc(100dvh - 2rem); overflow: auto; }
@@ -67,10 +63,9 @@
 .account-steps { display: grid; gap: var(--space-5); margin: var(--space-4) 0 0; padding-left: var(--space-5); }
 .account-steps > li { display: grid; gap: var(--space-2); }
 .account-steps p, .account-steps ul { margin: 0; line-height: 1.55; }
-.account-step-title { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--text-lg); }
-.account-step-mark { color: var(--text-muted); }
-.account-steps > li[data-done="true"] .account-step-mark { color: var(--positive); }
-.account-step-state { order: 9; margin-left: auto; font-size: var(--text-sm); font-weight: normal; color: var(--text-muted); }
+.account-step-title { margin: 0; font-size: var(--text-lg); }
+/* Where setup stands is PUDL's stepper (0.74.0), above the steps. */
+.account-stepper { margin: var(--space-4) 0 0; }
 
 /* Access tokens (the Access tokens card): each capability's checkbox with
    its name and what it allows under it, and a new token's secret and

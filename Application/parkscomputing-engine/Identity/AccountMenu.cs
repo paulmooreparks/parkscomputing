@@ -130,12 +130,25 @@ public sealed class AccountMenu {
 
     private static MenuEntry Item(string label, SiteCommands.Rendered element) => new(MenuEntryKind.Item, label, element);
 
-    /// <summary>A profile picture, or the generic one when the account has
-    /// none: a head and shoulders drawn in the text colour. Decorative, so
-    /// whatever holds it names it.</summary>
-    public static Microsoft.AspNetCore.Html.IHtmlContent Avatar(string? url, string cssClass) =>
-        new Microsoft.AspNetCore.Html.HtmlString(url is null
-            ? "<svg class=\"" + cssClass + " account-avatar-placeholder\" viewBox=\"0 0 32 32\" aria-hidden=\"true\"><circle cx=\"16\" cy=\"16\" r=\"16\" fill=\"currentColor\" opacity=\"0.18\"/>" +
-              "<circle cx=\"16\" cy=\"12.5\" r=\"5.5\" fill=\"currentColor\" opacity=\"0.75\"/><path d=\"M6.5 27.5c1.6-5 5.2-7.5 9.5-7.5s7.9 2.5 9.5 7.5a16 16 0 0 1-19 0z\" fill=\"currentColor\" opacity=\"0.75\"/></svg>"
-            : "<img class=\"" + cssClass + "\" src=\"" + System.Net.WebUtility.HtmlEncode(url) + "\" alt=\"\" />");
+    /// <summary>A reader's avatar, PUDL's (0.74.0): their picture, or their
+    /// initials on a tint taken from their name, in a circle of the size
+    /// given ("sm" 24px, "" 32px, "lg" 40px, "xl" 64px). Decorative, since
+    /// the name is always beside it, so it is hidden from assistive
+    /// technology; it keeps the name in its aria-label because PUDL takes
+    /// the tint, and the initials of a picture that fails, from there.</summary>
+    public static Microsoft.AspNetCore.Html.IHtmlContent Avatar(string? url, string? name, string size = "") {
+        static string enc(string s) => System.Net.WebUtility.HtmlEncode(s);
+        var label = string.IsNullOrWhiteSpace(name) ? "Reader" : name.Trim();
+        var inside = url is null ? enc(Initials(label)) : "<img src=\"" + enc(url) + "\" alt=\"\" />";
+        return new Microsoft.AspNetCore.Html.HtmlString("<span class=\"avatar tint" + (size.Length > 0 ? " " + size : "") + "\" aria-hidden=\"true\" aria-label=\"" + enc(label) + "\">" + inside + "</span>");
+    }
+
+    /// <summary>A name's initials as PUDL writes them for an avatar: the
+    /// first character of its first and last words, in capitals.</summary>
+    public static string Initials(string name) {
+        var parts = name.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) { return ""; }
+        static string First(string word) => word.EnumerateRunes().First().ToString();
+        return (First(parts[0]) + (parts.Length > 1 ? First(parts[^1]) : "")).ToUpperInvariant();
+    }
 }

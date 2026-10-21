@@ -237,7 +237,7 @@
         function field(key, label, unit) {
             var id = 'pc-set-' + key + '-' + n;
             return '<div class="form-group pc-set-field"><label class="form-label" for="' + id + '">' + esc(label) + '</label>' +
-                '<span class="pc-set-num"><input class="form-input" type="number" inputmode="numeric" step="1" id="' + id + '" data-timeout="' + key + '" /> ' + unit +
+                '<span class="pc-set-num"><span class="number-field"><input class="form-input" type="number" step="1" id="' + id + '" data-timeout="' + key + '" /></span> ' + unit +
                 ' <span class="pc-set-limits" data-limits="' + key + '"></span></span></div>';
         }
 
@@ -245,6 +245,7 @@
            timeouts last. Background waits, disabled, until desktop.json is
            read. */
         var pub = initPublic(root, opts, n, { middle: backgroundCard(), end: timeoutsCard() });
+        if (window.pudlFields) { window.pudlFields.enhance(root); }
         var q = function (sel) { return root.querySelector(sel); };
         var bgCard = q('[data-role="background"]');
         bgCard.querySelectorAll('input, select, button').forEach(function (c) { c.disabled = true; });
@@ -298,6 +299,8 @@
                 if (!input) { return; }
                 input.min = data.limits[k][0]; input.max = data.limits[k][1];
                 input.value = data.timeouts[k];
+                /* PUDL's number field (0.74.0) shows what a script set. */
+                if (window.pudlFields) { window.pudlFields.refresh(input); }
                 q('[data-limits="' + k + '"]').textContent = '(' + data.limits[k][0] + ' to ' + data.limits[k][1] + ', normally ' + data.defaults[k] + ')';
             });
         }

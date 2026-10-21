@@ -1,68 +1,50 @@
 @model ParksComputing.Engine.Pages.Models.NavContentModel
+@* A <nav-content> element's links in a row, in PUDL's terms (0.74.0): a
+   page is a link, and a page with pages under it is a split button whose
+   main key opens it and whose caret opens a menu of the pages under it.
+   With descriptions on, each link's description is its tooltip. *@
 @{
     var navNode = Model.NavNode;
     var containerClass = Model.GetContainerCssClass();
+    string? Tip(ParksComputing.Engine.Pages.Services.NavNode? n) =>
+        Model.ShowDescriptions && n is not null && (n.Description ?? n.Excerpt ?? n.Title) is { Length: > 0 } t ? t : null;
 }
 
 @if (navNode != null)
 {
-    <ul class="@containerClass navbar-nav">
+    <ul class="@containerClass">
         @if (Model.ShowRoot)
         {
-            var rootTip = Model.ShowDescriptions ? (navNode.Description ?? navNode.Excerpt ?? navNode.Title ?? string.Empty) : "";
-            <li class="nav-item">
-                <a class="nav-link" href="@navNode.Url"
-                   @if (Model.ShowDescriptions && !string.IsNullOrEmpty(rootTip)) {
-                       <text>data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title="@rootTip"</text>
-                   }>@navNode.Title</a>
-            </li>
+            <li><a class="btn btn-sm" href="@navNode.Url" title="@Tip(navNode)">@navNode.Title</a></li>
         }
 
         @if (navNode.Nav != null && Model.MaxDepth > 0)
         {
-            // Determine the index of the last dropdown (nav item that itself has children)
-            var lastDropdownIndex = System.Array.FindLastIndex(navNode.Nav, n => n?.Nav != null && n.Nav.Length > 0);
-            for (int i = 0; i < navNode.Nav.Length; i++)
+            foreach (var link in navNode.Nav)
             {
-                var link = navNode.Nav[i];
-                var linkTip = Model.ShowDescriptions ? (link?.Description ?? link?.Excerpt ?? link?.Title ?? string.Empty) : "";
-                if (link?.Nav != null && link.Nav.Length > 0 && Model.MaxDepth > 1)
+                if (link is null) { continue; }
+                if (link.Nav != null && link.Nav.Length > 0 && Model.MaxDepth > 1)
                 {
-                    // Apply Bootstrap's end alignment only to the final dropdown to avoid viewport overflow.
-                    var menuClasses = (i == lastDropdownIndex) ? "dropdown-menu dropdown-menu-end" : "dropdown-menu";
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="@link.Url" role="button" data-bs-toggle="dropdown" aria-expanded="false"
-                           @if (Model.ShowDescriptions && !string.IsNullOrEmpty(linkTip)) {
-                               <text>data-bs-delay='{"show":150,"hide":50}' title="@linkTip"</text>
-                           }>@link.Title</a>
-                        <ul class="@menuClasses">
-                            @foreach (var sublink in link.Nav)
-                            {
-                                var subTip = Model.ShowDescriptions ? (sublink?.Description ?? sublink?.Excerpt ?? sublink?.Title ?? string.Empty) : "";
-                                if (sublink != null)
-                                {
-                                    <li>
-                                        <a class="dropdown-item" href="@sublink.Url"
-                                           @if (Model.ShowDescriptions && !string.IsNullOrEmpty(subTip)) {
-                                               <text>data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title="@subTip"</text>
-                                           }
-                                           @if (!string.IsNullOrEmpty(sublink.Target)) {
-                                               <text>target="@sublink.Target"</text>
-                                           }>@sublink.Title</a>
-                                    </li>
-                                }
-                            }
-                        </ul>
+                    var menuId = "nav-" + Guid.NewGuid().ToString("N")[..12];
+                    <li>
+                        <span class="split-btn">
+                            <a class="btn btn-sm" href="@link.Url" title="@Tip(link)">@link.Title</a>
+                            <span class="menu">
+                                <button class="btn btn-sm menu-btn" type="button" popovertarget="@menuId" aria-label="Pages under @link.Title"></button>
+                                <nav class="menu-panel" id="@menuId" popover aria-label="@link.Title">
+                                    @foreach (var sublink in link.Nav)
+                                    {
+                                        if (sublink is null) { continue; }
+                                        <a class="menu-action" href="@sublink.Url" title="@Tip(sublink)" target="@(string.IsNullOrEmpty(sublink.Target) ? null : sublink.Target)">@sublink.Title</a>
+                                    }
+                                </nav>
+                            </span>
+                        </span>
                     </li>
                 }
                 else
                 {
-                    <li class="nav-item">
-                        <a class="nav-link" href="@link?.Url"
-                           @if (Model.ShowDescriptions && !string.IsNullOrEmpty(linkTip)) {
-                               <text>data-bs-toggle="tooltip" data-bs-delay='{"show":150,"hide":50}' title="@linkTip"</text>
-                           }>@link?.Title</a>
-                    </li>
+                    <li><a class="btn btn-sm" href="@link.Url" title="@Tip(link)">@link.Title</a></li>
                 }
             }
         }

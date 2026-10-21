@@ -51,15 +51,10 @@
         if (note) { note.textContent = msg; note.hidden = !msg; }
     }
 
-    /* === The entry menu ================================================== */
-
-    var menu = document.createElement('nav');
-    menu.className = 'menu-panel admin-ctx';
-    menu.id = 'admin-ctx';
-    menu.setAttribute('popover', '');
-    menu.setAttribute('aria-label', 'Actions');
-    document.body.appendChild(menu);
-    var menuNode = null, menuAt = null;
+    /* === The entry menu ==================================================
+       PUDL's context menu (0.74.0): a right-click, Shift+F10 or the Menu key
+       on an entry asks for rows, and PUDL draws, places and closes the menu
+       and gives focus back. */
 
     function actionsFor(node) {
         var r = F.realOf(node), kind = F.kindOf(node), acts = [];
@@ -73,60 +68,24 @@
         return acts;
     }
 
-    function showMenu(link, x, y) {
-        var node = F.resolve(null, link.getAttribute('data-path'));
-        if (!node) { return; }
-        var acts = actionsFor(node);
-        if (!acts.length) { return; }
-        menuNode = node;
-        menuAt = { x: x, y: y, from: link };
-        menu.innerHTML = '<div class="md-section-label">' + FB.esc(node.name || '/') + '</div>' +
-            acts.map(function (a) { return '<button type="button" class="menu-action" data-ctx="' + a[0] + '">' + FB.esc(a[1]) + '</button>'; }).join('');
-        if (menu.matches(':popover-open')) { menu.hidePopover(); }
-        menu.showPopover();
-    }
-
-    /* PUDL places a panel with no button as a palette; this one goes where
-       it was asked for, once PUDL has had its turn. */
-    document.addEventListener('toggle', function (e) {
-        if (e.target !== menu || e.newState !== 'open' || !menuAt) { return; }
-        var vw = document.documentElement.clientWidth, vh = window.innerHeight;
-        if (vw <= 640) { return; }
-        menu.style.left = Math.max(8, Math.min(menuAt.x, vw - menu.offsetWidth - 8)) + 'px';
-        menu.style.top = Math.max(8, Math.min(menuAt.y, vh - menu.offsetHeight - 8)) + 'px';
-        var first = menu.querySelector('.menu-action');
-        if (first) { first.focus(); }
-    }, true);
-    document.addEventListener('toggle', function (e) {
-        if (e.target === menu && e.newState === 'closed' && menuAt && menuAt.from && menuAt.from.isConnected && menu.contains(document.activeElement)) { menuAt.from.focus(); }
-    }, true);
-    window.addEventListener('resize', function () { if (menu.matches(':popover-open')) { menu.hidePopover(); } });
-
-    menu.addEventListener('click', function (e) {
-        var b = e.target.closest('[data-ctx]');
-        if (!b || !menuNode) { return; }
-        var node = menuNode, r = F.realOf(node), dir = dirOf(node);
-        switch (b.getAttribute('data-ctx')) {
+    function run(act, node) {
+        var r = F.realOf(node), dir = dirOf(node);
+        switch (act) {
             case 'edit': open(node); break;
             case 'site': window.open(r.kind === 'link' ? r.url : F.publicUrl(r), '_blank', 'noopener'); break;
             case 'shell': request('shell', { path: F.pathOf(dir) }); break;
             case 'browse': request('browse', { path: F.pathOf(dir) }); break;
         }
-    });
+    }
 
-    tree.addEventListener('contextmenu', function (e) {
-        var link = e.target.closest('a[data-path]');
+    tree.addEventListener('pudl:contextmenu', function (e) {
+        var link = e.detail.target.closest && e.detail.target.closest('a[data-path]');
         if (!link || !F) { return; }
-        e.preventDefault();
-        showMenu(link, e.clientX, e.clientY);
-    });
-    tree.addEventListener('keydown', function (e) {
-        if (!(e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey))) { return; }
-        var link = e.target.closest('a[data-path]');
-        if (!link || !F) { return; }
-        e.preventDefault();
-        var r = link.getBoundingClientRect();
-        showMenu(link, r.left + 24, r.bottom);
+        var node = F.resolve(null, link.getAttribute('data-path'));
+        if (!node) { return; }
+        e.detail.add(actionsFor(node).map(function (a) {
+            return { label: a[1], run: function () { run(a[0], node); } };
+        }));
     });
 
     /* === The desktop's settings ==========================================

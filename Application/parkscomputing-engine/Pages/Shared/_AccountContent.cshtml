@@ -58,7 +58,7 @@ else
     <section class="card" id="picture" aria-labelledby="account-picture" data-account-avatar-url="@(Model.AvatarUrl ?? "")">
         <h2 class="card-title" id="account-picture">Profile picture</h2>
         <div class="account-picture">
-            @ParksComputing.Engine.Identity.AccountMenu.Avatar(Model.AvatarUrl, "account-avatar account-avatar-large")
+            @ParksComputing.Engine.Identity.AccountMenu.Avatar(Model.AvatarUrl, Model.DisplayName, "xl")
             <p class="card-desc">Shown at the top of every page while you're signed in, and beside your comments. Any picture works; it's cropped to a square and made small before it's sent.</p>
         </div>
         <div class="settings-actions">

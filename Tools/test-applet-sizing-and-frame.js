@@ -12,7 +12,9 @@ const origin = process.env.UI_SITE || 'http://localhost';
    assert.equal(response.status(), 200);
    assert.match(await response.text(), /data-win-size="content"/);
   }
-  const html = 'excel-employee-capacity-spreadsheet';
+  // An HTML article with styles or scripts of its own in its head, which a window frames
+  // (WindowViewModel.OwnDocument).
+  const html = 'resume-of-paul-m-parks';
   await page.goto(origin + '/?view=window&open=' + html + ',settings&top=settings&p.' + html + '=floating:0.02,0.03,0.55,0.85&p.settings=floating:0.65,0.05,0.3,0.7');
   await page.locator('[data-win="settings"][data-win-size="content"]').waitFor();
   const frame = page.frameLocator('[data-win="' + html + '"] iframe');

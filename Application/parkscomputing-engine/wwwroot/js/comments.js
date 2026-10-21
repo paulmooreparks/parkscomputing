@@ -42,7 +42,7 @@
             .then(function (html) {
                 var panel = panelOf(html);
                 if (panel && root.isConnected) {
-                    root.replaceChildren(document.importNode(panel, true));
+                    root.replaceChildren(document.importNode(panel, true)); if (window.pudlFields) { window.pudlFields.enhance(root); }
                     recount(root);
                     // An address that names a comment (#c-…) shows it once the
                     // discussion has arrived.
@@ -97,7 +97,7 @@
                 var panel = panelOf(await r.text());
                 if (!panel) { throw new Error('no panel'); }
                 if (!root.isConnected) { return; }
-                root.replaceChildren(document.importNode(panel, true));
+                root.replaceChildren(document.importNode(panel, true)); if (window.pudlFields) { window.pudlFields.enhance(root); }
                 recount(root);
                 var said = root.querySelector('[data-discussion-error], .notice');
                 if (said) { said.setAttribute('tabindex', '-1'); said.focus(); }

@@ -13,7 +13,7 @@
     @if (c.Author is not null)
     {
         <div class="comment-head">
-            @AccountMenu.Avatar(c.Author.Avatar, "account-avatar comment-avatar")
+            @AccountMenu.Avatar(c.Author.Avatar, c.Author.Name, "sm")
             <span class="comment-author">@c.Author.Name</span>
             @if (c.Author.Staff)
             {

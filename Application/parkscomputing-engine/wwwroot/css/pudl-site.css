@@ -519,6 +519,9 @@ body.desktop { height: 100dvh; }
   background: var(--surface);
 }
 .page-tags { align-items: baseline; }
+/* A <nav-content> element's row of links and split buttons
+   (Pages/Shared/_NavHorizontal.cshtml). */
+.nav-content-horizontal { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--space-3) 0; padding: 0; list-style: none; }
 /* Comments, at the row's right, with how many anyone can read. */
 .comments-link {
   margin-inline-start: auto; white-space: nowrap;

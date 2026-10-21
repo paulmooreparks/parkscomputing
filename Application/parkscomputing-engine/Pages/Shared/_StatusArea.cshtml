@@ -27,15 +27,8 @@
             var accountLabel = "Your account" + (s.Name is null ? "" : " (" + s.Name + ")");
             <a class="status-item status-account" data-status="account" href="@Href("account", "/account")"
                @(desktop ? Html.Raw("data-win-open=\"account\"") : null) aria-label="@accountLabel" title="@accountLabel">
-                @* The reader's picture, or PUDL's account glyph without one (0.50.0). *@
-                @if (s.AvatarUrl is not null)
-                {
-                    <img class="account-avatar" src="@s.AvatarUrl" alt="" />
-                }
-                else
-                {
-                    <span class="glyph account-glyph" style="--glyph: var(--glyph-account)" aria-hidden="true"></span>
-                }
+                @* The reader's avatar, PUDL's (0.74.0): their picture, or their initials. *@
+                @ParksComputing.Engine.Identity.AccountMenu.Avatar(s.AvatarUrl, s.Name, "sm")
             </a>
         }
         else

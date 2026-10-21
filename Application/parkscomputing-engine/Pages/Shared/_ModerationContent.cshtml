@@ -43,7 +43,7 @@ else
             {
                 <li class="moderation-item">
                     <div class="comment-head">
-                        @AccountMenu.Avatar(item.Author?.Avatar, "account-avatar comment-avatar")
+                        @AccountMenu.Avatar(item.Author?.Avatar, item.Author?.Name, "sm")
                         <span class="comment-author">@(item.Author?.Name)</span>
                         <span class="comment-when">@When(item.SubmittedUtc)</span>
                         @if (item.PublishedHtml is not null) { <span class="chip">edit</span> }
@@ -82,7 +82,7 @@ else
             {
                 <li class="moderation-item">
                     <div class="comment-head">
-                        @AccountMenu.Avatar(report.Author?.Avatar, "account-avatar comment-avatar")
+                        @AccountMenu.Avatar(report.Author?.Avatar, report.Author?.Name, "sm")
                         <span class="comment-author">@(report.Author?.Name)</span>
                         <span class="comment-when">reported @When(report.ReportedUtc)</span>
                     </div>

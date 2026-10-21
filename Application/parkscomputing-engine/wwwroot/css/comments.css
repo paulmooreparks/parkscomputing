@@ -15,7 +15,6 @@
 .comment { display: grid; gap: var(--space-2); min-width: 0; }
 .comment-replies { margin-top: var(--space-2); padding-inline-start: var(--space-5); border-inline-start: 2px solid var(--border); }
 .comment-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
-.comment-avatar { width: 24px; height: 24px; flex: none; }
 .comment-author { font-weight: 600; overflow-wrap: anywhere; }
 .comment-when { color: var(--text-muted); }
 .comment-edited { color: var(--text-muted); font-style: italic; }
@@ -32,9 +31,9 @@
 
 .comment-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-2); }
 .comment-action { margin: 0; }
-/* Reply, Edit and Report are summaries and Withdraw a button; all four
-   stand the same height in the row. */
-.comment-actions .btn-sm { box-sizing: border-box; min-height: 30px; display: inline-flex; align-items: center; }
+/* Reply, Edit and Report are summaries and Withdraw a button; PUDL gives
+   every small key one height (0.74.1), so all four stand alike. */
+.comment-actions .btn-sm { display: inline-flex; align-items: center; }
 .comment-action > summary { list-style: none; cursor: pointer; }
 .comment-action > summary::-webkit-details-marker { display: none; }
 .comment-action[open] { flex-basis: 100%; display: grid; gap: var(--space-2); }

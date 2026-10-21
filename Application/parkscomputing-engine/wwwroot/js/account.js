@@ -14,7 +14,7 @@
     function load(root) {
         return fetch('/account?handler=Applet', { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'text/html' } })
             .then(function (r) { if (!r.ok) { throw new Error(r.status); } return r.text(); })
-            .then(function (html) { if (root.isConnected) { root.innerHTML = html; syncPill(root); } })
+            .then(function (html) { if (root.isConnected) { root.innerHTML = html; if (window.pudlFields) { window.pudlFields.enhance(root); } syncPill(root); } })
             .catch(function () { if (root.isConnected) { root.textContent = 'Your account could not be loaded. Reload the page to try again.'; } });
     }
 
@@ -22,7 +22,7 @@
        picture as the applet, so a new or removed picture shows there at once. */
     function syncPill(root) {
         var section = root.querySelector('[data-account-avatar-url]');
-        var mine = section && section.querySelector('.account-avatar');
+        var mine = section && section.querySelector('.avatar');
         if (mine) { document.dispatchEvent(new CustomEvent('pc:account-picture', { detail: { picture: mine } })); }
     }
 
@@ -122,7 +122,7 @@
                     }
                     // A refused form comes back as the page, with what went wrong.
                     var panel = new DOMParser().parseFromString(await r.text(), 'text/html').querySelector('[data-account-panel]');
-                    if (panel && root.isConnected) { root.replaceChildren(document.importNode(panel, true)); } else { load(root); }
+                    if (panel && root.isConnected) { root.replaceChildren(document.importNode(panel, true)); if (window.pudlFields) { window.pudlFields.enhance(root); } } else { load(root); }
                 } catch (err) {
                     form.submit();
                 }

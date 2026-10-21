@@ -55,7 +55,6 @@
   color: var(--text-muted); text-align: center; padding: var(--space-5);
 }
 .admin-empty p { margin: 0 0 var(--space-2); }
-.admin-ctx { min-width: 220px; }
 
 /* A workspace page gives its applet the rest of the screen. */
 .admin-workspace { height: 100svh; display: flex; flex-direction: column; overflow: hidden; }

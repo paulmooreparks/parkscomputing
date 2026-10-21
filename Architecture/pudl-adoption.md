@@ -520,3 +520,21 @@ An audit of the site and the applet packages on the same day found these that ba
 - The account picture (`.account-avatar`, with its own SVG placeholder) is PUDL's `.avatar`, with initials and a tint by name.
 
 Partial fits, each worth a decision rather than a reflex: Chat's Usage panel as a popover, the long model selects as searchable selects, the super-user setup checklist as a stepper, and progress bars beside the Sight Reader's and the flash cards' counts. Kept as they are: Chat's "/" and "@" suggestions, the barcode layouts' date and number strings (fixed digit formats, not dates or quantities), the desktop's Categories and Tags menus, and its filter chips. `Pages/Shared/_NavHorizontal.cshtml` still carries Bootstrap dropdown and tooltip markup that nothing loads, which is dead code rather than a PUDL question.
+
+### D81. The site hands its own controls to PUDL 0.74, and takes 0.74.1
+
+Paul chose all of D80's replacements and partial fits on 2026-10-22, and they went to beta and then production the same day, with PUDL 0.74.1, which gives every small raised key one height (28px), small segmented controls included.
+
+- **Scripts.** Both layouts load `pudl-fields.js` and `pudl-combo.js`. An applet that builds its controls in script calls `pudlFields.enhance` and `pudlCombo.enhance` on what it built, and `pudlFields.refresh` or `pudlCombo.refresh` after setting a value; a number field shows a text field in place of its input, so a value set on the input is not seen until then.
+- **Context menu.** The admin desktop's file tree adds rows on `pudl:contextmenu`; its own panel, placement, keys and focus return are gone. Live `css/admin.css` is an older copy than the repository's and was left as it is, since the admin desktop is not served while accounts are on.
+- **Number fields.** Settings' four timeouts, Chat's five settings, Poker's three table numbers and its raise amount, the Barcode Tool's layout lengths and Conway's three settings, which were text fields read as numbers.
+- **Sliders.** Poker's raise, beside its number field, and the Theme Studio's two percentages. PUDL writes a slider's number into its `<output>` but has no unit, so the Theme Studio puts the `%` after the output as fixed text.
+- **Popovers.** Chat's Usage reading, and Poker's seat details, which open from a different info button for each seat and say which with `data-menu-anchor`.
+- **Searchable selects.** The model menus in Chat's settings and in Poker's seats.
+- **Avatars.** `AccountMenu.Avatar(url, name, size)` writes PUDL's `.avatar.tint`, the picture or the initials (the first character of the first and last words, as PUDL takes them), hidden from assistive technology since the name is beside it, and named in its `aria-label` for the tint. The status area, the account page, comments and moderation use it, and the status area copies the account page's avatar when the picture changes. The account glyph and the drawn head and shoulders are gone.
+- **Stepper.** Super-user setup has an `ol.stepper` over its three steps' instructions, which lose their own Done and To do marks.
+- **Progress bars.** Beside the flash cards' "1 of 42" and the Sight Reader's "Bar n · k of N", in a `.progress-row` with the words as its value.
+- **Dead markup.** `_NavHorizontal.cshtml` (a `<nav-content>` element's links, which no page uses) is PUDL's: links as small keys, and a page with pages under it as a split button whose caret opens them.
+- **0.74.1.** The comments row's 30px minimum for its small keys is gone, since PUDL now gives them one height.
+
+Poker's moves also lie over the foot of the table now, so the felt keeps its size whether or not it is the reader's turn (Paul, the same day). The Theme Studio on the live site was 1.0.1, which the repository had never had; that was committed as found before 1.1.0 was built on it. The package versions are Chat 1.5.0, Poker 0.6.0, Barcode Tool 1.2.0, flash cards 1.1.0, Conway 1.2.0, Theme Studio 1.1.0 and Sight Reader 1.3.0. Eight suites passed on the test instance; `test-applet-sizing-and-frame` now frames the résumé, because the Excel article it used became Markdown on 2026-10-21 and is no longer framed.

@@ -37,7 +37,7 @@
 /* Timeouts. */
 .pc-set-field { margin-bottom: var(--space-3); }
 .pc-set-num { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.pc-set-num .form-input { width: 90px; }
+.pc-set-num .number-field { width: 150px; }
 .pc-set-limits { color: var(--text-muted); font-size: var(--text-xs); }
 .pc-set-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .pc-set-status { margin: var(--space-2) 0 0; color: var(--text-muted); }

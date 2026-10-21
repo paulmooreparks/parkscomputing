@@ -24,7 +24,7 @@
                 if (!r.ok) { throw new Error(r.status); }
                 return r.text();
             })
-            .then(function (html) { var p = panelOf(html); if (p && root.isConnected) { root.replaceChildren(document.importNode(p, true)); recount(); } })
+            .then(function (html) { var p = panelOf(html); if (p && root.isConnected) { root.replaceChildren(document.importNode(p, true)); if (window.pudlFields) { window.pudlFields.enhance(root); } recount(); } })
             .catch(function () { if (root.isConnected) { root.textContent = 'The queue could not be loaded. Reload the page to try again.'; } });
     }
 
@@ -51,7 +51,7 @@
                 var panel = panelOf(await r.text());
                 if (!panel) { throw new Error('no panel'); }
                 if (!root.isConnected) { return; }
-                root.replaceChildren(document.importNode(panel, true));
+                root.replaceChildren(document.importNode(panel, true)); if (window.pudlFields) { window.pudlFields.enhance(root); }
                 recount();
                 var said = root.querySelector('.notice');
                 if (said) { said.focus(); }
