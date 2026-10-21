@@ -179,6 +179,10 @@ namespace ParksComputing.Engine {
 
                 // The admin API is not part of the public document.
                 c.DocInclusionPredicate((doc, api) => !(api.RelativePath ?? "").StartsWith("api/admin", StringComparison.OrdinalIgnoreCase));
+                // Schemas by their full names: several controllers have a
+                // nested type called Body, and by the short name the second
+                // made the whole document fail with a 500.
+                c.CustomSchemaIds(t => (t.FullName ?? t.Name).Replace('+', '.'));
                 // Include XML docs if generated
                 var xml = System.IO.Path.Combine(AppContext.BaseDirectory, "ParksComputing.Engine.xml");
 
