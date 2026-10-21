@@ -172,6 +172,13 @@
         var n = ++uid;
         root.classList.add('pc-editor');
         if (opts.fit === 'fill') { root.classList.add('pc-editor-fill'); }
+        /* The Editor's keys (Ctrl+F, Ctrl+S and the rest) work while focus
+           is inside it. A press on a part that takes no focus of its own,
+           such as the toolbar between its buttons, gives focus to the
+           nearest ancestor that can take it, so the Editor's box takes it
+           (out of the Tab order) rather than the page, whose keys are the
+           browser's. */
+        if (!root.hasAttribute('tabindex')) { root.tabIndex = -1; }
         root.innerHTML =
             /* The toolbar is PUDL's, drawn here from the Editor's command
                table and toolbars() (PUDL 0.68.0), folding its groups as the

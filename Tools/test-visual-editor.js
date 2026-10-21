@@ -324,6 +324,18 @@ function diff(a, b) {
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
     log('Escape closes the bar and gives the keyboard back to the text', !(await findState(TEXT_FIND)) && await page.evaluate(() => !!document.activeElement.closest('.cm-content')));
+    /* A press on the toolbar between its buttons leaves the Editor's keys
+       working, rather than handing Ctrl+F to the browser. */
+    /* At the top of the page, where the site's own bars cover nothing of it. */
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(200);
+    const gap = await page.evaluate(() => { const bar = document.querySelector('.pc-editor .toolbar'), b = bar.getBoundingClientRect(); const last = [...bar.querySelectorAll('.toolbar-group')].filter(g => !g.hidden && !g.hasAttribute('data-toolbar-end')).pop().getBoundingClientRect(); return { x: Math.round(last.right + 12), y: Math.round(b.top + b.height / 2) }; });
+    await page.mouse.click(gap.x, gap.y);
+    await page.keyboard.press('Control+f');
+    await page.waitForTimeout(300);
+    log('Ctrl+F after a press on the toolbar between its buttons opens the find bar', !!(await findState(TEXT_FIND)), await page.evaluate(g => { const a = document.activeElement, at = document.elementFromPoint(g.x, g.y); return 'focus ' + a.tagName + '.' + a.className + ' / at ' + (at ? at.tagName + '.' + at.className : 'nothing') + ' ' + JSON.stringify(g); }, gap));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
     await page.click('.pc-editor [data-command="view-visual"]');
     const frame3 = await (await page.waitForSelector('iframe.ed-preview')).contentFrame();
     await frame3.waitForSelector('.pc-visual', { timeout: 30000 });

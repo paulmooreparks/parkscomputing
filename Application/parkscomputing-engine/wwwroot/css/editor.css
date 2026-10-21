@@ -8,6 +8,9 @@
   height: min(80svh, 820px); min-height: 360px;
   font-size: var(--text-sm);
 }
+/* The Editor's box takes focus from a press between its controls, so its
+   keys work there (js/editor.js); it is never drawn as focused itself. */
+.pc-editor:focus { outline: none; }
 /* The toolbar is PUDL's (0.68.0), drawn from the Editor's command table
    into this slot and folding as the window narrows. The glyphs it uses
    that PUDL does not have are the Editor's own. */
