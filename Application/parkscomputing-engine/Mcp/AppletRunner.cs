@@ -55,10 +55,12 @@ public sealed class AppletRunner {
         return r.ReadToEnd();
     });
 
-    public AppletRunner(IWebHostEnvironment env, ILogger<AppletRunner> log, Pages.Services.AppletCatalog? catalog = null) {
+    public AppletRunner(IWebHostEnvironment env, ILogger<AppletRunner> log, Pages.Services.AppletCatalog? catalog = null, Pages.Services.EngineAssets? assets = null) {
         _root = Path.GetFullPath(env.WebRootPath);
-        _js = Path.Combine(_root, "js");
-        _pudl = Path.Combine(_root, "pudl");
+        /* The site's applet packages are under the web root; the engine's
+           own actions and PUDL are with the engine's assets. */
+        _js = assets?.PathOf("js") ?? Path.Combine(_root, "js");
+        _pudl = assets?.PathOf("pudl") ?? Path.Combine(_root, "pudl");
         _catalog = catalog;
         _log = log;
     }

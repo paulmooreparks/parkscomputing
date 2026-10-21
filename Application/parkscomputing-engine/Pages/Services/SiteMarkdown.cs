@@ -31,7 +31,7 @@ public sealed class SiteMarkdown {
     private readonly string _webRoot;
     private readonly Lazy<HashSet<string>> _glyphs;
 
-    public SiteMarkdown(INavService nav, BookService books, IOptions<SiteOptions> site, IWebHostEnvironment env, SiteShortcodes shortcodes) {
+    public SiteMarkdown(INavService nav, BookService books, IOptions<SiteOptions> site, IWebHostEnvironment env, SiteShortcodes shortcodes, EngineAssets? assets = null) {
         _nav = nav; _books = books; _site = site.Value; _webRoot = env.WebRootPath;
         Shortcodes = shortcodes;
         Pipeline = new MarkdownPipelineBuilder()
@@ -48,7 +48,8 @@ public sealed class SiteMarkdown {
             .Use(new ShortcodeExtension(shortcodes))
             .Build();
         _glyphs = new(() => {
-            var css = Path.Combine(_webRoot, "pudl", "pudl.css");
+            /* PUDL is the engine's, wherever the site's own tree is. */
+            var css = assets?.PathOf("pudl", "pudl.css") ?? Path.Combine(_webRoot, "pudl", "pudl.css");
             var names = File.Exists(css) ? Regex.Matches(File.ReadAllText(css), @"--glyph-([a-z][a-z-]*)\s*:").Select(m => m.Groups[1].Value) : Enumerable.Empty<string>();
             return names.Where(n => n != "size").ToHashSet(StringComparer.Ordinal);
         });

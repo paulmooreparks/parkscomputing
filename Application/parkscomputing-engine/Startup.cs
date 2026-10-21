@@ -92,6 +92,7 @@ namespace ParksComputing.Engine {
             // (Pages/Services/FileCache.cs).
             services.AddSingleton<FileCache>();
             services.AddSingleton<StaticFileReaderService>();
+            services.AddSingleton<EngineAssets>();
             // The site for AI readers: llms.txt and each page as Markdown, and
             // the count of AI agents' visits (Identity/AiVisits.cs).
             services.AddSingleton<MarkdownPages>();
@@ -205,6 +206,10 @@ namespace ParksComputing.Engine {
             // The accounts database is migrated in Program.Main, before the host
             // starts. Admins are made from the server only (Identity/AdminCommand.cs),
             // so nothing is seeded.
+
+            // A site that brings only its own tree serves the engine's assets
+            // from the image behind it (Pages/Services/EngineAssets.cs).
+            EngineAssets.Layer(env, Configuration);
 
             if (env.IsDevelopment()) {
                 app.UseDeveloperExceptionPage();

@@ -18,7 +18,9 @@ namespace ParksComputing.Engine.Api {
             _env = env; _options = options.Value;
         }
 
-        private string ContentRoot => Path.Combine(_env.ContentRootPath, "wwwroot", "content");
+        /* The site's articles, under the web root, which a site with its own
+           tree moves away from the app's folder (Pages/Services/EngineAssets.cs). */
+        private string ContentRoot => Path.Combine(_env.WebRootPath, "content");
 
         public Task<ContentResource?> GetAsync(string id, CancellationToken ct = default) {
             var (path, isMarkdown) = ResolvePath(id);
