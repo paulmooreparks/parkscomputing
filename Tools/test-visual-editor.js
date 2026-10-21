@@ -38,7 +38,10 @@ function diff(a, b) {
 (async () => {
     if (!LINK) { console.error('PC_SIGNIN_LINK is needed.'); process.exit(2); }
     const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
-    const page = await (await browser.newContext({ viewport: { width: 1500, height: 1000 } })).newPage();
+    const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
+    /* A passkey request goes to a virtual authenticator, not Windows Hello. */
+    await require('./test-no-passkey')(context);
+    const page = await context.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto(LINK);
@@ -328,10 +331,15 @@ function diff(a, b) {
     await page.evaluate(async path => {
         const F = window.pcSiteFs; const n = F.resolve(F.home(), path);
         if (n) { await F.remove(n, false); }
-        const o = F.resolve(F.home(), '~/visual-editor-other.txt');
-        if (o) { await F.remove(o, false); }
         localStorage.removeItem('pc-editor-session');
     }, FILE);
+    /* Deleting from the reader's own home folder through the site asks the
+       session for a passkey, which a test can't give, so the other file goes
+       from the instance's home folder when the test is told where that is,
+       as test-chat.js does. */
+    if (process.env.PC_HOME_DIR) {
+        try { require('fs').unlinkSync(require('path').join(process.env.PC_HOME_DIR, 'visual-editor-other.txt')); } catch (err) { }
+    }
     log('no page errors', errors.length === 0, errors.join(' | '));
     console.log(failures ? failures + ' check(s) failed' : 'all checks passed');
     await browser.close();

@@ -1,6 +1,6 @@
 # Proposal to PUDL: a field in a toolbar keeps its own keys
 
-Status: proposed 2026-10-21. The Sight Reader (pudl-sight-reader 1.2.0) carries a workaround, marked `PUDL WORKAROUND` in `sight-reader.js`, and deletes it on the upgrade that does this.
+Status: closed the same day by PUDL 0.70.1, which the site took as D77 in `pudl-adoption.md`; Sight Reader 1.2.1 drops its workaround.
 
 From parkscomputing.com, 2026-10-21, after moving the Sight Reader's bar numbers back onto its toolbar in a group marked `data-toolbar-keep`, which 0.69.0 added "such as one holding a field".
 

@@ -19,6 +19,8 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
     if (!LINK) { console.error('PC_SIGNIN_LINK is needed.'); process.exit(2); }
     const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
     const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
+    /* A passkey request goes to a virtual authenticator, not Windows Hello. */
+    await require('./test-no-passkey')(context);
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
