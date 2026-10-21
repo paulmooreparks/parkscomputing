@@ -24,7 +24,7 @@ DST="$REPO/.local/beta/wwwroot"
 # and editor that ask a signed-out reader to sign in again, and the pinned
 # PUDL release. A static deploy to the live tree makes these the
 # same there, after which they can leave this list.
-OVERLAY="js/accounts.js js/account.js js/applets.js js/pudl-host-kit.js js/continuity.js js/applet-actions.js js/terminal.js js/sitefs.js js/terminal-text.js css/terminal.css js/editor.js js/files.js js/window-bar.js js/commands.js js/pins.js js/pins-manager.js css/account.css css/pins-manager.css css/pudl-site.css pudl js/settings.js css/settings.css js/config.js js/desktop.js js/desktop-background.js js/admin-desktop.js js/comments.js js/moderation.js css/comments.css js/status.js js/status js/logs.js css/logs.css js/visits.js"
+OVERLAY="js/accounts.js js/account.js js/applets.js js/pudl-host-kit.js js/continuity.js js/terminal.js js/sitefs.js js/terminal-text.js css/terminal.css js/editor.js js/files.js js/window-bar.js js/commands.js js/pins.js js/pins-manager.js css/account.css css/pins-manager.css css/pudl-site.css pudl js/settings.js css/settings.css js/config.js js/desktop.js js/desktop-background.js js/admin-desktop.js js/comments.js js/moderation.js css/comments.css js/status.js js/status js/logs.js css/logs.css js/visits.js"
 
 rm -rf "$DST"
 mkdir -p "$DST"
