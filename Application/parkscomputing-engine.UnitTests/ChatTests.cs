@@ -199,6 +199,100 @@ public class ChatTests {
     }
 
     [TestMethod]
+    public async Task ClaudesUpdatesAndPermissionsBecomeTheChatsEvents() {
+        var events = System.Threading.Channels.Channel.CreateUnbounded<ProviderEvent>();
+        var turn = new ClaudeProvider.TurnState(events.Writer);
+        AcpMessage U(string update) => new("session/update", (JsonObject)JsonNode.Parse("{\"sessionId\":\"s1\",\"update\":" + update + "}")!, null);
+        await ClaudeProvider.Translate(turn, U("{\"sessionUpdate\":\"agent_thought_chunk\",\"content\":{\"type\":\"text\",\"text\":\"Think.\"}}"));
+        await ClaudeProvider.Translate(turn, U("{\"sessionUpdate\":\"tool_call\",\"toolCallId\":\"c1\",\"title\":\"`ls ~`\",\"kind\":\"execute\",\"status\":\"pending\",\"rawInput\":{\"command\":\"ls ~\"}}"));
+        /* The permission, answered by the chat's question with one of Claude's own options. */
+        var asked = ClaudeProvider.Translate(turn, new AcpMessage("session/request_permission", (JsonObject)JsonNode.Parse(
+            "{\"sessionId\":\"s1\",\"toolCall\":{\"toolCallId\":\"c1\",\"title\":\"`ls ~`\",\"rawInput\":{\"command\":\"ls ~\"}}," +
+            "\"options\":[{\"optionId\":\"allow\",\"name\":\"Allow\",\"kind\":\"allow_once\"},{\"optionId\":\"reject\",\"name\":\"Reject\",\"kind\":\"reject_once\"}]}")!, JsonValue.Create(9)));
+        Assert.IsTrue(events.Reader.TryRead(out var thought) && thought is ThinkingDelta { Text: "Think." });
+        Assert.IsTrue(events.Reader.TryRead(out var started) && started is AgentTool { Id: "c1", Title: "`ls ~`", Kind: "execute", Status: "in_progress" });
+        Assert.IsTrue(events.Reader.TryRead(out var permission) && permission is AgentApproval);
+        var ask = (AgentApproval)permission!;
+        CollectionAssert.AreEqual(new[] { "allow", "reject" }, ask.Options.Select(o => o.Id).ToList());
+        ask.Answer.SetResult("allow");
+        var outcome = (await asked)!["outcome"]!;
+        Assert.AreEqual("selected", outcome["outcome"]!.GetValue<string>());
+        Assert.AreEqual("allow", outcome["optionId"]!.GetValue<string>());
+        /* An update that changes nothing but the status keeps the first title. */
+        await ClaudeProvider.Translate(turn, U("{\"sessionUpdate\":\"tool_call_update\",\"toolCallId\":\"c1\",\"status\":\"in_progress\"}"));
+        Assert.IsFalse(events.Reader.TryRead(out _), "nothing new to say");
+        /* A better title says the row again, still in progress. */
+        await ClaudeProvider.Translate(turn, U("{\"sessionUpdate\":\"tool_call\",\"toolCallId\":\"t9\",\"title\":\"Terminal\",\"kind\":\"execute\",\"status\":\"pending\"}"));
+        await ClaudeProvider.Translate(turn, U("{\"sessionUpdate\":\"tool_call_update\",\"toolCallId\":\"t9\",\"title\":\"`pwd`\",\"status\":\"in_progress\"}"));
+        Assert.IsTrue(events.Reader.TryRead(out var t9) && t9 is AgentTool { Title: "Terminal" });
+        Assert.IsTrue(events.Reader.TryRead(out var t9b) && t9b is AgentTool { Title: "`pwd`", Status: "in_progress" });
+        await ClaudeProvider.Translate(turn, U("{\"sessionUpdate\":\"tool_call_update\",\"toolCallId\":\"c1\",\"status\":\"completed\",\"content\":[{\"type\":\"content\",\"content\":{\"type\":\"text\",\"text\":\"a.md\"}}]}"));
+        await ClaudeProvider.Translate(turn, U("{\"sessionUpdate\":\"tool_call\",\"toolCallId\":\"e1\",\"title\":\"Edit a.md\",\"kind\":\"edit\",\"status\":\"completed\",\"content\":[{\"type\":\"diff\",\"path\":\"/home/a.md\",\"oldText\":\"x\",\"newText\":\"y\"}]}"));
+        await ClaudeProvider.Translate(turn, U("{\"sessionUpdate\":\"agent_message_chunk\",\"content\":{\"type\":\"text\",\"text\":\"One file.\"}}"));
+        await ClaudeProvider.Translate(turn, U("{\"sessionUpdate\":\"plan\",\"entries\":[]}"));
+        Assert.IsTrue(events.Reader.TryRead(out var done) && done is AgentTool { Id: "c1", Title: "`ls ~`", Status: "completed", Output: "a.md" });
+        Assert.IsTrue(events.Reader.TryRead(out var editStarted) && editStarted is AgentTool { Id: "e1", Kind: "edit", Status: "in_progress" });
+        Assert.IsTrue(events.Reader.TryRead(out var edited) && edited is AgentTool { Id: "e1", Status: "completed", Output: "Changed /home/a.md" });
+        Assert.IsTrue(events.Reader.TryRead(out var text) && text is TextDelta { Text: "One file." });
+        Assert.IsFalse(events.Reader.TryRead(out _), "a plan update gives the chat nothing");
+        /* A stopped turn's permission is cancelled, as ACP asks. */
+        turn.Cancelled = true;
+        var late = await ClaudeProvider.Translate(turn, new AcpMessage("session/request_permission", (JsonObject)JsonNode.Parse(
+            "{\"sessionId\":\"s1\",\"toolCall\":{\"toolCallId\":\"c2\"},\"options\":[{\"optionId\":\"allow\",\"name\":\"Allow\",\"kind\":\"allow_once\"}]}")!, JsonValue.Create(10)));
+        Assert.AreEqual("cancelled", late!["outcome"]!["outcome"]!.GetValue<string>());
+        Assert.IsNull(await ClaudeProvider.Translate(turn, new AcpMessage("fs/read_text_file", new JsonObject { ["sessionId"] = "s1" }, JsonValue.Create(11))), "the chat offers no files to read");
+    }
+
+    [TestMethod]
+    public void ClaudeGetsOneCredentialAndNeverTheServersApiKeyUnlessAsked() {
+        var saved = new[] { "ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_TEST_KEY" }.ToDictionary(v => v, Environment.GetEnvironmentVariable);
+        try {
+            Environment.SetEnvironmentVariable("ANTHROPIC_API_KEY", "server-key");
+            Environment.SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "stray");
+            Environment.SetEnvironmentVariable("CLAUDE_TEST_KEY", "chosen-key");
+            Environment.SetEnvironmentVariable("CLAUDE_CODE_OAUTH_TOKEN", null);
+            var plan = new ChatProviderConfig { Id = "claude", Kind = "claude" };
+            StringAssert.Contains(ClaudeHost.NotReady(plan), "claude setup-token");
+            Environment.SetEnvironmentVariable("CLAUDE_CODE_OAUTH_TOKEN", "plan-token");
+            Assert.IsNull(ClaudeHost.NotReady(plan));
+            var (variable, value) = ClaudeHost.Credential(plan);
+            var env = ClaudeHost.AdapterEnvironment(variable, value!);
+            Assert.AreEqual("plan-token", env["CLAUDE_CODE_OAUTH_TOKEN"]);
+            Assert.IsFalse(env.ContainsKey("ANTHROPIC_API_KEY"), "the server's own key would outrank the plan's token");
+            Assert.IsFalse(env.ContainsKey("ANTHROPIC_AUTH_TOKEN"));
+            Assert.AreEqual("1", env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"]);
+            Assert.AreEqual(ClaudeHost.Home, env["CLAUDE_CONFIG_DIR"]);
+            /* A provider with keyEnv bills that key, and the token stays out. */
+            var keyed = new ChatProviderConfig { Id = "claude-api", Kind = "claude", KeyEnv = "CLAUDE_TEST_KEY" };
+            (variable, value) = ClaudeHost.Credential(keyed);
+            env = ClaudeHost.AdapterEnvironment(variable, value!);
+            Assert.AreEqual("chosen-key", env["ANTHROPIC_API_KEY"]);
+            Assert.IsFalse(env.ContainsKey("CLAUDE_CODE_OAUTH_TOKEN"));
+            Assert.IsFalse(env.ContainsKey("CLAUDE_TEST_KEY"));
+        }
+        finally { foreach (var (k, v) in saved) { Environment.SetEnvironmentVariable(k, v); } }
+    }
+
+    [TestMethod]
+    public void AProviderKeptForOneAccountIsOfferedToThatAccountAlone() {
+        var config = new ChatConfig {
+            Providers = { new ChatProviderConfig { Id = "ollama", BaseUrl = "http://x/" }, new ChatProviderConfig { Id = "claude", Kind = "claude", Users = new() { "paul@example.com" } } },
+            DefaultProvider = "claude", DefaultModel = "opus"
+        };
+        var paul = new IdentityUser { Email = "Paul@Example.com", UserName = "paul" };
+        var other = new IdentityUser { Email = "admin@example.com", UserName = "admin" };
+        CollectionAssert.AreEqual(new[] { "ollama", "claude" }, config.VisibleTo(paul).Providers.Select(p => p.Id).ToList());
+        Assert.AreEqual("claude", config.VisibleTo(paul).DefaultProvider);
+        var theirs = config.VisibleTo(other);
+        CollectionAssert.AreEqual(new[] { "ollama" }, theirs.Providers.Select(p => p.Id).ToList());
+        Assert.AreEqual("ollama", theirs.DefaultProvider);
+        Assert.IsNull(theirs.DefaultModel, "the default model belonged to the provider they cannot use");
+        Assert.IsTrue(config.Find("claude")!.IsAgent);
+        CollectionAssert.AreEqual(new[] { "default", "opus", "haiku" }, ClaudeProvider.OptionValues((JsonArray)JsonNode.Parse(
+            "[{\"id\":\"mode\",\"options\":[{\"value\":\"plan\"}]},{\"id\":\"model\",\"options\":[{\"value\":\"default\"},{\"group\":\"g\",\"name\":\"More\",\"options\":[{\"value\":\"opus\"},{\"value\":\"haiku\"}]}]}]")!, "model").ToList());
+    }
+
+    [TestMethod]
     public async Task CodexsQuestionWithChoicesIsTheChatsQuestionAndTheLabelGoesBack() {
         var events = System.Threading.Channels.Channel.CreateUnbounded<ProviderEvent>();
         var turn = new CodexProvider.TurnState(events.Writer);
