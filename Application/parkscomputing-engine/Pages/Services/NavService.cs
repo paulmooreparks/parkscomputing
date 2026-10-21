@@ -10,7 +10,7 @@ using Markdig;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Hosting;
 
-using ParksComputing.Xfer.Lang; // Xfer language parsing
+using ParksComputing.XferLang.Serialization; // XferLang 1.0
 using Microsoft.Extensions.Logging;
 namespace ParksComputing.Engine.Pages.Services {
     public class NavService : INavService {
@@ -204,12 +204,12 @@ namespace ParksComputing.Engine.Pages.Services {
 
         private NavNode ParseRoot(string text, string? sourcePath = null) {
             try {
-                var docRoot = XferConvert.Deserialize<NavNode>(text);
+                var docRoot = XferSerializer.Deserialize<NavNode>(text);
                 if (docRoot == null) { docRoot = new NavNode { Slug = "root" }; }
                 _logger?.LogInformation("Parsed Xfer navigation navChildren={NavChildren} source={Source}", docRoot.Nav?.Length, sourcePath);
                 return docRoot;
             } catch (Exception ex) {
-                _logger?.LogError(ex, "Failed XferConvert.Deserialize for {Source}", sourcePath);
+                _logger?.LogError(ex, "Failed XferSerializer.Deserialize for {Source}", sourcePath);
                 return new NavNode { Slug = "root" };
             }
         }

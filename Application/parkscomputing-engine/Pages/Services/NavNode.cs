@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using ParksComputing.Xfer.Lang;
-using ParksComputing.Xfer.Lang.Attributes;
+using ParksComputing.XferLang.Serialization;
 
 namespace ParksComputing.Engine.Pages.Services;
 
@@ -10,46 +9,48 @@ public class NavNode {
         Nav = Array.Empty<NavNode>();
     }
 
-    [XferProperty("slug")]
+    [XferPropertyName("slug")]
     public string? Slug { get; set; }
 
-    [XferProperty("title")]
+    [XferPropertyName("title")]
     public string? Title { get; set; }
 
-    [XferProperty("description")]
+    [XferPropertyName("description")]
     public string? Description { get; set; }
 
-    [XferProperty("excerpt")]
+    [XferPropertyName("excerpt")]
     public string? Excerpt { get; set; }
 
-    // Unified URL (was link). Retain old property for JSON compatibility.
-    [XferProperty("url")]
+    // Unified URL (was link). The old key is read as an alias and never
+    // written; the old property stays for JSON compatibility.
+    [XferPropertyName("url", Aliases = ["link"])]
     public string? Url { get; set; }
 
-    [XferProperty("link")]
+    [XferIgnore]
     public string? Link { get => Url; set { if (!string.IsNullOrWhiteSpace(value)) { Url = value; } } }
 
-    [XferProperty("target")]
+    [XferPropertyName("target")]
     public string? Target { get; set; }
 
-    [XferProperty("date")]
+    [XferPropertyName("date")]
     public DateTime? Date { get; set; }
 
-    [XferProperty("updated")]
+    [XferPropertyName("updated")]
     public DateTime? Updated { get; set; }
 
-    [XferProperty("order")]
+    [XferPropertyName("order")]
     public int? Order { get; set; }
 
-    [XferProperty("external")]
+    [XferPropertyName("external")]
     public bool External { get; set; }
 
     // True if url was derived (not explicitly specified in source)
+    [XferIgnore]
     public bool DerivedUrl { get; set; }
 
     // Tags this entry is categorized under; merged with the content file's
     // keywords metadata by NavService enrichment.
-    [XferProperty("tags")]
+    [XferPropertyName("tags")]
     public string[]? Tags { get; set; }
 
     // True when an external destination permits framing and should open as
@@ -59,31 +60,32 @@ public class NavNode {
     /// <summary>The page's preferred default window shape, "w,h" as
     /// fractions of the desktop (e.g. "0.17,0.58" for a portrait app).
     /// A placement in the URL always wins over it.</summary>
-    [XferProperty("win")]
+    [XferPropertyName("win")]
     public string? Win { get; set; }
 
     /// <summary>The smallest and largest size, "w,h" in pixels, a window
     /// the reader sizes may take, such as a terminal's usable grid.</summary>
-    [XferProperty("min")]
+    [XferPropertyName("min")]
     public string? Min { get; set; }
 
-    [XferProperty("max")]
+    [XferPropertyName("max")]
     public string? Max { get; set; }
 
-    [XferProperty("frame")]
+    [XferPropertyName("frame")]
     public bool Frame { get; set; }
 
     /// <summary>The entry's icon: the address of a full-colour image on
     /// this site, such as "/images/icons/terminal.svg", shown wherever the
     /// entry stands for the thing itself (the site menu, a window's title
     /// bar). Chrome glyphs are the stylesheet's, not the navigation's.</summary>
-    [XferProperty("icon")]
+    [XferPropertyName("icon")]
     public string? Icon { get; set; }
 
-    [XferProperty("nav")]
+    // The old key "links" is read as an alias and never written.
+    [XferPropertyName("nav", Aliases = ["links"])]
     public NavNode[]? Nav { get; set; }
 
-    [XferProperty("links")]
+    [XferIgnore]
     public NavNode[]? Links { get => Nav; set { if (value != null) { Nav = value; } } }
 
     /// <summary>
@@ -95,7 +97,7 @@ public class NavNode {
     /// are an ordinary section now (2026-10-01), in the order the file
     /// gives, as every section is.
     /// </summary>
-    [XferProperty("feed")]
+    [XferPropertyName("feed")]
     public bool Feed { get; set; }
 
     /// <summary>The site's menu bar, on the root only
@@ -107,43 +109,42 @@ public class NavNode {
     /// stands for entries of the nav. The admin site's admin-menu.xfer
     /// reads the same property in its older shape, a list of the logo's
     /// entries with groups for headings.</summary>
-    [XferProperty("menu")]
+    [XferPropertyName("menu")]
     public NavNode[]? Menu { get; set; }
 
     /// <summary>The stable PUDL identity of a menu title.</summary>
-    [XferProperty("menu-id")]
+    [XferPropertyName("menu-id")]
     public string? MenuId { get; set; }
 
-    [XferProperty("window-commands")]
+    [XferPropertyName("window-commands")]
     public bool WindowCommands { get; set; }
 
     /// <summary>In the menu: a heading over the entries of this entry's nav.</summary>
-    [XferProperty("heading")]
+    [XferPropertyName("heading")]
     public string? Heading { get; set; }
 
     /// <summary>In the menu: a separator between the entries around it.</summary>
-    [XferProperty("separator")]
+    [XferPropertyName("separator")]
     public bool Separator { get; set; }
 
     /// <summary>In the menu: the name of the command this entry carries
     /// out, one the site knows (Pages/Services/SiteCommands.cs).</summary>
-    [XferProperty("command")]
+    [XferPropertyName("command")]
     public string? Command { get; set; }
 
     /// <summary>In the menu: the command's parameters, by name.</summary>
-    [XferProperty("args")]
+    [XferPropertyName("args")]
     public Dictionary<string, string>? Args { get; set; }
 
     /// <summary>In the menu: "window" or "classic", for an entry shown in
     /// that view only.</summary>
-    [XferProperty("when")]
+    [XferPropertyName("when")]
     public string? When { get; set; }
 
     /// <summary>In the menu: entries of the nav, in its order, kept in step
     /// with it: "sections" for every section, or a section's slug for the
     /// entries of that section.</summary>
-    [XferProperty("from")]
+    [XferPropertyName("from")]
     public string? From { get; set; }
 
-    // (Legacy alias properties removed to prevent duplicate key collisions in Xfer deserializer.)
 }

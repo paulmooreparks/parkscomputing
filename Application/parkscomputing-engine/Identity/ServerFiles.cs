@@ -38,12 +38,12 @@ public sealed class ServerFiles {
     /// <summary>The admin menu /etc starts with, which an admin's own
     /// ~/.config/admin-menu.xfer replaces for that admin (A15).</summary>
     public const string DefaultAdminMenu =
-        "<! document { xferlang \"0.15\" } !>\n" +
+        "<! xfer 1 !>\n" +
         "{\n" +
         "    menu [\n" +
         "        { menu-id \"site\" title \"Parks Computing Admin\" icon \"/favicon-32x32.png\"\n" +
         "          nav [ { title \"Admin home\" url \"/admin\" } { slug \"settings\" title \"Site settings\" }\n" +
-        "                { separator ~true } { slug \"account\" } { slug \"signout\" } ] }\n" +
+        "                { separator true } { slug \"account\" } { slug \"signout\" } ] }\n" +
         "        { menu-id \"go\" title \"Go\" nav [ { slug \"site\" } ] }\n" +
         "        { menu-id \"applets\" title \"Applets\"\n" +
         "          nav [ { slug \"terminal\" } { slug \"editor\" } { slug \"files\" } ] }\n" +
@@ -54,7 +54,7 @@ public sealed class ServerFiles {
         "                { title \"Follow the system\" command \"theme\" args { value \"system\" } }\n" +
         "            ] }\n" +
         "        ] }\n" +
-        "        { menu-id \"window\" title \"Window\" when \"window\" window-commands ~true nav [ ] }\n" +
+        "        { menu-id \"window\" title \"Window\" when \"window\" window-commands true nav [ ] }\n" +
         "        { menu-id \"help\" title \"Help\" nav [ ] }\n" +
         "    ]\n" +
         "}\n";

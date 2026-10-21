@@ -37,7 +37,8 @@
 			<PackageReference Include="Jint" Version="4.16.4" />
 			<PackageReference Include="LibSassBuilder" Version="3.0.0" />
 			<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="10.0.2" />
-			<PackageReference Include="ParksComputing.Xfer.Lang" Version="0.15.25-prerelease" />
+			<!-- XferLang 1.0 (Architecture/xferlang-1.0-migration.md); the 0.x library was ParksComputing.Xfer.Lang 0.15.25-prerelease -->
+			<PackageReference Include="ParksComputing.XferLang" Version="0.1.0-next.0" />
 			<PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
 			<PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.5.0" />
 			<PackageReference Include="Markdig" Version="0.37.0" />
@@ -51,8 +52,6 @@
 			<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
 			<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
 			<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" PrivateAssets="All" />
-			<!-- TODO: Add real version once package is published -->
-			<!-- <PackageReference Include="ParksComputing.Xfer.Lang" Version="0.1.0-preview" /> -->
 	 </ItemGroup>
 
 	<ItemGroup>

@@ -50,7 +50,7 @@ public class WindowViewModel {
     public bool OwnDocument { get; init; }
 
     /// <summary>An external URL the window frames directly (a sitenav node
-    /// marked frame ~true); null otherwise.</summary>
+    /// marked frame true); null otherwise.</summary>
     public string? FrameUrl { get; init; }
 
     /// <summary>The tags the article is categorized under, for the tag row

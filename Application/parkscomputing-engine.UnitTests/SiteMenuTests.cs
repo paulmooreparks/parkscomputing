@@ -3,7 +3,7 @@ using System.Linq;
 
 using ParksComputing.Engine.Identity;
 using ParksComputing.Engine.Pages.Services;
-using ParksComputing.Xfer.Lang;
+using ParksComputing.XferLang.Serialization;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -12,7 +12,7 @@ namespace ParksComputing.Engine.UnitTests {
     /// commands as the menu writes them (Architecture/site-menu-design.md).</summary>
     [TestClass]
     public class SiteMenuTests {
-        private const string Nav = @"<! document { xferlang ""0.15"" } !>
+        private const string Nav = @"<! xfer 1 !>
 {
     slug ""home""
     menu [
@@ -21,7 +21,7 @@ namespace ParksComputing.Engine.UnitTests {
             icon ""/favicon-32x32.png""
             nav [
                 { title ""Home"" url ""/"" }
-                { separator ~true }
+                { separator true }
                 { heading ""Quick Links"" nav [ { slug ""about"" } ] }
             ]
         }
@@ -49,7 +49,7 @@ namespace ParksComputing.Engine.UnitTests {
 
         [TestMethod]
         public void TheTitledMenuReadsIntoNavNodes() {
-            var root = XferConvert.Deserialize<NavNode>(Nav)!;
+            var root = XferSerializer.Deserialize<NavNode>(Nav)!;
             Assert.AreEqual(4, root.Menu!.Length);
             var logo = root.Menu[0];
             Assert.AreEqual("Parks Computing", logo.Title);
@@ -118,7 +118,7 @@ namespace ParksComputing.Engine.UnitTests {
 
         [TestMethod]
         public void TheMenuIsWrittenForTheViewInUse() {
-            var root = XferConvert.Deserialize<NavNode>(Nav)!;
+            var root = XferSerializer.Deserialize<NavNode>(Nav)!;
             var window = MenuBuilder.ToHtml(MenuBuilder.Build(root.Menu, desktop: true, e => null, _ => Enumerable.Empty<MenuEntry>()));
             StringAssert.Contains(window, "<li data-menubar-if=\"windows\">Window<ul>");
             StringAssert.Contains(window, "<li><img src=\"/favicon-32x32.png\" alt=\"\" /> Parks Computing<ul>");

@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using ParksComputing.Engine.Pages.Services;
-using ParksComputing.Xfer.Lang;
+using ParksComputing.XferLang.Serialization;
 
 namespace ParksComputing.Engine.Identity;
 
@@ -106,7 +106,7 @@ public sealed class AdminMenu {
 
     private NavNode[]? Parse(string text, string source) {
         try {
-            var menu = XferConvert.Deserialize<NavNode>(text)?.Menu;
+            var menu = XferSerializer.Deserialize<NavNode>(text)?.Menu;
             return menu == null ? null : Titled(menu);
         } catch (Exception ex) {
             _logger.LogWarning(ex, "The admin menu {Source} does not parse; using the next one", source);
@@ -124,7 +124,7 @@ public sealed class AdminMenu {
             Title = LogoTitle, Icon = LogoIcon,
             Nav = menu.Select(e => e.Nav is { Length: > 0 } ? new NavNode { Heading = e.Title ?? e.Slug, Nav = e.Nav } : e).ToArray()
         };
-        var rest = XferConvert.Deserialize<NavNode>(ServerFiles.DefaultAdminMenu)?.Menu?.Skip(1) ?? Enumerable.Empty<NavNode>();
+        var rest = XferSerializer.Deserialize<NavNode>(ServerFiles.DefaultAdminMenu)?.Menu?.Skip(1) ?? Enumerable.Empty<NavNode>();
         return new[] { logo }.Concat(rest).ToArray();
     }
 }

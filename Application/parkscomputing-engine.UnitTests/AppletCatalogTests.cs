@@ -154,7 +154,7 @@ public class AppletCatalogTests {
     public void ASiteWithNoAppletsSectionGetsOneWhenAPackageIsInstalled() {
         var root = Root();
         try {
-            File.WriteAllText(Path.Combine(root, "sitenav.xfer"), "{ slug \"root\" nav [ { slug \"articles\" title \"Articles\" feed ~true nav [ { slug \"one\" title \"One\" } ] } ] }");
+            File.WriteAllText(Path.Combine(root, "sitenav.xfer"), "{ slug \"root\" nav [ { slug \"articles\" title \"Articles\" feed true nav [ { slug \"one\" title \"One\" } ] } ] }");
             var nav = new NavService(new Env { WebRootPath = root }, NullLogger<NavService>.Instance, Options.Create(new SiteOptions()), Catalog(root));
             var sections = NavService.Sections(nav.GetRoot()).Select(s => s.Slug).ToArray();
             CollectionAssert.AreEqual(new[] { "articles", "applets" }, sections);

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
-using ParksComputing.Xfer.Lang; // for XferConvert
+using ParksComputing.XferLang.Serialization; // XferLang 1.0, for XferSerializer
 using Microsoft.OpenApi.Any;
 
 namespace ParksComputing.Engine.Xfer {
@@ -45,7 +45,7 @@ namespace ParksComputing.Engine.Xfer {
             }
 
             var example = BuildExample(baseSchema, context, methodName);
-            var xferText = example != null ? XferConvert.Serialize(example, ParksComputing.Xfer.Lang.Formatting.Pretty) : "# Xfer example not available";
+            var xferText = example != null ? ExampleText(example) : "# Xfer example not available";
             var raw = new OpenApiString(xferText);
 
             var xferMedia = new OpenApiMediaType {
@@ -67,6 +67,16 @@ namespace ParksComputing.Engine.Xfer {
 
             foreach (var kv in reordered) {
                 content[kv.Key] = kv.Value;
+            }
+        }
+
+        /* The example in XferLang 1.0's one written form. A shape the mapper
+           will not write (Architecture/xferlang-1.0-migration.md) leaves the
+           example out rather than the whole API description. */
+        private static string ExampleText(object example) {
+            try { return XferSerializer.Serialize(example, example.GetType()); }
+            catch (Exception ex) when (ex is ParksComputing.XferLang.XferException || ex is InvalidOperationException || ex is NotSupportedException) {
+                return "# Xfer example not available";
             }
         }
 
@@ -259,6 +269,11 @@ namespace ParksComputing.Engine.Xfer {
     /// Normalizes application/xfer examples so they remain plain text (unquoted) in the OpenAPI document.
     /// </summary>
     public class XferDocumentFilter : IDocumentFilter {
+        /* An example's text: an OpenApiString's value, since its ToString()
+           is only its type's name. Its quotes stay, since a string example
+           is XferLang only with them. */
+        private static string TextOf(IOpenApiAny example) => example is OpenApiString s ? s.Value ?? string.Empty : example.ToString() ?? string.Empty;
+
         public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context) {
             if (swaggerDoc.Paths == null) {
                 return;
@@ -277,8 +292,7 @@ namespace ParksComputing.Engine.Xfer {
                             }
 
                             if (resp.Content.TryGetValue(XferService.ApplicationXfer, out var media) && media != null && media.Example is IOpenApiAny mediaExample) {
-                                var mediaText = mediaExample.ToString() ?? string.Empty;
-                                var trimmed = mediaText.Trim('"');
+                                var trimmed = TextOf(mediaExample).TrimEnd();
                                 media.Example = new OpenApiString(trimmed);
 
                                 if (media.Schema is { } schema) {
@@ -291,8 +305,7 @@ namespace ParksComputing.Engine.Xfer {
                     var rbContent = op.RequestBody?.Content;
 
                     if (rbContent != null && rbContent.TryGetValue(XferService.ApplicationXfer, out var rbMedia) && rbMedia != null && rbMedia.Example is IOpenApiAny rbExample) {
-                        var rbText = rbExample.ToString() ?? string.Empty;
-                        var trimmedReq = rbText.Trim('"');
+                        var trimmedReq = TextOf(rbExample).TrimEnd();
                         rbMedia.Example = new OpenApiString(trimmedReq);
 
                         if (rbMedia.Schema is { } rbSchema) {

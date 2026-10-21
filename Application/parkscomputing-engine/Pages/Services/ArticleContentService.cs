@@ -203,7 +203,7 @@ public class ArticleContentService {
 
     /// <summary>
     /// A framed external destination's window ("ext-{slug}" keys): a frame
-    /// straight onto the URL of a sitenav node marked frame ~true. Null
+    /// straight onto the URL of a sitenav node marked frame true. Null
     /// when the key is not an ext key or nothing frameable matches.
     /// </summary>
     public ArticleWindowContent? LoadExternal(string? key, NavNode root) {

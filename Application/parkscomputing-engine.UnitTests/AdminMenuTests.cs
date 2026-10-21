@@ -70,7 +70,7 @@ namespace ParksComputing.Engine.UnitTests {
         [TestMethod]
         public void AnAdminsOwnTitledFileReplacesTheShared() {
             File.WriteAllText(Path.Combine(_dir, "home", "paul", ".config", "admin-menu.xfer"),
-                "{ menu [ { title \"Mine\" icon \"/x.png\" nav [ { slug \"editor\" } { separator ~true } { title \"Run hello\" command \"run\" args { script \"hello\" } } ] } ] }");
+                "{ menu [ { title \"Mine\" icon \"/x.png\" nav [ { slug \"editor\" } { separator true } { title \"Run hello\" command \"run\" args { script \"hello\" } } ] } ] }");
             var m = Menu().For("paul", desktop: true);
             Assert.AreEqual(1, m.Count);
             var html = Html(m);
