@@ -223,6 +223,8 @@ body.desktop .site-header { position: static; flex: none; }
 }
 .post-body img, .post-body figure { max-width: 100%; height: auto; }
 .post-body figure { margin: 1.5rem 0; }
+/* The articles brought over from WordPress centre their images with its class. */
+.post-body .aligncenter { display: block; margin-left: auto; margin-right: auto; }
 .post-body figcaption {
   text-align: center; margin-top: .4rem;
   font-size: smaller; font-style: italic;
