@@ -12,7 +12,7 @@
             nav [
                 { title "Home" url "/" }
                 { slug "about" title "About Parks Computing" }
-                { slug "settings" title "Site settings" url "/page/settings" }
+                { slug "settings" title "Site settings" url "/page/settings" win "0.42,0.8" }
             ]
         }
         {

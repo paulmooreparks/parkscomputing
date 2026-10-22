@@ -7,16 +7,23 @@ const origin = process.env.UI_SITE || 'http://localhost';
   const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } });
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
-  for (const key of ['settings', 'settings-2', 'barcodes', 'barcode-scanner', 'dice']) {
+  for (const key of ['barcodes', 'barcode-scanner', 'dice']) {
    const response = await page.request.get(origin + '/window/' + key);
    assert.equal(response.status(), 200);
    assert.match(await response.text(), /data-win-size="content"/);
+  }
+  // Settings is an ordinary window, resizable from its border, in its first
+  // window and a numbered one (Paul, 2026-10-22).
+  for (const key of ['settings', 'settings-2']) {
+   const response = await page.request.get(origin + '/window/' + key);
+   assert.equal(response.status(), 200);
+   assert.doesNotMatch(await response.text(), /data-win-size="content"/);
   }
   // An HTML article with styles or scripts of its own in its head, which a window frames
   // (WindowViewModel.OwnDocument).
   const html = 'resume-of-paul-m-parks';
   await page.goto(origin + '/?view=window&open=' + html + ',settings&top=settings&p.' + html + '=floating:0.02,0.03,0.55,0.85&p.settings=floating:0.65,0.05,0.3,0.7');
-  await page.locator('[data-win="settings"][data-win-size="content"]').waitFor();
+  await page.locator('[data-win="settings"]').waitFor();
   const frame = page.frameLocator('[data-win="' + html + '"] iframe');
   await frame.locator('body').waitFor();
   await page.waitForFunction(() => window.pudlWindows?.state().top === 'settings');
