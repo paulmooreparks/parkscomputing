@@ -147,4 +147,22 @@ public class NavNode {
     [XferPropertyName("from")]
     public string? From { get; set; }
 
+    /// <summary>The icon of the page at an address, for its window in the
+    /// taskbar and its pin: the nav's entry for it, or else the menu's,
+    /// since some pages are only in the menu (Settings, and a package the
+    /// menu keeps for one audience, such as Chat) and their menu entries
+    /// have their icons by then (NavService.ResolveMenu, AddPackages).
+    /// Called on the root; null when neither gives one.</summary>
+    public string? IconOf(string? pageUrl) {
+        if (string.IsNullOrEmpty(pageUrl)) { return null; }
+        static string? Find(IEnumerable<NavNode>? nodes, string url) {
+            foreach (var n in nodes ?? Array.Empty<NavNode>()) {
+                if (n.Url == url && !string.IsNullOrEmpty(n.Icon)) { return n.Icon; }
+                if (Find(n.Nav, url) is { } icon) { return icon; }
+            }
+            return null;
+        }
+        return (Url == pageUrl && !string.IsNullOrEmpty(Icon) ? Icon : null) ?? Find(Nav, pageUrl) ?? Find(Menu, pageUrl);
+    }
+
 }

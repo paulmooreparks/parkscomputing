@@ -538,3 +538,9 @@ Paul chose all of D80's replacements and partial fits on 2026-10-22, and they we
 - **0.74.1.** The comments row's 30px minimum for its small keys is gone, since PUDL now gives them one height.
 
 Poker's moves also lie over the foot of the table now, so the felt keeps its size whether or not it is the reader's turn (Paul, the same day). The Theme Studio on the live site was 1.0.1, which the repository had never had; that was committed as found before 1.1.0 was built on it. The package versions are Chat 1.5.0, Poker 0.6.0, Barcode Tool 1.2.0, flash cards 1.1.0, Conway 1.2.0, Theme Studio 1.1.0 and Sight Reader 1.3.0. Eight suites passed on the test instance; `test-applet-sizing-and-frame` now frames the résumé, because the Excel article it used became Markdown on 2026-10-21 and is no longer framed.
+
+### D82. PUDL 0.75.0, and every window's icon in the taskbar
+
+The site moved to 0.75.0 on 2026-10-22, beta first and then production, by copying `dist/` over `wwwroot/pudl/` and the content volume's `pudl/`. A field with keys in it (the number field, the combo box and searchable select, the list's filter with its apply key) is now one sunken field with its keys inside its border. Only `pudl.css` changed, and nothing on the site restyled those keys.
+
+Paul saw the taskbar draw Chat, Poker and Settings with PUDL's generic app glyph. A window's icon was looked for in the navigation tree only, and those three pages are in the menu alone: Settings in the logo menu, and Chat and Poker as packages the menu keeps for admins, which `NavService.AddPackages` leaves out of the Applets section. `NavNode.IconOf(pageUrl)` now looks in the navigation tree and then in the menu, whose entries have their icons by then (their own, or their package's), and both the window (`_Window.cshtml`) and the pins (`_Layout.cshtml`) use it.

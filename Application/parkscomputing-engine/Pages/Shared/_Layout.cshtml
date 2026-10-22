@@ -34,18 +34,8 @@
     private static bool IsSitePage(NavNode n) =>
         !n.External && !string.IsNullOrEmpty(n.Slug) && n.Url == $"/page/{n.Slug}";
 
-    // A page's icon as its window shows it in the taskbar (_Window's
-    // WindowIcon): the navigation's icon for that page, or none.
-    private string? PinIcon(string slug)
-    {
-        string? Find(NavNode n)
-        {
-            if (n.Url == $"/page/{slug}" && !string.IsNullOrEmpty(n.Icon)) { return n.Icon; }
-            foreach (var c in n.Nav ?? Array.Empty<NavNode>()) { if (Find(c) is { } i) { return i; } }
-            return null;
-        }
-        return Find(PaletteNav.GetRoot());
-    }
+    // A page's icon as its window shows it in the taskbar (NavNode.IconOf).
+    private string? PinIcon(string slug) => PaletteNav.GetRoot().IconOf($"/page/{slug}");
 }
 @{
     void RenderMenuItem(NavNode item)
