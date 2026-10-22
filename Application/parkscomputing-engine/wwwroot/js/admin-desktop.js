@@ -83,6 +83,8 @@
         if (!link || !F) { return; }
         var node = F.resolve(null, link.getAttribute('data-path'));
         if (!node) { return; }
+        /* The entry stays lit while its menu is open (PUDL 0.76.0). */
+        if (e.detail.mark) { e.detail.mark(link); }
         e.detail.add(actionsFor(node).map(function (a) {
             return { label: a[1], run: function () { run(a[0], node); } };
         }));
