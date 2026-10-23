@@ -1951,7 +1951,9 @@
         /* The toolbar: what is used most stays named longest, and the view
            switch and Preview keep to the end of the row. */
         function toolbars() {
-            return [{ label: 'Editor', groups: [
+            /* ribbon: 'hide' (PUDL 0.80.1): every command here is in a
+               menu (menus() below), so the ribbon has them while it shows. */
+            return [{ label: 'Editor', ribbon: 'hide', groups: [
                 { label: 'File', glyph: 'file', priority: 3, items: ['toggle-files', 'new', 'open', 'save', 'save-as'] },
                 { label: 'Edit', glyph: 'undo', priority: 2, items: ['undo', 'redo', 'find', 'toggle-wrap'] },
                 { label: 'Format', glyph: 'bold', priority: 1, items: ['style', 'bold', 'italic', 'strike', 'code', 'link', 'bullets', 'numbers', 'insert'] },

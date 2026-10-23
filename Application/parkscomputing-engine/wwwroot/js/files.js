@@ -240,7 +240,9 @@
         /* Going places first; making things where things can be made; what
            acts on the selection, which folds first; and the view at the end. */
         function toolbars() {
-            return [{ label: 'Files', groups: [
+            /* ribbon: 'hide' (PUDL 0.80.1): every command here is in a
+               menu, so the ribbon has them while it shows. */
+            return [{ label: 'Files', ribbon: 'hide', groups: [
                 { label: 'Go', glyph: 'home', priority: 4, items: ['up', 'home'] },
                 { label: 'New', glyph: 'plus', priority: 2, items: ['new-file', 'new-folder', 'upload'] },
                 { label: 'Selected', glyph: 'file', priority: 1, items: ['open', 'edit', 'run', 'download', 'copy', 'rename', 'move', 'delete'] },
