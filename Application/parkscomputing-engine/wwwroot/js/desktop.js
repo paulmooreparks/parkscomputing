@@ -101,7 +101,8 @@
        replace the input and the sidebar. */
     document.addEventListener('input', function (e) {
         if (!e.target.matches || !e.target.matches('.md-filter-group .md-filter')) { return; }
-        var sidebar = document.querySelector('.md-sidebar');
+        /* The rows, under the sidebar's head (Pages/Desktop.cshtml). */
+        var sidebar = document.querySelector('.md-sidebar .site-list');
         if (!sidebar) { return; }
         var q = e.target.value.trim().toLowerCase();
         var label = null, labelHasRow = false;

@@ -402,15 +402,9 @@ body.desktop .site-header { position: static; flex: none; }
    the layout itself (body:has(> .md-layout) fills the viewport); what
    follows is only this site's stage styling. */
 
-/* The list's bar (Paul, 2026-10-01): PUDL's list toolbar holding the filter
-   controls, a rule, then the button that clears every filter, fixed at the
-   start of the chips, and the chips, which take the rest of the line and
-   wrap within it. On a narrow screen PUDL's toolbar wraps and gives the
-   filter box a line of its own. */
-.site-listbar { flex-wrap: wrap; row-gap: 8px; }
-.site-listbar .md-filter { width: 200px; }
-.site-chips { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.site-chips .filter-clear { flex: none; }
+/* The list's filter, its menus and its chips stand at the head of the list
+   (PUDL 0.82.0's .md-sidebar-head), which PUDL lays out; nothing of the
+   site's own is needed there. */
 
 
 /* The site menu: the logo and name as a raised chip on the topbar,
