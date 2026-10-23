@@ -58,7 +58,7 @@ async function check(engine, name) {
 
         const menus = {
             'barcode-scanner': ['Barcode Scanner', 'File', 'Edit', 'Scan'],
-            editor: ['Editor', 'File', 'Edit', 'Insert'], terminal: ['Terminal', 'Session'],
+            editor: ['Editor', 'File', 'Edit', 'Insert', 'Layout'], terminal: ['Terminal', 'Session'],
             dice: ['Dice', 'Roll', 'Set'], diff: ['Diff Viewer', 'File', 'Compare'],
             'theme-studio': ['PUDL Theme Studio', 'File', 'Palette'],
             sudoku: ['Sudoku', 'Edit', 'Game'], conway: ["Conway's Game of Life", 'Simulation'],

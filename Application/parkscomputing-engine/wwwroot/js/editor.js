@@ -1962,12 +1962,15 @@
         }
 
         /* The menus list the same commands by id, which PUDL (0.68.1) looks
-           up in the command table. Every command is in exactly one of them,
-           since the menu bar's ribbon (PUDL 0.79.0) is built from the menus:
-           File, Edit, Insert and Format, as GK Companion's Editor has them,
-           each tab a row of its commands, and the Editor's part of View in
-           the site's View menu. Headings and separators start the ribbon's
-           groups. */
+           up in the command table. The menu bar's ribbon (PUDL 0.79.0) is
+           built from the menus, and the toolbar hides while it shows (PUDL
+           0.80.1), so the Editor's own titles hold every command the
+           toolbar has: File, Edit, Insert and Format, as GK Companion's
+           Editor has them, and Layout for the file tree, wrapping and the
+           views, which the site's View menu lists again where a reader of
+           the menus looks for them. Headings and separators start the
+           ribbon's groups. */
+        var LAYOUT = ['toggle-files', 'toggle-wrap', '-', 'view-text', 'view-visual', 'view-split', '-', 'source', 'preview'];
         function menus() {
             var titles = [
                 { label: 'Editor', glyph: 'document', items: window.pcAppletIdentity(root) },
@@ -1977,7 +1980,8 @@
             ];
             /* Format, where there is formatting to do. */
             if (formatOffered) { titles.push({ id: 'format', label: 'Format', glyph: 'paragraph', items: ['style', '-', 'bold', 'italic', 'strike', 'code', '-', 'bullets', 'numbers'] }); }
-            return { titles: titles, into: { view: ['toggle-files', 'toggle-wrap', '-', 'view-text', 'view-visual', 'view-split', '-', 'source', 'preview'] } };
+            titles.push({ id: 'layout', label: 'Layout', glyph: 'panel', items: LAYOUT });
+            return { titles: titles, into: { view: LAYOUT } };
         }
 
         /* === Start ======================================================== */

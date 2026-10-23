@@ -472,10 +472,14 @@
         var showHidden = false, unConfig = null;
 
         /* The menus list the toolbar's commands by id, which PUDL (0.68.1)
-           looks up in the command table. */
+           looks up in the command table. The Folder title holds every
+           command the toolbar has, because the toolbar hides while the menu
+           bar shows as a ribbon (PUDL 0.80.1) and the Folder tab must then
+           offer all of them; Go, View and Help list theirs again where a
+           reader of the menus looks for them. */
         function menus() {
             return { titles: [{ label: 'Files', items: window.pcAppletIdentity(root) },
-                { id: 'folder', label: 'Folder', items: ['open', 'edit', 'run', 'download', '-', 'rename', 'move', 'delete', 'copy', '-', 'new-file', 'new-folder', 'upload', '-', 'terminal'] }],
+                { id: 'folder', label: 'Folder', items: ['up', 'home', '-', 'open', 'edit', 'run', 'download', '-', 'rename', 'move', 'delete', 'copy', '-', 'new-file', 'new-folder', 'upload', '-', 'hidden', 'terminal', 'help'] }],
                 into: { go: ['up', 'home'], view: ['hidden'], help: ['help', 'guide'] } };
         }
 

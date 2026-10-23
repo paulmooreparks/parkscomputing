@@ -159,7 +159,7 @@ pudlApplets.define('files', {
     src: '/js/files.js',
     css: '/css/files.css',
     page: pcWorkspacePages + 'files',
-    ver: '30',
+    ver: '31',
     handles: { browse: { param: 'path' } },
     actions: '/js/actions/files.json'
 });
@@ -169,7 +169,7 @@ pudlApplets.define('editor', {
     src: '/js/editor.js',
     css: '/css/editor.css',
     page: pcWorkspacePages + 'editor',
-    ver: '41',
+    ver: '42',
     handles: { open: { param: 'file', kinds: ['file', 'script', 'page'] } },
     actions: '/js/actions/editor.json',
     /* CodeMirror and the documents load once the windows in view are ready. */
