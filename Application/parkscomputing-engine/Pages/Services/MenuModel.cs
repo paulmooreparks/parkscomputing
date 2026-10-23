@@ -16,7 +16,7 @@ public sealed record MenuEntry(MenuEntryKind Kind, string? Label = null, SiteCom
 
 /// <summary>A title of the logo menu, resolved. WindowsOnly asks PUDL to
 /// show it only on a page of windows.</summary>
-public sealed record MenuTitle(string Label, string? Icon, bool WindowsOnly, IReadOnlyList<MenuEntry> Entries, string? Id = null, bool WindowCommands = false);
+public sealed record MenuTitle(string Label, string? Icon, bool WindowsOnly, IReadOnlyList<MenuEntry> Entries, string? Id = null, bool WindowCommands = false, string? Glyph = null);
 
 /// <summary>
 /// The menu bar's host menu, for both sites (Architecture/site-menu-design.md).
@@ -73,7 +73,7 @@ public static class MenuBuilder {
         return (titles ?? Array.Empty<NavNode>()).Where(Shows)
             .Select(t => new MenuTitle(t.Title ?? t.Slug ?? "", t.Icon,
                 t.When?.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains("window", StringComparer.OrdinalIgnoreCase) == true,
-                Entries(t.Nav), t.MenuId, t.WindowCommands))
+                Entries(t.Nav), t.MenuId, t.WindowCommands, t.Glyph))
             .ToList();
     }
 
@@ -82,6 +82,8 @@ public static class MenuBuilder {
     /// icon, which PUDL shows as the brand; in a list, an item holding a
     /// link or button is a command, "-" a separator, plain words a heading,
     /// and an item with a list of its own a submenu.</summary>
+    private static readonly System.Text.RegularExpressions.Regex GlyphName = new("^[a-z][a-z0-9-]*$");
+
     public static string ToHtml(IReadOnlyList<MenuTitle> titles) {
         var html = new StringBuilder("<ul data-menubar-source hidden>");
         for (int i = 0; i < titles.Count; i++) {
@@ -90,6 +92,8 @@ public static class MenuBuilder {
             if (t.WindowsOnly) { html.Append(" data-menubar-if=\"windows\""); }
             if (t.Id != null) { html.Append(" data-menubar-id=\"").Append(WebUtility.HtmlEncode(t.Id)).Append('"'); }
             if (t.WindowCommands) { html.Append(" data-menubar-windows"); }
+            // A glyph before the title's words (PUDL 0.79.0), a name such as home.
+            if (t.Glyph is { } g && GlyphName.IsMatch(g)) { html.Append(" data-menu-glyph=\"").Append(g).Append('"'); }
             html.Append('>');
             if (i == 0 && !string.IsNullOrEmpty(t.Icon)) { html.Append("<img src=\"").Append(WebUtility.HtmlEncode(t.Icon)).Append("\" alt=\"\" /> "); }
             html.Append(WebUtility.HtmlEncode(t.Label)).Append("<ul>");

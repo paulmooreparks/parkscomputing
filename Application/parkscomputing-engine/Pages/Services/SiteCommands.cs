@@ -58,8 +58,8 @@ public static class SiteCommands {
                 return new("a", attrs);
             }
             // PUDL keeps these links' addresses and aria-disabled current,
-            // as it does the window bar's; js/window-bar.js closes every
-            // window for Close all.
+            // as it does the window bar's, and closes every window the
+            // reader may close for Close all (0.79.0).
             case "windows.minimize-all":
                 Add("href", "?"); Add("data-win-back", null);
                 return new("a", attrs);
@@ -67,7 +67,7 @@ public static class SiteCommands {
                 Add("href", "?"); Add("data-win-restore", null);
                 return new("a", attrs);
             case "windows.close-all":
-                Add("href", "?open="); Add("data-close-all", null);
+                Add("href", "?open="); Add("data-win-close-all", null);
                 return new("a", attrs);
             // An applet, in a given state: its page with the state in the
             // query, or in the window view a window, which js/commands.js

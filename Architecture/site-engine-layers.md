@@ -9,7 +9,7 @@ The container sets two things:
 - `ASPNETCORE_WEBROOT` to the site's tree, mounted read-only, such as `/app/site`.
 - `Site__Assets` to where the engine's assets are in the image, `/app/wwwroot`.
 
-Everything the engine reads as the site's own is then read from the site's tree, because it is the web root: `sitenav.xfer`, `content/` and its header and footer sections, `books/`, `applets/` (which the applet catalogue and the action runner list), `images/`, `audio/`, `redirects.txt`. Static files are looked for in the site's tree first and in the image after, through .NET's `CompositeFileProvider`, so `asp-append-version` stamps and the static file middleware see both. A site can replace one of the engine's files by keeping its own at the same address; a `css/site.css` of its own is the usual case.
+Everything the engine reads as the site's own is then read from the site's tree, because it is the web root: `sitenav.xfer`, `content/` with its header and footer sections and its books (which live inside `content/`, per `books-design.md`), `applets/` (which the applet catalogue and the action runner list), `images/`, `audio/`, `redirects.txt`. Static files are looked for in the site's tree first and in the image after, through .NET's `CompositeFileProvider`, so `asp-append-version` stamps and the static file middleware see both. A site can replace one of the engine's files by keeping its own at the same address; a `css/site.css` of its own is the usual case.
 
 ## Only the engine's folders show through
 

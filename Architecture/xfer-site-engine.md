@@ -39,7 +39,7 @@ The API is in the package's README (https://github.com/paulmooreparks/xfer-js). 
 Add XferLang as a language in `js/editor.js` for files ending in `.xfer` or `.xferlang`, beside JSON (`languageFor`, the language extensions near line 395, and `lintExtension` near line 402):
 
 - **Highlighting.** A `CM.StreamLanguage` mode is enough for phase 1: strings, symbols, keywords (`true`, `false`, `null`, `inf`, `-inf`, `nan`), numbers, temporals, comments (`</ ... />`), annotations (`<! ... !>`) and brackets. The spec's lexical rules are in sections 3 and 4 of `C:\Users\paul\source\repos\xferlang\spec\xferlang.md`. Strings are the hard part. A string is delimited by a run of n quotation marks and closed by the same run, or by `#…"` and `"#…` with n hashes, and nothing inside it is escaped. A stream mode can track the opening run in its state. The site design suggests a Lezer grammar with an external tokenizer later; that is not phase 1.
-- **Diagnostics.** A `CM.linter` that calls `parse` on the document and turns each diagnostic into a lint mark. A diagnostic's `start` and `end` carry `line`, `column` and `offset`. The `offset` counts UTF-8 bytes into the normalized text, and the `column` counts Unicode scalar values, so neither is a CodeMirror position. Convert from line and column. The parser normalizes CRLF to LF and drops a leading byte order mark before it counts, so convert against the same normalized text. Each mark's message carries the code (`XFER0404`) and links to `https://xfer.parkscomputing.com/diag/XFER0404`, on every site, so a diagnostic always reaches its page.
+- **Diagnostics.** A `CM.linter` that calls `parse` on the document and turns each diagnostic into a lint mark. A diagnostic's `start` and `end` carry `line`, `column` and `offset`. The `offset` counts UTF-8 bytes into the normalized text, and the `column` counts Unicode scalar values, so neither is a CodeMirror position. Convert from line and column. The parser normalizes CRLF to LF and drops a leading byte order mark before it counts, so convert against the same normalized text. Each mark's message carries the code (`XFER0404`) and links to `https://xfer.parkscomputing.com/page/diag/XFER0404`, on every site, so a diagnostic always reaches its page.
 - **Format.** A command that replaces the document with `canonical(parse(text))` when the document parses. When it does not parse, the command leaves the document as it is and shows the diagnostics.
 
 parkscomputing.com gains all this too, for its own `sitenav.xfer` and `etc/admin-menu.xfer`.
@@ -70,8 +70,8 @@ pcTerminal.register({
 
 The XferLang side writes these pages into `xfer-site/site` with the engine's existing features, so the engine needs only to serve them at the right addresses:
 
-- **A page per diagnostic code** at `/diag/XFER0404` and so on. There will be one page for each code in the spec's section 10, as Markdown in `content/`. Section 4's links depend on this address. If the engine's page addressing (`Site:PageUrl`, the slugs in `sitenav.xfer`) cannot produce `/diag/<code>`, that is an engine change.
-- **The specification as a book,** in `books/`, through the books feature.
+- **A page per diagnostic code** at `/page/diag/XFER0404` and so on, as chapters of the book `content/diag.md`. There will be one page for each code in the spec's section 10. Section 4's links depend on this address.
+- **The specification as a book,** in `content/`, through the books feature.
 - **A home page** with the nesting demonstration, and the JSON converter, as applets in `applets/`. The XferLang side writes them against the applet package contract in `Architecture/applet-packages-design.md`. A note in `xfer-site` saying which parts of that contract a site's own applet may use would help.
 
 ## Order
@@ -90,4 +90,6 @@ Tell Paul when the site answers and on which port, so the XferLang side can star
 
 **Sections 4 and 5 wait for `xferlang` 0.1.0-next.5** on npm. On 2026-10-22 the newest was 0.1.0-next.4. The Editor and the terminal will be done together from one vendored copy, rather than vendoring next.4 for the Editor and replacing it days later.
 
-**Section 6** comes after: `/diag/<code>` needs a look at whether `Site:PageUrl` and the slugs can produce it, and the note on which parts of the applet contract a site's own applet may use belongs with that work.
+**Section 6 was settled with the XferLang side on 2026-10-23,** and it needed no engine change for the pages. The engine cannot serve `/diag/<code>` from its own file as a contract: `Site:PageUrl` is site-wide, and the page route drops an address's first segment, so `/diag/XFER0404` reaches `content/XFER0404.md` only by accident. The diagnostics are a book instead, `content/diag.md` with `chapters: diag` and a chapter per code, so each code lives at `/page/diag/XFER0404`. The `/diag/` form was never published, so section 4's lint marks link to `https://xfer.parkscomputing.com/page/diag/XFER0404`, with no redirects. The specification is a book in `content/` too, since books live there and there is no `books/` folder. A site's own applets follow `applet-packages-design.md` and keep its portability rule, because xfer.parkscomputing.com has no `pc*` layer.
+
+The window view used to say "Parks Computing" on every site, in its title, its logo and the RSS feed's channel. A site's name now comes from its logo menu's title, else from the root title of its `sitenav.xfer` (`NavNode.SiteName`), as the brochure layout already did, and its logo from the logo title's icon, else the root's, else the favicon.

@@ -21,10 +21,22 @@
 
 /* === The status area ======================================================
    PUDL's status area (0.48.0) at the far right of the top bar, holding the
-   background applets' icons (Architecture/status-area-design.md). The view
-   switch takes the bar's slack, so it and the status area sit at the far
-   right; a rule stood before it until 2026-10-05. */
+   background applets' icons (Architecture/status-area-design.md). The pins
+   bar takes the bar's slack, so it, the view switch and the status area sit
+   at the far right (PUDL 0.79.0, Architecture/pudl-0.79-integration.md); a
+   page without the pins bar gives the slack to the view switch, as it did
+   before. */
+.pin-bar { margin-inline-start: auto; min-width: 0; }
+/* While the menu bar shows as a ribbon, the front applet's commands are on
+   it, so an applet's own toolbar hides and each command shows once
+   (Architecture/pudl-0.79-integration.md). PUDL 0.80.0 marks the root with
+   data-menubar-ribbon-on and hides a toolbar marked
+   data-toolbar-ribbon="hide", but the toolbars it draws from an applet's
+   toolbars() cannot be marked yet, which is asked of PUDL; until then the
+   site hides them itself, on PUDL's documented attribute. */
+:root[data-menubar-ribbon-on] .applet-toolbars { display: none; }
 .view-seg, .view-seg + .seg-menu { margin-inline-start: auto; }
+.pin-bar ~ :is(.view-seg, .seg-menu) { margin-inline-start: var(--space-2); }
 .status-area { margin-inline-start: var(--space-2); }
 
 [data-theme="dark"] {
@@ -72,26 +84,10 @@ body.desktop .site-header { position: static; flex: none; }
    the chosen one pressed in (PUDL 0.72.0). */
 .view-seg a { display: inline-flex; align-items: center; gap: 6px; }
 
-/* The classic view's category tabs (PUDL 0.37.0's .topbar-tabs, from
-   Pages/Components/Nav). Beside the logo on a screen wider than a phone,
-   they start from no width and grow to their content, so that where they
-   don't all fit they shrink and scroll sideways rather than wrap the bar,
-   which PUDL's top bar would otherwise do. On a phone PUDL gives them the
-   bar's last row, and these rules stand aside. Below 1000px the logo
-   stands for the site's name to leave them room. */
-@media (min-width: 641px) {
-  .topbar-tabs { flex: 1 1 0; max-width: max-content; margin-left: var(--space-3); }
-}
-@media (max-width: 999px) {
-  .topbar:has(.topbar-tabs) .site-menu-name { display: none; }
-}
-
 /* On a narrow screen the bar's padding narrows, so the menu and the
    switcher sit at their edges with the room between them. */
 @media (max-width: 560px) {
   .topbar { padding-left: 10px; padding-right: 10px; }
-  /* The window bar needs the room, so the logo stands for the name. */
-  .topbar:has(.win-bar) .site-menu-name { display: none; }
 }
 @media (max-width: 400px) {
   .site-menu-btn { font-size: var(--text-md); }

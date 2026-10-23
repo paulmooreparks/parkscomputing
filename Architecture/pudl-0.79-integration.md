@@ -1,6 +1,8 @@
 # Integrating PUDL 0.79.0
 
-Status: design, 2026-10-23, from the PUDL agent's brief (`C:\Users\paul\OneDrive\Documents\pudl-briefs\parkscomputing.md`) and the 0.79.0 release notes. Nothing here is built yet. The decisions it needs from Paul are listed at the end; each step that is done goes into `pudl-adoption.md` as a decision in the usual way.
+Status: design, 2026-10-23, from the PUDL agent's brief (`C:\Users\paul\OneDrive\Documents\pudl-briefs\parkscomputing.md`) and the 0.79.0 release notes. Paul decided the three questions at the end the same day: all five steps, previews included; an applet's own toolbar hides while the ribbon shows; and the pins are rendered on the server for signed-in readers, by script for the rest. Each step that is done goes into `pudl-adoption.md` as a decision in the usual way.
+
+All five steps were built and passed the suites on the test instance on 2026-10-23. The release was held for two PUDL defects, which were reported to the PUDL agent that day and fixed in 0.79.1, which the site takes instead (`pudl-adoption.md`, D84). PUDL's menuRows drops `glyphOnly` when it makes a row from a command id, so the ribbon shows words for the glyph-only commands. When the menu bar is short of room, it also squeezes the pins command bar after it down to 8px, which hides every pin and the bar's More button.
 
 The site is on 0.77.0 and skips 0.78.0. The release is tagged, so the brief's caution about waiting for the tag no longer applies. The work is in five steps, each shipped through beta and then production before the next starts, so a problem is found in the step that caused it.
 

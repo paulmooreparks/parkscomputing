@@ -97,7 +97,7 @@ namespace ParksComputing.Engine.UnitTests {
         public void TheWindowCommandsAreTheWindowBarsLinks() {
             Assert.IsTrue(Attrs(SiteCommands.Render("windows.minimize-all", null, true)).ContainsKey("data-win-back"));
             Assert.IsTrue(Attrs(SiteCommands.Render("windows.restore-all", null, true)).ContainsKey("data-win-restore"));
-            Assert.IsTrue(Attrs(SiteCommands.Render("windows.close-all", null, true)).ContainsKey("data-close-all"));
+            Assert.IsTrue(Attrs(SiteCommands.Render("windows.close-all", null, true)).ContainsKey("data-win-close-all"));
         }
 
         [TestMethod]
@@ -126,6 +126,29 @@ namespace ParksComputing.Engine.UnitTests {
             StringAssert.Contains(window, "<li>Theme<ul><li><button");
             var classic = MenuBuilder.ToHtml(MenuBuilder.Build(root.Menu, desktop: false, e => null, _ => Enumerable.Empty<MenuEntry>()));
             Assert.IsFalse(classic.Contains("Minimize all"));
+        }
+
+        [TestMethod]
+        public void TheSiteIsNamedByItsLogoTitleOrElseItsRoot() {
+            var withMenu = new NavNode { Title = "Home", Menu = new[] { new NavNode { Title = "Parks Computing", Icon = "/logo.png" } } };
+            Assert.AreEqual("Parks Computing", withMenu.SiteName());
+            Assert.AreEqual("/logo.png", withMenu.LogoIcon());
+            var bare = new NavNode { Title = "XferLang" };
+            Assert.AreEqual("XferLang", bare.SiteName());
+            Assert.AreEqual("/favicon-32x32.png", bare.LogoIcon());
+            Assert.AreEqual("XferLang", SiteMenu.Build(bare, desktop: true)[0].Label);
+        }
+
+        [TestMethod]
+        public void ATitleGlyphIsWrittenWhenItIsAGlyphName() {
+            var titles = new[] {
+                new NavNode { Title = "Home" },
+                new NavNode { Title = "Go", Glyph = "home", Nav = new[] { new NavNode { Command = "x", Title = "X" } } },
+                new NavNode { Title = "Bad", Glyph = "home\" onclick=\"x", Nav = new[] { new NavNode { Command = "x", Title = "X" } } }
+            };
+            var html = MenuBuilder.ToHtml(MenuBuilder.Build(titles, desktop: true, e => null, _ => Enumerable.Empty<MenuEntry>()));
+            StringAssert.Contains(html, "<li data-menu-glyph=\"home\">Go<ul>");
+            StringAssert.Contains(html, "<li>Bad<ul>");
         }
 
         [TestMethod]

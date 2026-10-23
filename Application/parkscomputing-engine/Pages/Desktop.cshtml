@@ -3,7 +3,7 @@
 @model ParksComputing.Engine.Pages.DesktopModel
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Parks Computing";
+    ViewData["Title"] = Model.Root.SiteName();
     ViewData["Desktop"] = true;
     // The dock and the window-wide actions stand at the foot of the window
     // area (Pages/Shared/_WindowBar.cshtml), rendered as the address has them.

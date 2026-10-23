@@ -1,6 +1,6 @@
 # Proposal to PUDL: ribbons, glyph-only commands and captions in an applet's toolbars
 
-Status: open, from parkscomputing.com, 2026-10-22, for the Editor's ribbon.
+Status: closed as overtaken, 2026-10-23. PUDL 0.79.0 builds a ribbon from the menu bar's menus instead (`data-menubar-ribbon`, with `glyphOnly` on commands), and the site uses that (`pudl-adoption.md`, D84). The proposal was written from parkscomputing.com on 2026-10-22, for the Editor's ribbon.
 
 ## The problem
 

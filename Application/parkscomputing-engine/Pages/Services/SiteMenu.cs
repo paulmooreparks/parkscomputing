@@ -46,7 +46,7 @@ public static class SiteMenu {
 
         var titles = MenuBuilder.Build(root.Menu, desktop, Place, From, stage, roles);
         return titles.Count > 0 ? titles : new[] {
-            new MenuTitle("Parks Computing", "/favicon-32x32.png", false, new[] { new MenuEntry(MenuEntryKind.Item, "Home", MenuBuilder.Link("/")) })
+            new MenuTitle(root.SiteName(), root.LogoIcon(), false, new[] { new MenuEntry(MenuEntryKind.Item, "Home", MenuBuilder.Link("/")) })
         };
     }
 }

@@ -1,36 +1,17 @@
 /* === The window bar (Pages/Shared/_WindowBar.cshtml, js/window-bar.js) ====
-   The taskbar spans the workspace below the sidebar and windows. Its
-   sidebar toggle precedes PUDL's dock, with window controls at the right.
-   The dock scrolls horizontally when its tabs exceed the available room. */
-.win-bar { display: flex; align-items: center; gap: 6px; flex: none; min-width: 0; padding: 6px 12px max(6px, env(safe-area-inset-bottom)); background: var(--surface-alt); border-top: 1px solid var(--border); --ctl-h: 30px; }
-.win-bar-dock .win-tab { flex: 0 0 auto; max-width: 250px; }
-.win-tab .task-icon { width: 16px; height: 16px; flex: none; object-fit: contain; }
-.win-tab .task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.win-tab:has(.task-icon)::before { display: none; }
-.win-bar [hidden] { display: none; }
-.win-bar-dock { flex: 1 1 auto; min-width: 0; overflow-x: auto; flex-wrap: nowrap; }
-.win-bar .icon-btn { flex: none; }
-.win-bar .icon-btn svg { width: 15px; height: 15px; }
-.win-bar .icon-btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
-.win-bar .is-disabled { opacity: .45; pointer-events: none; }
-/* Minimise-all and restore-all share one place: restore shows only when it
-   is the useful one, every window minimised (minimise-all disabled and
-   restore-all not); otherwise minimise-all shows, disabled when nothing is
-   open. PUDL keeps both links' aria-disabled current. */
-.win-bar .restore-all[aria-disabled="true"],
-.win-bar:has(.min-all:not([aria-disabled="true"])) .restore-all { display: none; }
-.win-bar:has(.min-all[aria-disabled="true"]):has(.restore-all:not([aria-disabled="true"])) .min-all { display: none; }
+   PUDL's taskbar since 0.79.0, which draws the bar, its dock and its
+   buttons. The site adds only a window's picture on its taskbar button,
+   in the place of PUDL's glyph. */
+.win-tab .win-item-picture { flex: none; width: 16px; height: 16px; object-fit: contain; }
+.win-tab:has(.win-item-picture)::before { display: none; }
 
-/* The rule before what sits at the bar's far right. With no window bar
-   before it, the rule itself takes the slack. */
+/* The rule before what sits at the admin bar's far right. With no window
+   bar before it, the rule itself takes the slack. */
 .topbar-rule {
   flex: none; width: 1px; height: 22px; margin: 0 var(--space-3) 0 auto;
   background: var(--tb-border, var(--border));
 }
 .win-bar + .topbar-rule { margin-left: 0; }
 @media (max-width: 560px) {
-  .win-bar { padding-inline: 6px; gap: 4px; }
-  .win-bar-dock .win-tab { max-width: 175px; min-height: 40px; }
-  .win-bar .icon-btn { width: 36px; height: 40px; }
   .topbar-rule { margin-right: 8px; }
 }

@@ -290,7 +290,22 @@
       if (group && group.getAttribute('data-dock-edge') === edge) return;
       if (dockPeek[edge] !== key) { delete dockPeek[edge]; changed = true; }
     });
-    if (changed) apply(state);
+    if (!changed) return;
+    /* A press outside the windows, such as on a menu bar's title, is let
+       finish first: hiding the peek changes what is in front, and a menu
+       bar drawn again for that would lose the press before its click
+       arrived (0.80.0). */
+    if (layer.contains(e.target)) { apply(state); return; }
+    var done = false;
+    var finish = function () {
+      if (done) return;
+      done = true;
+      document.removeEventListener('click', after);
+      setTimeout(function () { apply(state); }, 0);
+    };
+    var after = function () { finish(); };
+    document.addEventListener('click', after);
+    setTimeout(finish, 700);
   }
 
   /* title, when given, is the tooltip in place of the spoken name. */
@@ -1154,7 +1169,7 @@
     return bare !== null && windowParams(st).join('&') === bare;
   }
 
-  /* Window-scoped parameters (from YAVCHN's PUDL-PROPOSAL.md, A1): the
+  /* Window-scoped parameters: the
      layer's data-win-params names prefixes, such as "r", and a parameter
      <prefix>.<key> then belongs to window <key>, as the article a reader
      window shows does. "p" is PUDL's own placement prefix and is never a
@@ -1500,7 +1515,7 @@
      Kept apart from the stacking order, which a docked window's strip and a
      child's family change: the open windows, the one most recently in
      front first, which state() reports as recent and the switcher below
-     walks (GK Companion's pudl-window-switching.md). */
+     walks. */
   var recent = [];
   function trackRecent(st) {
     recent = recent.filter(function (k) { return st.open.indexOf(k) >= 0; });
@@ -1709,6 +1724,16 @@
     return st.open.some(function (k) { return !parentOf(st, k) && st.min[k]; });
   }
 
+  /* Closes every top-level window the reader may close, with its children;
+     a required window stays (0.79.0). */
+  function closable(st) {
+    return st.open.filter(function (k) { return !parentOf(st, k) && !requiredWindow(k); });
+  }
+  function allClosed(st) {
+    closable(st).forEach(function (k) { st = closed(st, k); });
+    return st;
+  }
+
   function maximizeToggled(st, key) {
     if (restricted(key) || dockOnly(key)) return copy(st);
     st = raised(st, key);
@@ -1823,8 +1848,8 @@
     return t ? t.textContent.trim() : key;
   }
 
-  /* A window's detail, the second part of its title (GK Companion's
-     pudl-window-title-detail.md): data-win-detail on the window, which
+  /* A window's detail, the second part of its title: data-win-detail on
+     the window, which
      retitle's third argument sets. It is drawn after the title, in the
      title bar, the tabs and the menus, after the separator the layer's
      data-win-text-title-sep gives, " · " unless it says otherwise. The
@@ -1846,6 +1871,23 @@
      maximised, snapped or docked leaves it floating where it is. */
   function contentSized(key) {
     return !!wins[key] && wins[key].getAttribute('data-win-size') === 'content';
+  }
+
+  var reviving = {};
+  function revive(key) {
+    if (reviving[key] || syncing) return;
+    reviving[key] = true;
+    load(key).then(function (el) {
+      delete reviving[key];
+      if (wins[key] || state.open.indexOf(key) < 0) return;
+      adopt(el);
+      announceOpen(el);
+      apply(state);
+    }, function (err) {
+      delete reviving[key];
+      if (window.console) console.warn('pudl-windows:', err.message);
+      if (state.open.indexOf(key) >= 0 && !wins[key]) commit(closed(state, key), false);
+    });
   }
 
   function apply(st) {
@@ -1905,8 +1947,14 @@
     /* Docked windows stack above the rest, though nothing is let into their
        strips, so that a drag's ghost or a window's shadow never crosses one. */
     var front = active(st);
+    /* A window the arrangement names but whose element is not in the page,
+       which a restore and another change racing each other can leave, is
+       fetched again and placed when it arrives, rather than drawn now
+       (0.80.0). */
+    st.open.forEach(function (k) { if (!wins[k]) revive(k); });
     zOrder.forEach(function (k, i) {
       var el = wins[k];
+      if (!el) return;
       var edge = shownEdge(st, k);
       setPlacement(el, effectivePlacement(st, k));
       el.toggleAttribute('data-win-restricted', restricted(k));
@@ -2103,9 +2151,10 @@
      so it does not turn the pane over by itself.
 
      A link marked data-win-back minimises every window, which also
-     returns to the list, and one marked data-win-restore brings them all
-     back. Each is a real link to the state it produces, and is marked
-     aria-disabled while it would change nothing. */
+     returns to the list, one marked data-win-restore brings them all
+     back, and one marked data-win-close-all closes every window the reader
+     may close (0.79.0). Each is a real link to the state it produces, and
+     is marked aria-disabled while it would change nothing. */
   function syncPane() {
     /* A layout whose detail pane holds a record of its own, with windows
        floating over it, leaves the pane to the server: its layer carries
@@ -2117,6 +2166,7 @@
     }
     linkAll('a[data-win-back]', urlFor(allMinimized(state)), anyShowing(state));
     linkAll('a[data-win-restore]', urlFor(allRestored(state)), anyMinimized(state));
+    linkAll('a[data-win-close-all]', urlFor(allClosed(state)), closable(state).length > 0);
   }
 
   function linkAll(selector, href, useful) {
@@ -2984,8 +3034,8 @@
     });
   }
 
-  /* Gives an open window a new key and keeps everything else (from
-     YAVCHN's PUDL-PROPOSAL.md, A4): its element, placement, place in the
+  /* Gives an open window a new key and keeps everything else: its
+     element, placement, place in the
      stack, focus and running content, where replaceWith opens a new window
      and closes the old. A reader window that turns to another story is
      the case. Every record kept by key moves to the new one, and so do the
@@ -3101,8 +3151,9 @@
     required.forEach(function (k) { if (st.open.indexOf(k) < 0) st.open.unshift(k); });
     dockPeek = {};
     var missing = st.open.filter(function (k) { return !wins[k]; });
+    var loaded = {};
     return Promise.all(missing.map(function (k) {
-      return load(k).then(function (el) { adopt(el); announceOpen(el); return null; },
+      return load(k).then(function (el) { loaded[k] = el; adopt(el); announceOpen(el); return null; },
                           function (err) {
                             if (window.console) console.warn('pudl-windows:', err.message);
                             return k;
@@ -3110,6 +3161,12 @@
     })).then(function (failed) {
       syncing--;
       failed.forEach(function (k) { if (k) st = closed(st, k); });
+      /* A change made meanwhile from the arrangement before this one, such
+         as one a listener on pudl:window-open makes, takes out the windows
+         just loaded; they are put back, since this arrangement names them
+         (0.80.0). */
+      st.open.forEach(function (k) { if (!wins[k] && loaded[k]) adopt(loaded[k]); });
+      st.open.filter(function (k) { return !wins[k]; }).forEach(function (k) { st = closed(st, k); });
       /* A placement the address gives keeps its size, which the address
          has already checked, and is only brought back inside the layer; a
          window's minimum size, measured against the room the docks leave
@@ -3407,6 +3464,71 @@
     return e.button === 0 && !e.defaultPrevented && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
   }
 
+  /* The taskbar's edges (0.79.0): a press in a .win-bar's padding, or in
+     a gap between its controls, goes to the control nearest it along the
+     bar, so a pointer thrown against the screen's edge still lands on a
+     button. A right-click goes there only when that control is a window's
+     button, whose menu it opens; elsewhere it opens the bar's own menu. */
+  function barControl(bar, x) {
+    var best = null, dist = Infinity;
+    bar.querySelectorAll('a[href], button').forEach(function (c) {
+      if (!c.getClientRects().length || c.closest('[popover]')) return;
+      var r = c.getBoundingClientRect();
+      var d = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+      if (d < dist) { dist = d; best = c; }
+    });
+    return dist <= 16 ? best : null;
+  }
+
+  /* How much of the window's foot a taskbar there takes, as
+     --win-bar-clear on the root (0.80.0), so toasts stand clear of its tray
+     and buttons rather than over them. It is the room from the top of the
+     lowest taskbar along the foot to the window's foot, 0px with none.
+     Read again as a taskbar changes size and as the window does. */
+  function measureBars() {
+    var clear = 0, h = window.innerHeight;
+    document.querySelectorAll('.win-bar:not([data-win-bar-edge="top"])').forEach(function (bar) {
+      if (!bar.getClientRects().length) return;
+      var r = bar.getBoundingClientRect();
+      if (r.bottom < h - 2 || r.top >= h) return;
+      clear = Math.max(clear, h - r.top);
+    });
+    var v = Math.ceil(clear) + 'px';
+    var root = document.documentElement;
+    if (root.style.getPropertyValue('--win-bar-clear') !== v) root.style.setProperty('--win-bar-clear', v);
+  }
+
+  function watchBars() {
+    var pending = 0;
+    var soon = function () { if (!pending) pending = requestAnimationFrame(function () { pending = 0; measureBars(); }); };
+    var ro = window.ResizeObserver ? new ResizeObserver(soon) : null;
+    var mo = new MutationObserver(soon);
+    var watch = function () {
+      document.querySelectorAll('.win-bar').forEach(function (b) {
+        if (ro) ro.observe(b);
+        mo.observe(b, { attributes: true, attributeFilter: ['data-win-bar-edge', 'hidden', 'class', 'style'] });
+      });
+      soon();
+    };
+    watch();
+    window.addEventListener('resize', soon);
+    document.addEventListener('pudl:windows-change', soon);
+    document.addEventListener('pudl:regions-swap', watch);
+  }
+
+  function onBarEdge(e) {
+    var bar = e.target.closest && e.target.closest('.win-bar');
+    if (!bar || e.target.closest('a[href], button, input, select, textarea, [popover]')) return;
+    var c = barControl(bar, e.clientX);
+    if (!c || (e.type === 'contextmenu' && !c.hasAttribute('data-win-tab'))) return;
+    e.preventDefault();
+    /* Immediate, so a second layer's copy of this listener does not press
+       the control again. */
+    e.stopImmediatePropagation();
+    if (e.type === 'click') { c.click(); return; }
+    c.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY, button: 2, buttons: 2 }));
+  }
+
   function onClick(e) {
     /* On a layer marked data-win-beside-modifier, Ctrl or Cmd with a click
        on a link that would replace its window opens beside it instead. A
@@ -3452,6 +3574,15 @@
     if (restore) {
       e.preventDefault();
       if (restore.getAttribute('aria-disabled') !== 'true') restoreAll();
+      return;
+    }
+
+    /* Each window is closed as its own Close would close it, so one that
+       refuses, an editor with unsaved changes say, stays open. */
+    var closeAll = e.target.closest('a[data-win-close-all]');
+    if (closeAll) {
+      e.preventDefault();
+      if (closeAll.getAttribute('aria-disabled') !== 'true') closable(state).forEach(function (k) { if (state.open.indexOf(k) >= 0) close(k); });
       return;
     }
 
@@ -3579,11 +3710,63 @@
       if (head && layer.contains(head)) onHeadKey(e, head.closest('.win').getAttribute('data-win'));
     });
     document.addEventListener('keydown', onEscape);
+    document.addEventListener('click', onBarEdge, true);
+    document.addEventListener('contextmenu', onBarEdge, true);
+    watchBars();
     window.addEventListener('keydown', onSwitchKeyDown, true);
     window.addEventListener('keyup', onSwitchKeyUp, true);
     window.addEventListener('blur', function () { switchEnd(); });
     window.addEventListener('pointerdown', function (e) { if (picking && !(switchPanel && switchPanel.contains(e.target))) switchEnd(); }, true);
     window.addEventListener('popstate', function () { sync(false); });
+
+    /* A dock tab's right-click menu (0.79.0) is its window's menu: the
+       window's own commands, then Snap and Dock, then what its content
+       adds, then Close, the tab marked while it is open. An application
+       answers for the tab itself by adding rows nearer the tab, or by
+       calling preventDefault() on pudl:contextmenu; data-win-tab-menu="off"
+       on the layer or the dock turns it off. */
+    document.addEventListener('pudl:contextmenu', function (e) {
+      if (e.defaultPrevented || !e.detail || (e.detail.count && e.detail.count())) return;
+      var tab = e.target && e.target.closest && e.target.closest('[data-win-tab]');
+      if (!tab || tab.closest('[data-win-tab-menu="off"]') || layer.getAttribute('data-win-tab-menu') === 'off') return;
+      var key = tab.getAttribute('data-win-tab');
+      if (!wins[key]) return;
+      var all = menuCommands(key);
+      var own = all.filter(function (c) { return !c.items && c.id !== 'close'; });
+      var lists = all.filter(function (c) { return c.items; });
+      var close = all.filter(function (c) { return c.id === 'close'; });
+      var content = contentCommands(wins[key], key);
+      var rows = [];
+      [own, lists, content, close].forEach(function (part) {
+        if (!part.length) return;
+        if (rows.length) rows.push('-');
+        rows = rows.concat(part);
+      });
+      if (!rows.length) return;
+      e.detail.add(rows);
+      if (e.detail.mark) e.detail.mark(tab);
+      if (e.detail.anchor) e.detail.anchor(tab);
+    });
+
+    /* The taskbar's own right-click menu (0.79.0), anywhere in a .win-bar
+       but its dock's tabs: minimize all, restore all and close all, each
+       disabled while it would change nothing. An application answers for
+       its own controls by adding rows nearer them, or turns the menu off
+       with data-win-bar-menu="off" on the bar. */
+    document.addEventListener('pudl:contextmenu', function (e) {
+      if (e.defaultPrevented || !e.detail || (e.detail.count && e.detail.count())) return;
+      var bar = e.target && e.target.closest && e.target.closest('.win-bar');
+      if (!bar || bar.getAttribute('data-win-bar-menu') === 'off' || e.target.closest('[data-win-tab]')) return;
+      if (!bar.querySelector('[data-win-dock]')) return;
+      e.detail.add([
+        { label: text('minimize-all', 'Minimize all'), glyph: 'minimize-all', disabled: !anyShowing(state), run: function () { commit(allMinimized(state), false); } },
+        { label: text('restore-all', 'Restore all'), glyph: 'restore-all', disabled: !anyMinimized(state), run: restoreAll },
+        '-',
+        { label: text('close-all', 'Close all windows'), danger: true, disabled: !closable(state).length, run: function () {
+          closable(state).forEach(function (k) { if (state.open.indexOf(k) >= 0) close(k); });
+        } }
+      ]);
+    });
 
     /* The window menu is built as it opens. beforetoggle does not bubble,
        so it is caught on the way down. */
@@ -3682,6 +3865,9 @@
       },
       minimizeAll: function () { commit(allMinimized(state), false); },
       restoreAll: restoreAll,
+      /* Closes every window the reader may close, each as a script's close
+         would, so one that refuses stays (0.79.0). */
+      closeAll: function () { closable(state).forEach(function (k) { if (state.open.indexOf(k) >= 0) close(k, 'script'); }); },
       close: function (key) { if (wins[key]) close(key, 'script'); },
       menuCommands: menuCommands,
       shareURL: shareURL,

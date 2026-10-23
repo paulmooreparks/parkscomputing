@@ -380,8 +380,7 @@
 
 
   /* A toolbar group of commands with nothing to show leaves the row, and
-     comes back when one of them shows (0.68.1, from parkscomputing.com's
-     pudl-proposal-toolbar-empty-groups.md), so the folding counts only
+     comes back when one of them shows (0.68.1), so the folding counts only
      what is there. A group in hand-written markup with no command in it
      is left alone. */
   function emptyGroups(root) {
@@ -523,8 +522,7 @@
     return runCmd(f.cmd, value, opts || { owner: { kind: 'script' } });
   }
 
-  /* Menu rows from a list that may hold command ids (0.68.1, from
-     parkscomputing.com's pudl-proposal-menu-command-ids.md): an id becomes
+  /* Menu rows from a list that may hold command ids (0.68.1): an id becomes
      the row the menu bar draws, with the command's words, glyph, key,
      tick or radio, danger, and disabled state with its reason, read now; a
      hidden command leaves no row, and a separator left at an end or
@@ -562,6 +560,8 @@
       if (val(c, 'bind') === false) row.bind = false;
       var glyph = val(c, 'glyph'), key = val(c, 'shortcut'), checked = val(c, 'checked'), choice = val(c, 'choice');
       if (glyph) row.glyph = glyph;
+      /* How the row shows on a ribbon, its glyph alone (0.79.1). */
+      if (val(c, 'glyphOnly')) row.glyphOnly = true;
       if (key) row.shortcut = key;
       if (checked != null) row.checked = !!checked;
       if (choice) row.radio = choice;

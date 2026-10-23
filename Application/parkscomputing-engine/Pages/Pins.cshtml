@@ -1,5 +1,6 @@
 @page "/pins"
-@{ ViewData["Title"] = "Pin manager | Parks Computing"; }
+@inject ParksComputing.Engine.Pages.Services.INavService PinsNav
+@{ ViewData["Title"] = "Pin manager | " + PinsNav.GetRoot().SiteName(); }
 @* The Pins applet (js/pins-manager.js, Architecture/pins-design.md) on a
    page of its own, for the classic view and for the window's Open as a
    page. The applet draws itself from the reader's pins, which js/pins.js

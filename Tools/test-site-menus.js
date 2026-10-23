@@ -58,7 +58,7 @@ async function check(engine, name) {
 
         const menus = {
             'barcode-scanner': ['Barcode Scanner', 'File', 'Edit', 'Scan'],
-            editor: ['Editor', 'File', 'Edit'], terminal: ['Terminal', 'Session'],
+            editor: ['Editor', 'File', 'Edit', 'Insert'], terminal: ['Terminal', 'Session'],
             dice: ['Dice', 'Roll', 'Set'], diff: ['Diff Viewer', 'File', 'Compare'],
             'theme-studio': ['PUDL Theme Studio', 'File', 'Palette'],
             sudoku: ['Sudoku', 'Edit', 'Game'], conway: ["Conway's Game of Life", 'Simulation'],
@@ -82,14 +82,14 @@ async function check(engine, name) {
         await page.locator('.win[data-win="' + originalKey + '"]').waitFor({ state: 'detached' });
         assert.equal(await page.locator('.win[data-win="' + secondKey + '"]').count(), 1);
 
-        await open('files', ['Files', 'File']);
-        await command('go', 'Your home directory');
-        await title('file').waitFor();
-        await title('file').click();
-        assert.match(await panel.innerText(), /New file/);
+        await open('files', ['Files', 'Folder']);
+        await command('go', 'Home');
+        await title('folder').waitFor();
+        await title('folder').click();
+        assert.match(await panel.innerText(), /New file/i);
         await page.keyboard.press('Escape');
         await title('help').click();
-        assert.match(await panel.innerText(), /Files quick help/);
+        assert.match(await panel.innerText(), /Files quick help/i);
         await page.keyboard.press('Escape');
 
         await open('barcode-scanner', menus['barcode-scanner']);
@@ -112,16 +112,16 @@ async function check(engine, name) {
 
         await open('editor', menus.editor);
         await page.locator('.cm-content').waitFor();
-        await command('go', 'Go to line…');
+        await command('edit', 'Go to Line…');
         await page.locator('.cm-panel').waitFor();
         assert.match(await page.locator('.cm-panel').innerText(), /Go to line/);
         await page.keyboard.press('Escape');
-        const wrap = page.locator('[data-applet="editor"] input[type="checkbox"]').first();
-        const wasWrapped = await wrap.isChecked();
+        const wrap = page.locator('[data-applet="editor"] [data-command="toggle-wrap"]').first();
+        const wasWrapped = await wrap.getAttribute('aria-pressed');
         await title('view').click();
-        assert.match(await panel.innerText(), /EDITOR/);
-        await panel.getByRole('menuitemcheckbox', { name: 'Wrap lines', exact: true }).click();
-        assert.equal(await wrap.isChecked(), !wasWrapped);
+        assert.match(await panel.innerText(), /EDITOR/i);
+        await panel.getByRole('menuitemcheckbox', { name: 'Wrap Lines', exact: true }).click();
+        assert.equal(await wrap.getAttribute('aria-pressed'), wasWrapped === 'true' ? 'false' : 'true');
         await page.locator('.md-filter').first().focus();
         await page.keyboard.press('Control+Alt+g');
         assert.equal(await page.locator('.cm-panel:visible').count(), 0);
@@ -129,14 +129,12 @@ async function check(engine, name) {
         await page.keyboard.press('Control+Alt+g');
         await page.locator('.cm-panel').waitFor();
         await page.keyboard.press('Escape');
+        /* The Editor keeps unsaved text across a close (its session), so
+           Close window closes it without asking. */
         await page.locator('.cm-content').fill('Menu migration check');
         await page.locator('.menubar-front .menubar-title').first().click();
         await panel.getByRole('menuitem', { name: 'Close window', exact: true }).click();
-        await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-        assert.equal(await page.locator('.win[data-win="editor"]').count(), 1);
-        await command('window', 'Close all windows');
-        await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-        assert.equal(await page.locator('.win[data-win="editor"]').count(), 1);
+        await page.locator('.win[data-win="editor"]').waitFor({ state: 'detached' });
 
         await page.goto(origin + '/page/barcode-scanner');
         await page.locator('.menubar-front').waitFor();

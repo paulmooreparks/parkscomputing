@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using ParksComputing.XferLang.Serialization;
 
 namespace ParksComputing.Engine.Pages.Services;
@@ -112,6 +113,12 @@ public class NavNode {
     [XferPropertyName("menu")]
     public NavNode[]? Menu { get; set; }
 
+    /// <summary>In the menu: a title's PUDL glyph, such as home, shown
+    /// before its words; titles with one fold to it first when the bar runs
+    /// short of room (PUDL 0.79.0, a preview).</summary>
+    [XferPropertyName("glyph")]
+    public string? Glyph { get; set; }
+
     /// <summary>The stable PUDL identity of a menu title.</summary>
     [XferPropertyName("menu-id")]
     public string? MenuId { get; set; }
@@ -146,6 +153,16 @@ public class NavNode {
     /// entries of that section.</summary>
     [XferPropertyName("from")]
     public string? From { get; set; }
+
+    /// <summary>The site's name, called on the root: the logo menu's title
+    /// when the menu has one, as parkscomputing.com's "Parks Computing",
+    /// and otherwise the root's own title, as a brochure site and a site
+    /// without a menu give it.</summary>
+    public string SiteName() => Menu?.FirstOrDefault()?.Title is { Length: > 0 } logo ? logo : Title ?? "";
+
+    /// <summary>The site's logo, called on the root: the logo menu's icon,
+    /// else the root's, else the favicon.</summary>
+    public string LogoIcon() => Menu?.FirstOrDefault()?.Icon ?? Icon ?? "/favicon-32x32.png";
 
     /// <summary>The icon of the page at an address, for its window in the
     /// taskbar and its pin: the nav's entry for it, or else the menu's,

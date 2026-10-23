@@ -1,10 +1,11 @@
 @page "/rss"
 @model ParksComputing.Engine.Pages.RssModel
+@inject Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Pages.Services.SiteOptions> SiteConfig
 @{
     Layout = "_Rss";
     Response.ContentType = "text/xml";
-    ViewData["Title"] = "Parks Computing";
-    ViewData["Link"] = "https://parkscomputing.com";
+    ViewData["Title"] = Model.Root?.SiteName() ?? "";
+    ViewData["Link"] = SiteConfig.Value.Origin ?? (Request.Scheme + "://" + Request.Host);
     ViewData["Description"] = Model.Description;
     ViewData["Language"] = Model.Language;
     ViewData["PubDate"] = Model.CreateDate.ToString("R");

@@ -1907,8 +1907,10 @@
                 cmd('save', 'Save', 'save', function () { save(); }, { disabled: function () { var t = current(); return !ready || !t || t.readOnly; }, reason: 'This file is read-only.' }),
                 cmd('save-as', 'Save As…', null, function () { saveAs(); }, { label: function () { var t = current(); return t && t.readOnly ? 'Save a Copy to ~…' : 'Save As…'; }, disabled: function () { return !ready || !current(); } }),
                 cmd('close-document', 'Close Document', null, function () { COMMANDS['close-document'](); }, { disabled: function () { return !ready || !current(); } }),
-                cmd('undo', 'Undo', 'undo', function () { CM.undo(view); }, { builtIn: 'Mod-z' }),
-                cmd('redo', 'Redo', 'redo', function () { CM.redo(view); }, { builtIn: 'Mod-y' }),
+                /* glyphOnly: a glyph every reader knows shows alone on the
+                   menu bar's ribbon (PUDL 0.79.0), its words its tooltip. */
+                cmd('undo', 'Undo', 'undo', function () { CM.undo(view); }, { builtIn: 'Mod-z', glyphOnly: true }),
+                cmd('redo', 'Redo', 'redo', function () { CM.redo(view); }, { builtIn: 'Mod-y', glyphOnly: true }),
                 cmd('find', 'Find and Replace…', 'search', openFind, { builtIn: 'Mod-f' }),
                 cmd('go-to-line', 'Go to Line…', null, goToLine, { builtIn: 'Mod-Alt-g' }),
                 cmd('toggle-wrap', 'Wrap Lines', 'wrap', function () { setWrap(!wrapOn, true); }, { checked: function () { return wrapOn; } }),
@@ -1922,7 +1924,7 @@
             ];
             FORMATS.forEach(function (f) {
                 table.push(cmd(f[0], f[1], f[2], function () { applyFormat(f[0]); }, {
-                    shortcut: f[3] ? keyLabel(f[3]) : undefined, hidden: function () { return !formatOffered; }
+                    shortcut: f[3] ? keyLabel(f[3]) : undefined, hidden: function () { return !formatOffered; }, glyphOnly: true
                 }));
             });
             /* The style menu has no glyph, so the style's name stays on the
@@ -1958,16 +1960,22 @@
         }
 
         /* The menus list the same commands by id, which PUDL (0.68.1) looks
-           up in the command table. */
+           up in the command table. Every command is in exactly one of them,
+           since the menu bar's ribbon (PUDL 0.79.0) is built from the menus:
+           File, Edit, Insert and Format, as GK Companion's Editor has them,
+           each tab a row of its commands, and the Editor's part of View in
+           the site's View menu. Headings and separators start the ribbon's
+           groups. */
         function menus() {
             var titles = [
-                { label: 'Editor', items: window.pcAppletIdentity(root) },
-                { id: 'file', label: 'File', items: ['new', 'open', 'save', 'save-as', '-', 'close-document'] },
-                { id: 'edit', label: 'Edit', items: ['undo', 'redo', '-', 'find', '-', 'insert-timestamp', 'insert-date', 'stamp-modified', '-', 'key-bindings'] }
+                { label: 'Editor', glyph: 'document', items: window.pcAppletIdentity(root) },
+                { id: 'file', label: 'File', glyph: 'file', items: ['new', 'open', 'save', 'save-as', '-', 'close-document'] },
+                { id: 'edit', label: 'Edit', glyph: 'pencil', items: ['undo', 'redo', '-', 'find', 'go-to-line', '-', 'key-bindings'] },
+                { id: 'insert', label: 'Insert', glyph: 'plus', items: ['link', 'insert', '-', 'insert-timestamp', 'insert-date', 'stamp-modified'] }
             ];
-            /* Format, as GK Companion's Editor has it, where there is formatting to do. */
-            if (formatOffered) { titles.push({ id: 'format', label: 'Format', items: ['bold', 'italic', 'strike', 'code', '-', 'style', '-', 'bullets', 'numbers', '-', 'link', 'insert'] }); }
-            return { titles: titles, into: { view: ['toggle-files', 'toggle-wrap', '-', 'view-text', 'view-visual', 'view-split', '-', 'preview'], go: ['go-to-line'] } };
+            /* Format, where there is formatting to do. */
+            if (formatOffered) { titles.push({ id: 'format', label: 'Format', glyph: 'paragraph', items: ['style', '-', 'bold', 'italic', 'strike', 'code', '-', 'bullets', 'numbers'] }); }
+            return { titles: titles, into: { view: ['toggle-files', 'toggle-wrap', '-', 'view-text', 'view-visual', 'view-split', '-', 'source', 'preview'] } };
         }
 
         /* === Start ======================================================== */

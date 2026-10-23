@@ -1,13 +1,12 @@
-/* Pins (Architecture/pins-design.md), in PUDL's pins group (0.45.0). The
-   menu bar draws the group from the hidden list the layout renders
-   (ul[data-menubar-pins]): its first item is the Pins menu, whose command
-   this script names for whatever is in front as the menu opens
-   (pudl:pins-menu), and each later item is a pin, a link with the icon and
-   title its window shows in the taskbar, which this script writes. The bar
-   redraws when the list changes, collapses the pins to Items when they
-   don't fit, and presses a pin's link on a plain press, which opens the
-   item's window in the window view. Each window's own menu offers Pin or
-   Unpin too.
+/* Pins (Architecture/pins-design.md), in the pins bar at the top bar's
+   right (PUDL 0.79.0, Architecture/pudl-0.79-integration.md): a folding
+   toolbar whose one group holds a button a pin, its window's picture and
+   its title, and a resident applet, pin-bar, whose Pins menu stays in the
+   menu bar with Pin this window (or page) and Manage pins. The layout
+   draws a signed-in reader's pins; this script draws a guest's, and draws
+   every reader's again as they change. A plain press on a pin opens the
+   item's window in the window view, and its page elsewhere. Each window's
+   own menu offers Pin or Unpin too.
 
    A signed-in reader's pins are their account's: the page carries them
    (#pc-pins-data) and a change is saved with PUT /api/account/pins. A
@@ -16,10 +15,10 @@
 (function () {
     'use strict';
 
-    var list = document.querySelector('[data-menubar-pins]');
-    var command = list && list.querySelector('[data-pin-command]');
+    var bar = document.querySelector('.pin-bar');
+    var group = bar && bar.querySelector('[data-pins-group]');
     var dataEl = document.getElementById('pc-pins-data');
-    if (!list || !command || !dataEl) { return; }
+    if (!group || !dataEl) { return; }
     var data = {};
     try { data = JSON.parse(dataEl.textContent) || {}; } catch (err) { data = {}; }
 
@@ -156,13 +155,17 @@
         return true;
     }
 
-    /* === The pins list the menu bar draws ============================== */
+    /* === The pins bar ===================================================== */
 
-    /* A pin as the menu bar reads it: a link to its page, holding its icon
-       (an image, or the applet glyph, as the taskbar shows) and its title. */
-    function pinItem(p) {
-        var li = document.createElement('li'), a = document.createElement('a');
+    /* A pin as the bar shows it, as the layout draws one: a link to its
+       page, holding its picture (an image, or the applet glyph, as the
+       taskbar shows) and its title as the toolbar's words. */
+    function pinButton(p) {
+        var a = document.createElement('a');
+        a.className = 'btn btn-sm';
         a.href = hrefOf(p);
+        a.setAttribute('data-pin-key', p.key);
+        if (p.chapter) { a.setAttribute('data-pin-chapter', p.chapter); }
         var icon;
         if (p.icon || !p.applet) {
             icon = document.createElement('img');
@@ -174,24 +177,32 @@
             icon.style.setProperty('--glyph', 'var(--glyph-app)');
             icon.setAttribute('aria-hidden', 'true');
         }
-        a.appendChild(icon);
-        a.appendChild(document.createTextNode(' ' + p.title));
-        /* The bar presses this link on a plain press; the window view opens
-           the item's window instead of leaving the page. */
-        a.addEventListener('click', function (e) {
-            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) { return; }
-            if (open(p)) { e.preventDefault(); }
-        });
-        li.appendChild(a);
-        return li;
+        var words = document.createElement('span');
+        words.className = 'toolbar-words';
+        words.textContent = p.title;
+        a.append(icon, words);
+        return a;
     }
 
-    /* Writes the pins after the Pins menu, which the menu bar redraws from,
-       and tells whoever is listening, such as the Pins applet. */
+    /* A plain press on a pin opens the item's window in the window view
+       rather than leaving the page; any other press follows the link. */
+    group.addEventListener('click', function (e) {
+        var a = e.target.closest('a[data-pin-key]');
+        if (!a || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) { return; }
+        var p = { key: a.getAttribute('data-pin-key'), chapter: a.getAttribute('data-pin-chapter') || null };
+        var i = indexOf(p);
+        if (i >= 0 && open(pins[i])) { e.preventDefault(); }
+    });
+
+    /* The Pins menu's rows depend on the pins and on what is in front. */
+    function refreshMenu() { if (window.pudlMenubar && window.pudlMenubar.refresh) { window.pudlMenubar.refresh(); } }
+
+    /* Writes the pins into the bar, which folds again as they change, and
+       tells whoever is listening, such as the Pins applet. */
     var listeners = [];
     function render() {
-        while (list.children.length > 1) { list.removeChild(list.lastElementChild); }
-        pins.forEach(function (p) { list.appendChild(pinItem(p)); });
+        group.replaceChildren.apply(group, pins.map(pinButton));
+        refreshMenu();
         listeners.slice().forEach(function (fn) { try { fn(pins.slice()); } catch (err) { if (window.console) { console.warn('pins:', err); } } });
     }
 
@@ -213,16 +224,34 @@
         onChange: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
     };
 
-    /* The Pins menu's command names what is in front as the menu opens:
-       Pin "title" or Unpin "title", there but unavailable when nothing
-       pinnable is. */
-    var front = null;
-    list.addEventListener('pudl:pins-menu', function () {
-        front = current();
-        command.textContent = !front ? 'Pin' : (indexOf(front) >= 0 ? 'Unpin “' : 'Pin “') + front.title + '”';
-        command.disabled = !front;
-    });
-    command.addEventListener('click', function () { if (front) { toggle(front); } });
+    /* The Pins menu, from the resident applet pin-bar, whose root is the
+       pins bar (PUDL 0.79.0): Pin this window, ticked while what is in
+       front is pinned and unavailable when nothing pinnable is, and Manage
+       pins, which opens the pins manager. */
+    if (window.pudlApplets && window.pudlApplets.register) {
+        window.pudlApplets.register('pin-bar', {
+            init: function () {
+                return {
+                    menus: function () {
+                        var front = current();
+                        return { titles: [
+                            { id: 'pins', label: 'Pins', glyph: 'pin', items: [
+                                { label: desktop() ? 'Pin this window' : 'Pin this page', glyph: 'pin', checked: !!(front && indexOf(front) >= 0),
+                                  disabled: !front, reason: 'Nothing that can be pinned is in front', run: function () { var f = current(); if (f) { toggle(f); } } },
+                                '-',
+                                { label: 'Manage pins…', glyph: 'gear', run: function () {
+                                    if (desktop()) { window.pudlWindows.open('pins'); } else { location.href = '/pins'; }
+                                } }
+                            ] }
+                        ] };
+                    },
+                    destroy: function () { }
+                };
+            }
+        });
+    }
+    /* What is in front changes with the windows, and the menu with it. */
+    document.addEventListener('pudl:windows-change', refreshMenu);
 
     /* === Pinning from a window, and keeping pins current ================= */
 

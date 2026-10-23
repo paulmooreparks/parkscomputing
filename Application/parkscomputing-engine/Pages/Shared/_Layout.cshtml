@@ -28,6 +28,11 @@
     // The desktop loads articles into windows, so it always needs the
     // highlighting assets.
     bool needsHighlight = isMarkdown || isDesktop;
+    // A signed-in reader's pins, from the database: drawn into the pins bar
+    // here, and given to js/pins.js below. A reader who is not signed in
+    // keeps pins in the browser only, which js/pins.js draws.
+    System.Collections.Generic.IReadOnlyList<ParksComputing.Engine.Identity.Pin>? accountPins = accountState.SignedIn
+        ? await PinStore.GetAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value) : null;
 }
 @functions {
     // A page of this site, which the window view can open as a window.
@@ -130,35 +135,18 @@
                page of this site opens as a window in the window view. The
                title's commands need script, so they are left out here. *@
             @{
-                var logoTitle = (PaletteNav.GetRoot().Menu ?? Array.Empty<NavNode>()).FirstOrDefault();
+                var navRoot = PaletteNav.GetRoot();
+                var logoTitle = (navRoot.Menu ?? Array.Empty<NavNode>()).FirstOrDefault();
                 var menuEntries = logoTitle?.Nav ?? Array.Empty<NavNode>();
+                var siteName = navRoot.SiteName();
             }
-            <nav class="site-menubar" data-menubar aria-label="Parks Computing">
+            <nav class="site-menubar" data-menubar data-menubar-ribbon aria-label="@siteName">
             <partial name="_MenuBar" />
-            @* The pins group (PUDL 0.45.0, Architecture/pins-design.md): the
-               Pins menu with the pinning command, then one link a pin, which
-               js/pins.js writes from the reader's pins. The menu bar draws
-               it between the site's menus and the front ones, and redraws it
-               as the list changes. *@
-            <ul data-menubar-pins hidden>
-                <li>Pins<ul>
-                    <li><button type="button" data-pin-command disabled>Pin</button></li>
-                    <li>-</li>
-                    @if (isDesktop)
-                    {
-                        <li><a href="/?open=pins&amp;top=pins" data-win-open="pins">Manage pins</a></li>
-                    }
-                    else
-                    {
-                        <li><a href="/pins">Manage pins</a></li>
-                    }
-                </ul></li>
-            </ul>
             <div class="menu site-menu">
-                <button type="button" class="brand topbar-pill menu-btn site-menu-btn" popovertarget="site-menu" aria-label="Parks Computing menu">
-                    <img src="~/favicon-32x32.png" alt="" /> <span class="site-menu-name">Parks Computing</span>
+                <button type="button" class="brand topbar-pill menu-btn site-menu-btn" popovertarget="site-menu" aria-label="@siteName menu">
+                    <img src="@navRoot.LogoIcon()" alt="" /> <span class="site-menu-name">@siteName</span>
                 </button>
-                <nav class="menu-panel site-menu-panel" id="site-menu" popover aria-label="Parks Computing">
+                <nav class="menu-panel site-menu-panel" id="site-menu" popover aria-label="@siteName">
                     @if (menuEntries.Length == 0)
                     {
                         <div class="md-row"><a class="md-item site-menu-item" href="/"><span class="site-menu-icon" aria-hidden="true"></span>Home</a></div>
@@ -194,6 +182,26 @@
                 </nav>
             </div>
             </nav>
+            @* The pins (Architecture/pins-design.md): a command bar at the top
+               bar's right, after the menu bar, which keeps its place whatever
+               window is in front (PUDL 0.79.0's folding toolbar, and a resident
+               applet, pin-bar, whose Pins menu stays in the menu bar; see
+               Architecture/pudl-0.79-integration.md). A signed-in reader's
+               pins are drawn here, so they work before any script runs; a
+               guest's live in the browser, and js/pins.js draws them. When
+               room runs short the pins lose their words, then fold into one
+               Pinned menu, before the menu bar folds. *@
+            <div class="toolbar pin-bar" role="toolbar" aria-label="Pins" data-toolbar-fold data-toolbar-captions="none"
+                 data-applet="pin-bar" data-applet-resident>
+                <div class="toolbar-group" data-toolbar-group="Pinned" data-toolbar-glyph="pin" data-pins-group>
+                    @foreach (var pin in accountPins ?? Array.Empty<ParksComputing.Engine.Identity.Pin>())
+                    {
+                        var pinHref = pin.Key == "account" ? "/account" : "/page/" + pin.Key + (pin.Chapter is null ? "" : "/" + pin.Chapter);
+                        var pinPicture = pin.Icon ?? (pin.Applet ? null : "/favicon-16x16.png");
+                        <a class="btn btn-sm" href="@pinHref" data-pin-key="@pin.Key" data-pin-chapter="@pin.Chapter">@if (pinPicture is not null) {<img src="@pinPicture" alt="" />} else {<span class="glyph" style="--glyph: var(--glyph-app)" aria-hidden="true"></span>}<span class="toolbar-words">@pin.Title</span></a>
+                    }
+                </div>
+            </div>
             @* The view switcher: one segmented control toward the far right.
                Each side is a link, because each view is a URL; ?view=window
                bypasses a classic default-view choice. The window view's dock
@@ -375,11 +383,9 @@
         <script src="~/js/status.js" defer asp-append-version="true"></script>
     }
     @{
-        // The reader's pins, as data for js/pins.js: an account's from the
-        // database, or none, meaning the browser keeps them. And on a page of
-        // the classic view, what pinning this page would pin.
-        System.Collections.Generic.IReadOnlyList<ParksComputing.Engine.Identity.Pin>? accountPins = accountState.SignedIn
-            ? await PinStore.GetAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value) : null;
+        // The reader's pins, as data for js/pins.js: an account's (worked out
+        // at the top), or none, meaning the browser keeps them. And on a page
+        // of the classic view, what pinning this page would pin.
         object? currentPin = null;
         if (!isDesktop && !isFrame)
         {
@@ -409,7 +415,6 @@
         pins = accountPins,
         current = currentPin
     }, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)).Replace("<", "\\u003c"))</script>
-    <script src="~/js/pins.js" defer asp-append-version="true"></script>
     <script src="~/js/continuity.js" asp-append-version="true"></script>
     <script src="~/js/snapshot.js" asp-append-version="true"></script>
     <script src="~/js/window-bar.js" asp-append-version="true"></script>
@@ -437,6 +442,9 @@
     <script src="~/js/pudl-host-kit.js" defer asp-append-version="true"></script>
     <script src="~/js/applets.js" defer asp-append-version="true"></script>
     <script src="/applets/registry.js" defer></script>
+    @* The pins, after PUDL's applets, since the Pins menu is a resident
+       applet (pin-bar) that js/pins.js registers. *@
+    <script src="~/js/pins.js" defer asp-append-version="true"></script>
     @* PUDL's action broker, then the site's own capabilities and the page's
        actions (js/site-actions.js). *@
     <script src="~/pudl/pudl-actions.js" defer asp-append-version="true"></script>
