@@ -130,4 +130,20 @@
         document.querySelectorAll('.book-contents[open]').forEach(function (d) { if (!d.closest('.win')) { d.open = false; } });
     }
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', foldOnPhone); } else { foldOnPhone(); }
+
+    /* The contents' width, as the reader sets it with the splitter beside
+       them (PUDL's pudl-split.js), kept in this browser under
+       pc-book-contents-w as the window view keeps its list's width, and
+       given to every book as --book-contents-w on the root, which the
+       stylesheet reads. _Layout.cshtml sets it before the first paint; a
+       return to the stylesheet's width (Enter or a double-click on the
+       handle) forgets it. */
+    document.addEventListener('pudl:split', function (e) {
+        if (!e.target.closest || !e.target.closest('.book-grid')) { return; }
+        var size = e.detail && e.detail.size, root = document.documentElement;
+        try {
+            if (size == null) { localStorage.removeItem('pc-book-contents-w'); root.style.removeProperty('--book-contents-w'); }
+            else { localStorage.setItem('pc-book-contents-w', Math.round(size) + 'px'); root.style.setProperty('--book-contents-w', Math.round(size) + 'px'); }
+        } catch (err) { /* the width is kept for this page only */ }
+    });
 })();

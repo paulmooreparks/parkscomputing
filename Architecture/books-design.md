@@ -54,6 +54,10 @@ Headings on every Markdown page now carry ids, in the GitHub style mdBook uses, 
 
 The classic page route takes any path after `/page/` and looked its file up without checking it, so a path holding `..` could name a file outside `content/`. Only `.md` and `.html` files could be read that way, but it was wrong. Every content path is now plain names joined by slashes, or the page is not found.
 
+## The contents' width
+
+The contents start 260px wide, and the reader can drag them wider or narrower with PUDL's splitter between them and the page (`pudl-split.js`; Paul asked for it on 2026-10-23, after long chapter titles on xfer.parkscomputing.com's specification were cut short). The book's grid is the split, and the handle is the column between the contents and the page. The width is kept in the browser under `pc-book-contents-w`, as the window view keeps its list's width under `pc-sidebar-w`, and every book takes it, on a classic page or in a window; `_Layout.cshtml` sets it before the first paint, and Enter or a double-click on the handle returns to 260px and forgets it. The handle is hidden while the contents are folded and where the contents stand above the page.
+
 ## Not yet
 
 - The terminal shows a book as its main page only. Its chapters could be a folder under the book.

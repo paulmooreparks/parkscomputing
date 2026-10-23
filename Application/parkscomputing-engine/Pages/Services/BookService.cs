@@ -189,7 +189,9 @@ public sealed class BookService {
     public static string RenderOpen(Book book, string current, string windowKey = "") {
         string Link(Chapter c, string cls = "") => BookService.Link(book, c, cls);
         var sb = new StringBuilder();
-        sb.Append($"<div class=\"book\" data-book=\"{Enc(book.Slug)}\" data-book-current=\"{Enc(current)}\"{(windowKey.Length > 0 ? $" data-book-window=\"{Enc(windowKey)}\"" : "")}><div class=\"book-grid\">");
+        // The grid is PUDL's split (pudl-split.js): the handle after the
+        // contents resizes them, and js/books.js keeps the width.
+        sb.Append($"<div class=\"book\" data-book=\"{Enc(book.Slug)}\" data-book-current=\"{Enc(current)}\"{(windowKey.Length > 0 ? $" data-book-window=\"{Enc(windowKey)}\"" : "")}><div class=\"book-grid split\">");
         // The contents: a disclosure, so it folds away, holding PUDL's tree.
         sb.Append("<details class=\"book-contents\" open><summary>Contents</summary>");
         sb.Append($"<ul class=\"tree book-tree\" aria-label=\"Contents of {Enc(book.Root.Title)}\">");
@@ -215,6 +217,7 @@ public sealed class BookService {
         }
         Tree(book.Root.Children);
         sb.Append("</ul></details>");
+        sb.Append("<div class=\"split-handle\" aria-label=\"Resize the contents\" data-split-min=\"160\" data-split-max=\"50%\"></div>");
         sb.Append("<div class=\"book-page\">");
         return sb.ToString();
     }

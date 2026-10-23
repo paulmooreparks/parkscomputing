@@ -112,11 +112,17 @@ body.desktop .site-header { position: static; flex: none; }
    room than a sidebar and a readable page together, a phone or a narrow
    window, the contents go above the page instead. */
 .book { container: book / inline-size; max-width: 1180px; margin: 0 auto; }
+/* The contents are as wide as PUDL's splitter between them and the page
+   makes them (--split-a, pudl-split.js), else as the reader last made them
+   in this browser (--book-contents-w, which js/books.js keeps), else 260px.
+   The handle is the column between them. */
 .book-grid {
-  display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
-  gap: var(--space-5); align-items: start;
+  display: grid; grid-template-columns: var(--split-a, var(--book-contents-w, 260px)) var(--space-5) minmax(0, 1fr);
+  gap: 0; align-items: start;
 }
-.book-grid:has(> .book-contents:not([open])) { grid-template-columns: auto minmax(0, 1fr); }
+.book-grid > .split-handle { width: auto; align-self: stretch; }
+.book-grid:has(> .book-contents:not([open])) { grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-5); }
+.book-grid:has(> .book-contents:not([open])) > .split-handle { display: none; }
 .book-contents {
   position: sticky; top: var(--space-3);
   max-height: calc(100vh - 2 * var(--space-3)); overflow: auto;
@@ -145,6 +151,7 @@ body.desktop .site-header { position: static; flex: none; }
 .book-pager a:hover .book-pager-title { text-decoration-thickness: 2px; }
 @container book (max-width: 720px) {
   .book-grid, .book-grid:has(> .book-contents:not([open])) { grid-template-columns: minmax(0, 1fr); }
+  .book-grid > .split-handle { display: none; }
   .book-contents { position: static; max-height: none; border-bottom: 1px solid var(--border); }
 }
 /* In a window the book fills the window's width, and its page keeps the
