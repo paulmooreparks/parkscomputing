@@ -88,6 +88,8 @@ const origin = process.env.UI_SITE || 'http://localhost';
         }
         await page.setViewportSize({ width: 390, height: 844 });
         await waitPane('detail');
+        // The pane may already say detail before resize handling updates the button.
+        await page.waitForFunction(() => document.querySelector('[data-sidebar-toggle]').getAttribute('aria-label') === 'Show sidebar');
         assert.equal(await toggle.getAttribute('aria-label'), 'Show sidebar');
         assert(await splitter.isVisible());
         await dragSplitter(100);
