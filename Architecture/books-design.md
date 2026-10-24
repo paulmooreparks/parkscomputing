@@ -58,6 +58,8 @@ The classic page route takes any path after `/page/` and looked its file up with
 
 The contents start 260px wide, and the reader can drag them wider or narrower with PUDL's splitter between them and the page (`pudl-split.js`; Paul asked for it on 2026-10-23, after long chapter titles on xfer.parkscomputing.com's specification were cut short). The book's grid is the split, and the handle is the column between the contents and the page. The width is kept in the browser under `pc-book-contents-w`, as the window view keeps its list's width under `pc-sidebar-w`, and every book takes it, on a classic page or in a window; `_Layout.cshtml` sets it before the first paint, and Enter or a double-click on the handle returns to 260px and forgets it. The handle is hidden while the contents are folded and where the contents stand above the page.
 
+Article windows fill their available body height even when the chapter is short (2026-10-24). The article wrappers and book grid grow with the window, and the chapter pane stretches to the grid's full height alongside its splitter. Longer chapters expand naturally and scroll in the window body. Narrow books keep their stacked contents layout.
+
 ## Not yet
 
 - The terminal shows a book as its main page only. Its chapters could be a folder under the book.

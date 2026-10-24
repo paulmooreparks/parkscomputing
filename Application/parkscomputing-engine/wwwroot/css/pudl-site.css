@@ -159,6 +159,13 @@ body.desktop .site-header { position: static; flex: none; }
 .win-body .post-content:has(.book) { max-width: none; }
 .win-body .book { max-width: none; }
 .win-body .book-contents { top: 0; }
+/* Books pass the available window height through to both panes. Long
+   chapters still expand the book and scroll in the window body. */
+.win-body:where(:has(> .post-content > .post-body > .book)) > .post-content > .post-body,
+.win-body .book { display: flex; flex-direction: column; }
+.win-body .book { flex: 1 0 auto; width: 100%; }
+.win-body .book-grid { flex: 1 0 auto; }
+.win-body .book-page { align-self: stretch; }
 
 /* === Article prose ======================================================== */
 .post-content {
@@ -452,7 +459,11 @@ body.desktop { height: 100dvh; }
 .icon-btn.is-disabled { opacity: .45; pointer-events: none; cursor: not-allowed; }
 
 /* Windowed article prose keeps the page's reading measure. */
-.win-body .post-content { margin-bottom: 1.5rem; padding-top: 0; }
+/* Short articles fill the available body height. Explicit width preserves
+   the reading measure when auto margins centre a flex item. */
+.win-body:where(:has(> .post-content)) { display: flex; flex-direction: column; }
+.win-body > .post-content { flex: 1 0 auto; display: flex; flex-direction: column; width: 100%; margin-bottom: 0; padding-top: 0; }
+.win-body > .post-content > .post-body { flex: 1 0 auto; }
 
 
 /* An applet that fills its window (data-applet-fit="fill", which PUDL's
