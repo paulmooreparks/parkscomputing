@@ -165,7 +165,14 @@ body.desktop .site-header { position: static; flex: none; }
 .win-body .book { display: flex; flex-direction: column; }
 .win-body .book { flex: 1 0 auto; width: 100%; }
 .win-body .book-grid { flex: 1 0 auto; }
-.win-body .book-page { align-self: stretch; }
+.win-body .book-page { align-self: stretch; display: flex; flex-direction: column; }
+.win-body .book-page > * { flex-shrink: 0; }
+/* The chapter links stay at the window's bottom while its text scrolls. */
+.win-body .book-pager {
+  position: sticky; bottom: 0; z-index: 1;
+  margin-top: auto; margin-bottom: 0; padding-bottom: var(--space-3);
+  background: var(--surface);
+}
 
 /* === Article prose ======================================================== */
 .post-content {

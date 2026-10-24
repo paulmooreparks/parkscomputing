@@ -60,6 +60,8 @@ The contents start 260px wide, and the reader can drag them wider or narrower wi
 
 Article windows fill their available body height even when the chapter is short (2026-10-24). The article wrappers and book grid grow with the window, and the chapter pane stretches to the grid's full height alongside its splitter. Longer chapters expand naturally and scroll in the window body. Narrow books keep their stacked contents layout.
 
+The Previous/Next footer sits at the bottom of the chapter pane in a window and stays visible there while the text scrolls (2026-10-24). Its opaque background keeps the links readable over scrolling text. Classic pages keep their footer after the chapter.
+
 ## Not yet
 
 - The terminal shows a book as its main page only. Its chapters could be a folder under the book.
