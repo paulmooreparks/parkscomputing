@@ -892,7 +892,7 @@
   /* Shares the topbar's room, sizes each thing that folds, and says how
      much the bar has. */
   function arrange(top, full, low) {
-    var kids = Array.prototype.filter.call(top.children, function (k) { return !k.hidden && k.getClientRects().length; });
+    var kids = Array.prototype.filter.call(top.children, function (k) { return !k.hidden && k.getClientRects().length && getComputedStyle(k).position !== 'absolute'; });
     var parts = [];
     kids.forEach(function (k, i) {
       var p = null;
@@ -917,10 +917,14 @@
       else p.el.style.flex = '0 0 ' + Math.ceil(p.full) + 'px';
     });
     var cs = getComputedStyle(top);
-    var end = top.getBoundingClientRect().right - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight);
-    var reach = -Infinity;
-    kids.forEach(function (k) { reach = Math.max(reach, k.getBoundingClientRect().right + (parseFloat(getComputedStyle(k).marginRight) || 0)); });
-    var deficit = reach - end;
+    var rtl = cs.direction === 'rtl', bounds = top.getBoundingClientRect();
+    var end = rtl ? bounds.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft) : bounds.right - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight);
+    var reach = rtl ? Infinity : -Infinity;
+    kids.forEach(function (k) {
+      var rect = k.getBoundingClientRect(), style = getComputedStyle(k);
+      reach = rtl ? Math.min(reach, rect.left - (parseFloat(style.marginLeft) || 0)) : Math.max(reach, rect.right + (parseFloat(style.marginRight) || 0));
+    });
+    var deficit = rtl ? end - reach : reach - end;
     parts.slice().sort(function (a, b) { return (a.order - b.order) || (a.i - b.i); }).forEach(function (p) {
       var give = deficit > 0.5 ? (p.all ? p.full - p.low : Math.min(deficit, p.full - p.low)) : 0;
       p.size = p.full - give;
@@ -1593,6 +1597,18 @@
     }
     ribbonRow.hidden = !on;
     var list = barTitles();
+    var chooser = ribbonRow.querySelector('.menubar-ribbon-tabs');
+    var needsChooser = on && built.classList.contains('menubar-title-glyphs') && list.some(function (x) { return hasTools(x) && x.classList.contains('menubar-glyphed'); });
+    if (chooser && !needsChooser) {
+      var chooserPanel = document.getElementById(chooser.getAttribute('aria-controls'));
+      var returnFocus = document.activeElement === chooser || (chooserPanel && chooserPanel.contains(document.activeElement));
+      if (chooserPanel && chooserPanel.matches(':popover-open')) chooserPanel.hidePopover();
+      if (returnFocus) {
+        var selected = chosenTitle(list, chosen.last) || chosenTitle(list, 'front') || chosenTitle(list, 'host') || list[0];
+        if (selected) selected.focus();
+      }
+    }
+    if (chooser) chooser.hidden = !needsChooser;
     var groups = built.querySelectorAll(':scope > .menubar-menu:not(.menubar-one)');
     function asMenu(x) {
       x.setAttribute('role', 'menuitem');
@@ -1841,19 +1857,22 @@
       if (measuring) return;
       measuring = requestAnimationFrame(function () {
         measuring = 0;
-        if (panel && panel.matches(':popover-open')) return;
         var was = level;
         fitStale = true;
         fit();
         if (was !== level) render(true);
+        else if (panel && panel.matches(':popover-open') && window.pudlMenu) window.pudlMenu.place(panel);
       });
     };
     var ro = window.ResizeObserver ? new ResizeObserver(refit) : null;
+    var direction = new MutationObserver(refit);
+    direction.observe(document.documentElement, { attributes: true, attributeFilter: ['dir'] });
     if (ro) ro.observe(bar);
     /* A topbar that shares its room is shared again as it changes width,
        and as a toolbar in it comes to need more room or less. */
     var top = bar.parentNode && bar.parentNode.classList && bar.parentNode.classList.contains('topbar') ? bar.parentNode : null;
     if (top) {
+      direction.observe(top, { attributes: true, attributeFilter: ['dir'] });
       if (ro) ro.observe(top);
       top.addEventListener('pudl:toolbar-fit', function (e) {
         var k = e.target;
