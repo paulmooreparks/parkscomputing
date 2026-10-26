@@ -588,3 +588,11 @@ All seventeen Chromium browser suites passed on the isolated test instance. The 
 The focused smoke check verifies the served stylesheet version, menu focus return on Escape, selection through the Ribbon tabs chooser, phone taskbar bounds, and the absence of page script errors across windowed and classic pages. It passed on the test instance and beta before production promotion. Production's old PUDL folder matched the 0.82.0 tag byte for byte and was backed up under `.local/beta/pudl085release/production-before`. Promotion copied only the PUDL assets and restarted the existing production container; the copied files match the 0.85.0 tag byte for byte.
 
 The focused smoke check also passed on production after the restart on 2026-10-25.
+
+### D91. PUDL 0.89.0
+
+The site upgrades from 0.85.0 to the latest tagged release, 0.89.0 (`565dcae78a04071dfd0e4df102676090604220dc`), using the complete tagged `dist` tree. The 0.87.1 ribbon chooser fix applies directly: Ribbon tabs stays hidden when the titles fit and becomes available when they fold. The intervening releases also add optional native host controls, title-bar status chips and taskbar reordering. The site enables none of those optional features in this upgrade. Native window controls require native host callbacks, and browser full-screen controls remain a separate proposal.
+
+Eight Chromium regression suites passed on the isolated test instance: site menus, desktop cleanup, applet sizing and frames, the three workspace snapshot suites, small packages and ribbon coverage. Focused checks passed on the test instance and beta for the served version, menu focus return, the ribbon chooser at wide and folded widths, phone taskbar bounds and page script errors. The complete vendored tree matches the release tag byte for byte. Production's prior files matched the 0.85.0 baseline and were backed up under `.local/beta/pudl089release/production-before`; promotion copied only PUDL assets and restarted the existing container on 2026-10-26.
+
+The focused checks also passed on production after startup, including the new chooser visibility behavior, with no page script errors.
