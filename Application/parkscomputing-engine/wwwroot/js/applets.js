@@ -28,12 +28,6 @@ var appletManifests = (function () {
 
 /* Identity actions use PUDL's documented capability snapshots. */
 pudlApplets.define('account', { src: '/js/account.js', css: '/css/account.css', page: '/account', ver: '21' });
-/* The Pin manager, reached from the Pins menu's Manage pins (js/pins.js). */
-pudlApplets.define('pins', { src: '/js/pins-manager.js', css: '/css/pins-manager.css', page: '/pins', ver: '2' });
-/* The pins bar in the top bar, a resident applet whose Pins menu stays in
-   the menu bar (PUDL 0.79.0); js/pins.js, which every page loads,
-   registers it. */
-pudlApplets.define('pin-bar', {});
 /* An article's discussion, under the article in both views and at
    /comments/{slug}, and the moderators' queue (Architecture/unified-identity-design.md, step 2). */
 pudlApplets.define('comments', { src: '/js/comments.js', css: '/css/comments.css', ver: '5' });

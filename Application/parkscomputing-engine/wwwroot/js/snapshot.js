@@ -163,7 +163,7 @@
         });
         /* A window still on its way keeps the place it had. */
         Object.keys(waiting).forEach(function (key) { if (!out[key]) { out[key] = waiting[key]; } });
-        var list = document.querySelector('.md-sidebar');
+        var list = document.querySelector('.md-sidebar, [data-start-items]');
         if (list) { out[' list'] = shown(list) ? { body: list.scrollTop } : before[' list'] || {}; }
         return out;
     }
@@ -212,7 +212,7 @@
         Object.keys(kept).forEach(function (key) {
             var place = kept[key] || {};
             if (key === ' list') {
-                var list = document.querySelector('.md-sidebar');
+                var list = document.querySelector('.md-sidebar, [data-start-items]');
                 if (list) { putBack(list, place.body, function () { return list.scrollHeight; }); }
                 return;
             }

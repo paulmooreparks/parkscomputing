@@ -15,7 +15,7 @@
        is a book window's chapter (js/books.js). */
     function isWinParam(key) {
         /* grid= keeps the snapped windows' moved splitters (PUDL 0.67.0). */
-        return key === 'open' || key === 'top' || key === 'min' || key === 'grid' || key.indexOf('p.') === 0 || key.indexOf('c.') === 0;
+        return key === 'open' || key === 'top' || key === 'min' || key === 'grid' || key === 'z.order' || key === 'tb.order' || key.indexOf('p.') === 0 || key.indexOf('c.') === 0;
     }
 
     /* The go palette's form carries the desktop's state to /go, so the new
@@ -173,6 +173,7 @@
                 : 'pc-list=; path=/; max-age=0; SameSite=Lax';
         }
         document.addEventListener('pudl:regions-swap', saveListState);
+        document.addEventListener('pc:catalog-change', saveListState);
         saveListState();
 
         /* The category and tag menus: a checkbox change rewrites the filter
@@ -181,6 +182,7 @@
            every swap, Back and Forward included, so the panel can stay
            open across any number of checks. */
         function syncFilterMenus() {
+            if (document.getElementById('site-launcher')) { return; }
             var q = new URLSearchParams(location.search);
             document.querySelectorAll('[data-filter-menu]').forEach(function (panel) {
                 var name = panel.getAttribute('data-filter-menu');
@@ -192,6 +194,7 @@
         }
 
         document.addEventListener('change', function (e) {
+            if (document.getElementById('site-launcher')) { return; }
             var panel = e.target.closest && e.target.closest('[data-filter-menu]');
             if (!panel) { return; }
             var form = document.querySelector('.md-filter-group');

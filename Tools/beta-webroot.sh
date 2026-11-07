@@ -24,7 +24,7 @@ DST="$REPO/.local/beta/wwwroot"
 # and editor that ask a signed-out reader to sign in again, and the pinned
 # PUDL release. A static deploy to the live tree makes these the
 # same there, after which they can leave this list.
-OVERLAY="js/accounts.js js/account.js js/applets.js js/pudl-host-kit.js js/continuity.js js/terminal.js js/sitefs.js js/terminal-text.js css/terminal.css js/editor.js css/editor.css js/files.js js/window-bar.js css/window-bar.css js/commands.js js/pins.js js/pins-manager.js css/account.css css/pins-manager.css css/pudl-site.css pudl js/settings.js css/settings.css js/config.js js/desktop.js js/books.js js/desktop-background.js js/admin-desktop.js js/comments.js js/moderation.js css/comments.css js/status.js js/status js/logs.js css/logs.css js/visits.js"
+OVERLAY="content/desktop-welcome.md js/accounts.js js/account.js js/applets.js js/pudl-host-kit.js js/continuity.js js/terminal.js js/sitefs.js js/terminal-text.js css/terminal.css js/editor.js css/editor.css js/files.js js/window-bar.js css/window-bar.css js/commands.js css/account.css css/pudl-site.css pudl js/settings.js css/settings.css js/config.js js/desktop.js js/snapshot.js js/launcher.js js/taskbar-pins.js js/books.js js/desktop-background.js js/admin-desktop.js js/comments.js js/moderation.js css/comments.css js/status.js js/status js/logs.js css/logs.css js/visits.js"
 
 rm -rf "$DST"
 mkdir -p "$DST"
@@ -39,5 +39,8 @@ for item in $OVERLAY; do
     rm -rf "$DST/$item"
     mkdir -p "$(dirname "$DST/$item")"
     cp -r "$SRC/$item" "$DST/$item"
+done
+for retired in js/pins.js js/pins-manager.js css/pins-manager.css; do
+    rm -f "$DST/$retired"
 done
 echo "Staged $DST from $LIVE, with $OVERLAY from this checkout."

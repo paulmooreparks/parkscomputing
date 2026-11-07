@@ -102,6 +102,7 @@ public static class SiteCommands {
         // site's defines. The ones that can be ticked start unticked, and
         // js/commands.js ticks them.
         Data();
+        if (command == "theme" && Arg("value") is { } choice) { Add("value", choice); }
         if (command is "theme" or "sidebar" or "sidebar-side") { Add("aria-checked", "false"); }
         return new("button", attrs);
     }

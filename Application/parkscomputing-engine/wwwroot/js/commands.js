@@ -54,6 +54,14 @@
     });
 
     /* === The site's commands ============================================ */
+    document.addEventListener('pudl:menu-choose', function (event) {
+        var button = event.detail && event.detail.button;
+        if (!button || button.getAttribute('data-site-command') !== 'theme') { return; }
+        if (['system', 'light', 'dark'].indexOf(event.detail.value) < 0) { event.preventDefault(); return; }
+        event.preventDefault();
+        run('theme', { value: event.detail.value }, button, event);
+        if (window.pudlMenubar) { pudlMenubar.refresh(); }
+    });
 
     /* theme { value }: light, dark, or system, PUDL's three. */
     define('theme', {
@@ -68,6 +76,7 @@
        is hidden, and disables it with the button. */
     define('sidebar', {
         run: function () {
+            if (window.pcLauncher) { window.pcLauncher.open(); return true; }
             var button = document.querySelector('[data-sidebar-toggle]');
             if (button && !button.disabled) { button.click(); }
             return true;
@@ -102,6 +111,7 @@
 
     define('find', {
         run: function () {
+            if (window.pcLauncher) { window.pcLauncher.open(); return true; }
             var filter = document.querySelector('.md-filter');
             if (filter) { filter.focus(); filter.select(); }
             return true;

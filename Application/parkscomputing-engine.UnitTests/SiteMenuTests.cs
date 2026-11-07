@@ -123,7 +123,7 @@ namespace ParksComputing.Engine.UnitTests {
             StringAssert.Contains(window, "<li data-menubar-if=\"windows\">Window<ul>");
             StringAssert.Contains(window, "<li><img src=\"/favicon-32x32.png\" alt=\"\" /> Parks Computing<ul>");
             StringAssert.Contains(window, "<li>-</li><li>Quick Links</li>");
-            StringAssert.Contains(window, "<li>Theme<ul><li><button");
+            StringAssert.Contains(window, "<li>Theme<ul data-menu-radio><li><button");
             var classic = MenuBuilder.ToHtml(MenuBuilder.Build(root.Menu, desktop: false, e => null, _ => Enumerable.Empty<MenuEntry>()));
             Assert.IsFalse(classic.Contains("Minimize all"));
         }

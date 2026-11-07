@@ -28,8 +28,28 @@
   function invokerOf(panel) {
     var anchor = panel.getAttribute('data-menu-anchor');
     var explicit = anchor ? document.getElementById(anchor) : null;
-    if (explicit) return explicit;
-    return panel.id ? document.querySelector('[popovertarget="' + CSS.escape(panel.id) + '"]') : null;
+    if (explicit) return shownFor(explicit);
+    var btn = panel.id ? document.querySelector('[popovertarget="' + CSS.escape(panel.id) + '"]') : null;
+    return btn ? shownFor(btn) : null;
+  }
+  /* A control folded away by its toolbar (0.96.9) is stood in for by the
+     control that shows it: its group's fold button, else the toolbar's
+     More button. A control that is showing, or that no toolbar folded,
+     is its own anchor. */
+  function shownFor(ctl) {
+    if (ctl.getClientRects().length) return ctl;
+    /* An item a folding status area has folded is stood in for by the
+       area's Status item (0.97.0). */
+    var bar = ctl.closest('.win-bar');
+    if (bar && ctl.hasAttribute('data-win-tab-over')) { var bm = bar.querySelector(':scope > .win-bar-more'); if (bm && bm.getClientRects().length) return bm; }
+    var area = ctl.closest('.status-area[data-status-fold]');
+    if (area) { var sf = area.querySelector(':scope > .status-fold'); return sf && sf.getClientRects().length ? sf : ctl; }
+    if (!ctl.closest('.toolbar')) return ctl;
+    var group = ctl.closest('[data-toolbar-group], .toolbar-group');
+    var fold = group && group.querySelector(':scope > .toolbar-fold > .menu-btn');
+    if (fold && fold.getClientRects().length) return fold;
+    var more = ctl.closest('.toolbar').querySelector(':scope > .toolbar-more > .menu-btn');
+    return more && more.getClientRects().length ? more : ctl;
   }
 
   function isOpen(panel) { return panel.matches(':popover-open'); }
@@ -38,8 +58,8 @@
      panel of any content anchored to the control that opened it, which is
      placed as a menu is but has no rows to move through. */
   var PLACED = '.menu-panel, .popover';
-  var openPanels = new Set(Array.prototype.filter.call(document.querySelectorAll(PLACED), isOpen));
-  function placed(el) { return !!(el && el.classList && (el.classList.contains('menu-panel') || el.classList.contains('popover'))); }
+  var openPanels = new Set(Array.prototype.filter.call(document.querySelectorAll(PLACED), function (p) { return placed(p) && isOpen(p); }));
+  function placed(el) { return !!(el && el.classList && !el.hasAttribute('data-start') && (el.classList.contains('menu-panel') || el.classList.contains('popover'))); }
   var opening = new WeakSet();
 
   var insets;
@@ -98,10 +118,14 @@
     panel.classList.toggle('sheet', narrow);
     panel.style.margin = '0';
     panel.style.inset = 'auto';
-    panel.style.width = narrow ? vw + 'px' : '';
     panel.style.left = narrow ? v.left + 'px' : '';
-    panel.style.minWidth = 'min(14rem, ' + vw + 'px)';
-    panel.style.maxWidth = narrow ? vw + 'px' : 'min(22rem, ' + vw + 'px)';
+    /* A panel marked data-menu-size="own" keeps the width its stylesheet
+       and its own script give it (0.96.5); any other takes a menu's. */
+    if (panel.getAttribute('data-menu-size') !== 'own') {
+      panel.style.width = narrow ? vw + 'px' : '';
+      panel.style.minWidth = 'min(14rem, ' + vw + 'px)';
+      panel.style.maxWidth = narrow ? vw + 'px' : 'min(22rem, ' + vw + 'px)';
+    }
 
     var bottomAnchor = Math.max(v.top, Math.min(v.bottom, r.bottom + GAP));
     var topAnchor = Math.max(v.top, Math.min(v.bottom, r.top - GAP));
@@ -253,7 +277,7 @@
   document.addEventListener('beforetoggle', function (e) {
     var panel = e.target;
     if (!placed(panel)) return;
-    if (e.newState === 'open') openPanels.add(panel); else openPanels.delete(panel);
+    if (e.newState === 'open') openPanels.add(panel); else { openPanels.delete(panel); panel.__pudlKeepScroll = null; }
     /* The filter starts empty every time the panel opens. beforetoggle
        fires for every opening, whereas the toggle events of a quick close
        and reopen can be merged into one, so the clearing belongs here. */
@@ -274,7 +298,7 @@
       /* A popover takes focus into its first field, or its first control,
          so the reader can use it at once; when it closes, the browser
          returns focus to the control that opened it. */
-      if (panel.classList.contains('popover') && (!panel.contains(document.activeElement) || document.activeElement.matches('.popover-close'))) {
+      if (panel.classList.contains('popover') && panel.getAttribute('data-popover-focus') !== 'manual' && (!panel.contains(document.activeElement) || document.activeElement.matches('.popover-close'))) {
         var first = panel.querySelector('[autofocus]') ||
           panel.querySelector('input:not([type=hidden]):not(:disabled), select:not(:disabled), textarea:not(:disabled)') ||
           panel.querySelector('button:not(.popover-close):not(:disabled), a[href], [tabindex]:not([tabindex="-1"])');
@@ -291,7 +315,12 @@
               Array.prototype.some.call(r.removedNodes, function (n) { return !n.classList || !n.classList.contains('menu-panel'); });
           });
           if (!records.length) return;
-          if (records.some(function (r) { return r.type === 'childList' && r.target === panel; })) panel.scrollTop = 0;
+          /* Rows drawn again for the same menu, while it stays open, keep
+             the place the reader had scrolled to; the script that drew
+             them says so with __pudlKeepScroll. Other new rows start at the
+             top. */
+          if (records.some(function (r) { return r.type === 'childList' && r.target === panel; })) panel.scrollTop = panel.__pudlKeepScroll != null ? panel.__pudlKeepScroll : 0;
+          panel.__pudlKeepScroll = null;
           place(panel);
         });
         watchers.set(panel, observer);
@@ -308,7 +337,7 @@
          does not focus a button when it is pressed does not know, so focus
          left on nothing, or left inside the closed popover, goes back to
          the control that opened it. */
-      if (panel.classList.contains('popover') && (!document.activeElement || document.activeElement === document.body || panel.contains(document.activeElement))) {
+      if (panel.classList.contains('popover') && panel.getAttribute('data-popover-focus') !== 'manual' && (!document.activeElement || document.activeElement === document.body || panel.contains(document.activeElement))) {
         var opener = invokerOf(panel);
         if (opener && opener.isConnected) opener.focus({ preventScroll: true });
       }
@@ -340,19 +369,19 @@
   }
 
   document.addEventListener('input', function (e) {
-    if (e.target.matches && e.target.matches('.menu-panel .md-filter')) applyFilter(e.target);
+    if (e.target.matches && !e.target.closest('[data-start]') && e.target.matches('.menu-panel .md-filter')) applyFilter(e.target);
   });
 
   document.addEventListener('keydown', function (e) {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     var t = e.target;
-    if (!t || !t.closest) return;
+    if (!t || !t.closest || t.closest('[data-start]')) return;
 
     /* Down on a menu button opens its panel if need be and moves into it. */
     var btn = t.closest('.menu-btn[popovertarget]');
     if (btn && e.key === 'ArrowDown') {
       var target = document.getElementById(btn.getAttribute('popovertarget'));
-      if (!target) return;
+      if (!target || target.hasAttribute('data-start')) return;
       e.preventDefault();
       if (!isOpen(target)) target.showPopover();
       /* The toggle event that places a panel comes a moment later, and a
@@ -521,8 +550,11 @@
      can see what the commands act on. One element is marked at a time.
 
      A row is the menu bar's: { label, run, disabled, checked, radio,
-     danger, detail, shortcut, glyph, items }, or '-' for a separator, or a
-     command's id, which pudl-commands.js turns into its row. A shortcut is
+     danger, detail, shortcut, glyph, icon, mark, items }, or '-' for a
+     separator, or a command's id, which pudl-commands.js turns into its
+     row. icon is the elements drawn in the glyph's place, an img or a
+     glyph span, and mark the elements drawn after the words, such as a
+     window's state mark, both cloned (0.97.7). A shortcut is
      shown in the platform's form and bound by nothing here, since the key
      belongs to whatever owns it, such as the field for Ctrl+C. Rows with
      items open a submenu beside them.
@@ -537,7 +569,7 @@
   function keyShown(k) {
     var parts = k.split('+'), key = parts.pop();
     if (MAC) {
-      var sym = { Ctrl: '⌃', Alt: '⌥', Shift: '⇧', Mod: '⌘' };
+      var sym = { Ctrl: 'âŒƒ', Alt: 'âŒ¥', Shift: 'â‡§', Mod: 'âŒ˜' };
       return ['Ctrl', 'Alt', 'Shift', 'Mod'].filter(function (m) { return parts.indexOf(m) >= 0; }).map(function (m) { return sym[m]; }).join('') + key;
     }
     return parts.map(function (m) { return m === 'Mod' ? 'Ctrl' : m; }).concat(key).join('+');
@@ -576,17 +608,15 @@
     }
   }
 
+  document.addEventListener('beforetoggle', function (e) {
+    if (e.newState === 'closed' && ctx.owner && e.target.contains(ctx.owner)) closeContext(0);
+  }, true);
+
   function ctxRows(panel) {
     return Array.prototype.slice.call(panel.querySelectorAll(':scope > .menu-action'));
   }
 
-  function buildContext(rows, at, label, level, parentRow) {
-    var panel = document.createElement('div');
-    panel.className = 'menu-panel context-menu';
-    panel.id = 'pudl-context-' + (++ctxUid);
-    panel.setAttribute('popover', 'manual');
-    panel.setAttribute('role', 'menu');
-    if (label) panel.setAttribute('aria-label', label);
+  function fillContext(panel, rows) {
     rows.forEach(function (c) {
       if (c === '-' || (c && c.separator)) {
         var hr = document.createElement('hr');
@@ -596,12 +626,24 @@
         return;
       }
       if (!c || typeof c.label !== 'string') return;
-      var r = document.createElement('button');
-      r.type = 'button';
+      var source = c.source && c.source.nodeType === 1 ? c.source : null;
+      var linked = source && source.tagName === 'A' && source.hasAttribute('href');
+      var r = document.createElement(linked ? 'a' : 'button');
+      if (linked) ['href','target','rel','download','hreflang','referrerpolicy'].forEach(function (name) { if (source.hasAttribute(name)) r.setAttribute(name, source.getAttribute(name)); });
+      else r.type = 'button';
       r.className = 'menu-action';
       r.setAttribute('role', 'menuitem');
       r.tabIndex = -1;
-      if (c.glyph) {
+      /* A row's picture is the elements it gives as icon, an img or a glyph
+         span, cloned, as the menu bar's rows take them (0.97.7); else its
+         glyph token. */
+      if (c.icon && c.icon.length) {
+        var icon = document.createElement('span');
+        icon.className = 'menubar-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        c.icon.forEach(function (n) { icon.appendChild(n.cloneNode(true)); });
+        r.appendChild(icon);
+      } else if (c.glyph) {
         var g = document.createElement('span');
         g.className = 'glyph';
         g.setAttribute('aria-hidden', 'true');
@@ -622,6 +664,15 @@
         words.appendChild(d);
       }
       r.appendChild(words);
+      /* A row's mark is the elements it gives as mark, cloned, after its
+         words: a window's state mark, for one (0.97.7). What they say to
+         assistive technology, they keep. */
+      if (c.mark && c.mark.length) {
+        var mark = document.createElement('span');
+        mark.className = 'menu-mark';
+        c.mark.forEach(function (n) { mark.appendChild(n.cloneNode(true)); });
+        r.appendChild(mark);
+      }
       if (c.checked !== undefined && c.checked !== null) {
         r.setAttribute('role', c.radio ? 'menuitemradio' : 'menuitemcheckbox');
         r.setAttribute('aria-checked', c.checked ? 'true' : 'false');
@@ -646,7 +697,59 @@
       r._row = c;
       panel.appendChild(r);
     });
-    (document.querySelector('dialog[open]:modal') || document.body).appendChild(panel);
+  }
+
+  /* Update an owned context menu without replacing its focused row. Stable
+     row ids also keep open submenus attached when labels or counts change. */
+  function updateContext(rows, mark) {
+    if (!mark || mark.nodeType !== 1 || !ctx.panels.length || ctx.marked !== mark) return false;
+    function update(panel, items) {
+      var oldRows = ctxRows(panel), focus = document.activeElement, index = oldRows.indexOf(focus);
+      var fresh = document.createElement('div'); fresh.id = panel.id + '-refresh-' + (++ctxUid); fillContext(fresh, rowsFrom(items, ctx.owner));
+      var retained = new Set(), cursor = panel.firstChild;
+      Array.from(fresh.children).forEach(function (made) {
+        var model = made._row, prior = model && oldRows.find(function (r) { return !retained.has(r) && (model.id ? r._row.id === model.id : r._row.label === model.label); });
+        if (prior && prior.tagName !== made.tagName) prior = null;
+        var row = prior || made;
+        if (prior) {
+          var id = prior.id, expanded = prior.getAttribute('aria-expanded'), controls = prior.getAttribute('aria-controls');
+          Array.from(prior.attributes).forEach(function (a) { prior.removeAttribute(a.name); });
+          Array.from(made.attributes).forEach(function (a) { prior.setAttribute(a.name, a.value); });
+          prior.id = id; prior.replaceChildren.apply(prior, Array.from(made.childNodes)); prior._row = model;
+          if (expanded === 'true' && model.items && model.items.length) { prior.setAttribute('aria-expanded', 'true'); prior.setAttribute('aria-controls', controls); }
+        }
+        retained.add(row); if (row !== cursor) panel.insertBefore(row, cursor); cursor = row.nextSibling;
+      });
+      Array.from(panel.children).forEach(function (r) { if (!retained.has(r)) r.remove(); });
+      var sub = ctx.panels[panel.__level + 1];
+      if (sub) {
+        if (!retained.has(sub.__parentRow) || !sub.__parentRow._row.items || !sub.__parentRow._row.items.length) {
+          var ownedFocus = ctx.panels.slice(panel.__level + 1).some(function (p) { return p.contains(focus); });
+          var parentIndex = oldRows.indexOf(sub.__parentRow); closeContext(panel.__level + 1);
+          if (ownedFocus) { var surviving = ctxRows(panel); if (surviving.length) surviving[Math.min(Math.max(parentIndex, 0), surviving.length - 1)].focus(); }
+        }
+        else { sub.setAttribute('aria-label', sub.__parentRow._row.label); update(sub, sub.__parentRow._row.items); }
+      }
+      if (index >= 0 && retained.has(focus)) focus.focus({ preventScroll: true });
+      if (index >= 0 && !retained.has(focus)) { var next = ctxRows(panel); if (next.length) next[Math.min(index, next.length - 1)].focus(); }
+      place(panel);
+    }
+    if (!rows || !rows.length) { closeContext(0); return true; }
+    update(ctx.panels[0], rows); return true;
+  }
+
+  function buildContext(rows, at, label, level, parentRow) {
+    var panel = document.createElement('div');
+    panel.className = 'menu-panel context-menu';
+    panel.id = 'pudl-context-' + (++ctxUid);
+    panel.setAttribute('popover', 'manual');
+    panel.setAttribute('role', 'menu');
+    if (label) panel.setAttribute('aria-label', label);
+    fillContext(panel, rows);
+    /* Keep context actions within their owner's popup. Native light dismissal
+       then treats choosing an auxiliary action as an inside interaction. */
+    var popup = ctx.owner && ctx.owner.closest && ctx.owner.closest('[popover]:popover-open');
+    (popup || document.querySelector('dialog[open]:modal') || document.body).appendChild(panel);
     if (parentRow) {
       panel.setAttribute('data-menu-placement', 'beside');
       panel.setAttribute('data-menu-anchor', parentRow.id);
@@ -661,10 +764,19 @@
     place(panel);
     panel.classList.remove('placing');
     ctx.panels.push(panel);
+    panel.addEventListener('toggle', function () {
+      /* Native dismissal can happen while focus is in another tab or on
+         the page. Retire the same logical menu when its popup closes. */
+      var level = ctx.panels.indexOf(panel);
+      if (level >= 0 && !isOpen(panel)) closeContext(level);
+    });
     panel.addEventListener('click', function (e) {
       var r = e.target.closest('.menu-action');
       if (!r || r.parentElement !== panel) return;
+      if (r.getAttribute('aria-disabled') === 'true') { e.preventDefault(); e.stopPropagation(); return; }
+      if (r.tagName === 'A' && (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey)) return;
       e.stopPropagation();
+      if (r.tagName === 'A') e.preventDefault();
       choose(panel, r);
     });
     /* The row under a pointer that moves takes focus. A menu that opens
@@ -690,6 +802,7 @@
     if (c.disabled) return;
     closeContext(0);
     if (typeof c.run === 'function') c.run();
+    else if (c.source && typeof c.source.click === 'function') c.source.click();
   }
 
   function ctxKey(panel, e) {
@@ -725,6 +838,7 @@
 
   function openAt(x, y, rows, opts) {
     opts = opts || {};
+    if (opts.toggle && opts.owner && ((ctx.panels.length && ctx.owner === opts.owner) || ctx.closedBy === opts.owner)) { ctx.closedBy = null; closeContext(0); return null; }
     closeContext(0);
     rows = rowsFrom(rows, opts.owner);
     if (!rows.some(function (r) { return r && r !== '-' && typeof r.label === 'string'; })) return null;
@@ -796,7 +910,8 @@
       return;
     }
     if (e.defaultPrevented || !e.target || !e.target.closest) return;
-    if (e.target.closest('.context-menu')) { e.preventDefault(); return; }
+    var sourceRow = e.target.closest('.context-menu .menu-action');
+    if (e.target.closest('.context-menu') && !(sourceRow && sourceRow._row && sourceRow._row.source)) { e.preventDefault(); return; }
     /* Shift with a right-click always gives the browser's own menu, with
        its spelling suggestions and its copy, paste and inspect, the thing
        readers miss most where a page replaces it. */
@@ -805,7 +920,7 @@
     if (!asked.rows.length) return;
     e.preventDefault();
     var at = asked.anchor ? anchorPoint(asked.anchor) : { x: e.clientX, y: e.clientY };
-    openAt(at.x, at.y, asked.rows, { edges: at, owner: document.activeElement && document.activeElement !== document.body ? document.activeElement : e.target, 'for': asked.mark });
+    openAt(at.x, at.y, asked.rows, { edges: at, owner: sourceRow && asked.mark ? asked.mark : document.activeElement && document.activeElement !== document.body ? document.activeElement : e.target, 'for': asked.mark });
   });
 
   document.addEventListener('keydown', function (e) {
@@ -813,14 +928,15 @@
     if (!summon) { ctx.quiet = false; return; }
     if (e.defaultPrevented) return;
     var target = document.activeElement && document.activeElement !== document.body ? document.activeElement : document.body;
-    if (target.closest && target.closest('.context-menu')) { e.preventDefault(); return; }
+    var sourceRow = target.closest && target.closest('.context-menu .menu-action');
+    if (target.closest && target.closest('.context-menu') && !(sourceRow && sourceRow._row && sourceRow._row.source)) { e.preventDefault(); return; }
     var at = keyboardPoint(target);
     var asked = ask(target, at.x, at.y, true);
     ctx.quiet = true;
     if (!asked.rows.length) return;
     e.preventDefault();
     if (asked.anchor) at = anchorPoint(asked.anchor);
-    openAt(at.x, at.y, asked.rows, { edges: at, owner: target, 'for': asked.mark });
+    openAt(at.x, at.y, asked.rows, { edges: at, owner: sourceRow && asked.mark ? asked.mark : target, 'for': asked.mark });
   });
 
   document.addEventListener('pointerdown', function (e) {
@@ -910,7 +1026,7 @@
      closes it, as a menu button does: the press's pointerdown has already
      closed the menu, and says which control had opened it. */
   document.addEventListener('pointerdown', function (e) {
-    if (!(e.target.closest && e.target.closest('[data-row-actions]'))) ctx.closedBy = null;
+    if (!(e.target.closest && e.target.closest('[data-row-actions], [data-menu-toggle]'))) ctx.closedBy = null;
   });
   document.addEventListener('click', function (e) {
     var btn = e.target.closest && e.target.closest('[data-row-actions]');
@@ -966,6 +1082,7 @@
     refresh: segMenus,
     place: function (panel) { if (isOpen(panel)) { place(panel); panel.classList.remove('placing'); } },
     openAt: openAt,
+    updateContext: updateContext,
     closeContext: function () { closeContext(0); }
   };
 
@@ -978,7 +1095,7 @@
     var chosen = t.closest('.menu-panel a.md-item, .menu-panel .menu-action');
     if (!chosen) return;
     var panel = chosen.closest('.menu-panel');
-    if (panel && isOpen(panel)) panel.hidePopover();
+    if (panel && !panel.hasAttribute('data-start') && isOpen(panel)) panel.hidePopover();
   });
 
   /* A filter menu: a panel marked

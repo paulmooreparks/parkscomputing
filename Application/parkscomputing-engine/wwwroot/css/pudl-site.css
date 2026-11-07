@@ -21,14 +21,9 @@
 
 /* === The status area ======================================================
    PUDL's status area (0.48.0) at the far right of the top bar, holding the
-   background applets' icons (Architecture/status-area-design.md). The pins
-   bar takes the bar's slack, so it, the view switch and the status area sit
-   at the far right (PUDL 0.79.0, Architecture/pudl-0.79-integration.md); a
-   page without the pins bar gives the slack to the view switch, as it did
-   before. */
-.pin-bar { margin-inline-start: auto; min-width: 0; }
+   background applets' icons (Architecture/status-area-design.md). The view
+   switch takes the bar's slack so it and the status area sit at the right. */
 .view-seg, .view-seg + .seg-menu { margin-inline-start: auto; }
-.pin-bar ~ :is(.view-seg, .seg-menu) { margin-inline-start: var(--space-2); }
 .status-area { margin-inline-start: var(--space-2); }
 
 [data-theme="dark"] {
@@ -436,6 +431,36 @@ body.desktop .site-header { position: static; flex: none; }
 /* PUDL owns the persistent divider, responsive geometry, and focus state. */
 body.desktop .md-layout { --md-sidebar-w: 300px; }
 body.desktop { height: 100dvh; }
+/* The content host uses PUDL's Start catalog and launcher controller.
+   Only the workspace composition and editorial background belong here. */
+body.desktop:has(.catalog-workspace) {
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr); overflow: hidden; margin: 0;
+}
+.catalog-workspace { --split-a: 560px; min-height: 0; overflow: hidden; }
+.catalog-slot { display: flex; min-height: 0; }
+.catalog-slot > .site-launcher:not([data-launcher]) { position: static; width: 100%; height: 100%; border: 0; }
+.catalog-reader { display: flex; flex-direction: column; position: relative; min-width: 0; min-height: 0; }
+.catalog-reader > .win-host { flex: 1; min-height: 0; width: 100%; height: 100%; position: relative; }
+.site-launcher .start-header { display: flex; align-items: center; gap: var(--space-2); }
+.site-launcher { container-type: inline-size; }
+.catalog-actions { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; gap: var(--space-2); }
+.catalog-actions .btn { white-space: nowrap; }
+.site-launcher[data-start-side="left"] .start-content { --split-a: 150px; }
+.site-launcher .start-name { white-space: normal; }
+.catalog-icon { width: 22px; height: 22px; flex: none; object-fit: contain; }
+.catalog-filters { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3) var(--space-3); flex: none; }
+.catalog-chips { display: flex; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
+.catalog-empty { padding: var(--space-3); }
+.catalog-size-fields { display: grid; gap: var(--space-3); }
+.catalog-size-fields input { width: 100%; }
+.site-launcher .start-footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--space-3); }
+.site-launcher [data-launcher-size] { grid-column: 2; align-self: end; white-space: nowrap; }
+.catalog-key-hint { min-width: 0; color: var(--text-muted); font-size: var(--text-2xs); white-space: nowrap; }
+@container (max-width: 420px) { .catalog-key-hint { display: none; } }
+@media (max-width: 700px) {
+  .site-launcher[data-start-side="left"] .start-content { --split-a: 104px; }
+}
 .sidebar-toggle .sidebar-glyph-pane { fill: currentColor; }
 .sidebar-toggle[aria-expanded="false"] .sidebar-glyph-pane { fill: none; }
 /* The filter's apply button is PUDL's .md-filter-group since 0.11.0. */

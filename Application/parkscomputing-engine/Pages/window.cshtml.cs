@@ -75,6 +75,7 @@ public class WindowModel : PageModel {
         var shape = WindowViewModel.DefaultPlacement(node?.Win);
         Window = new WindowViewModel {
             Key = article.Slug,
+            Destination = WindowViewModel.DestinationFor(slug),
             Title = article.Title,
             BodyHtml = article.BodyHtml,
             // A book's page link follows its chapter, which js/books.js
@@ -82,6 +83,7 @@ public class WindowModel : PageModel {
             // chapters' own, so the window shows none.
             PageUrl = bookSlug is not null && !string.IsNullOrEmpty(chapter) && BookService.IsSafePath(chapter) ? $"/page/{slug}/{chapter}" : $"/page/{slug}",
             OwnDocument = article.RequiresOwnDocument,
+            IsApplet = article.IsApplet,
             Tags = article.IsApplet ? Array.Empty<string>() : node?.Tags ?? Array.Empty<string>(),
             Created = article.IsApplet || bookSlug is not null ? null : node?.Date,
             Updated = article.IsApplet || bookSlug is not null ? null : node?.Updated,

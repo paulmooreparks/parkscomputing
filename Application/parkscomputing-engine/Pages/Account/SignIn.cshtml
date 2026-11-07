@@ -56,16 +56,16 @@
                 }
             </div>
             <partial name="_Challenge" model="ParksComputing.Engine.Identity.Turnstile.SignInAction" />
+            <div class="account-alt">
+                <p>Added a passkey to your account? Use it instead of email.</p>
+                <p><button class="btn" type="button" data-passkey="signin">Sign in with a passkey</button></p>
+                <p class="form-error" data-passkey-status role="alert" hidden></p>
+            </div>
             <div class="dialog-actions">
                 <a class="btn" href="@Model.Back" data-account-cancel>Cancel</a>
                 <button class="btn btn-primary" type="submit">Email me a link</button>
             </div>
         </form>
-        <div class="account-alt">
-            <p>Added a passkey to your account? Use it instead of email.</p>
-            <p><button class="btn" type="button" data-passkey="signin">Sign in with a passkey</button></p>
-            <p class="form-error" data-passkey-status role="alert" hidden></p>
-        </div>
     }
 </section>
 </dialog>

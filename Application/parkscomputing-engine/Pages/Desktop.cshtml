@@ -1,10 +1,21 @@
 @page "/"
 @using ParksComputing.Engine.Pages.Services
 @model ParksComputing.Engine.Pages.DesktopModel
+@inject ParksComputing.Engine.Identity.AccountMenu LauncherAccountMenu
+@inject Microsoft.Extensions.Configuration.IConfiguration LauncherConfiguration
 @{
     Layout = "_Layout";
     ViewData["Title"] = Model.Root.SiteName();
     ViewData["Desktop"] = true;
+    ViewData["Launcher"] = true;
+    var launcherAccount = await LauncherAccountMenu.StateAsync(Model.HttpContext);
+    var catalogKeys = (Model.Root.Nav ?? Array.Empty<NavNode>())
+        .SelectMany(n => n.Nav is { Length: > 0 } ? n.Nav : new[] { n }).Select(n => n.Slug).ToHashSet();
+    var extraTools = SiteMenu.Build(Model.Root, true, LauncherConfiguration["Site:Stage"], launcherAccount.Roles)
+        .Where(t => t.Id == "applets").SelectMany(t => t.Entries)
+        .Where(e => e.Kind == MenuEntryKind.Item && e.Element is not null
+            && e.Element.Attributes.Any(a => a.Key == "data-win-open" && !string.IsNullOrEmpty(a.Value))
+            && !catalogKeys.Contains(e.Element.Attributes.FirstOrDefault(a => a.Key == "data-win-open").Value));
     // The dock and the window-wide actions stand at the foot of the window
     // area (Pages/Shared/_WindowBar.cshtml), rendered as the address has them.
     var windowBar = new ParksComputing.Engine.Pages.Models.WindowBarModel(
@@ -20,196 +31,139 @@
 }
 
 @{
-    void RenderRow(NavNode node)
+    void RenderRow(NavNode node, string category)
     {
-        @* Under the title: the date and the description, each when there is
-           one, as two muted lines. *@
+        var key = IsInternal(node) ? node.Slug : node.Frame ? ArticleContentService.ExternalKey(node) : null;
+        var destination = IsInternal(node) ? ParksComputing.Engine.Pages.Models.WindowViewModel.DestinationFor(key!) : null;
         var date = NavService.EffectiveDate(node)?.ToString("d MMMM yyyy");
-        var description = node.Description;
-        if (IsInternal(node))
-        {
-            var key = node.Slug!;
-            var active = key == Model.TopKey;
-            @* data-tags lets the live filter match what the row does not show. *@
-            <div class="md-row @(active ? "active" : null)" id="row-@key"
-                 @(node.Tags is { Length: > 0 } ? Html.Raw($"data-tags=\"{System.Net.WebUtility.HtmlEncode(string.Join(" ", node.Tags).ToLowerInvariant())}\"") : null)>
-                <a class="md-item" href="@(node.Url ?? $"/page/{key}")" data-win-open="@key"
-                   title="@node.Description" aria-current="@(active ? "true" : null)">
-                    @node.Title
-                    @if (!string.IsNullOrEmpty(date))
-                    {
-                        <span class="md-meta">@date</span>
-                    }
-                    @if (!string.IsNullOrEmpty(description))
-                    {
-                        <span class="md-meta md-desc">@description</span>
-                    }
-                </a>
-            </div>
-            @* The same child rows the script renders, so a URL with child
-               windows open lists them without script. The script replaces
-               rows carrying data-win-child as the state changes. *@
-            if (Model.ChildrenOf.TryGetValue(key, out var children))
-            {
-                foreach (var child in children)
-                {
-                    <div class="md-row md-row-child @(child.Key == Model.TopKey ? "active" : null)" data-win-child="@child.Key">
-                        <a class="md-item" href="?open=@string.Join(",", Model.OpenKeys)&top=@child.Key"
-                           aria-current="@(child.Key == Model.TopKey ? "true" : null)">@child.Title</a>
-                    </div>
-                }
-            }
-        }
-        else
-        {
-            @* An external marked frame ~true opens as a framed window; the
-               href stays the destination for no-script and classic. *@
-            var extKey = node.Frame ? ParksComputing.Engine.Pages.Services.ArticleContentService.ExternalKey(node) : null;
-            <div class="md-row">
-                <a class="md-item" href="@node.Url" target="_blank" rel="noopener" title="@node.Description"
-                   @(extKey is null ? null : Html.Raw($"data-win-open=\"{extKey}\""))>
-                    @node.Title <span class="md-meta">@(node.Description ?? node.Url)</span>
-                </a>
-            </div>
-        }
+        <li class="md-row" data-start-item data-start-category="@category" data-win-pin-target="@destination"
+            data-win-destination-provider="@(destination is not null ? "content" : null)"
+            data-start-keywords="@string.Join(" ", node.Tags ?? Array.Empty<string>())"
+            data-catalog-tags="@System.Text.Json.JsonSerializer.Serialize(node.Tags ?? Array.Empty<string>())"
+            hidden="@(!Model.ShowSection(category) || !Model.RowMatches(node))">
+            <a class="md-item start-item" href="@(node.Url ?? $"/page/{node.Slug}")"
+               data-win-open="@key" target="@(node.External ? "_blank" : null)" rel="@(node.External ? "noopener" : null)">
+                @if (node.Icon is not null) { <img class="catalog-icon" src="@node.Icon" alt="" /> }
+                else { <span class="glyph" style="--glyph: var(--glyph-file)" aria-hidden="true"></span> }
+                <span class="start-copy"><span class="start-name">@node.Title</span>
+                    @if (date is not null) { <span class="md-meta">@date</span> }
+                    @if (node.Description is not null) { <span class="md-meta">@node.Description</span> }
+                </span>
+            </a>
+            @if (destination is not null) { <button type="button" data-row-actions aria-label="Actions for @node.Title"></button> }
+        </li>
     }
 }
 
-@* data-md-peek (PUDL 0.52.0): resting the pointer on the collapsed
-   sidebar's handle shows the list over the windows until the pointer
-   leaves. *@
-<div class="md-layout" data-md-persistent data-md-peek data-md-default-width="300" data-md-min="40" data-md-pane="@(Model.AnyVisible ? "detail" : "list")">
-    @* A stored sidebar width, and the side Settings puts the sidebar on,
-       apply before the first paint, per PUDL's 0.14.0 pattern; a later
-       script would let the defaults flash. *@
-    <script>
-        (function (layout) {
-            try {
-                if (localStorage.getItem('pc-sidebar-side') === 'end') { layout.setAttribute('data-md-side', 'end'); }
-                layout.toggleAttribute('data-md-collapsed', localStorage.getItem('pc-focus') === '1');
-                var w = localStorage.getItem('pc-sidebar-w');
-                if (w) { layout.style.setProperty('--md-sidebar-w', w); }
-            } catch (e) { /* the default width serves */ }
-        })(document.currentScript.parentElement);
-    </script>
-    <div class="md-body">
-        <nav class="md-sidebar" aria-label="Articles and pages">
-        @* The list's filter stands at the head of the list it filters
-           (PUDL 0.82.0's .md-sidebar-head; Paul, 2026-10-23), so it goes
-           wherever the list goes, folds away with it, and the windows have
-           the room a row across the page used to take. Under the filter,
-           the Categories and Tags menus and the button that clears every
-           filter; under those, the chips, which take no room when there
-           are none. The filter form, the clear button, the chips and the
-           list are separate regions, each swapped in by pudl-regions.js, so
-           a swap never replaces the box someone is typing in. *@
-        <div class="md-sidebar-head">
-        <form class="md-filter-group" data-region="filter" method="get" action="/" role="search">
-            @foreach (var kv in Model.FilterFormParams)
-            {
-                <input type="hidden" name="@kv.Key" value="@kv.Value" />
-            }
-            <input class="md-filter" type="search" name="q" value="@Model.Q"
-                   placeholder="Filter the list…" aria-label="Filter the list" />
-            <button class="icon-btn md-filter-go" type="submit" aria-label="Apply the filter" title="Apply the filter"></button>
-        </form>
-        <div class="md-sidebar-tools">
-        @* Multi-select menus, after the Andoneer board's workstream filter:
-           the popover stays open across checking (light dismiss closes it
-           on an outside click), each change submits the filter form, and
-           desktop.js re-syncs the boxes from the URL after every swap. *@
-        <div class="menu">
-            <button class="btn btn-sm menu-btn" type="button" popovertarget="cat-filter-menu">Categories</button>
-            <nav class="menu-panel" id="cat-filter-menu" popover aria-label="Filter by category" data-filter-menu="cat">
-                @foreach (var (slug, title) in Model.Categories)
-                {
-                    <label class="check menu-check"><input type="checkbox" value="@slug"
-                           @(Model.SelectedCats.Contains(slug) ? Html.Raw("checked") : null)> @title</label>
-                }
-            </nav>
-        </div>
-        <div class="menu">
-            <button class="btn btn-sm menu-btn" type="button" popovertarget="tag-filter-menu">Tags</button>
-            <nav class="menu-panel" id="tag-filter-menu" popover aria-label="Filter by tag" data-filter-menu="tag">
-                @foreach (var tag in Model.AllTags)
-                {
-                    <label class="check menu-check"><input type="checkbox" value="@tag"
-                           @(Model.SelectedTags.Contains(tag) ? Html.Raw("checked") : null)> @tag</label>
-                }
-            </nav>
-        </div>
-        @* The button that clears every filter (Paul, 2026-10-01), at the
-           row's end, dimmed when there is nothing to clear. It keeps the
-           windows. Its address is the unfiltered list, so it works without
-           script. A region of its own, so its address and state follow the
-           filters. *@
-        <a class="icon-btn md-chips-clear filter-clear @(Model.ActiveFilterCount == 0 ? "is-disabled" : null)" data-region="clear"
-           href="@Model.ClearFiltersUrl"
-           @(Model.ActiveFilterCount == 0 ? Html.Raw("aria-disabled=\"true\" tabindex=\"-1\"") : null)
-           aria-label="Clear all filters" title="Clear all filters"><svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5.5"/><line x1="4.2" y1="11.8" x2="11.8" y2="4.2"/></svg></a>
-        </div>
-        @* Always present, so region swaps always find their counterpart;
-           PUDL gives it no room while it holds no chips. *@
-        <div class="md-chips" data-region="chips">
-        @foreach (var cat in Model.SelectedCats)
-        {
-            <span class="filter-chip"><span class="filter-chip-kind">category</span> @Model.CatTitleOf(cat) <a class="filter-chip-x" href="@Model.RemoveCatUrl(cat)" aria-label="Remove the @Model.CatTitleOf(cat) category filter"></a></span>
-        }
-        @foreach (var tag in Model.SelectedTags)
-        {
-            <span class="filter-chip"><span class="filter-chip-kind">tag</span> @tag <a class="filter-chip-x" href="@Model.RemoveTagUrl(tag)" aria-label="Remove the @tag tag filter"></a></span>
-        }
-        @if (Model.Q is not null)
-        {
-            <span class="filter-chip"><span class="filter-chip-kind">filter</span> @Model.Q <a class="filter-chip-x" href="@Model.RemoveQUrl" aria-label="Remove the text filter"></a></span>
-        }
-        </div>
-        </div>
-        <div class="site-list" data-region="list">
-            @* Every section in sitenav.xfer's order, Articles among them,
-               each row in the order the file gives. *@
-            @if (Model.Root.Nav is not null)
-            {
-                foreach (var navSection in Model.Root.Nav)
-                {
-                    if (!Model.ShowSection(navSection.Slug)) { continue; }
-                    var rows = navSection.Nav is { Length: > 0 }
-                        ? navSection.Nav.Where(Model.RowMatches).ToList()
-                        : (Model.RowMatches(navSection) ? new List<NavNode> { navSection } : new List<NavNode>());
-                    if (rows.Count == 0) { continue; }
-                    <div class="md-section-label">@navSection.Title</div>
-                    foreach (var row in rows)
+<div class="split catalog-workspace" id="catalog-workspace">
+    <div class="split-pane catalog-slot" id="catalog-slot">
+        <section class="menu-panel start-menu site-launcher" id="site-launcher" data-start data-start-side="left" aria-labelledby="catalog-title">
+            <header class="popover-head start-header">
+                <h2 class="visually-hidden" id="catalog-title">@Model.Root.SiteName()</h2>
+                <nav class="catalog-actions" aria-label="Launcher actions">
+                    <a class="btn btn-sm" href="/page/settings" data-win-open="settings" data-launcher-activate><span class="glyph" style="--glyph:var(--glyph-gear)" aria-hidden="true"></span>Settings</a>
+                    @if (launcherAccount.Enabled)
                     {
-                        RenderRow(row);
+                        if (launcherAccount.SignedIn)
+                        {
+                            <a class="btn btn-sm" href="/account" data-win-open="account" data-launcher-activate><span class="glyph" style="--glyph:var(--glyph-account)" aria-hidden="true"></span>Your account</a>
+                        }
+                        else
+                        {
+                            <a class="btn btn-sm" href="/account/signin" data-account-dialog data-launcher-activate><span class="glyph" style="--glyph:var(--glyph-account)" aria-hidden="true"></span>Sign in</a>
+                        }
                     }
-                }
-            }
-        </div>
-        </nav>
-        <div class="md-resize" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Article sidebar" data-md-wide-help="Drag to resize or collapse the sidebar. Use arrow keys to resize, Home to collapse, End to expand, or Enter to toggle." data-md-narrow-help="Drag to switch between the article list and windows, or press Enter."></div>
-        @* tabindex: the pane is a tab stop so the keyboard can scroll it
-           (PUDL 0.22.1). *@
-        <div class="md-detail reader-stage" tabindex="0">
-            <div class="reader-col">
-                <main class="win-host">
-                    <div class="reader-empty">
-                        @if (Model.WelcomeHtml is not null)
-                        {
-                            @* Copy lives at content/desktop-welcome.md. *@
-                            <div class="card welcome-card">
-                                @Html.Raw(Model.WelcomeHtml)
-                            </div>
-                        }
-                    </div>
-                    <div class="win-layer" data-win-layer data-win-src="/window/{key}">
-                        @foreach (var win in Model.Windows)
-                        {
-                            <partial name="_Window" model="win" />
-                        }
-                    </div>
-                </main>
+                </nav>
+                <button class="icon-btn" type="button" data-launcher-pin aria-label="Keep launcher open" title="Pin launcher" aria-pressed="true"><span class="glyph" style="--glyph:var(--glyph-pin)" aria-hidden="true"></span></button>
+                <button class="icon-btn popover-close" type="button" data-launcher-close aria-label="Close launcher"></button>
+            </header>
+            <div class="start-search">
+                <form class="md-filter-group start-search-form" method="get" action="/" role="search">
+                    @foreach (var kv in Model.FilterFormParams) { <input type="hidden" name="@kv.Key" value="@kv.Value" /> }
+                    <input class="md-filter" data-start-query type="search" name="q" value="@Model.Q" placeholder="Find articles and applets…" aria-label="Search the catalog" autocomplete="off" />
+                    <button class="icon-btn md-filter-go" type="submit" aria-label="Open first result"></button>
+                </form>
+                <a class="btn btn-sm" href="@Model.ClearFiltersUrl" data-catalog-clear><span class="glyph" style="--glyph:var(--glyph-close)" aria-hidden="true"></span>Clear</a>
             </div>
-        </div>
+            <div class="catalog-filters">
+                <div class="menu">
+                    <button class="btn btn-sm menu-btn" type="button" popovertarget="tag-filter-menu">Tags</button>
+                    <nav class="menu-panel" id="tag-filter-menu" popover aria-label="Filter by tag" data-catalog-tag-menu>
+                        <form method="get" action="/">
+                        @foreach (var kv in Model.FilterFormParams.Where(kv => kv.Key != "tag")) { <input type="hidden" name="@kv.Key" value="@kv.Value" /> }
+                        @if (Model.Q is not null) { <input type="hidden" name="q" value="@Model.Q" /> }
+                        @foreach (var tag in Model.AllTags)
+                        {
+                            <label class="check menu-check"><input type="checkbox" name="tag" value="@tag" checked="@Model.SelectedTags.Contains(tag)"> @tag</label>
+                        }
+                        <noscript><button class="btn btn-sm" type="submit">Apply tags</button></noscript>
+                        </form>
+                    </nav>
+                </div>
+                <div class="catalog-chips" data-catalog-chips>
+                    @foreach (var tag in Model.SelectedTags)
+                    {
+                        <span class="filter-chip">@tag <a class="filter-chip-x" href="@Model.RemoveTagUrl(tag)" data-remove-tag="@tag" aria-label="Remove the @tag tag filter"></a></span>
+                    }
+                </div>
+            </div>
+            <div class="split start-content">
+                <nav class="split-pane start-categories" data-start-categories aria-label="Catalog categories">
+                    <ul class="row-list start-category-list">
+                        <li class="md-row"><a class="md-item start-category" href="@Model.CategoryUrl(null)" data-start-category-key=""><span data-start-label>All</span><span class="start-category-count" data-start-category-count></span></a></li>
+                        @foreach (var (slug, title) in Model.Categories)
+                        {
+                            <li class="md-row"><a class="md-item start-category" href="@Model.CategoryUrl(slug)" data-start-category-key="@slug"><span data-start-label>@title</span><span class="start-category-count" data-start-category-count></span></a></li>
+                        }
+                    </ul>
+                </nav>
+                <div class="split-handle" aria-label="Resize catalog categories" data-split-min="90" data-split-max="45%"></div>
+                <div class="split-pane start-items-pane">
+                    <div class="start-heading"><h3 data-start-heading>All</h3><span class="start-count-summary"><span data-start-count></span> items</span></div>
+                    <ul class="row-list start-items site-list" data-start-items>
+                        @foreach (var navSection in Model.Root.Nav ?? Array.Empty<NavNode>())
+                        {
+                            foreach (var node in navSection.Nav is { Length: > 0 } ? navSection.Nav : new[] { navSection }) { RenderRow(node, navSection.Slug ?? ""); }
+                        }
+                        @foreach (var tool in extraTools)
+                        {
+                            <li class="md-row" data-start-item data-start-category="applets" data-catalog-tags="[]"
+                                hidden="@(!Model.ShowSection("applets") || !Model.RowMatches(new NavNode { Title = tool.Label }))">
+                                @Html.Raw(tool.Element!.Open("md-item start-item"))<span class="glyph" style="--glyph:var(--glyph-app)" aria-hidden="true"></span><span class="start-copy">@tool.Label</span>@Html.Raw(tool.Element.Close())
+                            </li>
+                        }
+                    </ul>
+                    <p class="catalog-empty" data-start-empty hidden>No items match. Try another category or clear the filters.</p>
+                </div>
+            </div>
+            <footer class="popover-foot start-footer">
+                <span class="catalog-key-hint">↑↓ Browse · Enter Open · Esc Close</span>
+                <button class="btn btn-sm" type="button" data-launcher-size popovertarget="catalog-size"><span class="glyph" style="--glyph:var(--glyph-window)" aria-hidden="true"></span>Size</button>
+            </footer>
+            <div class="visually-hidden" data-start-announcement aria-live="polite"></div>
+            <section class="popover" id="catalog-size" popover data-launcher-size-panel aria-labelledby="catalog-size-title">
+                <header class="popover-head"><h3 id="catalog-size-title">Launcher size</h3></header>
+                <div class="popover-body catalog-size-fields">
+                    <label class="form-label">Width (px)<input class="form-input" type="number" min="280" max="2000" data-launcher-width /></label>
+                    <label class="form-label">Height (px)<input class="form-input" type="number" min="260" max="1600" data-launcher-height /></label>
+                    <button class="btn btn-sm" type="button" data-launcher-reset>Reset size</button>
+                </div>
+            </section>
+        </section>
     </div>
-    <partial name="_WindowBar" model="windowBar" />
+    <div class="split-handle catalog-divider" aria-label="Resize launcher" data-split-min="300" data-split-max="75%"></div>
+    <div class="split-pane reader-stage catalog-reader" tabindex="0">
+        <main class="win-host">
+            <div class="reader-empty">
+                @if (Model.WelcomeHtml is not null)
+                {
+                    <div class="card welcome-card">@Html.Raw(Model.WelcomeHtml)</div>
+                }
+            </div>
+            <div class="win-layer" data-win-layer data-win-taskbar-reorder data-win-src="/window/{key}">
+                @foreach (var win in Model.Windows) { <partial name="_Window" model="win" /> }
+            </div>
+        </main>
+    </div>
 </div>
+<partial name="_WindowBar" model="windowBar" />

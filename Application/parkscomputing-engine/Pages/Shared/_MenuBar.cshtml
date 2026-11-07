@@ -17,5 +17,21 @@
     // Which stage this server is, beta or production, for an entry's when
     // (Architecture/site-menu-design.md); production unless Site:Stage says otherwise.
     var stage = Config["Site:Stage"];
+    var titles = SiteMenu.Build(SiteNav.GetRoot(), desktop, AccountMenu.Entries(accountState, desktop), stage, accountState.Roles);
+    if (ViewData["Launcher"] as bool? == true)
+    {
+        var about = titles.Where(t => t.Id == "site").SelectMany(t => t.Entries)
+            .FirstOrDefault(e => e.Element?.Attributes.Any(a => a.Key == "data-win-open" && a.Value == "about") == true);
+        IReadOnlyList<MenuEntry> LauncherEntries(IReadOnlyList<MenuEntry> entries) => entries
+            .Where(e => e.Element?.Attributes.Any(a => a.Key == "data-site-command" && a.Value == "sidebar-side") != true)
+            .Select(e => e with {
+                Label = e.Element?.Attributes.Any(a => a.Key == "data-site-command" && a.Value == "sidebar") == true ? "Open launcher" : e.Label,
+                Entries = e.Entries is null ? null : LauncherEntries(e.Entries)
+            }).ToList();
+        titles = titles.Where(t => t.Id is not ("go" or "applets"))
+            .Select(t => t with { Entries = t.Id == "help" && about is not null
+                ? LauncherEntries(t.Entries).Concat(new[] { new MenuEntry(MenuEntryKind.Separator), about }).ToList()
+                : LauncherEntries(t.Entries) }).ToList();
+    }
 }
-@Html.Raw(MenuBuilder.ToHtml(SiteMenu.Build(SiteNav.GetRoot(), desktop, AccountMenu.Entries(accountState, desktop), stage, accountState.Roles)))
+@Html.Raw(MenuBuilder.ToHtml(titles))

@@ -107,17 +107,6 @@ public class ArticleContentService {
 
     /// <summary>An article prepared for a window: internal links become
     /// window openers.</summary>
-    /// <summary>The window key of the Pins applet (Architecture/pins-design.md),
-    /// which the site serves itself, as it does the Account applet. Its page
-    /// is /pins.</summary>
-    public const string PinsKey = "pins";
-
-    /// <summary>The Pins applet's window: an empty mount the applet fills
-    /// from the reader's pins (js/pins-manager.js), the same for everyone.</summary>
-    private static readonly ArticleWindowContent PinsWindow = new(PinsKey, "Pin manager",
-        "<div data-applet=\"pins\" data-applet-page=\"/pins\" aria-label=\"Pin manager\"><noscript><p>Managing pins needs JavaScript.</p></noscript></div>",
-        false, false, IsApplet: true, WindowSize: "content");
-
     /// <summary>The window key of the moderation queue
     /// (Architecture/unified-identity-design.md, step 2), served by the site
     /// itself on a site with accounts. Its page is /moderation.</summary>
@@ -163,7 +152,6 @@ public class ArticleContentService {
             return new ArticleWindowContent(policy.Slug, policy.Title, PrepareWindowBody(policy.Slug, policy.BodyHtml), false, false);
         }
         if (slug == AccountKey && AccountWindow() is { } account) { return account; }
-        if (slug == PinsKey) { return PinsWindow; }
         if (slug == ModerationKey && ModerationWindow() is { } moderation) { return moderation; }
         var raw = LoadRaw(slug);
         if (raw is null) { return null; }
@@ -400,14 +388,13 @@ public class ArticleContentService {
 
     /// <summary>Whether the window view has a window by this key: an article
     /// in content/, or one of the windows the site serves itself (the
-    /// privacy policy and terms, the Account applet, the Pin manager and the
+    /// privacy policy and terms, the Account applet and the
     /// moderation queue). This is the one place that decides whether a link
     /// inside a window opens a window, so every kind of window is known here
     /// rather than to each link.</summary>
     private bool IsWindow(string slug) =>
         ContentExists(slug)
         || (ParksComputing.Engine.Identity.PolicyDocuments.IsPolicy(slug) && _policies?.Get(slug) is not null)
-        || slug == PinsKey
         || (_accounts && (slug == AccountKey || slug == ModerationKey || slug == LogsKey || slug == VisitsKey));
 
     private bool ContentExists(string slug) {

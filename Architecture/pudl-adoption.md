@@ -620,3 +620,146 @@ The site upgrades to the complete PUDL 0.89.5 distribution (`89821454aa221c89417
 A focused check uses the release's shared-dock sample in an intercepted test page, loading PUDL assets from the target site. At all four edges the selected tab reaches the rule and every inactive tab stops 1px short; collapsed top-strip buttons have zero top and bottom margins. This exercises the optional shared-dock presentation without enabling it in the site's markup. The existing focused checks also cover the sidebar tooltip, tooltip dismissal on opening a menu, dark ribbon rule, Editor tabs, menu focus return, ribbon chooser, phone taskbar bounds and page script errors. Production's files matched the tagged 0.89.4 distribution and were backed up under `.local/beta/pudl0895release/production-before` before promotion.
 
 All four Chromium regression suites passed: site menus, desktop cleanup, small packages and ribbon coverage. The four-edge dock-tab checks and focused site checks passed on the test instance, beta and production, with no page script errors. The 146 vendored files and the promoted production files match the 0.89.5 tag byte for byte. Promotion copied only PUDL assets and restarted the existing production container; production is now on 0.89.5.
+
+### D95. PUDL 0.99.0 and the content launcher direction
+
+Paul requested PUDL 0.99.0 on 2026-11-06 and selected the release's Content host study as the direction for the site's presentation. The repository now contains the complete tagged distribution at `68fcc2b6031539cc27f0c33d0e7a336e1c8d621c`; all 193 files match the extracted tag by SHA-256. The launcher and Start modules are included, with no changes to vendored code. Their adoption by the site's layout is separate work, recorded in [Content launcher presentation](host-launcher-presentation.md).
+
+Beta was rebuilt with the existing site markup and the new distribution. Focused Chromium checks passed for served version, Editor tab geometry, expanded-sidebar tooltips, tooltip dismissal, menu focus return, dark ribbon geometry, the ribbon chooser, phone taskbar bounds and classic pages, with no page script errors. Production's 146 existing files were verified against the previous 0.89.5 repository tree before any replacement. Deployment evidence and rollback assets are kept under `.local/beta/pudl0990release/`.
+
+The site menu, desktop cleanup and small package Chromium suites all passed against the public beta address. A first attempt against localhost was rejected by host routing, so those attempts provided no UI test coverage. Production then received only the PUDL assets and an existing-container restart. All 193 files in the repository, beta tree and production tree match the tag byte for byte. The focused checks passed again against production, including the desktop, home and article pages, with no page script errors. The previous production distribution is retained at `.local/beta/pudl0990release/production-before`. The launcher presentation migration is still pending.
+
+### D96. Content launcher on beta
+
+Paul authorized the launcher implementation on beta on 2026-11-06. The desktop now uses PUDL's Start and launcher controls in place of the article sidebar. Categories replace the old category checklist; search and tags remain. The Go and Applets host menus are consolidated into the catalog, and the Pins toolbar moves inside it. The taskbar spans the viewport below the launcher/workspace split. [Content launcher presentation](host-launcher-presentation.md) records the URL, persistence, audience and phone behavior.
+
+The beta image was rebuilt, and the launcher integration and small-package browser checks passed in Chromium. The .NET suite passed 137 tests with six skips. Light, dark and phone screenshots were reviewed. The final launcher check also exercises resident Pins, close focus restoration, keyboard result navigation and the JavaScript-disabled catalog. Production retains the previous sidebar layout; the implementation is uncommitted and has not been promoted.
+
+Paul's subsequent beta review keeps Pins in the top bar. The launcher header now contains Home, Settings and Sign in (Your account when signed in), with glyphs, followed by Pin and Close. The visible repeated site title and bottom link strip are removed; Size alone owns the footer's bottom-right corner. About Parks Computing is in Help, and account creation remains in the existing Sign in dialog. The revised launcher browser check and regular-account sign-in check passed on beta, and the .NET suite remains green.
+
+The next beta review removes Home and the grouped desktop links, restores the brief introduction card from `content/desktop-welcome.md`, and defaults first-time visits to an open pinned launcher on desktop and phone. The footer adds a muted keyboard hint that hides when the launcher narrows. Browser checks cover both first-visit contexts, saved-state restoration, the hint and Size layout, and Escape handling with nested popovers. The 137 unit tests pass with six skips. A targeted read-only welcome-file mount lets beta show the updated introduction without changing production content.
+
+
+### D97. PUDL 0.100.0
+
+The complete distribution at tag commit `dfb15cfe949323bde2cc04df1f705e62b82ffcba` replaces 0.99.0. All 193 files match the tag in the repository, beta and production. The beta launcher uses the published heading inset and synchronous activation feedback, removing its local heading override and delayed click replay. The background introduction now explains launcher browsing and unpinning.
+
+The launcher and small-package Chromium integration suites pass on beta, and the .NET suite passes 137 tests with six skips. Production received only PUDL assets and an existing-container restart. Its focused checks pass for Editor tabs, tooltips, menu focus, the dark ribbon, phone taskbar and classic pages, with no page script errors. An initial check reached the restarting server and returned 502; the completed check passed after startup. Production retains the previous layout and introduction. Rollback assets are in `.local/beta/pudl01000release/production-before`.
+
+### D98. PUDL 0.101.0
+
+The complete tagged distribution at `949e7e855592c364034770c91f0a3f563a64897a` replaces 0.100.0. All 193 files match the tag in the repository, beta and production. This release persists the logical window stack through `z.order` and preserves destination focus when Start emits its queued opening notification. The window script, stylesheet, region script and Start script were updated together through the complete distribution. No host markup or adapter change was needed.
+
+The Chromium launcher integration suite passes on beta. A focused browser check confirms explicit stack restoration with Files, Terminal and About, reload persistence, a detached `zOrder` state array, and preservation of focus moved to a destination after launcher opening. The same stack check passes on production. Production also passes the existing focused checks for Editor tabs, tooltip and menu behavior, ribbon controls, phone taskbar bounds and classic pages, with no page script errors. The first focus-check attempt ran before the host launcher adapter initialized; waiting for that host entry point resolved the test timing issue.
+
+Production received only PUDL assets and a restart of its existing container. The beta launcher layout, sign-in layout and introduction remain beta-only. Rollback distributions and focused evidence are retained under `.local/beta/pudl01010release/` and `.local/beta/uitest/*01010*`. The folded Open launcher action remains an accepted upstream proposal and is absent from this release.
+
+### D99. Unreleased taskbar candidate on beta
+
+Paul authorized real-host integration and coordinated testing with PUDL Team Lead. Beta now runs the frozen candidate `dfccc91cbc7b5cada258ff81c0b04056923c8c5a`, based on 0.101.0, with explicit application and article destinations, separate guest/account taskbar persistence, pending command opens, launcher actions and the folded Open launcher correction. The host also adopts markup radio choices for Theme. The previous top-bar bookmarks remain intact.
+
+[The beta integration record](taskbar-pins-beta-integration.md) records the exact deployed image, immutable archive, 193-file verification, cross-engine checks, account and applet regressions, and remaining limitations. Production assets and image are unchanged. The candidate is unreleased and uncommitted, with promotion held for Paul's review. Prompt reporting of failed asynchronous window loads still needs a shared completion/failure contract; the current host uses an explicit readiness deadline.
+
+### D100. Opening-completion follow-up on beta
+
+Beta build `8ed0119-63928ec27548` adopts frozen candidate `8ed01196076115b0299bcfc6c6bbf35033fb7be8` and resolves the opening-result gap from D99. The host now awaits the shared open result, rejects actual failure promptly, then awaits its independent application initializer. Only initialization retains a bounded deadline. All 193 candidate assets match the supplied manifest, and the previous candidate and adapter remain available for rollback.
+
+Real-host taskbar and gated Terminal initialization checks pass across Chromium, Firefox and WebKit. Failed fragment opening settles within the five-second test bound and permits retry; successful adoption does not release pending state before initialization. The launcher regression and simulated initialization-timeout check also pass. [The integration record](taskbar-pins-beta-integration.md) contains exact build identity, evidence and unchanged validation limits. Production, committing and publication remain held for Paul's review.
+
+### D101. Published 0.102.0 and native window pictures on beta
+
+Beta adopts published 0.102.0, tag commit `f8a1f70e6ccee92cc6245cf3e685499326c45ca3`. The release archive checksum and all 193 distribution files were verified against the tag before deployment. The host emits documented `data-win-icon` metadata instead of adding pictures to generated taskbar buttons. The earlier Pins applet retirement remains in place.
+
+The real-host Firefox regression reproduces the old candidate's popup ordering failure with Barcode Flash Cards already focused and Barbecue and Project Management loading from the launcher. On 0.102.0, popup and pinned-pane opening both bring Barbecue forward, while an intervening explicit selection remains respected. Those checks and the taskbar suite pass in Chromium, Firefox and WebKit. The launcher suite also passes. Evidence and rollback assets are retained under `.local/beta/pudl-01020-20261107/`.
+
+Default pinning through category providers and pictures for dormant pins remain pending the next frozen shared candidate. Paul has authorized carrying those changes through beta for later review. The existing hardcoded destination allowlist is not accepted as the final eligibility policy. Production and commits remain paused.
+
+### D102. Default pinning and destination pictures verified on beta
+
+Beta now uses frozen provider candidate `providers-243eb522365d`, following published 0.102.0. The host resolves all reopenable content windows through one default category policy; new articles and applets need no individual eligibility registration. Version 2 guest and account preferences retain provider references. Explicit opt-outs, canonical instance identity, permission revalidation and account-scope guards remain host-owned. The legacy Pins applet stays retired.
+
+Unopened launcher rows resolve only when their actions are requested. Their menus update from Resolving destination to Pin without losing focus, opening the article or closing the launcher. The real-host row, picture lifecycle, taskbar and popup/pane ordering regressions pass in Chromium, Firefox and WebKit. Signed-in row-created references and dormant pictures survive reload. All 193 distribution assets match the immutable candidate manifest. [The integration record](taskbar-pins-beta-integration.md) contains build identity, rollback, evidence and the unclaimed WebKit modified-link probe.
+
+The beta implementation is ready for Paul's review. Production's image and assets are unchanged, and committing, publication and promotion remain paused.
+
+### D103. Stable taskbar context-menu ordering on beta
+
+Beta adopts frozen candidate `providers-21c2ce57949f` to correct Taskbar order moving below Close after pinning. Ordinary, pinned, dormant and stack menus use the same leading taskbar command group. Close stays last where present. The host carries no menu-order workaround.
+
+The WinDragSens label-and-separator regression, live ordinary/pinned/stack checks and dormant revalidation checks pass in Chromium, Firefox and WebKit. Launcher-row pinning, standard taskbar behavior, article picture lifecycles and popup/pane ordering also pass against this candidate. All 193 deployed assets match its immutable manifest. [The integration record](taskbar-pins-beta-integration.md) retains exact build identity, rollback and verification limitations. Production and commits remain paused for Paul's review.
+
+### D104. Published PUDL 0.103.0 on beta
+
+The published 0.103.0 distribution replaces the accepted beta snapshot. Its archive checksum and all 484 packaged files were verified against immutable tag commit `12abb6a8dbee5258d82f85baefa3e28ec707c5b5`; all 193 source and deployed assets match. Runtime scripts are byte-identical to the accepted candidate. The stylesheet version comment and a component example template are the only distribution changes.
+
+The public beta version/readiness smoke and focused Firefox launcher-row, taskbar and menu-order checks pass. Existing candidate cross-engine results remain scoped to the identical runtime. [The integration record](taskbar-pins-beta-integration.md) retains the initial readiness timeout, verification boundaries, exact build and rollback. Production and host commits remain paused for Paul's review.
+
+### D105. Reviewed beta promoted to production
+
+Paul authorized production deployment on 7 November. Production now runs the reviewed beta image and published PUDL 0.103.0. The launcher, category-based taskbar pins, picture lifecycle, lazy row actions, stable menu ordering, background introduction and sign-in layout are promoted. The former Pins applet is retired. Newer live navigation edits remain intact.
+
+All 193 production distribution assets and 14 promoted host files match the beta fingerprints. Five focused public-site suites pass in Chromium, Firefox and WebKit; the complete Chromium launcher suite and fresh-visit release smoke pass. The additive taskbar-preferences migration completed. The integration record documents the exact image, retained rollback files and verified database backup. Previous WebKit modified-link and manual assistive-technology limitations remain unchanged. No Git commit or push was performed.
+
+### D106. Shared pinned section verified on isolated beta
+
+The isolated beta adopts frozen candidate `pinned-section-73c8338a72e3`, with a PUDL-owned heading, section boundary, menu destinations and responsive folding. The host preserves the taskbar envelope and supplies explicit page/applet metadata. Canonical menu IDs use their documented encoding rather than the shorter content-key limit; the total preference bound remains unchanged. Production retains published 0.103.0.
+
+The new real-host section/menu suite passes in Chromium, Firefox and WebKit. It covers menu references, unavailable restoration, foreground singleton toggling, section ordering, narrow sizing and Arrange cancellation. Signed-in references and pictures survive reload, and the synthetic account's preferences are restored. The integration record retains exact fingerprints, the final image, cross-engine regressions, rollback, initial test failures and remaining verification limits. No commits, upstream publication or production promotion are included.
+
+### D107. Shared pinned section promoted to production
+
+Paul authorized deploying the tested pinned-section beta build to production. The public site now uses the identical server image and frozen distribution, with the managed Pinned section, menu destinations, responsive folding and Arrange toggle. The host preserves complete preferences and supports canonical encoded menu IDs within its existing total storage limit.
+
+All 193 production distribution assets and the host adapter match beta. The 18 focused real-site runs pass across Chromium, Firefox and WebKit, and the complete Chromium launcher suite passes. Live navigation edits remain intact. The integration record contains build identity, verified backup, rollback and unchanged verification limitations. No upstream publication, Git commit or push accompanies this deployment.
+
+### D108. Published PUDL 0.104.0 on beta and production
+
+Paul authorized replacing the accepted candidate with published 0.104.0 on both sites. The public archive checksum, all 491 packaged files and all 193 deployed distribution files match immutable tag `1793669234fd1c4ef50bee22a41807b91ff6a11a`. Runtime bytes are unchanged from the accepted candidate; only the stylesheet version comment differs. The adapter identifies the release tag, and the server image remains unchanged.
+
+Twelve fresh focused runs pass across beta and production in Chromium, Firefox and WebKit. Both sites also pass public version, tag-identity and first-visit launcher smoke checks. Live navigation remains intact. The integration record contains provenance, retained rollback and unchanged account, WebKit native-link and accessibility verification limits. No Git commit or push was performed.
+
+### D109. Compact taskbar integration remains beta-only
+
+The compact navigation candidate is deployed on isolated beta under the existing collaboration authorization. The host adds a permanent bottom-left application-grid launcher button through PUDL's ordinary popover/controller contract. It preserves the existing category, image, permission and preference contracts. Production remains on published 0.104.0.
+
+The compact integration record reports 21 passing and three failing suite runs. The existing title launcher remains inert in popup mode because its native targeting is not synchronized after initialization with a different primary invoker. A combined native-tab return and Windows-popup sequence needs follow-up as well. The candidate is not accepted, and no production promotion or commit is included. Exact evidence, limitations and rollback are in [the beta record](compact-taskbar-beta-integration.md).
+
+### D110. Compact replacement clears the reported blockers on beta
+
+The frozen ab8c3125f862 replacement is deployed only to beta. The title/presentation synchronization and combined native-tab return defects pass their real-host reproductions. The final host matrix has 26 passing runs and one WebKit run whose UI assertions pass but which emits a ResizeObserver error during narrow launcher transitions. Overall acceptance remains pending that retained finding. Exact provenance, evidence and rollback are in [the compact beta record](compact-taskbar-beta-integration.md). Production remains published 0.104.0, and no commit or promotion occurred.
+
+### D111. Compact launcher resize correction passes beta acceptance
+
+The frozen 8e9fbd0097f3 correction clears the retained WebKit observer-error reproduction. All 14 focused host runs pass, including the exact title/pane/popup/narrow route in all three engines and the combined native-tab return regression in Chromium and Firefox. The complete distribution and served versioned scripts match the frozen package. Initial stale-versioned-URL failures remain in evidence. [The beta integration record](compact-taskbar-beta-integration.md) contains provenance, limitations and rollback. Production remains 0.104.0; no commit or promotion occurred.
+
+### D112. Actions-only Windows popup passes isolated beta verification
+
+The frozen 075f23a6a41f candidate is deployed only to beta. Windows now contains Arrange, the useful Minimize all or Restore all action and a separate Close all windows group. Ordinary destinations remain on the taskbar as glyphs with horizontal scrolling when required; inactive pins retain their separate popup. All 20 focused real-host runs pass, including active-entry scrolling, direct stack access, widening, bulk actions, native links and retained launcher/resize checks. [The compact record](compact-taskbar-beta-integration.md) contains provenance, screenshots, retained test failures and limits. Production remains 0.104.0, and no commit or promotion occurred.
+
+### D113. Responsive launcher deployed on isolated beta
+
+The frozen f464e535e259 build uses the shared full-workspace catalog at 650px and below. The host persists desktop presentation, compact visibility, popup size and pane size separately and removes its former phone overrides. It also reports accepted native pin navigation through the documented launcher activation hook. All 20 scoped host runs pass. A separate Escape sequence after dismissing Windows remains for shared review because focus is outside the catalog. [The integration record](compact-taskbar-beta-integration.md) retains provenance, failures, screenshots, limitations and rollback. Production remains 0.104.0, and no commit or promotion occurred.
+
+### D114. Responsive outside-focus Escape correction passes beta acceptance
+
+The frozen 1190a954d851 replacement resolves the retained Windows/Escape/Escape finding in all three engines. Fourteen focused host runs pass, including nested popup/modal priority, opener focus, desktop isolation and the retained responsive Size/destination/taskbar checks. The existing dormant-pin activation hook and preference adapter are preserved. [The integration record](compact-taskbar-beta-integration.md) contains exact hashes, evidence, limitations and rollback. Production remains 0.104.0; no commit or promotion occurred.
+
+### D115. PUDL 0.105.0 preflight passes isolated beta verification
+
+The release-shaped archive at commit 73be234 is deployed only to beta. All 496 package files match that immutable commit; all installed assets and applicable versioned URLs match. Fifteen focused host runs pass across three engines, including 192 skin/theme/width observations with repeated measurements, taskbar destinations and retained launcher Size/Escape behavior. The accepted host adapters remain intact. [The integration record](compact-taskbar-beta-integration.md) contains exact provenance, evidence and rollback. This is an unpublished preflight, and production remains 0.104.0. No host commit or promotion occurred.
+
+### D116. Font-completion preflight has a retained WebKit failure
+
+The bcc185c replacement is installed on isolated beta with verified package and served assets. Seventeen of 18 focused runs pass. The controlled CSS-delayed font test leaves WebKit's natural-width cache at the fallback value until explicit resize, while Chromium and Firefox pass. Host acceptance remains pending that shared finding. [The integration record](compact-taskbar-beta-integration.md) contains exact measurements, evidence, limits and rollback. Production remains 0.104.0; no commit or promotion occurred.
+
+### D117. Final preflight retains the WebKit font-cache blocker
+
+The verified 23d580a artifact is deployed only to beta. Fourteen of 15 fresh focused runs pass; the controlled WebKit CSS-delayed-font cache failure remains unchanged from bcc185c. The no-taskbar churn correction does not resolve that connected-taskbar case. Host release acceptance remains pending. [The integration record](compact-taskbar-beta-integration.md) separates fresh checks from retained broad evidence and records hashes, measurements and rollback. Production remains 0.104.0; no commit or promotion occurred.
+
+### D118. Per-cycle font-readiness correction passes beta acceptance
+
+The verified db08640 preflight resolves the controlled WebKit delayed-font cache failure before explicit resize. All 15 fresh focused host runs pass across three engines, retaining skin/folding, actions-only Windows, Size and Escape behavior. Exact artifact/HTTP hashes, corrected measurements, original failure references and rollback are in [the integration record](compact-taskbar-beta-integration.md). The host adapters are preserved. This remains unpublished; production stays on 0.104.0, with no commit or promotion performed.
+
+### D119. Published 0.105.0 is deployed to beta and production
+
+Paul authorized both site updates after upstream publication. The verified public archive at tag `e329c43c51c4a19df35181f5a9421219fd48c864` matches every accepted beta runtime asset. Both sites now serve the release with the host activation/preference fixes preserved. Each site passes 224 HTTP hash checks. Six fresh production smoke suites pass across three engines, and host unit tests pass with 141 passes and six skips. [The integration record](compact-taskbar-beta-integration.md) records the release checksum, deployment identity, evidence, limitations and retained container/database/static rollback.

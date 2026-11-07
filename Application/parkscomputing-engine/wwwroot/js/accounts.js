@@ -133,7 +133,7 @@
     }
 
     /* signIn and freshToken are for any script whose request finds the
-       session gone, such as saving pins (js/pins.js): freshToken says
+       session gone: freshToken says
        whether the reader is still signed in and replaces the page's token,
        and signIn asks them to sign in again and resolves when they have. */
     window.pcAccounts = { press: press, ceremony: ceremony, signIn: signInAgain, freshToken: freshToken };

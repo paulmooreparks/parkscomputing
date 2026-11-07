@@ -44,7 +44,8 @@
        choices keys js/desktop.js reads. They were the Settings dialog's
        before Settings became an applet in the Applets menu. */
 
-    var FORGET_KEYS = ['pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku', 'pc-barcodes',
+    var FORGET_KEYS = ['pc-launcher-presentation', 'pc-launcher-size', 'pc-launcher-pane-width', 'pc-launcher-category-width',
+        'pc-maximize-new', 'pc-resume-windows', 'pc-windows', 'pc-sidebar-w', 'pc-sudoku', 'pc-barcodes',
         'pc-barcode-layouts', 'pc-barcode-layouts-moved', 'pc-editor-session', 'pc-terminal', 'pc-terminal-history', 'pc-terminal-home'];
 
     function viewChoice() {
@@ -117,6 +118,10 @@
             (more.end || '');
 
         function mark() {
+            if (document.getElementById('site-launcher')) {
+                root.querySelectorAll('[data-side-choice]').forEach(function (button) { button.closest('.seg').hidden = true; });
+                root.querySelectorAll('.pc-set-side-label').forEach(function (label) { label.hidden = true; });
+            }
             var theme = window.pudlThemePreference ? window.pudlThemePreference() : 'system';
             root.querySelectorAll('[data-theme-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-choice') === theme)); });
             root.querySelectorAll('[data-view-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-view-choice') === viewChoice())); });

@@ -48,6 +48,7 @@ MSYS_NO_PATHCONV=1 docker run -d --name "$NAME" --restart unless-stopped \
     -v parkscomputing-identity-test-state:/app/state \
     -v "$W:/app/wwwroot:ro" \
     -v "$L\\content:/app/wwwroot/content:ro" \
+    -v "$W\\content\\desktop-welcome.md:/app/wwwroot/content/desktop-welcome.md:ro" \
     -v "$L\\images:/app/wwwroot/images:ro" \
     -v "$L\\audio:/app/wwwroot/audio:ro" \
     -v "$L:/app/site" \

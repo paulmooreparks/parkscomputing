@@ -114,7 +114,11 @@ public static class MenuBuilder {
                     Write(html, e.Entries ?? Array.Empty<MenuEntry>());
                     break;
                 case MenuEntryKind.Submenu:
-                    html.Append("<li>").Append(WebUtility.HtmlEncode(e.Label ?? "")).Append("<ul>");
+                    bool radio = e.Entries is { Count: > 0 } && e.Entries.All(item => item.Kind == MenuEntryKind.Item
+                        && item.Element?.Tag == "button"
+                        && item.Element.Attributes.Any(a => a.Key == "value")
+                        && item.Element.Attributes.Any(a => a.Key == "aria-checked"));
+                    html.Append("<li>").Append(WebUtility.HtmlEncode(e.Label ?? "")).Append(radio ? "<ul data-menu-radio>" : "<ul>");
                     Write(html, e.Entries ?? Array.Empty<MenuEntry>());
                     html.Append("</ul></li>");
                     break;

@@ -1,5 +1,7 @@
 # Pins
 
+The applet described below was retired on beta on 2026-11-06 at Paul's request. PUDL taskbar pinning replaces its interface. The old toolbar, resident menu, manager page, window content and scripts have been removed. Existing guest and account bookmark records are preserved without migration or deletion. Production promotion and committing remain paused. The following text records the original design.
+
 Paul wants a place for the applets and articles he uses often, in the top bar, in both views (2026-10-05). He sketched it as an extension of PUDL's menu bar, and if it works the way he expects, it goes back to PUDL as a proposal.
 
 ## The Pins bar

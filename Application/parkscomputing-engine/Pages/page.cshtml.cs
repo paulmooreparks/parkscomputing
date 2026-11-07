@@ -99,10 +99,6 @@ namespace ParksComputing.Engine.Pages {
                     HttpContext.RequestServices.GetService<Microsoft.Extensions.Options.IOptions<ParksComputing.Engine.Identity.AccountOptions>>()?.Value.Enabled == true) {
                     return Task.FromResult<IActionResult>(Redirect("/account"));
                 }
-                // The Pins applet's page is /pins; its window's Open as a page names /page/pins.
-                if (slug == ArticleContentService.PinsKey && draft is null) {
-                    return Task.FromResult<IActionResult>(Redirect("/pins"));
-                }
                 // The privacy policy and the terms of use are /privacy and /terms; their windows' Open as a page names /page/privacy and /page/terms.
                 if (ParksComputing.Engine.Identity.PolicyDocuments.IsPolicy(slug) && draft is null) {
                     return Task.FromResult<IActionResult>(Redirect("/" + slug));

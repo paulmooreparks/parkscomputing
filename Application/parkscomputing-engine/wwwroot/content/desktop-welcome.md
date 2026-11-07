@@ -1,6 +1,8 @@
 # Welcome to the desktop
 
-Pick an article from the sidebar and it opens as a floating window. Drag it by its title bar, resize it from any edge, snap it against the sides, or maximize it; open several and switch between them from the taskbar above. If you prefer windows to open maximized, say so in the settings, behind the gear at the top right.
+Use the launcher to browse categories, search for articles and applets, or narrow the list with Tags. The launcher starts pinned beside the desktop. Click its pin button to unpin it and give your windows more space; click Parks Computing in the top bar whenever you want to open it again.
+
+Pick an article from the launcher and it opens as a floating window. Drag it by its title bar, resize it from any edge, snap it against the sides, or maximize it; open several and switch between them from the taskbar below. If you prefer windows to open maximized, choose that in Settings in the launcher.
 
 Links inside an article open in their own windows, and so do the images; step through an article's images with the arrow keys, and pop one back down with Escape. The tags at the top of an article each open a window listing everything under that tag.
 

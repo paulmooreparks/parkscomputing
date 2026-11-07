@@ -1,10 +1,3 @@
-/* === The window bar (Pages/Shared/_WindowBar.cshtml, js/window-bar.js) ====
-   PUDL's taskbar since 0.79.0, which draws the bar, its dock and its
-   buttons. The site adds only a window's picture on its taskbar button,
-   in the place of PUDL's glyph. */
-.win-tab .win-item-picture { flex: none; width: 16px; height: 16px; object-fit: contain; }
-.win-tab:has(.win-item-picture)::before { display: none; }
-
 /* The rule before what sits at the admin bar's far right. With no window
    bar before it, the rule itself takes the slack. */
 .topbar-rule {
@@ -12,6 +5,7 @@
   background: var(--tb-border, var(--border));
 }
 .win-bar + .topbar-rule { margin-left: 0; }
+.win-bar-launcher { flex: none; }
 @media (max-width: 560px) {
   .topbar-rule { margin-right: 8px; }
 }

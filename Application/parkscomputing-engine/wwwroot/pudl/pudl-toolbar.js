@@ -167,11 +167,21 @@
         var c = e.target.closest(CONTROL);
         if (c && !c.closest('.menu-panel') && !isField(c)) stop(bar, c);
       });
-      new MutationObserver(function () {
+      new MutationObserver(function (records) {
+        /* Hosts may replace a label with identical text. Such a replacement
+           changes no control or measurement, so keep the existing fold. */
+        var changed = records.some(function (r) {
+          if (r.type === 'attributes') return r.oldValue !== r.target.getAttribute(r.attributeName);
+          if (r.type === 'characterData') return r.oldValue !== r.target.data;
+          var added = Array.prototype.slice.call(r.addedNodes), removed = Array.prototype.slice.call(r.removedNodes);
+          if (added.concat(removed).some(function (n) { return n.nodeType !== 3; })) return true;
+          return added.map(function (n) { return n.data; }).join('') !== removed.map(function (n) { return n.data; }).join('');
+        });
+        if (!changed) return;
         menus(bar); stop(bar, null, true);
         bar.__dirty = true;
         if (bar.__fold) soonFit(bar);
-      }).observe(bar, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['disabled', 'aria-disabled', 'hidden'] });
+      }).observe(bar, { subtree: true, childList: true, characterData: true, characterDataOldValue: true, attributes: true, attributeOldValue: true, attributeFilter: ['disabled', 'aria-disabled', 'hidden'] });
   }
 
   /* Folding again in the next frame, once however many changes come
@@ -567,6 +577,14 @@
     /* A change of width folds it again in the next frame; a change of what
        it holds, which its own observer sees, once the change is done. */
     if (window.ResizeObserver) new ResizeObserver(again).observe(bar);
+    /* A menu's toggle event does not bubble, so it is caught on the way
+       down; it fires after the menu has closed. */
+    bar.addEventListener('toggle', function (e) {
+      if (e.newState !== 'closed' || !bar.__fitLater || !e.target.matches || !e.target.matches('.menu-panel')) return;
+      if (bar.querySelector('.menu-panel:popover-open')) return;
+      bar.__fitLater = false;
+      fit(bar, true);
+    }, true);
     bar.__dirty = true;
     fit(bar);
     return bar.__fold;
@@ -653,6 +671,10 @@
     if (!bar.__fold || !bar.isConnected) return;
     var w = bar.clientWidth;
     if (!force && !bar.__dirty && w === bar.__fitWidth) return;
+    /* Folding while one of its menus is open would take the menu's button
+       from under it, so the work waits, undone and still owed, and is done
+       when the menu closes (0.93.1). */
+    if (bar.querySelector('.menu-panel:popover-open')) { bar.__fitLater = true; return; }
     var changed = bar.__dirty || force;
     bar.__dirty = false;
     bar.__fitWidth = w;

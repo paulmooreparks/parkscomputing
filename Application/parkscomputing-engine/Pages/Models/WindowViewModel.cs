@@ -37,9 +37,18 @@ public class WindowViewModel {
     public string? MaxSize { get; init; }
 
     public required string Key { get; init; }
+    public string? Destination { get; init; }
+
+    public static string? DestinationFor(string key) => key switch {
+        "terminal" or "files" or "editor" => "app-" + key,
+        "settings" or "account" => key,
+        "coincidences" => "article-coincidences",
+        _ => "window-" + key
+    };
     public required string Title { get; init; }
     public required string BodyHtml { get; init; }
     public required string PageUrl { get; init; }
+    public bool IsApplet { get; init; }
 
     /// <summary>The parent window's key for a child window (PUDL 0.7.0);
     /// null for a top-level article window.</summary>

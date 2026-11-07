@@ -15,6 +15,7 @@ namespace ParksComputing.Engine.Identity;
 internal sealed class SiteAccountPins {
     public string UserId { get; set; } = "";
     public string Pins { get; set; } = "[]";
+    public string Taskbar { get; set; } = "{}";
     public DateTime UpdatedUtc { get; set; }
 
     internal static void Configure(ModelBuilder builder) {
@@ -23,6 +24,7 @@ internal sealed class SiteAccountPins {
         pins.HasKey(p => p.UserId);
         pins.Property(p => p.UserId).HasMaxLength(450);
         pins.Property(p => p.Pins).HasMaxLength(AccountPins.MaxJson);
+        pins.Property(p => p.Taskbar).HasMaxLength(AccountPins.MaxJson).HasDefaultValue("{}");
         pins.HasOne<IdentityUser>().WithOne().HasForeignKey<SiteAccountPins>(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
     }
 }

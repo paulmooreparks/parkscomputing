@@ -33,6 +33,10 @@
   var uid = 0;
   var typed = '', typedAt = 0;
 
+  function attr(el, name, value) {
+    if (el.getAttribute(name) !== value) el.setAttribute(name, value);
+  }
+
   function groupOf(a) {
     var n = a.nextElementSibling;
     return n && n.tagName === 'UL' ? n : null;
@@ -67,28 +71,29 @@
   /* Gives a tree, and any nodes added to it since, their roles, toggles and
      tab stops. It can run again at any time. */
   function enhance(tree) {
-    tree.setAttribute('role', 'tree');
+    attr(tree, 'role', 'tree');
     var all = nodes(tree);
     all.forEach(function (a) {
-      a.parentElement.setAttribute('role', 'none');
-      a.setAttribute('role', 'treeitem');
+      attr(a.parentElement, 'role', 'none');
+      attr(a, 'role', 'treeitem');
       var level = 1;
       for (var p = parentOf(tree, a); p; p = parentOf(tree, p)) level++;
-      a.setAttribute('aria-level', String(level));
+      attr(a, 'aria-level', String(level));
       var g = groupOf(a);
       if (g) {
-        g.setAttribute('role', 'group');
+        attr(g, 'role', 'group');
         if (!g.id) g.id = 'pudl-tree-' + (++uid);
-        a.setAttribute('aria-owns', g.id);
-        if (!a.hasAttribute('aria-expanded')) a.setAttribute('aria-expanded', 'true');
+        attr(a, 'aria-owns', g.id);
+        if (!a.hasAttribute('aria-expanded')) attr(a, 'aria-expanded', 'true');
       }
       var has = a.firstElementChild && a.firstElementChild.matches('.tree-toggle, .tree-spacer');
       if (!has) {
         var mark = document.createElement('span');
         mark.className = a.hasAttribute('aria-expanded') ? 'tree-toggle' : 'tree-spacer';
-        mark.setAttribute('aria-hidden', 'true');
+        attr(mark, 'aria-hidden', 'true');
         a.insertBefore(mark, a.firstChild);
       }
+      nameToggle(tree, a);
       /* A link is focusable by default, so a node new to the tree is taken
          out of the Tab order by its missing attribute, not its tabIndex. */
       if (!a.hasAttribute('tabindex')) a.tabIndex = -1;
@@ -100,22 +105,47 @@
         var c = a.getAttribute('aria-current');
         return c && c !== 'false';
       })[0];
-      all.forEach(function (a) { a.tabIndex = -1; });
+      all.forEach(function (a) { if (a.tabIndex !== -1) a.tabIndex = -1; });
       if (cur || vis[0]) (cur || vis[0]).tabIndex = 0;
     }
-    tree.classList.add('tree-ready');
+    if (!tree.classList.contains('tree-ready')) tree.classList.add('tree-ready');
   }
 
   function focusNode(tree, a) {
     if (!a) return;
-    nodes(tree).forEach(function (n) { if (n !== a) n.tabIndex = -1; });
-    a.tabIndex = 0;
+    nodes(tree).forEach(function (n) { if (n !== a && n.tabIndex !== -1) n.tabIndex = -1; });
+    if (a.tabIndex !== 0) a.tabIndex = 0;
     a.focus();
+  }
+
+  /* On a tree marked data-tree-toggles="buttons" (0.96.9) each toggle is a
+     named button for assistive technology and the pointer: a role of
+     button, out of the Tab order since the node's keys open and close it,
+     named "Expand" or "Collapse" and the node's name, from data-tree-label
+     on the link or else its words. data-tree-text-expand and -collapse on
+     the tree give the words. Elsewhere the toggle stays decorative. */
+  function nameToggle(tree, a) {
+    var mark = a.firstElementChild;
+    if (!mark || !mark.classList.contains('tree-toggle')) return;
+    if (tree.getAttribute('data-tree-toggles') !== 'buttons') {
+      if (mark.getAttribute('aria-hidden') !== 'true') { attr(mark, 'aria-hidden', 'true'); mark.removeAttribute('role'); mark.removeAttribute('tabindex'); mark.removeAttribute('aria-label'); mark.removeAttribute('aria-expanded'); }
+      return;
+    }
+    var open = a.getAttribute('aria-expanded') === 'true';
+    var words = tree.getAttribute(open ? 'data-tree-text-collapse' : 'data-tree-text-expand') || (open ? 'Collapse' : 'Expand');
+    var name = a.getAttribute('data-tree-label') || Array.prototype.filter.call(a.childNodes, function (n) { return n !== mark; }).map(function (n) { return n.textContent; }).join('').replace(/\s+/g, ' ').trim();
+    mark.removeAttribute('aria-hidden');
+    attr(mark, 'role', 'button');
+    attr(mark, 'tabindex', '-1');
+    attr(mark, 'aria-expanded', String(open));
+    attr(mark, 'aria-label', words + (name ? ' ' + name : ''));
   }
 
   function toggle(a, open) {
     if (!a.hasAttribute('aria-expanded') || (a.getAttribute('aria-expanded') === 'true') === open) return;
-    a.setAttribute('aria-expanded', String(open));
+    attr(a, 'aria-expanded', String(open));
+    var tree = a.closest('.tree');
+    if (tree) nameToggle(tree, a);
     a.dispatchEvent(new CustomEvent('pudl:tree-toggle', { bubbles: true, detail: { open: open } }));
   }
 

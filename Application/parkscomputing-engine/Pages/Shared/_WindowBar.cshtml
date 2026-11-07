@@ -10,6 +10,15 @@
    that state for a reader without script. It knows nothing of the page it
    sits on. *@
 <div class="win-bar">
+    @if (ViewData["Launcher"] as bool? == true)
+    {
+    <button class="icon-btn win-bar-launcher" id="taskbar-launcher" type="button" popovertarget="site-launcher"
+            aria-label="Open launcher" data-tooltip="Open launcher">
+        <span class="glyph" style="--glyph:var(--glyph-app)" aria-hidden="true"></span>
+    </button>
+    }
+    else
+    {
     <button class="icon-btn sidebar-toggle" type="button" data-sidebar-toggle hidden
             aria-label="Hide sidebar" data-tooltip="Hide sidebar" aria-expanded="true" aria-pressed="false">
         <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4">
@@ -17,6 +26,7 @@
             <path d="M6 2v12" /><path class="sidebar-glyph-pane" d="M2 2.5h3.5v11H2z" stroke="none" />
         </svg>
     </button>
+    }
     <nav class="win-dock" data-win-dock aria-label="Open windows"></nav>
     <a class="icon-btn" data-win-back href="@Model.MinimizeAllUrl"
        @(Model.AnyShowing ? null : Html.Raw("aria-disabled=\"true\""))

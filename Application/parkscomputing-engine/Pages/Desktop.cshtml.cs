@@ -13,8 +13,8 @@ using ParksComputing.Engine.Pages.Services;
 namespace ParksComputing.Engine.Pages;
 
 /// <summary>
-/// The desktop view: articles in a sidebar, opened as maximized PUDL
-/// floating windows over the host, with a taskbar dock along the top.
+/// The desktop view opens catalog destinations as PUDL windows over the
+/// content background, with a full-width taskbar below the workspace.
 /// The URL is the whole window state (PUDL's open/top/min/p.* grammar),
 /// and this model renders the windows the URL names so the arrangement
 /// survives reload, bookmarking and a browser without script.
@@ -69,7 +69,7 @@ public class DesktopModel : PageModel {
 
     public string? CatTitleOf(string slug) => Categories.FirstOrDefault(c => c.Slug == slug).Title ?? slug;
 
-    /// <summary>The welcome card's copy, editable at content/desktop-welcome.md.</summary>
+    /// <summary>The introduction from content/desktop-welcome.md.</summary>
     public string? WelcomeHtml { get; private set; }
 
     /// <summary>The desktop with the current list state and no windows:
@@ -197,6 +197,7 @@ public class DesktopModel : PageModel {
 
             var vm = new WindowViewModel {
                 Key = key,
+                Destination = tagList is null && external is null ? WindowViewModel.DestinationFor(instanceOf ?? key) : null,
                 Title = article.Title,
                 BodyHtml = article.BodyHtml,
                 // A tag list has no page of its own; an external's page is
@@ -207,6 +208,7 @@ public class DesktopModel : PageModel {
                 FrameUrl = external?.FrameUrl,
                 Parent = parent,
                 OwnDocument = article.RequiresOwnDocument,
+                IsApplet = article.IsApplet,
                 // An applet's window is the app itself: no tag row, no dates;
                 // a book's dates are its chapters', so it shows none either.
                 Tags = article.IsApplet ? Array.Empty<string>() : node?.Tags ?? Array.Empty<string>(),

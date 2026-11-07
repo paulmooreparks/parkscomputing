@@ -5,8 +5,6 @@
 @inject INavService PaletteNav
 @inject ParksComputing.Engine.Identity.AccountMenu AccountMenu
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
-@inject ParksComputing.Engine.Identity.AccountPins PinStore
-@inject ArticleContentService PinArticles
 
 @{
     // Where the site has accounts, what the reader's account offers, for
@@ -28,19 +26,14 @@
     // The desktop loads articles into windows, so it always needs the
     // highlighting assets.
     bool needsHighlight = isMarkdown || isDesktop;
-    // A signed-in reader's pins, from the database: drawn into the pins bar
-    // here, and given to js/pins.js below. A reader who is not signed in
-    // keeps pins in the browser only, which js/pins.js draws.
-    System.Collections.Generic.IReadOnlyList<ParksComputing.Engine.Identity.Pin>? accountPins = accountState.SignedIn
-        ? await PinStore.GetAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value) : null;
+
 }
 @functions {
     // A page of this site, which the window view can open as a window.
     private static bool IsSitePage(NavNode n) =>
         !n.External && !string.IsNullOrEmpty(n.Slug) && n.Url == $"/page/{n.Slug}";
 
-    // A page's icon as its window shows it in the taskbar (NavNode.IconOf).
-    private string? PinIcon(string slug) => PaletteNav.GetRoot().IconOf($"/page/{slug}");
+
 }
 @{
     void RenderMenuItem(NavNode item)
@@ -143,7 +136,7 @@
                 var menuEntries = logoTitle?.Nav ?? Array.Empty<NavNode>();
                 var siteName = navRoot.SiteName();
             }
-            <nav class="site-menubar" data-menubar data-menubar-ribbon aria-label="@siteName">
+            <nav class="site-menubar" data-menubar data-menubar-ribbon data-menubar-launcher="@(ViewData["Launcher"] as bool? == true ? "site-launcher" : null)" aria-label="@siteName">
             <partial name="_MenuBar" />
             <div class="menu site-menu">
                 <button type="button" class="brand topbar-pill menu-btn site-menu-btn" popovertarget="site-menu" aria-label="@siteName menu">
@@ -185,26 +178,6 @@
                 </nav>
             </div>
             </nav>
-            @* The pins (Architecture/pins-design.md): a command bar at the top
-               bar's right, after the menu bar, which keeps its place whatever
-               window is in front (PUDL 0.79.0's folding toolbar, and a resident
-               applet, pin-bar, whose Pins menu stays in the menu bar; see
-               Architecture/pudl-0.79-integration.md). A signed-in reader's
-               pins are drawn here, so they work before any script runs; a
-               guest's live in the browser, and js/pins.js draws them. When
-               room runs short the pins lose their words, then fold into one
-               Pinned menu, before the menu bar folds. *@
-            <div class="toolbar pin-bar" role="toolbar" aria-label="Pins" data-toolbar-fold data-toolbar-captions="none"
-                 data-applet="pin-bar" data-applet-resident>
-                <div class="toolbar-group" data-toolbar-group="Pinned" data-toolbar-glyph="pin" data-pins-group>
-                    @foreach (var pin in accountPins ?? Array.Empty<ParksComputing.Engine.Identity.Pin>())
-                    {
-                        var pinHref = pin.Key == "account" ? "/account" : "/page/" + pin.Key + (pin.Chapter is null ? "" : "/" + pin.Chapter);
-                        var pinPicture = pin.Icon ?? (pin.Applet ? null : "/favicon-16x16.png");
-                        <a class="btn btn-sm" href="@pinHref" data-pin-key="@pin.Key" data-pin-chapter="@pin.Chapter">@if (pinPicture is not null) {<img src="@pinPicture" alt="" />} else {<span class="glyph" style="--glyph: var(--glyph-app)" aria-hidden="true"></span>}<span class="toolbar-words">@pin.Title</span></a>
-                    }
-                </div>
-            </div>
             @* The view switcher: one segmented control toward the far right.
                Each side is a link, because each view is a URL; ?view=window
                bypasses a classic default-view choice. The window view's dock
@@ -385,39 +358,6 @@
         @* The status area's background applets (Architecture/status-area-design.md). *@
         <script src="~/js/status.js" defer asp-append-version="true"></script>
     }
-    @{
-        // The reader's pins, as data for js/pins.js: an account's (worked out
-        // at the top), or none, meaning the browser keeps them. And on a page
-        // of the classic view, what pinning this page would pin.
-        object? currentPin = null;
-        if (!isDesktop && !isFrame)
-        {
-            if (ViewData["Book"] is BookService.Book pinBook)
-            {
-                var pinChapter = ViewData["BookChapter"] as string ?? "";
-                var pinChapterTitle = pinChapter.Length > 0 ? pinBook.Find(pinChapter)?.Title : null;
-                currentPin = new { key = pinBook.Slug, chapter = pinChapter.Length > 0 ? pinChapter : null,
-                    title = pinBook.Root.Title + (pinChapterTitle is null ? "" : " · " + pinChapterTitle), icon = PinIcon(pinBook.Slug) };
-            }
-            else if (ViewData["PageId"] is string pinSlug && !pinSlug.Contains('/'))
-            {
-                // The title its window and taskbar show, from the same service
-                // the window uses, so a page pinned here reads as it does pinned
-                // from its window.
-                currentPin = new { key = pinSlug, chapter = (string?)null,
-                    title = PinArticles.Load(pinSlug)?.Title ?? System.Net.WebUtility.HtmlDecode(ViewData["Title"]?.ToString() ?? pinSlug), icon = PinIcon(pinSlug) };
-            }
-            else if (Context.Request.Path == "/account" && accountState.Enabled)
-            {
-                currentPin = new { key = "account", chapter = (string?)null, title = "Your account", icon = (string?)null };
-            }
-        }
-    }
-    <script type="application/json" id="pc-pins-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new {
-        store = accountPins is null ? "local" : "account",
-        pins = accountPins,
-        current = currentPin
-    }, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)).Replace("<", "\\u003c"))</script>
     <script src="~/js/continuity.js" asp-append-version="true"></script>
     <script src="~/js/snapshot.js" asp-append-version="true"></script>
     <script src="~/js/window-bar.js" asp-append-version="true"></script>
@@ -428,8 +368,11 @@
     {
         <script src="~/js/desktop.js" asp-append-version="true"></script>
         <script src="~/pudl/pudl-windows.js" defer asp-append-version="true"></script>
-        <script src="~/pudl/pudl-regions.js" defer asp-append-version="true"></script>
-        <script src="~/pudl/pudl-md.js" defer asp-append-version="true"></script>
+        @if (ViewData["Launcher"] as bool? != true)
+        {
+            <script src="~/pudl/pudl-regions.js" defer asp-append-version="true"></script>
+            <script src="~/pudl/pudl-md.js" defer asp-append-version="true"></script>
+        }
     }
     @* The menu script loads everywhere since 0.17.0: the go palette is a
        key-summoned menu panel on every page. *@
@@ -445,9 +388,6 @@
     <script src="~/js/pudl-host-kit.js" defer asp-append-version="true"></script>
     <script src="~/js/applets.js" defer asp-append-version="true"></script>
     <script src="/applets/registry.js" defer></script>
-    @* The pins, after PUDL's applets, since the Pins menu is a resident
-       applet (pin-bar) that js/pins.js registers. *@
-    <script src="~/js/pins.js" defer asp-append-version="true"></script>
     @* PUDL's action broker, then the site's own capabilities and the page's
        actions (js/site-actions.js). *@
     <script src="~/pudl/pudl-actions.js" defer asp-append-version="true"></script>
@@ -463,6 +403,13 @@
     <script src="~/pudl/pudl-tabs.js" defer asp-append-version="true"></script>
     <script src="~/pudl/pudl-tree.js" defer asp-append-version="true"></script>
     <script src="~/pudl/pudl-split.js" defer asp-append-version="true"></script>
+    @if (ViewData["Launcher"] as bool? == true)
+    {
+        <script src="~/pudl/pudl-start.js" defer asp-append-version="true"></script>
+        <script src="~/pudl/pudl-launcher.js" defer asp-append-version="true"></script>
+        <script src="~/js/launcher.js" defer asp-append-version="true"></script>
+        <script src="~/js/taskbar-pins.js" defer asp-append-version="true"></script>
+    }
     <script src="~/pudl/pudl-grid.js" defer asp-append-version="true"></script>
     @* Number fields, sliders and avatars (0.74.0), and searchable selects
        (0.72.0), which Settings, the account pages and the applets use. *@

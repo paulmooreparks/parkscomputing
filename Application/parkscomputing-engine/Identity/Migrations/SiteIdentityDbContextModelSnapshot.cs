@@ -401,6 +401,13 @@ namespace ParksComputing.Engine.Identity.Migrations
                         .HasMaxLength(32768)
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Taskbar")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32768)
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("{}");
+
                     b.Property<DateTime>("UpdatedUtc")
                         .HasColumnType("datetime2");
 
