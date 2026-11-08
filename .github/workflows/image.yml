@@ -1,0 +1,53 @@
+# Builds the engine's image and publishes it to GitHub's container registry
+# when a release tag (v1.2.3) is pushed, or when run by hand. The server that
+# runs parkscomputing.com, padmajairam.com and xfer.parkscomputing.com pulls
+# an exact tag, so a release is a tag and a rollback is the tag before it.
+# The unit tests run first, and a failing test publishes nothing. The tests
+# that need SQL Server skip themselves when PARKSCOMPUTING_PUBLISHING_TEST_SQL
+# is not set, which it is not here.
+name: image
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-dotnet@v4.3.1
+        with:
+          dotnet-version: '10.0.x'
+      - name: Unit tests
+        run: dotnet test Application/parkscomputing-engine.UnitTests/parkscomputing-engine.UnitTests.csproj -c Release
+      - uses: docker/setup-buildx-action@v3.10.0
+      - uses: docker/login-action@v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # The metadata step also writes the OCI labels, among them
+      # org.opencontainers.image.source and org.opencontainers.image.revision.
+      - id: meta
+        uses: docker/metadata-action@v5.7.0
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/parkscomputing-engine
+          tags: |
+            type=ref,event=tag
+            type=sha,prefix=sha-
+      - uses: docker/build-push-action@v6.16.0
+        with:
+          context: Application
+          file: Application/parkscomputing-engine/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
