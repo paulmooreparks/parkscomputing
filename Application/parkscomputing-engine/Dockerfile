@@ -37,7 +37,9 @@ COPY parkscomputing-engine ./parkscomputing-engine/
 #COPY SmartSamCommentsLib/ ./SmartSamCommentsLib/
 #COPY SmartSamCommentsData/ ./SmartSamCommentsData/
 
-# Copy all static site content from wwwroot (populated from W:/) into the image
+# The engine's own static files, as committed. A site's container mounts its
+# own content over /app/wwwroot, so a site serves these only where it layers
+# them under its tree (Site__Assets) or has no content of its own.
 COPY parkscomputing-engine/wwwroot ./parkscomputing-engine/wwwroot/
 
 WORKDIR /app/parkscomputing-engine
