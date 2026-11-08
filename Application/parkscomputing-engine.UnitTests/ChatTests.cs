@@ -274,6 +274,31 @@ public class ChatTests {
     }
 
     [TestMethod]
+    public void TheClaudeAdapterRunsOnlyWhenItWasInstalledFromTheImagesLockfile() {
+        var root = Path.Combine(Path.GetTempPath(), "pc-claude-adapter-" + Guid.NewGuid().ToString("N"));
+        var folder = Path.Combine(root, "claude-agent");
+        var lockfile = Path.Combine(root, "release", "package-lock.json");
+        try {
+            Directory.CreateDirectory(Path.GetDirectoryName(lockfile)!);
+            File.WriteAllText(lockfile, "{\"lockfileVersion\":3}");
+            StringAssert.Contains(ClaudeHost.AdapterProblem(folder, lockfile), "not installed");
+            StringAssert.Contains(ClaudeHost.AdapterProblem(folder, lockfile), "install-claude-agent");
+            var script = Path.Combine(folder, ClaudeHost.AdapterScript);
+            Directory.CreateDirectory(Path.GetDirectoryName(script)!);
+            File.WriteAllText(script, "");
+            StringAssert.Contains(ClaudeHost.AdapterProblem(folder, lockfile), "did not finish");
+            var stamp = Path.Combine(folder, ClaudeHost.InstalledStamp);
+            File.WriteAllText(stamp, new string('0', 64) + "\n");
+            StringAssert.Contains(ClaudeHost.AdapterProblem(folder, lockfile), "another release");
+            /* The install writes sha256sum's lowercase hex and a newline. */
+            var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(lockfile))).ToLowerInvariant();
+            File.WriteAllText(stamp, hash + "\n");
+            Assert.IsNull(ClaudeHost.AdapterProblem(folder, lockfile));
+        }
+        finally { if (Directory.Exists(root)) { Directory.Delete(root, true); } }
+    }
+
+    [TestMethod]
     public void AProviderKeptForOneAccountIsOfferedToThatAccountAlone() {
         var config = new ChatConfig {
             Providers = { new ChatProviderConfig { Id = "ollama", BaseUrl = "http://x/" }, new ChatProviderConfig { Id = "claude", Kind = "claude", Users = new() { "paul@example.com" } } },

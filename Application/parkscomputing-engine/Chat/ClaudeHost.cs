@@ -33,6 +33,14 @@ namespace ParksComputing.Engine.Chat;
 /// nonessential network traffic, which includes updating itself; the
 /// adapter's version is the image's.
 ///
+/// The image does not contain the adapter, since Anthropic's Agent SDK
+/// brings the Claude Code executable, which may not be redistributed. The
+/// server installs it into a volume at /app/claude-agent with the image's
+/// install-claude-agent, from the lockfile the image carries, and the
+/// install records that lockfile's hash. The adapter is started only when
+/// the recorded hash is the image's, so a release whose lockfile changed
+/// asks for the install to be run again.
+///
 /// The commands Claude runs can read that one credential. Claude Code's
 /// documented way to keep it from them, CLAUDE_CODE_SUBPROCESS_ENV_SCRUB,
 /// needs bubblewrap, and bubblewrap cannot create its namespaces in this
@@ -43,7 +51,14 @@ namespace ParksComputing.Engine.Chat;
 /// </summary>
 public sealed class ClaudeHost : IAsyncDisposable {
     public const string DefaultNode = "/usr/local/bin/node";
-    public const string Adapter = "/app/claude-agent/node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js";
+    public const string AdapterFolder = "/app/claude-agent";
+    public const string AdapterScript = "node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js";
+    public const string Adapter = AdapterFolder + "/" + AdapterScript;
+    /* The lockfile the image carries, and the file in which the install
+       records the hash of the lockfile it installed from. */
+    public const string ReleaseLockfile = "/app/claude-agent-release/package-lock.json";
+    public const string InstalledStamp = ".release-lock-sha256";
+    public const string InstallCommand = "docker run --rm --entrypoint /app/install-claude-agent -v parkscomputing-claude-agent:/app/claude-agent <the site's image>";
     /* Claude Code's configuration folder, with the sessions a chat reopens:
        a volume of its own, never inside etc, which the site lists, keeps
        history of and syncs. */
@@ -75,6 +90,22 @@ public sealed class ClaudeHost : IAsyncDisposable {
             : "The server has no " + provider.KeyEnv + " for Claude's API key.";
     }
 
+    /// <summary>Why the installed adapter cannot be used with this image,
+    /// said for the operator; null when it can: the adapter is missing, the
+    /// install did not finish, or it was made from another lockfile.</summary>
+    public static string? AdapterProblem(string folder = AdapterFolder, string releaseLockfile = ReleaseLockfile) {
+        const string how = " Install it on the server with: " + InstallCommand;
+        if (!File.Exists(Path.Combine(folder, AdapterScript))) { return "The Claude adapter is not installed on the server." + how; }
+        var stamp = Path.Combine(folder, InstalledStamp);
+        if (!File.Exists(stamp)) { return "The Claude adapter's install on the server did not finish." + how; }
+        if (!File.Exists(releaseLockfile)) { return "The site's image has no lockfile for the Claude adapter (" + releaseLockfile + ")."; }
+        var expected = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(releaseLockfile)));
+        var installed = File.ReadAllText(stamp).Trim();
+        return string.Equals(expected, installed, StringComparison.OrdinalIgnoreCase)
+            ? null
+            : "The Claude adapter on the server was installed for another release of the site." + how;
+    }
+
     /// <summary>The adapter's environment, as the summary says.</summary>
     public static Dictionary<string, string> AdapterEnvironment(string variable, string value) {
         var env = CodexHost.WithoutSecrets();
@@ -98,7 +129,7 @@ public sealed class ClaudeHost : IAsyncDisposable {
             if (_conns.TryGetValue(key, out var live) && live.Alive) { return live; }
             if (live is not null) { await live.DisposeAsync(); _conns.Remove(key); }
             if (!File.Exists(node)) { throw new ProviderException("Node.js is not installed on the server: there is no " + node + "."); }
-            if (!File.Exists(Adapter)) { throw new ProviderException("The Claude adapter is not installed on the server: there is no " + Adapter + "."); }
+            if (AdapterProblem() is { } problem) { throw new ProviderException(problem); }
             Directory.CreateDirectory(Home);
             var conn = AcpConnection.Start(node, new[] { Adapter }, Home, AdapterEnvironment(variable, value!), "Claude", _log);
             try {
