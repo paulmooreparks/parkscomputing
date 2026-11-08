@@ -34,7 +34,7 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
 
   await page.goto(BASE + '/?view=window&open=sudoku&top=sudoku', { waitUntil: 'networkidle' });
   await page.waitForSelector('.win[data-win="sudoku"] [data-cell="0-0"]', { timeout: 30000 });
-  log('it opens in a window with its icon', (await page.getAttribute('.win[data-win="sudoku"]', 'data-window-icon')) === '/images/icons/sudoku.svg');
+  log('it opens in a window with its icon', (await page.getAttribute('.win[data-win="sudoku"]', 'data-win-icon')) === '/images/icons/sudoku.svg');
   const menu = await page.evaluate(() => {
     const src = pudlApplets.menuSourceIn(document.querySelector('.win[data-win="sudoku"]'));
     const m = src && src.menus && src.menus();

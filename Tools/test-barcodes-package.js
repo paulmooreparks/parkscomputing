@@ -109,7 +109,7 @@ const file = list => JSON.stringify({ format: 'pc-barcode-layouts', version: 1, 
   // The tool in a window: icon, menus, continuity.
   await page.goto(BASE + '/?view=window&open=barcodes&top=barcodes', { waitUntil: 'networkidle' });
   await page.waitForSelector('.win[data-win="barcodes"] [data-role="data"]', { timeout: 30000 });
-  log('the tool opens in a window with its icon', (await page.getAttribute('.win[data-win="barcodes"]', 'data-window-icon')) === '/images/icons/barcodes.svg', await page.getAttribute('.win[data-win="barcodes"]', 'data-window-icon'));
+  log('the tool opens in a window with its icon', (await page.getAttribute('.win[data-win="barcodes"]', 'data-win-icon')) === '/images/icons/barcodes.svg', await page.getAttribute('.win[data-win="barcodes"]', 'data-win-icon'));
   const titles = await page.evaluate(() => {
     const src = pudlApplets.menuSourceIn(document.querySelector('.win[data-win="barcodes"]'));
     const m = src && src.menus && src.menus();

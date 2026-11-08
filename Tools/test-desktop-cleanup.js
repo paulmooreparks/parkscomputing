@@ -16,7 +16,7 @@ const origin = process.env.UI_SITE || 'http://localhost';
     try {
         await page.goto(origin + openUrl);
         await toggle.waitFor({ state: 'visible' });
-        await page.locator('[data-win-tab="coincidences"] .win-item-picture').waitFor();
+        await page.locator('[data-win-tab="coincidences"] .win-item-icon').waitFor();
         await page.locator('[data-win="files"] [data-applet="files"]').waitFor();
         const bar = await page.locator('.win-bar').boundingBox();
         const list = await sidebar.boundingBox();
@@ -78,8 +78,8 @@ const origin = process.env.UI_SITE || 'http://localhost';
         await splitter.press('Enter');
         assert(await sidebar.isVisible());
         assert.equal(await page.locator('[data-win-tab="coincidences"] img').getAttribute('src'), '/favicon-16x16.png');
-        assert.equal(await page.locator('[data-win-tab="terminal"] .win-item-picture').getAttribute('src'), '/images/icons/terminal.svg');
-        assert.equal(await page.locator('[data-win-tab="files"] .win-item-picture').getAttribute('src'), '/images/icons/files.svg');
+        assert.equal(await page.locator('[data-win-tab="terminal"] .win-item-icon').getAttribute('src'), '/images/icons/terminal.svg');
+        assert.equal(await page.locator('[data-win-tab="files"] .win-item-icon').getAttribute('src'), '/images/icons/files.svg');
         assert.equal(await page.locator('.view-seg a').first().innerText(), 'Windowed');
 
         for (const theme of ['light', 'dark']) {

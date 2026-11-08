@@ -11,6 +11,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const BASE = process.env.UI_SITE || 'http://localhost:8102';
 
+// Package readiness is checked below; analytics traffic is not a readiness signal.
 let failures = 0;
 function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (ok ? '' : '  ' + String(detail || '').slice(0, 400))); if (!ok) { failures++; } }
 
@@ -24,7 +25,7 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
 
   // Conway's article, opened from a link of the kind shared since 2015.
   const board = 'boardSize=30&cellSize=6&wrap=false&init=1,0;2,1;0,2;1,2;2,2';
-  await page.goto(BASE + '/page/conways-game-of-life?' + board, { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/page/conways-game-of-life?' + board, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-applet="conway"] canvas', { timeout: 30000 });
   log('Conway\'s article runs the package\'s script', ran('conway', 'conway.js'), scripts.filter(s => /conway/.test(s)).join());
   const live = await page.evaluate(() => { const el = document.querySelector('[data-applet="conway"] [data-role="live"], [data-applet="conway"] .conway-live'); return el ? el.textContent.trim() : null; });
@@ -33,9 +34,9 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
   log('the article lists the game\'s source from the package', await page.evaluate(() => { const c = document.querySelector('pre code[data-code-src="/applets/conway/conway.js"]'); return !!c && /Conway/.test(c.textContent); }));
 
   // Conway in a window: Open this board through PUDL's request.
-  await page.goto(BASE + '/?view=window&open=conway&top=conway', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/?view=window&open=conway&top=conway', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.win[data-win="conway"] [data-applet="conway"] canvas', { timeout: 30000 });
-  log('Conway opens in a window with its icon', (await page.getAttribute('.win[data-win="conway"]', 'data-window-icon')) === '/images/icons/conway.svg');
+  log('Conway opens in a window with its icon', (await page.getAttribute('.win[data-win="conway"]', 'data-win-icon')) === '/images/icons/conway.svg');
   const handled = await page.evaluate(b => {
     const p = new URLSearchParams(b), req = { path: p.get('init') };
     ['boardSize', 'cellSize', 'wrap'].forEach(k => { req[k] = p.get(k); });
@@ -47,7 +48,7 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
 
   // Dice.
   scripts.length = 0;
-  await page.goto(BASE + '/page/dice', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/page/dice', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-applet="dice"] .dice-roll', { timeout: 30000 });
   await page.click('[data-applet="dice"] .dice-roll');
   await page.waitForTimeout(300);
@@ -55,9 +56,15 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
 
   // The Theme Studio's preview.
   scripts.length = 0;
-  await page.goto(BASE + '/page/theme-studio', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/page/theme-studio', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-applet="theme-studio"] iframe[data-ts-frame="light"]', { timeout: 30000 });
-  await page.waitForTimeout(1500);
+  await page.waitForFunction(() => {
+    const frame = document.querySelector('[data-applet="theme-studio"] iframe[data-ts-frame="light"]');
+    const doc = frame && frame.contentDocument;
+    return doc && doc.getElementById('theme')?.textContent.length > 0
+      && [...doc.styleSheets].some(sheet => /\/pudl\/pudl\.css/.test(sheet.href || '') && sheet.cssRules.length > 50)
+      && [...doc.styleSheets].some(sheet => /\/applets\/theme-studio\/preview\.css/.test(sheet.href || ''));
+  });
   const frame = await page.evaluate(() => {
     const f = document.querySelector('[data-applet="theme-studio"] iframe[data-ts-frame="light"]'), d = f.contentDocument;
     const sheet = [...d.styleSheets].find(s => /\/pudl\/pudl\.css/.test(s.href || ''));
@@ -69,9 +76,10 @@ function log(name, ok, detail) { console.log((ok ? 'PASS ' : 'FAIL ') + name + (
 
   // The Diff Viewer.
   scripts.length = 0;
-  await page.goto(BASE + '/page/diff', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/page/diff', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => !!window.pudlHost?.fs?.writeText);
   await page.evaluate(() => Promise.all([pudlHost.fs.writeText('~/diff-a.txt', 'one\ntwo\nthree\n'), pudlHost.fs.writeText('~/diff-b.txt', 'one\n2\nthree\n')]));
-  await page.goto(BASE + '/page/diff?pa=~/diff-a.txt&pb=~/diff-b.txt', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/page/diff?pa=~/diff-a.txt&pb=~/diff-b.txt', { waitUntil: 'domcontentloaded' });
   const sideText = k => page.evaluate(k => { const t = document.querySelector('[data-applet="diff"] [data-df-text="' + k + '"]'); return t ? t.value : null; }, k);
   await page.waitForFunction(() => { const t = document.querySelector('[data-applet="diff"] [data-df-text="b"]'); return t && /2/.test(t.value); }, null, { timeout: 15000 }).catch(() => { });
   log('the Diff Viewer runs its package', ran('diff', 'diff.js') && !scripts.includes('/js/textdiff.js'), scripts.filter(s => /diff/.test(s)).join());
