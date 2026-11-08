@@ -58,21 +58,12 @@ RUN curl -fsSL -o /tmp/codex.tar.gz "https://github.com/openai/codex/releases/do
     && mkdir -p /codex && tar -xzf /tmp/codex.tar.gz -C /codex --exclude='codex-resources/voice' \
     && chmod +x /codex/bin/* /codex/codex-path/* /codex/codex-resources/bwrap && rm /tmp/codex.tar.gz
 
-# The Claude Agent ACP adapter, for the Chat's claude provider
-# (Chat/ClaudeHost.cs): a Node.js program, installed from the lockfile in
-# claude-agent/ without running package scripts. Anthropic's Agent SDK in it
-# brings its own Claude Code executable as a platform package. The run
-# stage gets this stage's node binary and the installed folder.
-FROM node:22.23.3-bookworm-slim AS claude-fetch
-WORKDIR /claude-agent
-COPY claude-agent/package.json claude-agent/package-lock.json ./
-# npm installs the musl build of the executable beside the glibc one; the
-# run stage is glibc (Ubuntu), so the musl one, a quarter of a gigabyte,
-# goes.
-RUN npm ci --ignore-scripts --no-audit --no-fund \
-    && test -f node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js \
-    && test -x node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude \
-    && rm -rf node_modules/@anthropic-ai/claude-agent-sdk-linux-x64-musl
+# Node.js and npm, for the Chat's claude provider (Chat/ClaudeHost.cs). The
+# image does not contain the Claude Agent ACP adapter: Anthropic's Agent SDK
+# in it brings the Claude Code executable, which is not licensed for
+# redistribution. The server installs the adapter from npm into a volume
+# with install-claude-agent, from the lockfile copied below.
+FROM node:22.23.3-bookworm-slim AS node-dist
 
 # Run command
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
@@ -80,8 +71,12 @@ WORKDIR /app
 EXPOSE 8080
 COPY --from=build-env /app/parkscomputing-engine/out .
 COPY --from=codex-fetch /codex/ /app/codex/
-COPY --from=claude-fetch /usr/local/bin/node /usr/local/bin/node
-COPY --from=claude-fetch /claude-agent/ /app/claude-agent/
+COPY --from=node-dist /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-dist /usr/local/lib/node_modules/npm/ /usr/local/lib/node_modules/npm/
+COPY claude-agent/package.json claude-agent/package-lock.json /app/claude-agent-release/
+COPY claude-agent/install.sh /app/install-claude-agent
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && chmod 755 /app/install-claude-agent
 # Outside wwwroot, which the content volume covers; the edit origin serves
 # these to a signed-in admin only (Identity/SshController.cs).
 COPY --from=ssh-build /out/ /app/ssh/

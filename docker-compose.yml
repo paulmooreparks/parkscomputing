@@ -88,6 +88,10 @@ services:
       - C:\Users\paul\.config\docker-sites\parkscomputing-codex:/app/codex-home
       # Claude's home: local and not synced, as Codex's (Chat/ClaudeHost.cs).
       - C:\Users\paul\.config\docker-sites\parkscomputing-claude:/app/claude-home
+      # The Claude adapter, installed from npm by the image's
+      # install-claude-agent, since the image does not ship Anthropic's
+      # executable (Architecture/chat-design.md).
+      - claude-agent:/app/claude-agent
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\history:/app/history
       - C:\Users\paul\OneDrive\Documents\parkscomputing.com\config:/app/config:ro
     depends_on:
@@ -133,3 +137,5 @@ services:
 volumes:
   sqlserver-data:
     external: true
+  claude-agent:
+    name: parkscomputing-claude-agent

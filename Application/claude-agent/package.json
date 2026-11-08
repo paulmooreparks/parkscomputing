@@ -1,8 +1,12 @@
 {
   "name": "parkscomputing-claude-agent",
   "private": true,
-  "description": "The Claude Agent ACP adapter the chat's claude provider runs (Architecture/chat-design.md, \"Claude on the operator's plan\"). Pinned to a published release; the lockfile pins the rest.",
+  "description": "The Claude Agent ACP adapter the chat's claude provider runs (Architecture/chat-design.md, \"Claude on the operator's plan\"). Pinned to a published release; the lockfile pins the rest. The overrides raise two indirect dependencies past denial-of-service advisories (GHSA-mrhx-c7xc-m3w5, GHSA-27r3-jxmh-p828) without moving the adapter.",
   "dependencies": {
     "@agentclientprotocol/claude-agent-acp": "0.87.0"
+  },
+  "overrides": {
+    "zod": "4.6.7",
+    "body-parser": "2.4.0"
   }
 }
