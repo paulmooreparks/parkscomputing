@@ -19,6 +19,11 @@ using Microsoft.Extensions.Logging;
 namespace ParksComputing.Engine {
     public class Program {
         public static int Main(string[] args) {
+            // The container's health check (Api/HealthCheck.cs) asks the
+            // running site, so it needs no host of its own.
+            if (ParksComputing.Engine.Api.HealthCheck.Matches(args)) {
+                return ParksComputing.Engine.Api.HealthCheck.Run();
+            }
             // The site's language server (Lsp/SiteLanguageServer.cs), for
             // editors: the protocol on stdin and stdout, and no web host.
             if (ParksComputing.Engine.Lsp.SiteLanguageServer.Matches(args)) {

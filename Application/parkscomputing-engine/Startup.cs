@@ -218,6 +218,11 @@ namespace ParksComputing.Engine {
                 app.UseExceptionHandler("/Error");
             }
 
+            // The container's health check, from the loopback address only,
+            // ahead of the host check and anything that counts or logs visits
+            // (Api/HealthCheck.cs).
+            app.UseMiddleware<ParksComputing.Engine.Api.HealthCheck>();
+
             // AI agents' visits are counted after each response, whatever
             // answered it (Identity/AiVisits.cs).
             app.Use((ctx, next) => ParksComputing.Engine.Identity.AiVisitCounter.Middleware(ctx, next));

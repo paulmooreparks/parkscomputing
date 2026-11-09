@@ -80,4 +80,7 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 # Outside wwwroot, which the content volume covers; the edit origin serves
 # these to a signed-in admin only (Identity/SshController.cs).
 COPY --from=ssh-build /out/ /app/ssh/
+# The engine checks itself, since the image has no curl (Api/HealthCheck.cs).
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD ["dotnet", "/app/ParksComputing.Engine.dll", "health"]
 ENTRYPOINT ["dotnet", "ParksComputing.Engine.dll"]
