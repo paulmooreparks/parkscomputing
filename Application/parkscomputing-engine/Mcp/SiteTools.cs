@@ -110,7 +110,7 @@ public sealed class SiteTools {
     }
 
     [McpServerTool(Name = "site_file_write", Title = "Write a file", ReadOnly = false, Destructive = true, Idempotent = true, OpenWorld = false)]
-    [Description("Write a text file, replacing it if it exists; the version it replaces is kept in the server's history for 30 days. In ~ this needs files.write. In /wwwroot it needs site.publish and changes the live site at once; js/, css/ and pudl/ can't be written this way, and nor can /etc. A new page also needs an entry in /wwwroot/sitenav.xfer to appear in the site's menus.")]
+    [Description("Write a text file, replacing it if it exists; the version it replaces is kept in the server's history for 30 days. In ~ this needs files.write. In /wwwroot it needs site.publish and changes the live site at once, including the site's own scripts and stylesheets in js/ and css/; pudl/, the site's copy of the PUDL release, can't be written this way, and nor can /etc. A new page also needs an entry in /wwwroot/sitenav.xfer to appear in the site's menus.")]
     [Authorize(Policy = McpSetup.WritePolicy)]
     public async Task<object> WriteFile(
         [Description("The file, such as ~/drafts/idea.md or /wwwroot/content/about.md.")] string path,
@@ -121,8 +121,8 @@ public sealed class SiteTools {
             throw new McpException("/etc can't be written over MCP. Change it from the admin desktop.");
         }
         _caller.Require(t.Root == ServerFiles.Home ? TokenCapabilities.FilesWrite : TokenCapabilities.SitePublish);
-        if (ServerFiles.IsProtected(t.Root, t.Rel)) {
-            throw new McpException(path + " is in js/, css/ or pudl/, which can't be written over MCP. Change it from the admin desktop.");
+        if (ServerFiles.IsReleaseCopy(t.Root, t.Rel)) {
+            throw new McpException(path + " is in pudl/, the site's copy of the PUDL release, which changes only by taking a new release.");
         }
         if (t.Rel == "") {
             throw new McpException(path + " is a folder.");
@@ -146,7 +146,7 @@ public sealed class SiteTools {
     }
 
     [McpServerTool(Name = "site_file_delete", Title = "Delete a file", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false)]
-    [Description("Delete one file; the file is kept in the server's history for 30 days. Folders can't be deleted this way. In ~ this needs files.write. In /wwwroot it needs site.publish and changes the live site at once; nothing in js/, css/ or pudl/ can be deleted this way, and nor can anything in /etc.")]
+    [Description("Delete one file; the file is kept in the server's history for 30 days. Folders can't be deleted this way. In ~ this needs files.write. In /wwwroot it needs site.publish and changes the live site at once; nothing in pudl/, the site's copy of the PUDL release, can be deleted this way, and nor can anything in /etc.")]
     [Authorize(Policy = McpSetup.WritePolicy)]
     public async Task<object> DeleteFile([Description("The file, such as ~/drafts/idea.md or /wwwroot/content/old-page.md.")] string path) {
         var t = await LocateAsync(path);
@@ -154,8 +154,8 @@ public sealed class SiteTools {
             throw new McpException("/etc can't be changed over MCP. Change it from the admin desktop.");
         }
         _caller.Require(t.Root == ServerFiles.Home ? TokenCapabilities.FilesWrite : TokenCapabilities.SitePublish);
-        if (ServerFiles.IsProtected(t.Root, t.Rel)) {
-            throw new McpException(path + " is in js/, css/ or pudl/, which can't be changed over MCP. Change it from the admin desktop.");
+        if (ServerFiles.IsReleaseCopy(t.Root, t.Rel)) {
+            throw new McpException(path + " is in pudl/, the site's copy of the PUDL release, which changes only by taking a new release.");
         }
         if (t.Rel == "" || Directory.Exists(t.Full)) {
             throw new McpException(path + " is a folder. Only files can be deleted over MCP.");

@@ -129,8 +129,11 @@ async function init(token) {
   c = await call(ALL, 'site_file_write', { path: '/wwwroot/content/mcp-test-' + RUN + '.md', text: 'Published by the MCP test.\n' });
   if (PUBLISH) { log('site.publish writes in /wwwroot, live', !c.error && c.json && c.json.live === true, c.text); }
   else { log('without site.publish, /wwwroot can\'t be written', c.error && /was not given site\.publish/.test(c.text), c.text); }
-  c = await call(ALL, 'site_file_write', { path: '/wwwroot/js/mcp-test.js', text: '1' });
-  log('js/ can\'t be written over MCP', c.error && (PUBLISH ? /js\/, css\/ or pudl\//.test(c.text) : /site\.publish/.test(c.text)), c.text);
+  c = await call(ALL, 'site_file_write', { path: '/wwwroot/css/mcp-test-' + RUN + '.css', text: '/* MCP test */\n', makeFolders: true });
+  if (PUBLISH) { log('site.publish writes the site\'s own stylesheet in css/, live', !c.error && c.json && c.json.live === true, c.text); }
+  else { log('without site.publish, css/ can\'t be written', c.error && /site\.publish/.test(c.text), c.text); }
+  c = await call(ALL, 'site_file_write', { path: '/wwwroot/pudl/mcp-test.css', text: '1' });
+  log('pudl/ can\'t be written over MCP', c.error && (PUBLISH ? /in pudl\//.test(c.text) : /site\.publish/.test(c.text)), c.text);
   c = await call(ALL, 'site_file_write', { path: '/etc/mcp-test', text: '1' });
   log('/etc can\'t be written over MCP', c.error && /\/etc can't be written/.test(c.text), c.text);
 
@@ -147,8 +150,12 @@ async function init(token) {
     c = await call(ALL, 'site_file_delete', { path: '/wwwroot/content/mcp-test-' + RUN + '.md' });
     log('site.publish deletes in /wwwroot, live', !c.error && c.json && c.json.live === true, c.text);
   }
-  c = await call(ALL, 'site_file_delete', { path: '/wwwroot/js/site.js' });
-  log('nothing in js/ can be deleted over MCP', c.error && (PUBLISH ? /js\/, css\/ or pudl\//.test(c.text) : /site\.publish/.test(c.text)), c.text);
+  if (PUBLISH) {
+    c = await call(ALL, 'site_file_delete', { path: '/wwwroot/css/mcp-test-' + RUN + '.css' });
+    log('site.publish deletes its own stylesheet in css/', !c.error && c.json && c.json.deleted === true, c.text);
+  }
+  c = await call(ALL, 'site_file_delete', { path: '/wwwroot/pudl/pudl.css' });
+  log('nothing in pudl/ can be deleted over MCP', c.error && (PUBLISH ? /in pudl\//.test(c.text) : /site\.publish/.test(c.text)), c.text);
   c = await call(ALL, 'site_file_delete', { path: '/etc/admin-menu.xfer' });
   log('nothing in /etc can be deleted over MCP', c.error && /\/etc can't be changed/.test(c.text), c.text);
 
