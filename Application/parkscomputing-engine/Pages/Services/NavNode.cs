@@ -113,6 +113,17 @@ public class NavNode {
     [XferPropertyName("menu")]
     public NavNode[]? Menu { get; set; }
 
+    /// <summary>On the root only: how /llms.txt groups the site's pages,
+    /// for a site that wants groups other than its menu's. Each entry is a
+    /// group, a title with a nav of pages, in the order llms.txt lists them.
+    /// A page is a slug, or url "/" for the home page, and may give its own
+    /// title and description for llms.txt; otherwise it takes the menu's,
+    /// and then its file's. Pages the list leaves out follow in the groups
+    /// the menu gives them. The menus never read this list, so a page can
+    /// be grouped here without appearing in a menu.</summary>
+    [XferPropertyName("llms")]
+    public NavNode[]? Llms { get; set; }
+
     /// <summary>In the menu: a title's PUDL glyph, such as home, shown
     /// before its words; titles with one fold to it first when the bar runs
     /// short of room (PUDL 0.79.0, a preview).</summary>

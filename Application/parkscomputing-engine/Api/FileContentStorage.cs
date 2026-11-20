@@ -22,7 +22,12 @@ namespace ParksComputing.Engine.Api {
            tree moves away from the app's folder (Pages/Services/EngineAssets.cs). */
         private string ContentRoot => Path.Combine(_env.WebRootPath, "content");
 
+        /* A part of the layout, such as header-section or llms-section, is
+           not content: the API neither lists nor gives one. */
         public Task<ContentResource?> GetAsync(string id, CancellationToken ct = default) {
+            if (ParksComputing.Engine.Pages.Services.MarkdownPages.IsLayoutPart(id)) {
+                return Task.FromResult<ContentResource?>(null);
+            }
             var (path, isMarkdown) = ResolvePath(id);
 
             if (path == null || !File.Exists(path)) {
@@ -57,6 +62,9 @@ namespace ParksComputing.Engine.Api {
 
                 var text = File.ReadAllText(file);
                 var id = rel.EndsWith(ext, StringComparison.OrdinalIgnoreCase) ? rel.Substring(0, rel.Length - ext.Length) : rel;
+                if (ParksComputing.Engine.Pages.Services.MarkdownPages.IsLayoutPart(id)) {
+                    continue;
+                }
                 bool isMarkdown = string.Equals(ext, ".md", StringComparison.OrdinalIgnoreCase);
                 bool isDraft = IsDraft(file);
                 var res = isMarkdown ? ParseMarkdownFile(id, text, isDraft) : ParseHtmlFile(id, text, isDraft);

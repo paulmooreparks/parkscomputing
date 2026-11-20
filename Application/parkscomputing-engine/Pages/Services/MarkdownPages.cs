@@ -68,6 +68,12 @@ public sealed class MarkdownPages {
     /// is not part of the layout and is not an applet.</summary>
     public bool IsReadable(string slug) => Load(slug) is not null;
 
+    /// <summary>Whether a content path is a part of the layout, such as
+    /// header-section or llms-section, rather than a page: its last name ends
+    /// in -section. The site never serves one as a page of its own.</summary>
+    public static bool IsLayoutPart(string slug) =>
+        slug.TrimEnd('/').Split('/')[^1].EndsWith("-section", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>The address of a page's Markdown: the page's own address
     /// with .md added, and /index.md for the home page.</summary>
     public string MarkdownUrlOf(string slug) =>
@@ -81,7 +87,7 @@ public sealed class MarkdownPages {
     /// asks for it on every page view and llms.txt and the sitemap for every
     /// page at once.</summary>
     public MarkdownPage? Load(string slug) {
-        if (!SlugPattern.IsMatch(slug) || slug.EndsWith("-section", StringComparison.OrdinalIgnoreCase)) { return null; }
+        if (!SlugPattern.IsMatch(slug) || IsLayoutPart(slug)) { return null; }
         var md = Path.Combine(ContentDir, slug + ".md");
         if (File.Exists(md)) { return _cache.Get(md, "markdown-page", p => FromMarkdown(slug, File.ReadAllText(p), File.GetLastWriteTimeUtc(p))); }
         var html = Path.Combine(ContentDir, slug + ".html");
@@ -152,9 +158,10 @@ public sealed class MarkdownPages {
     private static DateTime? ParseDate(string? s) =>
         DateTime.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var d) ? d : null;
 
-    /// <summary>Every page of the site in order: the home page and the other
-    /// top-level pages, then each section's pages, then any other content
-    /// page, each once, and only pages there is something to read on.</summary>
+    /// <summary>Every page of the site in order, each once, and only pages
+    /// there is something to read on: first the groups sitenav.xfer's llms
+    /// list gives, if it has one, then the home page and the other top-level
+    /// pages, then each section's pages, then any other content page.</summary>
     public IReadOnlyList<SitePage> Pages() {
         var root = _nav.GetRoot();
         var list = new List<SitePage>();
@@ -165,6 +172,19 @@ public sealed class MarkdownPages {
             if (page is null) { return; }
             seen.Add(slug);
             list.Add(new SitePage(slug, title ?? page.Title, description ?? page.Description, group));
+        }
+        foreach (var group in (root.Llms ?? Array.Empty<NavNode>()).Where(g => !string.IsNullOrWhiteSpace(g.Title))) {
+            foreach (var n in group.Nav ?? Array.Empty<NavNode>()) {
+                if (n.Url == "/" || string.Equals(n.Slug, "index", StringComparison.OrdinalIgnoreCase)) {
+                    Add("index", n.Title ?? "Home", n.Description ?? root.Description, group.Title!);
+                    continue;
+                }
+                if (string.IsNullOrEmpty(n.Slug) || !string.IsNullOrEmpty(n.Url)) { continue; }
+                // The menu's entry for the page gives what this one leaves out,
+                // as the menu's grouping below would have.
+                var listed = _nav.GetNavNode(n.Slug);
+                Add(n.Slug, n.Title ?? listed?.Title, n.Description ?? listed?.Description, group.Title!);
+            }
         }
         Add("index", "Home", root.Description, "Pages");
         foreach (var n in (root.Nav ?? Array.Empty<NavNode>()).Where(n => !string.IsNullOrEmpty(n.Slug) && !n.External && n.Url != "/")) {
