@@ -9,11 +9,21 @@ namespace ParksComputing.Engine.Pages.Models
     /// excerpts of a set of sitenav entries. The entries come in the order
     /// sitenav.xfer gives them (Paul, 2026-10-01); a page may still ask for
     /// another order with sort="recent", "popular" or "alphabetical".
+    /// On the home page the entries are the selected category's; any page
+    /// may instead give section="slug" for that section's entries, such as
+    /// a brochure site's Thoughts page listing its articles.
+    /// format="card-list" gives one PUDL card per entry (its title as a
+    /// link, its date and its description), in a list whose class is
+    /// card-list plus css-class, each card's class being card plus
+    /// item-class, so a site can style the list as its own.
     /// </summary>
     public class PostsContentModel
     {
         public IReadOnlyList<NavNode> Entries { get; set; } = new List<NavNode>();
-        public string Format { get; set; } = "cards"; // cards, links, excerpts
+        public string Format { get; set; } = "cards"; // cards, links, excerpts, card-list
+        public string? Section { get; set; }
+        public string CssClass { get; set; } = "";
+        public string ItemClass { get; set; } = "";
         public int Limit { get; set; } = int.MaxValue;
         public string Style { get; set; } = "";
         public string Category { get; set; } = "";
@@ -46,8 +56,25 @@ namespace ParksComputing.Engine.Pages.Models
             if (attributes.TryGetValue("show-excerpts", out var showExcerptsStr) && bool.TryParse(showExcerptsStr, out var showExcerpts))
                 model.ShowExcerpts = showExcerpts;
 
+            if (attributes.TryGetValue("section", out var section) && !string.IsNullOrWhiteSpace(section))
+                model.Section = section;
+
+            if (attributes.TryGetValue("css-class", out var cssClass))
+                model.CssClass = cssClass;
+
+            if (attributes.TryGetValue("item-class", out var itemClass))
+                model.ItemClass = itemClass;
+
             return model;
         }
+
+        /// <summary>The partial view that draws a format.</summary>
+        public static string PartialFor(string format) => format switch {
+            "links" => "_PostsLinks",
+            "excerpts" => "_PostsExcerpts",
+            "card-list" => "_PostsCardList",
+            _ => "_PostsPartial"
+        };
 
         public IEnumerable<NavNode> GetFilteredPosts()
         {

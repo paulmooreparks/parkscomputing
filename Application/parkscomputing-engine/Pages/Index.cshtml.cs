@@ -82,9 +82,10 @@ namespace ParksComputing.Engine.Pages {
             }
 
             // Process posts-content elements: the selected section's entries.
+            // One that gives a section of its own is the base class's to draw.
             var customElements = CustomElementParser.ParseCustomElements(content);
 
-            foreach (var element in customElements.Where(e => e.TagName == "posts-content"))
+            foreach (var element in customElements.Where(e => e.TagName == "posts-content" && !e.Attributes.ContainsKey("section")))
             {
                 var model = PostsContentModel.FromAttributes(element.Attributes, Entries);
                 var marker = $"RENDER_POSTS_{Guid.NewGuid():N}";

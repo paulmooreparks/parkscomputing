@@ -171,7 +171,8 @@
         {
             <nav data-page-menu hidden aria-label="Page menu"><ul></ul></nav>
         }
-        @Html.Raw(Model.PageContent)
+        @* The page's lists, such as a section's article cards (Pages/Shared/ContentMarkers.cs). *@
+        @Html.Raw(Model.PageContent is null ? null : await ParksComputing.Engine.Pages.Shared.ContentMarkers.RenderAsync(Html, ViewData, Model.PageContent))
     </div>
 </article>
 @if (book is not null)

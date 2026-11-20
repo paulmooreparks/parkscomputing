@@ -59,6 +59,12 @@ namespace ParksComputing.Engine.Pages.Services {
         public static IEnumerable<NavNode> Sections(NavNode root) =>
             (root.Nav ?? Array.Empty<NavNode>()).Where(n => !string.IsNullOrEmpty(n.Slug) && n.Nav is { Length: > 0 });
 
+        /// <summary>The entries of the section with this slug, in the file's
+        /// order, or none when there is no such section.</summary>
+        public static IReadOnlyList<NavNode> SectionEntries(NavNode root, string section) =>
+            Sections(root).FirstOrDefault(s => string.Equals(s.Slug, section, StringComparison.OrdinalIgnoreCase))?.Nav?
+                .Where(n => !string.IsNullOrEmpty(n.Slug)).ToList() ?? new List<NavNode>();
+
         /// <summary>Every article: the entries of the sections marked feed,
         /// in the file's order, each slug once.</summary>
         public static IEnumerable<NavNode> Articles(NavNode root) =>

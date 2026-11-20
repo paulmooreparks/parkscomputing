@@ -320,6 +320,13 @@ namespace ParksComputing.Engine.Pages {
                     ViewData[marker] = navModel; // Store NavContentModel for rendering
                     content = CustomElementParser.ReplaceCustomElement(content, element, marker);
                 }
+                // A list of a section's entries, such as a Thoughts page's
+                // article cards; the view draws it (Pages/Shared/ContentMarkers.cs).
+                else if (element.TagName == "posts-content" && element.Attributes.TryGetValue("section", out var section) && !string.IsNullOrWhiteSpace(section)) {
+                    var marker = $"RENDER_POSTS_{Guid.NewGuid():N}";
+                    ViewData[marker] = PostsContentModel.FromAttributes(element.Attributes, ParksComputing.Engine.Pages.Services.NavService.SectionEntries(NavService.GetRoot(), section));
+                    content = CustomElementParser.ReplaceCustomElement(content, element, marker);
+                }
             }
 
             return content;
