@@ -188,7 +188,7 @@ public sealed class SiteTools {
                 n.Description ?? n.Excerpt, n.Url, NavService.EffectiveDate(n), n.Tags is { Length: > 0 } ? n.Tags : null,
                 external ? null : _articles.SourcePathOf(n.Slug), children);
         }
-        return new { title = root.Title, sections = (root.Nav ?? Array.Empty<NavNode>()).Where(n => !string.IsNullOrEmpty(n.Slug)).Select(Entry).ToList() };
+        return new { title = root.Title, name = root.Name, sections = (root.Nav ?? Array.Empty<NavNode>()).Where(n => !string.IsNullOrEmpty(n.Slug)).Select(Entry).ToList() };
     }
 
     /* === Comments ======================================================= */

@@ -79,7 +79,7 @@
         <link rel="canonical" href="@pageUrl" />
         @* A page that gives no description of its own already has one from
            its opening words (Pages/page.cshtml.cs). *@
-        <meta property="og:site_name" content="@siteTitle" />
+        <meta property="og:site_name" content="@root.FullName()" />
         <meta property="og:type" content="@(isArticle ? "article" : "website")" />
         <meta property="og:title" content="@mdPage.Title" />
         <meta property="og:description" content="@mdPage.Summary" />

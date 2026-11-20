@@ -58,6 +58,22 @@ public class LlmsTxtTests {
     }
 
     [TestMethod]
+    public void TheSitesFullNameHeadsLlmsTxtWhenItHasOne() {
+        var (pages, _, nav) = Site();
+        nav.Root.Name = "Jo Example, Counsellor";
+        StringAssert.StartsWith(pages.LlmsTxt("https://example.com").Replace("\r\n", "\n"), "# Jo Example, Counsellor\n\n> Jo Example is a counsellor.");
+        Assert.AreEqual("Jo Example, Counsellor", nav.Root.FullName());
+        Assert.AreEqual("Jo Example", nav.Root.SiteName());
+    }
+
+    [TestMethod]
+    public void WithoutANameTheFullNameIsTheMenusSiteName() {
+        Assert.AreEqual("Jo", new NavNode { Title = "Jo" }.FullName());
+        Assert.AreEqual("Parks Computing", new NavNode { Title = "Home", Menu = new[] { new NavNode { Title = "Parks Computing" } } }.FullName());
+        Assert.AreEqual("Jo", new NavNode { Title = "Jo", Name = "  " }.FullName());
+    }
+
+    [TestMethod]
     public void TheLlmsListGroupsPagesFirstWithoutTouchingTheMenu() {
         var (pages, _, nav) = Site();
         nav.Root.Llms = new[] {
@@ -100,9 +116,11 @@ public class LlmsTxtTests {
     [TestMethod]
     public void SitenavXferReadsTheLlmsList() {
         var root = ParksComputing.XferLang.Serialization.XferSerializer.Deserialize<NavNode>(
-            "{ slug \"home\" title \"Jo\" nav [ { slug \"about\" } ] " +
+            "{ slug \"home\" title \"Jo\" name \"Jo Example, Counsellor\" nav [ { slug \"about\" } ] " +
             "llms [ { title \"Start here\" nav [ { slug \"home\" url \"/\" description \"Who Jo is.\" } { slug \"contact\" } ] } ] }")!;
         Assert.AreEqual(1, root.Nav!.Length);
+        Assert.AreEqual("Jo", root.Title);
+        Assert.AreEqual("Jo Example, Counsellor", root.Name);
         Assert.AreEqual("Start here", root.Llms![0].Title);
         Assert.AreEqual("/", root.Llms[0].Nav![0].Url);
         Assert.AreEqual("Who Jo is.", root.Llms[0].Nav![0].Description);
