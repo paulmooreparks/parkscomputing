@@ -58,6 +58,33 @@ public class LlmsTxtTests {
     }
 
     [TestMethod]
+    public void APagesPreviewPictureIsTheOneItChoosesOrElseItsFirst() {
+        var (pages, content, _) = Site();
+        File.WriteAllText(Path.Combine(content, "first.md"), "# First\n\n![Jo at work](/images/jo.jpg)\n\nText.\n");
+        File.WriteAllText(Path.Combine(content, "chosen.md"), "---\ntitle: Chosen\nimage: /images/card.jpg\nimage-alt: Jo's card\n---\n![Jo at work](/images/jo.jpg)\n");
+        File.WriteAllText(Path.Combine(content, "html-first.html"), "<html><head><title>H</title></head><body><h1>H</h1><p>x</p><img src=\"/a.webp\" alt=\"A &amp; B\"></body></html>");
+        File.WriteAllText(Path.Combine(content, "html-chosen.html"), "<html><head><title>H</title><meta property=\"og:image\" content=\"/card.jpg\"><meta property=\"og:image:alt\" content=\"The card\"></head><body><img src=\"/a.webp\" alt=\"A\"></body></html>");
+        File.WriteAllText(Path.Combine(content, "none.md"), "# None\n\nJust words.\n");
+        Assert.AreEqual(("/images/jo.jpg", "Jo at work"), (pages.Load("first")!.Image, pages.Load("first")!.ImageAlt));
+        Assert.AreEqual(("/images/card.jpg", "Jo's card"), (pages.Load("chosen")!.Image, pages.Load("chosen")!.ImageAlt));
+        Assert.AreEqual(("/a.webp", "A & B"), (pages.Load("html-first")!.Image, pages.Load("html-first")!.ImageAlt));
+        Assert.AreEqual(("/card.jpg", "The card"), (pages.Load("html-chosen")!.Image, pages.Load("html-chosen")!.ImageAlt));
+        Assert.AreEqual((null, null), (pages.Load("none")!.Image, pages.Load("none")!.ImageAlt));
+    }
+
+    [DataTestMethod]
+    [DataRow("<meta property=\"og:image\" content=\"x\">", true)]
+    [DataRow("<meta property=\"article:published_time\" content=\"x\">", true)]
+    [DataRow("<meta name=\"twitter:card\" content=\"x\">", true)]
+    [DataRow("<meta name=\"description\" content=\"x\">", false)]
+    [DataRow("<meta http-equiv=\"date\" content=\"x\">", false)]
+    public void LinkPreviewTagsAreTheOgArticleAndTwitterOnes(string html, bool sharing) {
+        var doc = new HtmlAgilityPack.HtmlDocument();
+        doc.LoadHtml(html);
+        Assert.AreEqual(sharing, MarkdownPages.IsSharingTag(doc.DocumentNode.FirstChild));
+    }
+
+    [TestMethod]
     public void TheSitesFullNameHeadsLlmsTxtWhenItHasOne() {
         var (pages, _, nav) = Site();
         nav.Root.Name = "Jo Example, Counsellor";
@@ -116,11 +143,12 @@ public class LlmsTxtTests {
     [TestMethod]
     public void SitenavXferReadsTheLlmsList() {
         var root = ParksComputing.XferLang.Serialization.XferSerializer.Deserialize<NavNode>(
-            "{ slug \"home\" title \"Jo\" name \"Jo Example, Counsellor\" nav [ { slug \"about\" } ] " +
+            "{ slug \"home\" title \"Jo\" name \"Jo Example, Counsellor\" image \"/images/share.jpg\" image-alt \"Jo\" nav [ { slug \"about\" } ] " +
             "llms [ { title \"Start here\" nav [ { slug \"home\" url \"/\" description \"Who Jo is.\" } { slug \"contact\" } ] } ] }")!;
         Assert.AreEqual(1, root.Nav!.Length);
         Assert.AreEqual("Jo", root.Title);
         Assert.AreEqual("Jo Example, Counsellor", root.Name);
+        Assert.AreEqual(("/images/share.jpg", "Jo"), (root.Image, root.ImageAlt));
         Assert.AreEqual("Start here", root.Llms![0].Title);
         Assert.AreEqual("/", root.Llms[0].Nav![0].Url);
         Assert.AreEqual("Who Jo is.", root.Llms[0].Nav![0].Description);

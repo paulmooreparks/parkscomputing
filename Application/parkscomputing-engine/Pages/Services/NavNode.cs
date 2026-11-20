@@ -23,6 +23,15 @@ public class NavNode {
     [XferPropertyName("name")]
     public string? Name { get; set; }
 
+    /// <summary>On the root only: the picture a link preview shows for a
+    /// page that has none of its own, such as "/images/share.jpg", ideally
+    /// 1200 by 630 pixels, with its alt text in image-alt.</summary>
+    [XferPropertyName("image")]
+    public string? Image { get; set; }
+
+    [XferPropertyName("image-alt")]
+    public string? ImageAlt { get; set; }
+
     [XferPropertyName("description")]
     public string? Description { get; set; }
 

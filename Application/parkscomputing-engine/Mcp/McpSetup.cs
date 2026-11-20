@@ -50,6 +50,8 @@ public static class McpSetup {
         "sitenav.xfer gives other groups, each a title and a nav of pages that may have their own titles and descriptions for llms.txt, and " +
         "the menus never read it. The root's title is the short name every page's title ends with; an optional name on the root is the " +
         "site's full name, such as a business name, which link previews (og:site_name), the RSS feed and llms.txt's heading use instead. " +
+        "A link preview shows the page's own picture: image and image-alt in a Markdown page's front matter, or og:image and og:image:alt " +
+        "in an HTML page's head, or else the page's first picture, or else the image and image-alt on the root of sitenav.xfer (best at 1200 by 630). " +
         "The applet tools list what the site's applets publish " +
         "and run their pure actions (such as rolling dice, solving a sudoku or drawing a barcode) on the server; actions that need a window " +
         "or a person need the super-user's open desktop, which is not available yet.";
