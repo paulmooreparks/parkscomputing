@@ -244,6 +244,11 @@ namespace ParksComputing.Engine {
             // Admin work on its own origin, before anything else answers.
             app.UseMiddleware<ParksComputing.Engine.Identity.EditOriginGate>();
 
+            // A staging server keeps out of search engines (Api/StageRobots.cs).
+            if (ParksComputing.Engine.Api.StageRobots.Wanted(Configuration)) {
+                app.UseMiddleware<ParksComputing.Engine.Api.StageRobots>();
+            }
+
             ConfigureRedirects(app, env);
 
             // A page answers in Markdown to a request that prefers it, and
