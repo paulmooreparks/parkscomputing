@@ -48,7 +48,9 @@ public static class McpSetup {
         "/llms.txt is generated from sitenav.xfer and each page's title and description; text the site writes by hand for it, such as key facts, " +
         "goes in /wwwroot/content/" + ParksComputing.Engine.Pages.Services.MarkdownPages.LlmsSectionFile + ", which appears after the site's description. By default llms.txt groups the pages as the menu does; an llms list on the root of " +
         "sitenav.xfer gives other groups, each a title and a nav of pages that may have their own titles and descriptions for llms.txt, and " +
-        "the menus never read it. The applet tools list what the site's applets publish " +
+        "the menus never read it. The root's title is the short name every page's title ends with; an optional name on the root is the " +
+        "site's full name, such as a business name, which link previews (og:site_name), the RSS feed and llms.txt's heading use instead. " +
+        "The applet tools list what the site's applets publish " +
         "and run their pure actions (such as rolling dice, solving a sudoku or drawing a barcode) on the server; actions that need a window " +
         "or a person need the super-user's open desktop, which is not available yet.";
 

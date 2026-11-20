@@ -236,7 +236,7 @@ public sealed class MarkdownPages {
     public string LlmsTxt(string origin) {
         var root = _nav.GetRoot();
         var sb = new StringBuilder();
-        sb.Append("# ").AppendLine(root.Title ?? "This site").AppendLine();
+        sb.Append("# ").AppendLine(root.FullName() is { Length: > 0 } name ? name : "This site").AppendLine();
         if (!string.IsNullOrWhiteSpace(root.Description)) { sb.Append("> ").AppendLine(root.Description).AppendLine(); }
         var section = _cache.Get(Path.Combine(ContentDir, LlmsSectionFile), "llms-section", p => File.ReadAllText(p).Replace("\r\n", "\n").Trim());
         if (!string.IsNullOrEmpty(section)) { sb.AppendLine(Absolute(section, origin)).AppendLine(); }

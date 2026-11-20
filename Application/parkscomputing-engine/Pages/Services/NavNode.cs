@@ -16,6 +16,13 @@ public class NavNode {
     [XferPropertyName("title")]
     public string? Title { get; set; }
 
+    /// <summary>On the root only: the site's full name, such as a business
+    /// name, where it differs from the short title every page's title ends
+    /// with. Link previews (og:site_name), the RSS feed and llms.txt's
+    /// heading use it; without it they use the title (FullName).</summary>
+    [XferPropertyName("name")]
+    public string? Name { get; set; }
+
     [XferPropertyName("description")]
     public string? Description { get; set; }
 
@@ -170,6 +177,11 @@ public class NavNode {
     /// and otherwise the root's own title, as a brochure site and a site
     /// without a menu give it.</summary>
     public string SiteName() => Menu?.FirstOrDefault()?.Title is { Length: > 0 } logo ? logo : Title ?? "";
+
+    /// <summary>The site's full name, called on the root, for readers
+    /// outside the site (a link preview, a feed reader, an AI reader): the
+    /// root's name when it has one, else SiteName().</summary>
+    public string FullName() => string.IsNullOrWhiteSpace(Name) ? SiteName() : Name!;
 
     /// <summary>The site's logo, called on the root: the logo menu's icon,
     /// else the root's, else the favicon.</summary>

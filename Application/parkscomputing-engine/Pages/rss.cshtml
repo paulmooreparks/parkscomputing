@@ -4,7 +4,7 @@
 @{
     Layout = "_Rss";
     Response.ContentType = "text/xml";
-    ViewData["Title"] = Model.Root?.SiteName() ?? "";
+    ViewData["Title"] = Model.Root?.FullName() ?? "";
     ViewData["Link"] = SiteConfig.Value.Origin ?? (Request.Scheme + "://" + Request.Host);
     ViewData["Description"] = Model.Description;
     ViewData["Language"] = Model.Language;
