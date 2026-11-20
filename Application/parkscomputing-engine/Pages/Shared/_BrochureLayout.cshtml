@@ -75,18 +75,40 @@
     @if (mdPage is not null)
     {
         var pageUrl = origin + MarkdownExport.PageUrlOf(mdPage.Slug);
-        var image = mdPage.Image is null ? null : mdPage.Image.StartsWith("/") ? origin + mdPage.Image : mdPage.Image;
+        // The picture a link preview shows: the page's own (the one it
+        // chooses, or else its first), or else the site's (sitenav.xfer's
+        // root image), with the alt text that goes with it.
+        var shareImage = mdPage.Image ?? root.Image;
+        var shareAlt = mdPage.Image is not null ? mdPage.ImageAlt : root.ImageAlt;
+        var image = string.IsNullOrWhiteSpace(shareImage) ? null : shareImage.StartsWith("/") ? origin + shareImage : shareImage;
+        // The page's own title, as its <title> gives it before the site's
+        // name is added, rather than its heading, which may be a greeting.
+        var shareTitle = System.Net.WebUtility.HtmlDecode(string.IsNullOrWhiteSpace(pageTitle) ? mdPage.Title : pageTitle);
         <link rel="canonical" href="@pageUrl" />
         @* A page that gives no description of its own already has one from
-           its opening words (Pages/page.cshtml.cs). *@
+           its opening words (Pages/page.cshtml.cs). The page's own og: and
+           twitter: tags are left out of its head (Pages/page.cshtml), so
+           these are the only ones. *@
         <meta property="og:site_name" content="@root.FullName()" />
         <meta property="og:type" content="@(isArticle ? "article" : "website")" />
-        <meta property="og:title" content="@mdPage.Title" />
+        <meta property="og:title" content="@shareTitle" />
         <meta property="og:description" content="@mdPage.Summary" />
         <meta property="og:url" content="@pageUrl" />
         @if (image is not null)
         {
             <meta property="og:image" content="@image" />
+            @if (!string.IsNullOrWhiteSpace(shareAlt))
+            {
+                <meta property="og:image:alt" content="@shareAlt" />
+            }
+        }
+        @if (isArticle)
+        {
+            @if (mdPage.Date is { } published)
+            {
+                <meta property="article:published_time" content="@published.ToString("yyyy-MM-dd")" />
+            }
+            <meta property="article:modified_time" content="@mdPage.Modified.ToString("yyyy-MM-dd")" />
         }
         <meta name="twitter:card" content="@(image is null ? "summary" : "summary_large_image")" />
         @if (isArticle)

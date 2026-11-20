@@ -414,6 +414,14 @@ namespace ParksComputing.Engine.Pages {
             var titleElement = doc.DocumentNode.SelectSingleNode("//title");
             if (titleElement is not null) { Title = titleElement.InnerText; }
 
+            // On a brochure site the layout writes the link-preview tags
+            // itself, taking the page's own og:image and og:image:alt into
+            // account (Pages/Services/MarkdownPages.cs), so the page's own
+            // og:, article: and twitter: tags would only repeat them.
+            if (HttpContext.RequestServices.GetService<IOptions<SiteOptions>>()?.Value.Brochure == true) {
+                foreach (var tag in doc.DocumentNode.SelectNodes("//head/meta")?.Where(MarkdownPages.IsSharingTag).ToList() ?? new()) { tag.Remove(); }
+            }
+
             MetaElements = doc.DocumentNode.SelectNodes("//head/meta");
             LinkElements = doc.DocumentNode.SelectNodes("//head/link");
             StyleElements = doc.DocumentNode.SelectNodes("//head/style");

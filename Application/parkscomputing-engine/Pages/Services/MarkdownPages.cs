@@ -11,9 +11,10 @@ using Microsoft.Extensions.Options;
 namespace ParksComputing.Engine.Pages.Services;
 
 /// <summary>A page as an AI reader or a search engine gets it: its title,
-/// description, when it was written and last changed, its first picture,
-/// and its Markdown body.</summary>
-public sealed record MarkdownPage(string Slug, string Title, string? Description, DateTime? Date, DateTime Modified, string? Image, string Body) {
+/// description, when it was written and last changed, the picture that
+/// stands for it in a link preview (the one it chooses, or else its first)
+/// with that picture's alt text, and its Markdown body.</summary>
+public sealed record MarkdownPage(string Slug, string Title, string? Description, DateTime? Date, DateTime Modified, string? Image, string Body, string? ImageAlt = null) {
     /// <summary>The description, or else the page's opening words, for a
     /// page that gives none.</summary>
     public string Summary {
@@ -115,9 +116,14 @@ public sealed class MarkdownPages {
         body = Regex.Replace(body, @"\A\s*#\s+.+\r?\n", "").Trim();
         var date = ParseDate(fields.GetValueOrDefault("date"));
         var modified = ParseDate(fields.GetValueOrDefault("lastmodified")) ?? date ?? written;
-        var image = Regex.Match(body, @"!\[[^\]]*\]\(([^)\s]+)").Groups[1].Value;
+        // The picture for a link preview: the one the front matter chooses,
+        // or else the first in the page, each with its alt text.
+        var first = Regex.Match(body, @"!\[(?<alt>[^\]]*)\]\((?<src>[^)\s]+)");
+        var chosen = fields.GetValueOrDefault("image");
+        var image = string.IsNullOrWhiteSpace(chosen) ? (first.Success ? first.Groups["src"].Value : null) : chosen;
+        var alt = string.IsNullOrWhiteSpace(chosen) ? (first.Success ? first.Groups["alt"].Value : null) : fields.GetValueOrDefault("image-alt");
         return new MarkdownPage(slug, title.Length > 0 ? title : slug, fields.GetValueOrDefault("description"), date, modified,
-            image.Length > 0 ? image : null, body);
+            image, body, string.IsNullOrWhiteSpace(alt) ? null : alt);
     }
 
     private static MarkdownPage? FromHtml(string slug, string raw, DateTime written) {
@@ -134,7 +140,12 @@ public sealed class MarkdownPages {
         var description = WebDecode(doc.DocumentNode.SelectSingleNode("//meta[@name='description']")?.GetAttributeValue("content", null));
         var date = ParseDate(Meta(doc, "date"));
         var modified = ParseDate(Meta(doc, "last-modified")) ?? date ?? written;
-        var image = body.SelectSingleNode(".//img[@src]")?.GetAttributeValue("src", null);
+        // The picture for a link preview: the one the page's head chooses
+        // with og:image, or else the first in the page, each with its alt text.
+        var chosen = Property(doc, "og:image");
+        var firstImg = body.SelectSingleNode(".//img[@src]");
+        var image = chosen ?? firstImg?.GetAttributeValue("src", null);
+        var alt = chosen is not null ? Property(doc, "og:image:alt") : WebDecode(firstImg?.GetAttributeValue("alt", null));
         var converter = new ReverseMarkdown.Converter(new ReverseMarkdown.Config {
             UnknownTags = ReverseMarkdown.Config.UnknownTagsOption.Bypass,
             GithubFlavored = true,
@@ -143,7 +154,7 @@ public sealed class MarkdownPages {
         });
         var md = converter.Convert(body.InnerHtml);
         md = Regex.Replace(md, @"\n{3,}", "\n\n").Trim();
-        return new MarkdownPage(slug, title ?? slug, description, date, modified, image, md);
+        return new MarkdownPage(slug, title ?? slug, description, date, modified, image, md, string.IsNullOrWhiteSpace(alt) ? null : alt);
     }
 
     /// <summary>A meta element's content by http-equiv or name, either case.</summary>
@@ -152,6 +163,19 @@ public sealed class MarkdownPages {
             string.Equals(m.GetAttributeValue("http-equiv", ""), key, StringComparison.OrdinalIgnoreCase)
             || string.Equals(m.GetAttributeValue("name", ""), key, StringComparison.OrdinalIgnoreCase))
         ?.GetAttributeValue("content", null);
+
+    /// <summary>Whether a meta element is a link-preview tag: an og: or
+    /// article: property, or a twitter: name.</summary>
+    public static bool IsSharingTag(HtmlNode meta) =>
+        meta.GetAttributeValue("property", "") is var p && (p.StartsWith("og:", StringComparison.OrdinalIgnoreCase) || p.StartsWith("article:", StringComparison.OrdinalIgnoreCase))
+        || meta.GetAttributeValue("name", "").StartsWith("twitter:", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>An Open Graph meta element's content by its property, or
+    /// null when the head has none or it is empty.</summary>
+    private static string? Property(HtmlDocument doc, string property) =>
+        WebDecode(doc.DocumentNode.SelectNodes("//head/meta[@property]")?.FirstOrDefault(m =>
+            string.Equals(m.GetAttributeValue("property", ""), property, StringComparison.OrdinalIgnoreCase))
+        ?.GetAttributeValue("content", null)) is { Length: > 0 } v ? v : null;
 
     private static string? WebDecode(string? s) => s is null ? null : System.Net.WebUtility.HtmlDecode(s).Trim();
 
