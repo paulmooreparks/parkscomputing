@@ -39,11 +39,14 @@ public static class McpSetup {
     public const string LogCategory = "ParksComputing.Engine.Mcp";
 
     private const string Instructions =
-        "This is parkscomputing.com, Paul Parks's site, served by its own ASP.NET engine. These tools act as the site's super-user, " +
+        "This is a website served by the Parks Computing engine, an ASP.NET site engine; site_pages gives the site's name and its pages. " +
+        "These tools act as the site's super-user, " +
         "within the capabilities the token was given. Paths: ~ is the super-user's home folder on the server, never served to the public; " +
         "/wwwroot is the site's files, where pages are Markdown or HTML in /wwwroot/content and /wwwroot/sitenav.xfer lists the pages and menus; " +
-        "/etc is the server's settings. site_pages gives each page's source file. Writing in /wwwroot changes the live site at once, and " +
-        "every write keeps the version it replaces for 30 days. Draft in ~ when unsure. The applet tools list what the site's applets publish " +
+        "/etc is the server's settings. site_pages gives each page's source file. Writing or deleting in /wwwroot changes the live site at once, and " +
+        "every write or delete keeps the version it replaces for 30 days. Draft in ~ when unsure. " +
+        "/llms.txt is generated from sitenav.xfer and each page's title and description; text the site writes by hand for it, such as key facts, " +
+        "goes in /wwwroot/content/" + ParksComputing.Engine.Pages.Services.MarkdownPages.LlmsSectionFile + ", which appears after the site's description. The applet tools list what the site's applets publish " +
         "and run their pure actions (such as rolling dice, solving a sudoku or drawing a barcode) on the server; actions that need a window " +
         "or a person need the super-user's open desktop, which is not available yet.";
 

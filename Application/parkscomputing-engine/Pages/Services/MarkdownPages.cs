@@ -203,15 +203,23 @@ public sealed class MarkdownPages {
     private static string Absolute(string md, string origin) =>
         Regex.Replace(md, @"\]\((/[^)\s]*)", m => "](" + origin + m.Groups[1].Value);
 
-    /// <summary>/llms.txt: the site's name and description, then its pages
-    /// in the order Pages() gives them, each group under its own heading;
-    /// Optional is the heading llmstxt.org reserves for what a reader may
-    /// skip.</summary>
+    /// <summary>The file a site writes by hand for llms.txt, such as a list
+    /// of key facts. It is a "-section" file, so it is never a page of its
+    /// own.</summary>
+    public const string LlmsSectionFile = "llms-section.md";
+
+    /// <summary>/llms.txt: the site's name and description, then what the
+    /// site wrote by hand in content/llms-section.md, if anything, then its
+    /// pages in the order Pages() gives them, each group under its own
+    /// heading; Optional is the heading llmstxt.org reserves for what a
+    /// reader may skip.</summary>
     public string LlmsTxt(string origin) {
         var root = _nav.GetRoot();
         var sb = new StringBuilder();
         sb.Append("# ").AppendLine(root.Title ?? "This site").AppendLine();
         if (!string.IsNullOrWhiteSpace(root.Description)) { sb.Append("> ").AppendLine(root.Description).AppendLine(); }
+        var section = _cache.Get(Path.Combine(ContentDir, LlmsSectionFile), "llms-section", p => File.ReadAllText(p).Replace("\r\n", "\n").Trim());
+        if (!string.IsNullOrEmpty(section)) { sb.AppendLine(Absolute(section, origin)).AppendLine(); }
         sb.AppendLine("Each page below is also available as Markdown at the address listed. The site's pages are the same text in HTML at the same address without .md.");
         foreach (var group in Pages().GroupBy(p => p.Group)) {
             sb.AppendLine().Append("## ").AppendLine(group.Key).AppendLine();
