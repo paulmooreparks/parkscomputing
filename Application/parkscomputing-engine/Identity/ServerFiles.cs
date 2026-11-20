@@ -214,6 +214,14 @@ public sealed class ServerFiles {
         root == Etc ||
         (root == WebRoot && Protected.Any(p => (rel.Replace('\\', '/').Trim('/') + "/").StartsWith(p, StringComparison.OrdinalIgnoreCase)));
 
+    /// <summary>Whether a web-root path is in pudl/, the site's copy of a
+    /// tagged PUDL release, which changes only by taking a new release.
+    /// MCP may change the site's own scripts and stylesheets in js/ and css/,
+    /// since a token that may publish can already put a script in any page,
+    /// but never this copy.</summary>
+    public static bool IsReleaseCopy(string root, string rel) =>
+        root == WebRoot && (rel.Replace('\\', '/').Trim('/') + "/").StartsWith("pudl/", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Every file and directory under a root, links left out.</summary>
     public IReadOnlyList<Entry> List(string rootDir) {
         var list = new List<Entry>();
