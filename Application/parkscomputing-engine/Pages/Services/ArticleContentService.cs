@@ -303,7 +303,7 @@ public class ArticleContentService {
     }
 
     private ArticleWindowContent? LoadRaw(string? slug) {
-        if (string.IsNullOrWhiteSpace(slug) || !SlugPattern.IsMatch(slug)) { return null; }
+        if (string.IsNullOrWhiteSpace(slug) || !SlugPattern.IsMatch(slug) || MarkdownPages.IsLayoutPart(slug)) { return null; }
 
         var baseDir = Path.Combine(_environment.WebRootPath, "content");
 
@@ -398,6 +398,7 @@ public class ArticleContentService {
         || (_accounts && (slug == AccountKey || slug == ModerationKey || slug == LogsKey || slug == VisitsKey));
 
     private bool ContentExists(string slug) {
+        if (MarkdownPages.IsLayoutPart(slug)) { return false; }
         var baseDir = Path.Combine(_environment.WebRootPath, "content");
         return File.Exists(Path.Combine(baseDir, slug + ".md"))
             || File.Exists(Path.Combine(baseDir, slug + ".html"))

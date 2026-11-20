@@ -93,6 +93,11 @@ namespace ParksComputing.Engine.Pages {
                 if (!BookService.IsSafePath(slug)) {
                     return Task.FromResult<IActionResult>(NotFound());
                 }
+                // A part of the layout, such as header-section or llms-section,
+                // is not a page. Only the editor's preview of a draft shows one.
+                if (draft is null && MarkdownPages.IsLayoutPart(slug)) {
+                    return Task.FromResult<IActionResult>(NotFound());
+                }
                 // The Account applet's page is /account, where a site has
                 // accounts; its window's Open as a page names /page/account.
                 if (slug == ArticleContentService.AccountKey && draft is null &&
