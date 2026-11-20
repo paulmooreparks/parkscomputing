@@ -145,6 +145,32 @@ public sealed class SiteTools {
         return new { path = Shown(t), size = bytes.Length, created = !existed, live = t.Root == ServerFiles.WebRoot };
     }
 
+    [McpServerTool(Name = "site_file_delete", Title = "Delete a file", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false)]
+    [Description("Delete one file; the file is kept in the server's history for 30 days. Folders can't be deleted this way. In ~ this needs files.write. In /wwwroot it needs site.publish and changes the live site at once; nothing in js/, css/ or pudl/ can be deleted this way, and nor can anything in /etc.")]
+    [Authorize(Policy = McpSetup.WritePolicy)]
+    public async Task<object> DeleteFile([Description("The file, such as ~/drafts/idea.md or /wwwroot/content/old-page.md.")] string path) {
+        var t = await LocateAsync(path);
+        if (t.Root == ServerFiles.Etc) {
+            throw new McpException("/etc can't be changed over MCP. Change it from the admin desktop.");
+        }
+        _caller.Require(t.Root == ServerFiles.Home ? TokenCapabilities.FilesWrite : TokenCapabilities.SitePublish);
+        if (ServerFiles.IsProtected(t.Root, t.Rel)) {
+            throw new McpException(path + " is in js/, css/ or pudl/, which can't be changed over MCP. Change it from the admin desktop.");
+        }
+        if (t.Rel == "" || Directory.Exists(t.Full)) {
+            throw new McpException(path + " is a folder. Only files can be deleted over MCP.");
+        }
+        if (!File.Exists(t.Full)) {
+            throw new McpException(path + ": no such file.");
+        }
+        _files.KeepPrevious(t.RootKey, t.Rel, t.Full, moveAway: true);
+        await _files.AuditAsync(_caller.Who, _caller.Ip, "delete", t.RootKey, t.Rel);
+        if (t.Root == ServerFiles.WebRoot) {
+            _files.AssetsChanged();
+        }
+        return new { path = Shown(t), deleted = true, live = t.Root == ServerFiles.WebRoot };
+    }
+
     /* === The site ======================================================= */
 
     public sealed record PageEntry(string Slug, string Title, string Kind, string? Description, string? Url, DateTime? Date,

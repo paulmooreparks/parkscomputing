@@ -99,11 +99,11 @@ async function init(token) {
   // What each token is offered.
   const names = async token => { const l = await rpc(token, 'tools/list', {}); return (l.msg && l.msg.result && l.msg.result.tools || []).map(t => t.name).sort(); };
   const all = await names(ALL), read = await names(READ);
-  const SITE = ['site_files_list', 'site_file_read', 'site_file_write', 'site_pages', 'comments_queue', 'comment_decide', 'server_log'];
+  const SITE = ['site_files_list', 'site_file_read', 'site_file_write', 'site_file_delete', 'site_pages', 'comments_queue', 'comment_decide', 'server_log'];
   const APPLET = ['applet_discover', 'applet_invoke', 'applet_status', 'applet_cancel', 'applet_artifact'];
   log('every tool is listed to a token with every capability', SITE.concat(APPLET).every(n => all.includes(n)), all.join(','));
   log('a read-only token is offered only reading and the applet tools',
-    ['site_files_list', 'site_file_read', 'site_pages'].concat(APPLET).every(n => read.includes(n)) && !read.includes('site_file_write') && !read.includes('comments_queue') && !read.includes('server_log'), read.join(','));
+    ['site_files_list', 'site_file_read', 'site_pages'].concat(APPLET).every(n => read.includes(n)) && !read.includes('site_file_write') && !read.includes('site_file_delete') && !read.includes('comments_queue') && !read.includes('server_log'), read.join(','));
   let c = await call(READ, 'site_file_write', { path: '~/nope.txt', text: 'x' });
   log('a read-only token cannot write', c.error, c.text);
 
@@ -133,6 +133,25 @@ async function init(token) {
   log('js/ can\'t be written over MCP', c.error && (PUBLISH ? /js\/, css\/ or pudl\//.test(c.text) : /site\.publish/.test(c.text)), c.text);
   c = await call(ALL, 'site_file_write', { path: '/etc/mcp-test', text: '1' });
   log('/etc can\'t be written over MCP', c.error && /\/etc can't be written/.test(c.text), c.text);
+
+  // Deleting, and its limits.
+  c = await call(READ, 'site_file_delete', { path: '~/mcp-test/note-' + RUN + '.md' });
+  log('a read-only token cannot delete', c.error, c.text);
+  c = await call(ALL, 'site_file_delete', { path: '~/mcp-test/note-' + RUN + '.md' });
+  log('a file in ~ is deleted', !c.error && c.json && c.json.deleted === true && c.json.live === false, c.text);
+  c = await call(ALL, 'site_file_read', { path: '~/mcp-test/note-' + RUN + '.md' });
+  log('and is gone', c.error && /no such file/.test(c.text), c.text);
+  c = await call(ALL, 'site_file_delete', { path: '~/mcp-test' });
+  log('a folder can\'t be deleted over MCP', c.error && /is a folder/.test(c.text), c.text);
+  if (PUBLISH) {
+    c = await call(ALL, 'site_file_delete', { path: '/wwwroot/content/mcp-test-' + RUN + '.md' });
+    log('site.publish deletes in /wwwroot, live', !c.error && c.json && c.json.live === true, c.text);
+  }
+  c = await call(ALL, 'site_file_delete', { path: '/wwwroot/js/site.js' });
+  log('nothing in js/ can be deleted over MCP', c.error && (PUBLISH ? /js\/, css\/ or pudl\//.test(c.text) : /site\.publish/.test(c.text)), c.text);
+  c = await call(ALL, 'site_file_delete', { path: '/etc/admin-menu.xfer' });
+  log('nothing in /etc can be deleted over MCP', c.error && /\/etc can't be changed/.test(c.text), c.text);
+
   c = await call(ALL, 'site_file_read', { path: '~/../../etc/passwd' });
   log('a path that leaves its root is refused', c.error, c.text);
   c = await call(ALL, 'site_file_read', { path: '/app/appsettings.json' });
@@ -191,7 +210,8 @@ async function init(token) {
   // The audit log names the token, and a revoked token stops working.
   if (process.env.PC_MCP_HISTORY && PUBLISH) {
     const audit = fs.readFileSync(path.join(process.env.PC_MCP_HISTORY, 'audit.log'), 'utf8');
-    log('the audit log records the writes with the token\'s name', audit.split('\n').some(l => l.includes('"who":"mcp-test@example.com (token all-tools)"') && l.includes('"op":"create","root":"wwwroot","path":"content/mcp-test-' + RUN + '.md"')), audit.split('\n').slice(-4).join(' | '));
+    log('the audit log records the writes with the token\'s name', audit.split('\n').some(l => l.includes('"who":"mcp-test@example.com (token all-tools)"') && l.includes('"op":"create","root":"wwwroot","path":"content/mcp-test-' + RUN + '.md"'))
+      && audit.split('\n').some(l => l.includes('"op":"delete","root":"wwwroot","path":"content/mcp-test-' + RUN + '.md"')), audit.split('\n').slice(-4).join(' | '));
   }
   if (process.env.PC_MCP_REVOKE) {
     execSync(process.env.PC_MCP_REVOKE, { stdio: 'ignore' });
