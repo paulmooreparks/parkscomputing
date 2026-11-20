@@ -1,0 +1,30 @@
+@using System.Globalization;
+@model ParksComputing.Engine.Pages.Models.PostsContentModel
+@* A <posts-content format="card-list"> list (Pages/Models/PostsContentModel.cs):
+   one PUDL card per entry, its title as a link, its date and its
+   description, each from sitenav.xfer or else the entry's own file
+   (Pages/Services/NavService.cs), so a card never drifts from its page. *@
+@{
+    var posts = Model.GetFilteredPosts().ToList();
+    var listClass = string.IsNullOrWhiteSpace(Model.CssClass) ? "card-list" : "card-list " + Model.CssClass;
+    var cardClass = string.IsNullOrWhiteSpace(Model.ItemClass) ? "card" : "card " + Model.ItemClass;
+}
+@if (posts.Count > 0)
+{
+    <ul class="@listClass">
+    @foreach (var post in posts)
+    {
+        <li class="@cardClass">
+            <h2 class="card-title"><a href="@post.Url">@post.Title</a></h2>
+            @if (Model.ShowDates && post.Date is { } date)
+            {
+                <p class="card-meta"><time datetime="@date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@date.ToString("d MMMM yyyy", CultureInfo.InvariantCulture)</time></p>
+            }
+            @if (Model.ShowExcerpts && !string.IsNullOrWhiteSpace(post.Description ?? post.Excerpt))
+            {
+                <p class="card-desc">@(post.Description ?? post.Excerpt)</p>
+            }
+        </li>
+    }
+    </ul>
+}

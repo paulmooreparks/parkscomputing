@@ -72,6 +72,23 @@ public class LlmsTxtTests {
         Assert.AreEqual((null, null), (pages.Load("none")!.Image, pages.Load("none")!.ImageAlt));
     }
 
+    [TestMethod]
+    public void APagesListOfASectionIsInItsMarkdownAndFollowsTheEntries() {
+        var (pages, content, nav) = Site();
+        var piece = new NavNode { Slug = "piece", Title = "A Piece", Url = "/page/piece", Date = new DateTime(2022, 12, 22), Description = "On pieces." };
+        nav.Root.Nav = new[] { nav.Root.Nav![0], new NavNode { Slug = "articles", Title = "Thoughts", Feed = true, Nav = new[] { piece } } };
+        File.WriteAllText(Path.Combine(content, "articles.html"),
+            "<html><head><title>Thoughts</title><meta name=\"description\" content=\"Thoughts.\"></head><body><h1>Thoughts</h1>" +
+            "<p>Some thoughts.</p><posts-content section=\"articles\" format=\"card-list\" css-class=\"article-list\"></posts-content></body></html>");
+        File.WriteAllText(Path.Combine(content, "notes.md"), "# Notes\n\nIntro.\n\n<posts-content section=\"articles\"></posts-content>\n");
+        StringAssert.Contains(pages.Load("articles")!.Body.Replace("\r\n", "\n"), "Some thoughts.\n\n- [A Piece](/page/piece), 2022-12-22: On pieces.");
+        StringAssert.Contains(pages.Load("notes")!.Body, "- [A Piece](/page/piece), 2022-12-22: On pieces.");
+        // An entry's change shows without the page changing.
+        piece.Description = "On pieces, revised.";
+        StringAssert.Contains(pages.Load("articles")!.Body, "On pieces, revised.");
+        Assert.IsFalse(pages.Load("articles")!.Body.Contains("POSTSLIST"));
+    }
+
     [DataTestMethod]
     [DataRow("<meta property=\"og:image\" content=\"x\">", true)]
     [DataRow("<meta property=\"article:published_time\" content=\"x\">", true)]

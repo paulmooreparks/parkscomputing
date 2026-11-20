@@ -90,10 +90,36 @@ public sealed class MarkdownPages {
     public MarkdownPage? Load(string slug) {
         if (!SlugPattern.IsMatch(slug) || IsLayoutPart(slug)) { return null; }
         var md = Path.Combine(ContentDir, slug + ".md");
-        if (File.Exists(md)) { return _cache.Get(md, "markdown-page", p => FromMarkdown(slug, File.ReadAllText(p), File.GetLastWriteTimeUtc(p))); }
+        if (File.Exists(md)) { return WithLists(_cache.Get(md, "markdown-page", p => FromMarkdown(slug, File.ReadAllText(p), File.GetLastWriteTimeUtc(p)))); }
         var html = Path.Combine(ContentDir, slug + ".html");
-        if (File.Exists(html)) { return _cache.Get(html, "markdown-page", p => FromHtml(slug, File.ReadAllText(p), File.GetLastWriteTimeUtc(p))); }
+        if (File.Exists(html)) { return WithLists(_cache.Get(html, "markdown-page", p => FromHtml(slug, File.ReadAllText(p), File.GetLastWriteTimeUtc(p)))); }
         return null;
+    }
+
+    /* A <posts-content section="..."> list in an HTML page stands in its
+       Markdown as a placeholder of letters and digits, which the Markdown
+       conversion leaves alone, so the cached page doesn't hold the list.
+       The list is filled in from the section's entries each time the page
+       is read, since their titles, dates and descriptions come from the
+       entries' own files and change without this page changing. */
+    private static readonly Regex ListPlaceholder = new("POSTSLIST([0-9A-F]+)END", RegexOptions.Compiled);
+
+    private static string PlaceholderFor(string section) => "POSTSLIST" + Convert.ToHexString(Encoding.UTF8.GetBytes(section)) + "END";
+
+    private MarkdownPage? WithLists(MarkdownPage? page) {
+        if (page is null || !page.Body.Contains("POSTSLIST", StringComparison.Ordinal)) { return page; }
+        var root = _nav.GetRoot();
+        return page with {
+            Body = ListPlaceholder.Replace(page.Body, m => {
+                var section = Encoding.UTF8.GetString(Convert.FromHexString(m.Groups[1].Value));
+                return string.Join("\n", NavService.SectionEntries(root, section).Select(n => {
+                    var line = new StringBuilder("- [").Append(n.Title ?? n.Slug).Append("](").Append(n.Url ?? _site.UrlOf(n.Slug!)).Append(')');
+                    if (n.Date is { } d) { line.Append(", ").Append(d.ToString("yyyy-MM-dd")); }
+                    if (!string.IsNullOrWhiteSpace(n.Description)) { line.Append(": ").Append(n.Description); }
+                    return line.ToString();
+                }));
+            })
+        };
     }
 
     private static MarkdownPage FromMarkdown(string slug, string raw, DateTime written) {
@@ -114,6 +140,7 @@ public sealed class MarkdownPages {
         // The page's own first heading is its title, which the export puts
         // first itself.
         body = Regex.Replace(body, @"\A\s*#\s+.+\r?\n", "").Trim();
+        body = Regex.Replace(body, @"<posts-content\b[^>]*?\bsection=""([^""]+)""[^>]*>\s*(</posts-content>)?", m => PlaceholderFor(m.Groups[1].Value));
         var date = ParseDate(fields.GetValueOrDefault("date"));
         var modified = ParseDate(fields.GetValueOrDefault("lastmodified")) ?? date ?? written;
         // The picture for a link preview: the one the front matter chooses,
@@ -134,6 +161,10 @@ public sealed class MarkdownPages {
         // A page that is only an applet mount has nothing to read.
         if (body.SelectSingleNode(".//*[@data-applet]") is not null && body.InnerText.Trim().Length < 40) { return null; }
         foreach (var n in body.SelectNodes(".//script|.//style|.//noscript|.//iframe|.//nav[@data-page-menu]")?.ToList() ?? new()) { n.Remove(); }
+        foreach (var list in body.SelectNodes(".//posts-content[@section]")?.ToList() ?? new()) {
+            var placeholder = HtmlNode.CreateNode("<p>" + PlaceholderFor(list.GetAttributeValue("section", "")) + "</p>");
+            list.ParentNode.ReplaceChild(placeholder, list);
+        }
         var title = WebDecode(doc.DocumentNode.SelectSingleNode("//title")?.InnerText);
         var h1 = body.SelectSingleNode(".//h1");
         if (h1 is not null) { title = WebDecode(h1.InnerText) ?? title; h1.Remove(); }
